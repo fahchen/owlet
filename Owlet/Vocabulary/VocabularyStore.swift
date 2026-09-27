@@ -14,21 +14,25 @@ final class VocabularyStore {
         self.container = container
     }
 
-    /// Saves a draft at once, reusing the entry for the same language and trimmed expression;
-    /// appending a second context to that entry belongs to T11.
+    /// Saves a draft at once, reusing the entry for the same language and trimmed expression and
+    /// appending the new context there, so collecting the same expression twice never forks an entry.
     @discardableResult
     func collect(_ draft: VocabularyDraft) throws -> VocabularyEntry {
         let expression = draft.expression.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !expression.isEmpty else { throw VocabularyError.emptyExpression }
+        let newContext = VocabularyContext(
+            source: draft.context, polishBefore: draft.polishBefore,
+            polishAfter: draft.polishAfter)
         if let existing = try entry(language: draft.language, expression: expression) {
+            // The same context submitted again adds nothing, and an earlier context is never replaced.
+            if !existing.contexts.contains(where: { $0.hasSameContent(as: newContext) }) {
+                existing.contexts.append(newContext)
+                try context.save()
+            }
             return existing
         }
         let entry = VocabularyEntry(expression: expression, language: draft.language)
-        entry.contexts = [
-            VocabularyContext(
-                source: draft.context, polishBefore: draft.polishBefore,
-                polishAfter: draft.polishAfter)
-        ]
+        entry.contexts = [newContext]
         context.insert(entry)
         try context.save()
         return entry

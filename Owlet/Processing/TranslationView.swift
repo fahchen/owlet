@@ -78,11 +78,6 @@ final class TranslationModel {
 
 struct TranslationView: View {
     @Bindable var model: TranslationModel
-    /// Used where `SettingsLink` has no scene, e.g. the floating panel.
-    var openSettings: (() -> Void)?
-    /// Writes the result back to the original selection; nil when there is no source.
-    var replace: ((String) -> Void)?
-    var replaceMessage: String?
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -149,19 +144,7 @@ struct TranslationView: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                     }
-                    if let replace {
-                        Button {
-                            replace(text)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Text("Replace")
-                                Text("⌘↩").font(.caption.monospaced()).opacity(0.8)
-                            }
-                        }
-                        .buttonStyle(.glassProminent)
-                    }
                 }
-                if let replaceMessage { Text(replaceMessage).foregroundStyle(.red) }
             }
         case .failure(let message):
             HStack(spacing: 8) {
@@ -190,11 +173,7 @@ struct TranslationView: View {
 
     private var settingsButton: some View { settingsLink("Open Service Settings") }
 
-    @ViewBuilder private func settingsLink(_ title: String) -> some View {
-        if let openSettings {
-            Button(title, action: openSettings).buttonStyle(.link).foregroundStyle(Self.accent)
-        } else {
-            SettingsLink { Text(title) }.buttonStyle(.link).foregroundStyle(Self.accent)
-        }
+    private func settingsLink(_ title: String) -> some View {
+        SettingsLink { Text(title) }.buttonStyle(.link).foregroundStyle(Self.accent)
     }
 }

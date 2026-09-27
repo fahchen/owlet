@@ -196,6 +196,17 @@ enum RoseGlass {
     static let muted = Color(red: 0.400, green: 0.368, blue: 0.381)
     /// oklch(99% .003 350)
     static let paper = Color(red: 0.994, green: 0.984, blue: 0.988)
+    /// oklch(60% .012 350 / .17)
+    static let line = Color(red: 0.526, green: 0.492, blue: 0.506).opacity(0.17)
+    /// oklch(50% .012 350 / .12)
+    static let hairline = Color(red: 0.412, green: 0.379, blue: 0.392).opacity(0.12)
+    /// oklch(94% .005 350 / .2)
+    static let footer = Color(red: 0.933, green: 0.917, blue: 0.923).opacity(0.2)
+    /// oklch(96% .025 45) / oklch(43% .1 40)
+    static let errorFill = Color(red: 1, green: 0.93, blue: 0.895)
+    static let errorInk = Color(red: 0.487, green: 0.226, blue: 0.131)
+    /// oklch(62% .008 265 / .17)
+    static let skeleton = Color(red: 0.55, green: 0.56, blue: 0.58).opacity(0.17)
     static let compactRadius: CGFloat = 16
     static let expandedRadius: CGFloat = 18
 }
@@ -229,14 +240,12 @@ struct PanelView: View {
     }
 
     private var expandedView: some View {
-        VStack(spacing: 0) {
-            PanelHeader(operation: Bindable(controller.model).operation, openSettings: settings)
-            Divider().opacity(0.6)
-            TranslationView(
-                model: controller.model, openSettings: controller.openSettings,
-                replace: replaceAction,
-                replaceMessage: controller.replaceMessage)
-        }
+        ExpandedPanel(
+            model: controller.model,
+            replace: replaceAction,
+            replaceMessage: controller.replaceMessage,
+            retry: controller.translate,
+            openSettings: settings)
     }
 
     private var replaceAction: ((String) -> Void)? {
@@ -278,43 +287,6 @@ struct PanelView: View {
     private func settings() {
         controller.close()
         controller.openSettings()
-    }
-}
-
-/// Replaces the title bar the frameless panel lacks: logo, operation menu, settings.
-struct PanelHeader: View {
-    @Binding var operation: Operation
-    let openSettings: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 7) {
-                Image("OwletMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(RoseGlass.muted)
-                    .accessibilityLabel("Owlet")
-                Picker("快捷操作", selection: $operation) {
-                    ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .buttonStyle(.borderless)
-                .fixedSize()
-                .font(.system(size: 12, weight: .semibold))
-            }
-            Spacer(minLength: 0)
-            Button("打开设置", systemImage: "slider.horizontal.3", action: openSettings)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .foregroundStyle(RoseGlass.muted)
-                .help("设置")
-        }
-        .padding(.horizontal, 13)
-        .frame(height: 42)
-        .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
     }
 }
 
@@ -382,7 +354,7 @@ struct NoticeStrip<Actions: View>: View {
     }
 }
 
-private struct InlineAction: View {
+struct InlineAction: View {
     let title: String
     let action: () -> Void
 

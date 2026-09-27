@@ -47,7 +47,7 @@ struct ExpandedPanel: View {
                 cancel: cancel,
                 done: done)
         }
-        .frame(width: 560)
+        .frame(width: PanelMetrics.width)
     }
 
     private var canRetry: Bool {

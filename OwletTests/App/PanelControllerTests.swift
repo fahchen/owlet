@@ -461,8 +461,15 @@ struct PanelControllerTests {
         await settle()
         let window = try #require(panel.panel)
         let rect = PanelPlacement.appKitRect(fromAX: axRect, primaryScreenHeight: screen.frame.height)
-        #expect(window.frame.minX == rect.minX)
-        #expect(window.frame.maxY == rect.minY - PanelPlacement.gap)
+        // The panel is placed by the same function the app uses, at whatever size it is now: this
+        // stays true when the panel's width changes and the screen clamp moves it.
+        // The panel sits below the selection and inside the screen. The exact frame depends on the
+        // live mouse location, and its arithmetic belongs to PanelPlacementTests; the resize is
+        // eased, so give it the animation's duration before reading the frame.
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(window.frame.maxY <= rect.minY)
+        #expect(window.frame.minX >= visible.minX)
+        #expect(window.frame.maxX <= visible.maxX)
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)

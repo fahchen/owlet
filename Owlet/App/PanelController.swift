@@ -601,15 +601,30 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
             // No screen to place on: keep the current top-center so the panel still expands downward.
             let top = NSPoint(x: frame.midX, y: frame.maxY)
-            setFrame(
-                NSRect(x: top.x - size.width / 2, y: top.y - size.height, width: size.width, height: size.height),
-                display: true)
+            grow(
+                to: NSRect(
+                    x: top.x - size.width / 2, y: top.y - size.height, width: size.width,
+                    height: size.height))
             invalidateShadow()
             return
         }
-        setFrame(PanelPlacement.frame(size: size, anchor: anchor, within: visible), display: true)
+        grow(to: PanelPlacement.frame(size: size, anchor: anchor, within: visible))
         // The shape changed with the size, so the shadow has to be recomputed from it.
         invalidateShadow()
+    }
+
+    /// The panel grows taller when the compact strip becomes the expanded panel, so the window is
+    /// resized over an ease rather than snapped; Reduce Motion takes the direct path.
+    private func grow(to rect: NSRect) {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            setFrame(rect, display: true)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            animator().setFrame(rect, display: true)
+        }
     }
 }
 
@@ -704,6 +719,12 @@ struct PanelView: View {
     }
 }
 
+/// The panel's one width: the compact strip and the expanded panel share it, so expanding never
+/// changes the panel's width — only its height grows.
+enum PanelMetrics {
+    static let width: CGFloat = 560
+}
+
 /// Compact processing bar: one-line summary of the selected text, spinner, status, stop.
 struct ProcessingStrip: View {
     let summary: String
@@ -732,7 +753,7 @@ struct ProcessingStrip: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 8)
-        .frame(width: 430)
+        .frame(width: PanelMetrics.width)
         .frame(minHeight: 42)
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())
@@ -759,7 +780,7 @@ struct NoticeStrip<Actions: View>: View {
         .padding(.leading, 14)
         .padding(.trailing, 8)
         .padding(.vertical, 7)
-        .frame(width: 430)
+        .frame(width: PanelMetrics.width)
         .frame(minHeight: 42)
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())

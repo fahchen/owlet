@@ -72,6 +72,7 @@
 
 ### 3.7 系统体验
 - 菜单栏常驻入口 → `MenuBarExtra` + `Menu`（`the-menu-bar.md › Menu bar extras`）；全局快捷键没有系统 API 提供"用户可录制"的 UI，注册用 Carbon `RegisterEventHotKey`（§7 例外 2）；应用图标由 `project.yml` 的 `ASSETCATALOG_COMPILER_APPICON_NAME` 指定（当前值 `OwletIcon` 与目录里的 `AppIcon.appiconset` 不一致，`AppIcon.appiconset` 也没有 `appearances` 条目，即没有深色／着色变体，见未实现清单），含 light / dark / tinted 变体。
+- 菜单栏与面板的 Owlet 标记 → `Image("OwletMark")`，彩色标记图（紫色眼睛、橙色喙、粉色腮红）；资源必须保持 `template-rendering-intent: original`，改成 `template` 会把它压成单色剪影、丢掉标记的颜色。
 
 ## 4. 逐屏对照
 

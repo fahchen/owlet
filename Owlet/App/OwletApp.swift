@@ -6,10 +6,6 @@ struct OwletApp: App {
         client: ModelClient(), config: SettingsStore.currentConfig)
     @State private var shortcuts: ShortcutController = {
         let controller = ShortcutController()
-        controller.onTranslate = {
-            NSApp.activate()
-            NSApp.windows.first { $0.identifier?.rawValue == "main" }?.makeKeyAndOrderFront(nil)
-        }
         controller.start()
         return controller
     }()
@@ -18,8 +14,10 @@ struct OwletApp: App {
         Window("Owlet", id: "main") {
             MainView(translation: translation, shortcuts: shortcuts)
         }
-        MenuBarExtra("Owlet", systemImage: "character.bubble") {
+        MenuBarExtra {
             MenuContent(shortcuts: shortcuts)
+        } label: {
+            MenuBarLabel(shortcuts: shortcuts)
         }
         Settings {
             ServiceSettingsView()
@@ -46,6 +44,23 @@ private struct MainView: View {
             default: TranslationView(model: translation)
             }
         }
+    }
+}
+
+/// The menu bar label is always rendered, so it wires the shortcut to `openWindow`,
+/// which also recreates the main window after the user closes it.
+private struct MenuBarLabel: View {
+    let shortcuts: ShortcutController
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(systemName: "character.bubble")
+            .onAppear {
+                shortcuts.onTranslate = {
+                    NSApp.activate()
+                    openWindow(id: "main")
+                }
+            }
     }
 }
 

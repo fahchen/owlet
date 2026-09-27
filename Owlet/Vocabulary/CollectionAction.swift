@@ -82,7 +82,10 @@ final class CollectionAction {
         let client = client
         let expression = entry.expression
         let language = entry.language
-        let context = entry.contexts.first?.source ?? ""
+        // The meaning contract only validates when the expression appears in its context, and a 原句
+        // collected from 历史详情 is in the record's other language, so the expression stands in for it.
+        let stored = entry.contexts.first?.source ?? ""
+        let context = stored.localizedStandardContains(expression) ? stored : expression
         task = Task { [store] in
             do {
                 let meaning = try await client.fillMeaning(
@@ -121,6 +124,19 @@ extension VocabularyDraft {
             context: regionText,
             polishBefore: polish ? source : nil,
             polishAfter: polish ? result : nil)
+    }
+
+    /// Builds the snapshot for collecting from 历史详情: the result is the expression and the record's
+    /// own source text is the context, so the entry keeps its 原句 after the history is deleted, and a
+    /// polish record keeps the before/after comparison it was collected from.
+    @MainActor static func from(record: HistoryRecord) -> VocabularyDraft {
+        let polish = record.operationKind == .polish
+        return VocabularyDraft(
+            expression: record.result,
+            language: record.language,
+            context: record.source,
+            polishBefore: polish ? record.source : nil,
+            polishAfter: polish ? record.result : nil)
     }
 }
 

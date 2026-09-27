@@ -4,6 +4,7 @@ import SwiftUI
 /// Sidebar 历史记录 page: search, type filter and deletion over the finished results.
 struct HistoryView: View {
     let store: HistoryStore
+    let collection: CollectionAction
     let openProcessing: () -> Void
     @Query(sort: \HistoryRecord.createdAt, order: .reverse) private var records: [HistoryRecord]
     @State private var search = ""
@@ -17,7 +18,7 @@ struct HistoryView: View {
                 .navigationTitle("历史记录")
                 .searchable(text: $search, prompt: "搜索原文或结果")
                 .navigationDestination(for: HistoryRecord.self) { record in
-                    HistoryDetailView(record: record)
+                    HistoryDetailView(record: record, collection: collection)
                 }
                 .toolbar { toolbar }
                 .safeAreaInset(edge: .top, spacing: 0) { errorBanner }
@@ -194,6 +195,9 @@ private struct HistoryRow: View {
 
 private struct HistoryDetailView: View {
     let record: HistoryRecord
+    let collection: CollectionAction
+    /// True once this page collected, so a status another screen left behind never shows up here.
+    @State private var didCollect = false
 
     var body: some View {
         ScrollView {
@@ -218,6 +222,11 @@ private struct HistoryDetailView: View {
                     .lineSpacing(8)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if didCollect {
+                    CollectionFeedback(collection: collection, openNotebook: nil)
+                        .font(.system(size: 11))
+                        .padding(.top, 24)
+                }
             }
             .padding(.horizontal, 32)
             .padding(.vertical, 28)
@@ -232,7 +241,17 @@ private struct HistoryDetailView: View {
                 }
                 .buttonStyle(.glass)
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button("收藏", action: collect).buttonStyle(.glassProminent)
+            }
         }
+    }
+
+    /// Collects through the shared collect action, which saves first and only then asks for a missing
+    /// Chinese meaning, so a failed request leaves this record's own context in the notebook.
+    private func collect() {
+        didCollect = true
+        collection.collect(VocabularyDraft.from(record: record))
     }
 }
 

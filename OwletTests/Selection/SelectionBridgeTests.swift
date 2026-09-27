@@ -49,4 +49,80 @@ struct SelectionBridgeTests {
         let after = Source(pid: 1, document: "file:///a", text: "你好", location: 3, length: 2)
         #expect(!SelectionBridge.canReplace(original: source, current: after, sameElement: true))
     }
+
+    // Distinct opaque AX handles; the injected reader never sends them real AX messages.
+    let app = AXUIElementCreateApplication(1)
+    let field = AXUIElementCreateApplication(2)
+
+    /// Serves `attrs` for the focused field and records every requested attribute.
+    func reader(_ attrs: [String: AnyObject], log: Log) -> SelectionBridge.Reader {
+        { element, attribute in
+            log.calls.append(attribute)
+            if CFEqual(element, app) {
+                return attribute == kAXFocusedUIElementAttribute ? field : nil
+            }
+            return attrs[attribute]
+        }
+    }
+
+    final class Log { var calls: [String] = [] }
+
+    @Test func secureFieldNeverReadsTextOrRange() {
+        let log = Log()
+        let result = SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader(
+                [
+                    kAXSubroleAttribute: kAXSecureTextFieldSubrole as CFString,
+                    kAXSelectedTextAttribute: "pw" as CFString,
+                ], log: log))
+        #expect(result.map(\.text) == .failure(.secure))
+        #expect(log.calls == [kAXFocusedUIElementAttribute, kAXSubroleAttribute])
+    }
+
+    @Test func textIsReadOnceAndReusedForSource() {
+        let log = Log()
+        var range = CFRange(location: 3, length: 9)
+        let text = "  héllo\n世界 "
+        let result = SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader(
+                [
+                    kAXSelectedTextAttribute: text as CFString,
+                    kAXSelectedTextRangeAttribute: AXValueCreate(.cfRange, &range)!,
+                    kAXDocumentAttribute: "file:///a" as CFString,
+                ], log: log))
+        let captured = try? result.get()
+        #expect(captured?.text == text)
+        #expect(
+            captured?.source
+                == Source(pid: 9, document: "file:///a", text: text, location: 3, length: 9))
+        #expect(log.calls.filter { $0 == kAXSelectedTextAttribute }.count == 1)
+    }
+
+    @Test func wrongTypesFailSafely() {
+        let wrongText = SelectionBridge.capture(
+            app, pid: 9, copy: reader([kAXSelectedTextAttribute: 42 as CFNumber], log: Log()))
+        #expect(wrongText.map(\.text) == .failure(.unreadable))
+        let wrongSubrole = SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader(
+                [kAXSubroleAttribute: 1 as CFNumber, kAXSelectedTextAttribute: "hi" as CFString],
+                log: Log()))
+        #expect(wrongSubrole.map(\.text) == .failure(.unreadable))
+        let wrongRange = try? SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader(
+                [
+                    kAXSelectedTextAttribute: "hi" as CFString,
+                    kAXSelectedTextRangeAttribute: "0,2" as CFString,
+                ], log: Log())
+        ).get()
+        #expect(wrongRange?.source.location == nil)
+    }
+
+    @Test func missingFocusedElementIsUnreadable() {
+        let result = SelectionBridge.capture(app, pid: 9, copy: { _, _ in nil })
+        #expect(result.map(\.text) == .failure(.unreadable))
+    }
 }

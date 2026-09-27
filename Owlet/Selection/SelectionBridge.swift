@@ -30,29 +30,51 @@ enum SelectionBridge {
     static let permissionSettingsURL = URL(
         string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
 
+    /// Copies one AX attribute; injectable so tests can observe which attributes are read.
+    typealias Reader = (AXUIElement, String) -> AnyObject?
+
     static func read() -> Result<Selection, SelectionError> {
-        let trusted = AXIsProcessTrusted()
-        let element = trusted ? focusedElement() : nil
-        let subrole = element.flatMap { string($0, kAXSubroleAttribute) }
-        let text = element.flatMap { string($0, kAXSelectedTextAttribute) }
-        return classify(trusted: trusted, subrole: subrole, text: text).flatMap { text in
-            guard let element else { return .failure(.unreadable) }
-            let app = NSWorkspace.shared.frontmostApplication
-            return .success(
-                Selection(
-                    text: text, element: element, app: app,
-                    source: source(element, pid: app?.processIdentifier)))
+        guard AXIsProcessTrusted() else { return .failure(.permission) }
+        guard let app = NSWorkspace.shared.frontmostApplication,
+            app.processIdentifier != ProcessInfo.processInfo.processIdentifier
+        else { return .failure(.unreadable) }
+        let pid = app.processIdentifier
+        return capture(AXUIElementCreateApplication(pid), pid: pid, copy: copy).map {
+            Selection(text: $0.text, element: $0.element, app: app, source: $0.source)
+        }
+    }
+
+    /// Reads the focused element of `appElement`, checking the secure subrole before any
+    /// text is touched, and reuses the single text read for `Source.text`.
+    static func capture(_ appElement: AXUIElement, pid: pid_t, copy: Reader)
+        -> Result<(text: String, element: AXUIElement, source: Source), SelectionError>
+    {
+        guard let element = focusedElement(appElement, copy: copy) else {
+            return .failure(.unreadable)
+        }
+        let subrole = copy(element, kAXSubroleAttribute)
+        if let subrole, !(subrole is String) { return .failure(.unreadable) }
+        if subrole as? String == kAXSecureTextFieldSubrole { return .failure(.secure) }
+        return classify(
+            trusted: true, subrole: nil, text: copy(element, kAXSelectedTextAttribute) as? String
+        ).map { text in
+            (text, element, source(element, pid: pid, text: text, copy: copy))
         }
     }
 
     /// Writes `text` over the original selection only if its element, document, text and range
     /// are unchanged. Returns false without writing otherwise.
     static func replace(_ selection: Selection, with text: String) -> Bool {
-        guard AXIsProcessTrusted(), let element = focusedElement() else { return false }
-        let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard AXIsProcessTrusted(),
+            let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            let element = focusedElement(AXUIElementCreateApplication(pid), copy: copy)
+        else { return false }
+        let current = source(
+            element, pid: pid, text: copy(element, kAXSelectedTextAttribute) as? String,
+            copy: copy)
         guard
             canReplace(
-                original: selection.source, current: source(element, pid: pid),
+                original: selection.source, current: current,
                 sameElement: CFEqual(element, selection.element))
         else { return false }
         return AXUIElementSetAttributeValue(
@@ -63,17 +85,19 @@ enum SelectionBridge {
         sameElement && original.text != nil && original.location != nil && original == current
     }
 
-    private static func source(_ element: AXUIElement, pid: pid_t?) -> Source {
+    private static func source(_ element: AXUIElement, pid: pid_t?, text: String?, copy: Reader)
+        -> Source
+    {
         var range = CFRange()
-        var value: AnyObject?
+        let value = copy(element, kAXSelectedTextRangeAttribute)
         let hasRange =
-            AXUIElementCopyAttributeValue(
-                element, kAXSelectedTextRangeAttribute as CFString, &value) == .success
-            && value.map { AXValueGetValue(unsafeDowncast($0, to: AXValue.self), .cfRange, &range) }
-                == true
+            value.map {
+                CFGetTypeID($0) == AXValueGetTypeID()
+                    && AXValueGetType(unsafeDowncast($0, to: AXValue.self)) == .cfRange
+                    && AXValueGetValue(unsafeDowncast($0, to: AXValue.self), .cfRange, &range)
+            } == true
         return Source(
-            pid: pid, document: string(element, kAXDocumentAttribute),
-            text: string(element, kAXSelectedTextAttribute),
+            pid: pid, document: copy(element, kAXDocumentAttribute) as? String, text: text,
             location: hasRange ? range.location : nil, length: hasRange ? range.length : nil)
     }
 
@@ -88,21 +112,17 @@ enum SelectionBridge {
         return .success(text)
     }
 
-    private static func focusedElement() -> AXUIElement? {
-        var value: AnyObject?
-        guard
-            AXUIElementCopyAttributeValue(
-                AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString, &value)
-                == .success,
-            let value, CFGetTypeID(value) == AXUIElementGetTypeID()
+    private static func focusedElement(_ appElement: AXUIElement, copy: Reader) -> AXUIElement? {
+        guard let value = copy(appElement, kAXFocusedUIElementAttribute),
+            CFGetTypeID(value) == AXUIElementGetTypeID()
         else { return nil }
         return unsafeDowncast(value, to: AXUIElement.self)
     }
 
-    private static func string(_ element: AXUIElement, _ attribute: String) -> String? {
+    private static func copy(_ element: AXUIElement, _ attribute: String) -> AnyObject? {
         var value: AnyObject?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
         else { return nil }
-        return value as? String
+        return value
     }
 }

@@ -8,7 +8,8 @@
 - `learning/features/`：独立开关、临时展开与推荐收藏。
 - `vocabulary/features/`：手动收藏、语境、生词本管理。
 - `history/features/`：保存、查看、搜索与删除历史。
-- `settings/features/`：自填模型服务配置。
+- `settings/features/`：自填模型服务配置及自定义 Prompt。
+- [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
 - [替换行为决策](processing/decisions/BDR-0001-explicit-replacement-intent.md)。
 
 Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。`tasks/plan.md` 与 `tasks/todo.md` 负责实现顺序；技术选型不作为领域场景。

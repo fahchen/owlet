@@ -67,3 +67,29 @@ Feature: 快捷入口与浮窗
       Given 用户开启了减少动态效果
       When 文本处理完成
       Then 直接显示结果视图而不播放展开动画
+
+  Rule: 快捷键可以重新录制
+    Scenario: 录制新组合
+      Given 用户打开快捷键设置
+      When 用户点击翻译快捷键并按下新组合键
+      And 保存设置
+      Then 后续按新组合进入翻译浮层
+      And 原组合不再触发翻译
+      And 重启后保留新组合
+
+    Scenario: 取消录制
+      Given 用户正在录制快捷键
+      When 用户按 Esc
+      Then 取消本次录制并保留原组合
+      And 不关闭设置窗口
+
+    Scenario: 与另一动作冲突
+      Given 润色已使用某个快捷键
+      When 用户为翻译录制相同快捷键
+      Then 提示冲突并继续等待输入
+      And 已生效的两个快捷键都不变
+
+    Scenario: 恢复默认
+      Given 翻译使用自定义快捷键且默认组合未被其他动作占用
+      When 用户恢复默认并保存
+      Then 翻译使用默认快捷键

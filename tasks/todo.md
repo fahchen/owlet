@@ -23,6 +23,27 @@
 
 **规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
 
+## T01a：自定义 System Prompt 与 JSON 返回
+
+- [ ] 完成
+
+**说明：**落实 `spec/llm/contract.md`；先接通翻译 Prompt，T04 加入润色 Prompt，T09 加入学习响应，按消费者逐步增加字段。
+
+**验收条件：**
+- [ ] 显示默认 Prompt，可编辑保存、查看默认及恢复；拒绝空白，重启保留，保存只影响后续请求。
+- [ ] 主响应按 JSON Schema 解码，并检查源文拼接、目标语言及非空结果；源文作为数据独立传入，用户 Prompt 不解除契约。
+- [ ] 非 JSON 或无效结果提示错误，不写回或存成成功历史；学习响应失败不影响主结果。
+
+**验证：**
+- [ ] 用固定有效／无效 JSON 测试缺字段、错误类型、源文遗漏、目标语言不匹配、围栏文本与有效多句响应；运行构建。
+- [ ] 手测 Prompt 自定义、重启保留、恢复默认和空白拒绝。
+
+**依赖：**T01；润色／学习分支分别随 T04、T09 补齐。
+
+**预计文件：**SettingsStore.swift、SettingsView.swift、ModelClient.swift、ModelResponse.swift、ModelResponseTests.swift
+
+**规模：**M，约 3–5 个文件。
+
 ## T02：快捷键读取选区并翻译
 
 - [ ] 完成
@@ -38,7 +59,7 @@
 - [ ] 运行本任务相关的定向测试及计划中的构建命令。
 - [ ] 在 TextEdit、浏览器文本和一个工作沟通应用手测成功及不支持的路径；记录兼容边界。
 
-**依赖：**T01
+**依赖：**T01a
 
 **预计文件：**ShortcutController.swift、SelectionBridge.swift、PanelController.swift、TranslationView.swift、SelectionBridgeTests.swift
 

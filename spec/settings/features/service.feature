@@ -25,3 +25,34 @@ Feature: 自行配置模型服务
       When 用户重启应用
       Then 可在本机读取这些内容
       And 不需要登录应用账号或开启同步
+
+  Rule: 用户可以自定义 System Prompt
+    Scenario: 查看默认并保存自定义内容
+      Given 用户未修改翻译 System Prompt
+      When 用户打开设置
+      Then 显示完整默认翻译 Prompt
+      When 用户编辑并保存翻译 Prompt
+      Then 后续翻译和翻译并替换使用该配置
+      And 润色 Prompt 不受影响
+
+    Scenario: 恢复默认
+      Given 用户已有自定义润色 Prompt
+      When 用户恢复润色默认 Prompt 并保存
+      Then 后续润色使用显示的默认内容
+
+    Scenario: 拒绝空白 Prompt
+      When 用户尝试保存仅含空白的 System Prompt
+      Then 提示不能保存
+      And 已生效的配置不变
+
+  Rule: 自定义 Prompt 不解除 JSON 返回契约
+    Scenario: 返回非 JSON 文本
+      Given 用户执行翻译并替换
+      When 模型返回无法通过 JSON 契约校验的内容
+      Then 提示返回格式不符合要求
+      And 不替换原文也不写成成功历史
+
+    Scenario: JSON 配对缺失原文
+      Given 原文包含两个句子
+      When 模型返回的 JSON 仅覆盖第一个句子
+      Then 拒绝该结果并保留原文

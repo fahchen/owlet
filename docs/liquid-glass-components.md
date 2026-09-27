@@ -83,7 +83,7 @@
 | `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
 | `settings.png` / `settings-openai.png` / `settings-saved.png` / `settings-models.png` / `settings-models-loading.png` | inset grouped `Form` · 弹出式按钮／输入框／`SecureField` · 分组容器 · 底部 prominent `保存设置` · 模型列表失败时就地提示与 `重试` |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
-| `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `stale.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
+| `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
 | `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |
 
 移除清单（现保留 35 个状态）：被移除的状态（`aligned`、`empty`、`success`、`learning*`、`saved`、`book-*`、`history-*`、`no-results`、`settings-prompts`、`settings-shortcuts`、`workspace-narrow`，以及 `direct-*` 里与紧凑条重复的提示态）不再有界面承载，逐条记录在 [docs/unimplemented-features.md](unimplemented-features.md)。
@@ -99,7 +99,7 @@
 | `shortcuts`、`shortcuts-recording`、`shortcuts-conflict`（`ShortcutController.registrationError` 的冲突文案） | `Owlet/Shortcuts/ShortcutSettingsView.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
 | `settings`、`settings-openai`、`settings-saved`、`settings-models`、`settings-models-loading` | `Owlet/Settings/ServiceSettingsView.swift` · `Owlet/Settings/SettingsStore.swift` |
 | `loading`、`polish-loading`、`direct-loading` | `Owlet/App/PanelController.swift`（ProcessingStrip） |
-| `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`stale` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
+| `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
 | `result`、`polish`、`long`、`result-loading` | `Owlet/App/ExpandedPanel.swift`（PanelHeader／PanelBody／PanelFooter）· `Owlet/App/PanelController.swift`（展开时机） |
 | `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/ExpandedPanel.swift`（StatusNote）· `Owlet/App/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
 | `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefused` → `inlineNotice` 返回 `.unwritten`）· `Owlet/App/ExpandedPanel.swift` |

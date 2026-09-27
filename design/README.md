@@ -44,7 +44,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [permission.png](screenshots/permission.png) | 权限 · 未授权 | 未授权时不发起请求，入口指向权限设置。 |
 | [unconfigured.png](screenshots/unconfigured.png) | 服务 · 未配置 | 缺少服务配置时提示并指向设置。 |
 | [selection-error.png](screenshots/selection-error.png) | 选区 · 读取失败 | 读取不到文字时不发起请求，可改用手动输入。 |
-| [stale.png](screenshots/stale.png) | 直接替换 · 未能写回 | 未能写回原应用时就地提示，并可复制结果。 |
+| [unwritten.png](screenshots/unwritten.png) | 直接替换 · 未能写回 | 未能写回原应用时就地提示，并可复制结果。 |
 | [result.png](screenshots/result.png) | 翻译 · 结果 | 展开面板：头部操作选择、原文、译文与底部复制替换。 |
 | [polish.png](screenshots/polish.png) | 润色 · 结果 | 同一面板，标签改为润色结果与保留原意。 |
 | [long.png](screenshots/long.png) | 翻译 · 长文本 | 结果滚动，复制与替换固定在底部。 |

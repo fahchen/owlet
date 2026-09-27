@@ -11,9 +11,23 @@ final class TranslationModel {
         case missingConfig
     }
 
-    var input = ""
+    var input = "" {
+        didSet {
+            // A result belongs to the text it was computed from, so it is dropped the moment that
+            // text changes: there is no cache across texts.
+            if input != oldValue { results.removeAll() }
+        }
+    }
     var operation: Operation = .translate
     private(set) var state: State = .idle
+    /// Results already computed for the current text, so switching the operation back and forth does
+    /// not pay for the same request twice.
+    private var results: [ResultKey: String] = [:]
+
+    private struct ResultKey: Hashable {
+        let operation: Operation
+        let language: String
+    }
     private let client: ModelClient
     private let config: () -> ServiceConfig?
     private var operationID = 0
@@ -37,7 +51,17 @@ final class TranslationModel {
         state = .failure(message)
     }
 
-    /// Starts the current operation; any in-flight one is cancelled and its result ignored.
+    /// Whether this text has already been sent to the model, which is when switching the operation
+    /// should run it again rather than wait to be asked.
+    var hasBeenSent: Bool {
+        switch state {
+        case .success, .failure, .missingConfig: true
+        case .idle, .loading: false
+        }
+    }
+
+    /// Starts the current operation; any in-flight one is cancelled and its result ignored. A result
+    /// already computed for this text and this pair of settings is served from the cache instead.
     @discardableResult
     func translate(to targetLanguage: String) -> Task<Void, Never>? {
         task?.cancel()
@@ -52,6 +76,13 @@ final class TranslationModel {
         guard let config = config() else {
             state = .missingConfig
             return nil
+        }
+        let key = ResultKey(operation: operation, language: targetLanguage)
+        if let ready = results[key] {
+            // A finished task, so a caller that awaits the request behaves the same either way — the
+            // panel's one-shot write-back has to reach the result whether it was computed or cached.
+            state = .success(ready)
+            return Task {}
         }
         state = .loading
         let client = client
@@ -69,6 +100,7 @@ final class TranslationModel {
                 result = .failure(error.localizedDescription)
             }
             guard id == self.operationID else { return }
+            if case .success(let ready) = result { self.results[key] = ready }
             self.state = result
         }
         self.task = task
@@ -102,6 +134,11 @@ struct TranslationView: View {
         .scrollBounceBehavior(.basedOnSize)
         .safeAreaBar(edge: .bottom) { footer }
         .navigationTitle("文本处理")
+        // Switching the operation runs the same text again at once, so the two results can be
+        // compared without pressing the button a second time. Switching back is served from cache.
+        .onChange(of: model.operation) { _, _ in
+            if model.hasBeenSent { model.translate(to: targetLanguage) }
+        }
         .toolbar {
             if model.operation == .translate {
                 ToolbarItem(placement: .primaryAction) { languagePicker.disabled(isBusy) }

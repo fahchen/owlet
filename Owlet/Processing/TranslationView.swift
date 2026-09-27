@@ -18,6 +18,7 @@ final class TranslationModel {
             if input != oldValue {
                 results.removeAll()
                 languages = nil
+                segments = []
             }
         }
     }
@@ -25,6 +26,9 @@ final class TranslationModel {
     private(set) var state: State = .idle
     /// Languages of the latest successful result, so a collected expression keeps its own language.
     private(set) var languages: (source: String, target: String)?
+    /// Source/target pairs of the latest successful result, so 逐句对照 groups by the response's own
+    /// pairing instead of guessing from punctuation or display lines.
+    private(set) var segments: [TranslationResult.Segment] = []
     /// Results already computed for the current text, so switching the operation back and forth does
     /// not pay for the same request twice.
     private var results: [ResultKey: TranslationResult] = [:]
@@ -88,6 +92,7 @@ final class TranslationModel {
             // panel's one-shot write-back has to reach the result whether it was computed or cached.
             state = .success(ready.text)
             languages = (ready.sourceLanguage, ready.targetLanguage)
+            segments = ready.segments
             return Task {}
         }
         state = .loading
@@ -111,6 +116,7 @@ final class TranslationModel {
             if let full {
                 self.results[key] = full
                 self.languages = (full.sourceLanguage, full.targetLanguage)
+                self.segments = full.segments
             }
             self.state = outcome
         }
@@ -129,8 +135,12 @@ struct TranslationView: View {
     let openNotebook: () -> Void
     /// One learning section per page session, so 收起／展开 reuses what was already generated.
     @State private var learning = LearningModel()
+    /// Measured content width, which decides side by side versus stacked.
+    @State private var contentWidth: CGFloat = 0
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
+    @AppStorage(SettingsStore.displayModeKey) private var displayMode =
+        TranslationDisplayMode.sectioned
 
     static let languages = [
         ("zh-Hans", "简体中文"), ("zh-Hant", "繁體中文"), ("en", "English"), ("ja", "日本語"),
@@ -139,9 +149,15 @@ struct TranslationView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                sourceSection
-                if showsResult { resultSection }
+                content
+                if showsResult, result != nil { learningSection }
                 status
+            }
+            // Measured before the page padding, so 720pt is the content area, not the whole window.
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: {
+                contentWidth = $0
             }
             .padding(.horizontal, 32)
             .padding(.vertical, 28)
@@ -183,7 +199,39 @@ struct TranslationView: View {
     /// Mirrors the prototype: before the first result the page is a plain input.
     private var showsResult: Bool { isBusy || result != nil }
 
-    private var sourceSection: some View {
+    /// Source and result side by side once the content area is wide enough, stacked otherwise.
+    @ViewBuilder private var content: some View {
+        if showsResult {
+            switch ProcessingLayout.choose(width: contentWidth) {
+            case .sideBySide: sideBySide
+            case .stacked: stacked
+            }
+        } else {
+            sourceColumn
+        }
+    }
+
+    private var sideBySide: some View {
+        HStack(alignment: .top, spacing: 0) {
+            sourceColumn
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.trailing, 28)
+            Divider()
+            resultColumn
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.leading, 28)
+        }
+    }
+
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sourceColumn.padding(.bottom, 21)
+            Divider().padding(.bottom, 13)
+            resultColumn
+        }
+    }
+
+    private var sourceColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
             LabelRow {
                 Text(showsResult ? "自动识别" : "输入文本")
@@ -208,18 +256,18 @@ struct TranslationView: View {
                 }
                 .accessibilityLabel("原文")
         }
-        .padding(.bottom, 21)
     }
 
-    private var resultSection: some View {
+    private var resultColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Divider().padding(.bottom, 13)
             LabelRow {
                 if isBusy {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.mini)
                         Text("\(model.operation.title)中")
                     }
+                } else if displayMode == .aligned {
+                    Text("逐句对照")
                 } else {
                     Text(model.operation == .polish ? "润色结果" : "译文")
                 }
@@ -230,25 +278,34 @@ struct TranslationView: View {
                     Text("保留原意")
                 }
             }
-            Group {
-                if let result {
+            resultBody
+        }
+    }
+
+    @ViewBuilder private var resultBody: some View {
+        Group {
+            if let result {
+                if displayMode == .aligned, !model.segments.isEmpty {
+                    AlignedSegments(
+                        segments: model.segments, sourceSize: 16, targetSize: 17,
+                        lineSpacing: 7, pairSpacing: 14)
+                } else {
                     Text(result)
                         .font(.system(size: 17))
                         .lineSpacing(8)
                         .textSelection(.enabled)
-                } else {
-                    Text(model.input)
-                        .font(.system(size: 17))
-                        .lineSpacing(8)
-                        .lineLimit(2)
-                        .redacted(reason: .placeholder)
-                        .accessibilityLabel("正在生成结果")
                 }
+            } else {
+                Text(model.input)
+                    .font(.system(size: 17))
+                    .lineSpacing(8)
+                    .lineLimit(2)
+                    .redacted(reason: .placeholder)
+                    .accessibilityLabel("正在生成结果")
             }
-            .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
-            .accessibilityAddTraits(.updatesFrequently)
-            if result != nil { learningSection }
         }
+        .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
+        .accessibilityAddTraits(.updatesFrequently)
     }
 
     @ViewBuilder private var learningSection: some View {

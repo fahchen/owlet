@@ -33,8 +33,14 @@ struct PanelControllerTests {
         private(set) var releases = 0
         private(set) var shows = 0
         private(set) var closes = 0
+        /// Every processing change the controller pushed to the panel edge, in order.
+        private(set) var processing: [Bool] = []
         override func show(anchor: PanelPlacement.Anchor) { shows += 1 }
         override func releaseKeyboard() { releases += 1 }
+        override func setProcessing(_ active: Bool) {
+            processing.append(active)
+            super.setProcessing(active)
+        }
         override func close() {
             closes += 1
             super.close()
@@ -462,5 +468,76 @@ struct PanelControllerTests {
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
         panel.close()
         gate.release()
+    }
+
+    /// The edge is a single-colour stroke with no gradient, fill or shadow of its own.
+    @Test func processingEdgeIsASingleColourWithoutGradientOrShadow() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        let surface = try #require(window.contentView as? PanelSurface)
+        surface.layout()
+        #expect(surface.edge.fillColor == nil)
+        #expect(surface.edge.strokeColor != nil)
+        #expect(surface.edge.lineWidth == ProcessingEdge.lineWidth)
+        #expect(surface.edge.shadowOpacity == 0)
+        let layers = try #require(surface.layer?.sublayers)
+        #expect(!layers.contains { $0 is CAGradientLayer })
+        #expect(surface.edge.path != nil)
+        panel.close()
+    }
+
+    /// The edge breathes for exactly as long as a request runs, and never affects the panel frame.
+    @Test func processingEdgeBreathesOnlyWhileProcessing() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        let surface = try #require(window.contentView as? PanelSurface)
+        let frame = window.frame
+        window.prefersReducedMotion = { false }
+        window.setProcessing(true)
+        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) != nil)
+        #expect(surface.edge.opacity == ProcessingEdge.brightOpacity)
+        #expect(window.frame == frame)
+        window.setProcessing(false)
+        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
+        #expect(surface.edge.opacity == 0)
+        panel.close()
+    }
+
+    /// Reduce Motion stops the pulse but keeps the mark visible, so status never rests on motion.
+    @Test func reduceMotionHoldsTheProcessingEdgeSteady() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        let surface = try #require(window.contentView as? PanelSurface)
+        window.prefersReducedMotion = { true }
+        window.setProcessing(true)
+        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
+        #expect(surface.edge.opacity == ProcessingEdge.steadyOpacity)
+        #expect(surface.edge.opacity > 0)
+        panel.close()
+    }
+
+    @Test func processingEdgeOpacityKeepsTheMarkVisibleUnderReduceMotion() {
+        #expect(ProcessingEdge.steadyOpacity > 0)
+        #expect(ProcessingEdge.opacity(reduceMotion: true, bright: false) == ProcessingEdge.steadyOpacity)
+        #expect(ProcessingEdge.opacity(reduceMotion: true, bright: true) == ProcessingEdge.steadyOpacity)
+        #expect(ProcessingEdge.opacity(reduceMotion: false, bright: false) == ProcessingEdge.dimOpacity)
+        #expect(ProcessingEdge.opacity(reduceMotion: false, bright: true) == ProcessingEdge.brightOpacity)
+        #expect(ProcessingEdge.dimOpacity < ProcessingEdge.brightOpacity)
+    }
+
+    /// The controller pushes the loading state to the panel edge and clears it when the result lands.
+    @Test func processingEdgeFollowsTheRequest() async {
+        let (panel, _, stub) = recordingPanel()
+        panel.trigger()
+        await settle()
+        #expect(stub.processing.first == true)
+        #expect(stub.processing.last == false)
+        panel.close()
     }
 }

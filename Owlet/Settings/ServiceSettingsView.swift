@@ -7,6 +7,8 @@ struct ServiceSettingsView: View {
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
     @AppStorage(SettingsStore.panelPositionKey) private var panelPosition = PanelPosition.fixed
+    @AppStorage(SettingsStore.displayModeKey) private var displayMode =
+        TranslationDisplayMode.sectioned
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
@@ -36,6 +38,11 @@ struct ServiceSettingsView: View {
                 SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
                 modelField
                 modelStatus
+            }
+            Section("文本处理") {
+                Picker("翻译显示方式", selection: $displayMode) {
+                    ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
             }
             Section("浮窗") {
                 Picker("浮窗位置", selection: $panelPosition) {

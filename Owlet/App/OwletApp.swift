@@ -1,7 +1,10 @@
+import AppKit
 import SwiftUI
 
 @main
 struct OwletApp: App {
+    /// Keeps a Dock click able to rebuild the main window SwiftUI releases when it is closed.
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var translation = TranslationModel(
         client: ModelClient(), config: SettingsStore.currentConfig)
     @State private var shortcuts: ShortcutController = {
@@ -87,6 +90,19 @@ private struct MainView: View {
     }
 }
 
+/// Owlet is a regular app, so a Dock click with no visible window must reopen the scene SwiftUI
+/// released on close, which only a SwiftUI view can do.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Reopens the main window; the always-present menu bar label sets it once its scene is live.
+    var openMainWindow: (@MainActor () -> Void)?
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { openMainWindow?() }
+        return true
+    }
+}
+
 /// Opens the main window on a page; also recreates the window if it was closed.
 @MainActor private struct OpenMainWindow {
     let openWindow: OpenWindowAction
@@ -96,6 +112,11 @@ private struct MainView: View {
         page.wrappedValue = target
         NSApp.activate()
         openWindow(id: "main")
+    }
+
+    /// Reopens the window on the page it last showed.
+    func reopen() {
+        callAsFunction(page.wrappedValue)
     }
 }
 
@@ -138,6 +159,7 @@ private struct MenuBarLabel: View {
                     }
                 }
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
+                (NSApp.delegate as? AppDelegate)?.openMainWindow = { open.reopen() }
                 panel.openSettings = { open(.settings) }
                 panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }

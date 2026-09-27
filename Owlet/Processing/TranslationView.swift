@@ -355,7 +355,8 @@ struct TranslationView: View {
                     model.translate(to: targetLanguage)
                 }
                 .buttonStyle(.glassProminent)
-                .keyboardShortcut(.return, modifiers: .command)
+                // The ⌘↩ key equivalent belongs to the 文本处理 menu's submit item, so one place owns
+                // it; the tooltip still tells the user it exists.
                 .help("\(model.operation.title)文本 ⌘↩")
                 .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

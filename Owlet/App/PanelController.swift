@@ -30,16 +30,15 @@ final class PanelController {
     func trigger() {
         let result = SelectionBridge.read()
         model.cancel()
-        expanded = false
         switch result {
         case .success(let selection):
             self.selection = selection
             model.input = selection.text
             translate()
         case .failure(.permission):
-            notice = .permission
+            if expanded { model.fail("需要辅助功能权限以读取选区。") } else { notice = .permission }
         case .failure(.unreadable), .failure(.secure):
-            notice = .unreadable
+            if expanded { model.fail("无法读取选中文字。") } else { notice = .unreadable }
         }
         show()
     }
@@ -93,6 +92,7 @@ final class PanelController {
         panel.onClose = { [weak self] in
             self?.model.cancel()
             self?.notice = nil
+            self?.expanded = false
         }
         return panel
     }

@@ -30,6 +30,12 @@ final class TranslationModel {
         if state == .loading { state = .idle }
     }
 
+    /// Shows an error that happened outside a translation request.
+    func fail(_ message: String) {
+        cancel()
+        state = .failure(message)
+    }
+
     /// Starts a translation; any in-flight one is cancelled and its result ignored.
     @discardableResult
     func translate(to targetLanguage: String) -> Task<Void, Never>? {

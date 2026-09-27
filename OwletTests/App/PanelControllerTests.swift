@@ -26,6 +26,14 @@ struct PanelControllerTests {
         override func show(anchor: PanelPlacement.Anchor) {}
     }
 
+    /// An off-screen panel that remembers being asked to release the keyboard, so the write-back's
+    /// first step can be asserted without a real window the test host cannot keep key on.
+    final class RecordingPanel: FloatingPanel {
+        private(set) var releases = 0
+        override func show(anchor: PanelPlacement.Anchor) {}
+        override func releaseKeyboard() { releases += 1 }
+    }
+
     func makePanel(
         gate: Gate? = nil, outcome: ReplaceOutcome = .pasted,
         defaults: UserDefaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!,
@@ -207,24 +215,33 @@ struct PanelControllerTests {
     /// The write-back takes the keyboard away from the panel first — a synthetic ⌘V follows the
     /// keyboard — without dismissing it, and the write itself still happens exactly once.
     @Test func writeBackReleasesTheKeyboardWithoutDismissing() async throws {
-        let (panel, writes) = makePanel(realWindow: true)
+        final class Holder { var panel: RecordingPanel? }
+        let holder = Holder()
+        let (panel, writes) = makePanel()
+        panel.makeWindow = { view in
+            let stub = RecordingPanel(rootView: view)
+            holder.panel = stub
+            return stub
+        }
         panel.trigger(replace: true)
-        let window = try #require(panel.panel)
+        let stub = try #require(holder.panel)
         var closes = 0
-        let onClose = window.onClose
-        window.onClose = {
+        let onClose = stub.onClose
+        stub.onClose = {
             closes += 1
             onClose()
         }
-        let offKeyboardDuringWrite = Mutex(false)
-        panel.write = { [weak panel] _, text in
+        let releasesAtWrite = Mutex(-1)
+        panel.write = { _, text in
             writes.texts.append(text)
-            offKeyboardDuringWrite.withLock { $0 = panel?.panel?.isVisible == false }
+            releasesAtWrite.withLock { $0 = holder.panel?.releases ?? -1 }
             return .pasted
         }
         for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
-        #expect(offKeyboardDuringWrite.withLock { $0 })
+        // Released exactly once, and already released by the time the write ran.
+        #expect(releasesAtWrite.withLock { $0 } == 1)
+        #expect(!stub.isVisible)
         #expect(panel.selection == nil)
         #expect(closes == 1)
     }

@@ -28,6 +28,7 @@ struct ExpandedPanel: View {
             PanelFooter(
                 state: model.state,
                 operation: model.operation,
+                cancelled: notice == .cancelled,
                 replace: replace,
                 retry: canRetry ? retry : nil,
                 cancel: cancel)
@@ -237,6 +238,8 @@ private struct StatusNote<Content: View>: View {
 private struct PanelFooter: View {
     let state: TranslationModel.State
     let operation: Operation
+    /// Idle because the user stopped processing; the main button then reads "重新处理".
+    let cancelled: Bool
     let replace: ((String) -> Void)?
     let retry: (() -> Void)?
     let cancel: () -> Void
@@ -262,6 +265,11 @@ private struct PanelFooter: View {
             return "快捷键未设置"
         }
         return "\(shortcut.displayString) 唤起"
+    }
+
+    private var retryTitle: String {
+        guard state == .idle else { return "重试" }
+        return cancelled ? "重新处理" : operation.title
     }
 
     @ViewBuilder private var actions: some View {
@@ -290,7 +298,7 @@ private struct PanelFooter: View {
         default:
             if let retry {
                 Button(action: retry) {
-                    Text(state == .idle ? operation.title : "重试")
+                    Text(retryTitle)
                     KeyCap("⌘ ↩")
                 }
                 .buttonStyle(FooterButtonStyle(prominent: true))

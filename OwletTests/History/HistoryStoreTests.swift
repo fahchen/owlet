@@ -197,6 +197,32 @@ struct HistoryStoreTests {
         #expect(try store.records().isEmpty)
         #expect(try vocabulary.entries().count == 1)
         #expect(try vocabulary.entries().first?.expression == "follow up")
+        // The contexts of the entry survive too, so no cascade reached the notebook at any depth.
+        let fresh = ModelContext(store.container)
+        #expect(try fresh.fetchCount(FetchDescriptor<VocabularyContext>()) == 1)
+    }
+
+    @Test func armingTheClearKeepsEveryRecordUntilConfirmed() throws {
+        let (store, _) = try makeStores()
+        try store.record(
+            operation: .translate, source: "Hello", result: "你好", language: "zh-Hans")
+        store.requestClear()
+        #expect(store.isConfirmingClear)
+        // Requesting a clear must not remove anything; only the confirmation may.
+        #expect(try store.records().count == 1)
+        try store.confirmClear()
+        #expect(try store.records().isEmpty)
+        #expect(!store.isConfirmingClear)
+    }
+
+    @Test func cancellingAClearKeepsEveryRecord() throws {
+        let (store, _) = try makeStores()
+        try store.record(
+            operation: .translate, source: "Hello", result: "你好", language: "zh-Hans")
+        store.requestClear()
+        store.cancelClear()
+        #expect(!store.isConfirmingClear)
+        #expect(try store.records().count == 1)
     }
 
     @Test func deletingOneRecordLeavesTheNotebookUntouched() throws {
@@ -231,5 +257,64 @@ struct HistoryStoreTests {
         try store.record(
             operation: .translate, source: "Hello", result: "你好", language: "zh-Hans")
         #expect(store.lastError == nil)
+    }
+}
+
+@MainActor
+struct HistoryFilterTests {
+    func makeStore() throws -> HistoryStore {
+        let schema = Schema([HistoryRecord.self, VocabularyEntry.self, VocabularyContext.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return HistoryStore(container: try ModelContainer(for: schema, configurations: [config]))
+    }
+
+    /// One translation and one polish whose texts differ, so each search term has exactly one match.
+    func history() throws -> HistoryStore {
+        let store = try makeStore()
+        try store.record(
+            operation: .translate, source: "Let's take a step back.", result: "让我们退一步看看。",
+            language: "zh-Hans")
+        try store.record(
+            operation: .polish, source: "This are bad.", result: "This is bad.", language: "en")
+        return store
+    }
+
+    @Test func searchMatchesTheSourceAndTheResult() throws {
+        let store = try history()
+        let records = try store.records()
+        // The container owns the model objects, so it has to outlive every assertion that reads them.
+        withExtendedLifetime(store) {
+            #expect(HistoryFilter.apply(records, search: "step", operation: nil).count == 1)
+            #expect(HistoryFilter.apply(records, search: "STEP", operation: nil).count == 1)
+            #expect(HistoryFilter.apply(records, search: "退一步", operation: nil).count == 1)
+        }
+    }
+
+    @Test func operationFilterKeepsOneType() throws {
+        let store = try history()
+        let records = try store.records()
+        withExtendedLifetime(store) {
+            let polish = HistoryFilter.apply(records, search: "", operation: .polish)
+            #expect(polish.count == 1)
+            #expect(polish.first?.operationKind == .polish)
+        }
+    }
+
+    @Test func searchAndOperationFilterCombine() throws {
+        let store = try history()
+        let records = try store.records()
+        withExtendedLifetime(store) {
+            #expect(HistoryFilter.apply(records, search: "step", operation: .polish).isEmpty)
+            #expect(HistoryFilter.apply(records, search: "step", operation: .translate).count == 1)
+        }
+    }
+
+    @Test func noMatchIsEmptyAndClearingTheFilterRestoresEveryRecord() throws {
+        let store = try history()
+        let records = try store.records()
+        withExtendedLifetime(store) {
+            #expect(HistoryFilter.apply(records, search: "no-match-example", operation: nil).isEmpty)
+            #expect(HistoryFilter.apply(records, search: "", operation: nil).count == records.count)
+        }
     }
 }

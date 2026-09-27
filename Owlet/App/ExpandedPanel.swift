@@ -266,6 +266,10 @@ private struct PanelFooter: View {
         return "\(shortcut.displayString) 唤起"
     }
 
+    private func copy(_ text: String) {
+        Clipboard.copy(text)
+    }
+
     private var retryTitle: String {
         guard state == .idle else { return "重试" }
         return cancelled ? "重新处理" : operation.title
@@ -277,17 +281,18 @@ private struct PanelFooter: View {
             Button("取消", action: cancel).buttonStyle(.glass)
         case .success(let text):
             Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(text, forType: .string)
+                copy(text)
             } label: {
-                Label("复制", systemImage: "doc.on.doc")
+                Label("复制 ⌘⇧C", systemImage: "doc.on.doc")
             }
             .buttonStyle(.glass)
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .help("复制结果 ⌘⇧C")
             if let replace {
-                Button("替换") { replace(text) }
+                Button("替换 ⌘↩") { replace(text) }
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.return, modifiers: .command)
-                    .help("替换 ⌘↩")
+                    .help("替换原选区 ⌘↩")
             }
         default:
             if let retry {

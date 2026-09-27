@@ -66,12 +66,15 @@ final class PanelController {
     private(set) var replacing = false
     let model: TranslationModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
-    var write: (Selection, String) -> Bool = SelectionBridge.replace
+    var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
 
     /// Internal read for tests that drive the real window (resign key, drag).
     private(set) var panel: FloatingPanel?
+    /// Builds the panel window. A test replaces this with a panel that never goes on screen, so
+    /// asserting controller state cannot race the real window's key changes.
+    var makeWindow: (PanelView) -> FloatingPanel = { FloatingPanel(rootView: $0) }
     /// Guards against a superseded request acting on a newer result.
     private var requestID = 0
     /// Operation whose selection read is still outstanding.
@@ -90,7 +93,7 @@ final class PanelController {
     }
 
     /// Invalidates the previous operation, then captures the selection before showing anything.
-    /// A read that misses the budget, or lands after a newer trigger or close, is ignored.
+    /// A read that lands after a newer trigger or close is ignored.
     func trigger(_ operation: Operation = .translate, replace: Bool = false) {
         requestID += 1
         let id = requestID
@@ -99,8 +102,20 @@ final class PanelController {
         read { [weak self] in self?.accept($0, id: id, operation: operation, replace: replace) }
         Task { [weak self] in
             try? await Task.sleep(for: SelectionBridge.budget)
-            self?.accept(.failure(.unreadable), id: id, operation: operation, replace: replace)
+            self?.readTimedOut(id: id, operation: operation, replace: replace)
         }
+    }
+
+    /// Shows the same compact notice a failed read shows when the budget runs out, but leaves the
+    /// read running: a browser or Electron app builds its accessibility tree on request, so the
+    /// slow answer is usually the right one and still replaces this notice.
+    private func readTimedOut(id: Int, operation: Operation, replace: Bool) {
+        guard id == requestID, readingID == id else { return }
+        model.operation = operation
+        autoReplace = replace
+        if expanded { model.fail(Notice.unreadable.message) }
+        notice = .unreadable
+        show()
     }
 
     private func accept(
@@ -128,8 +143,9 @@ final class PanelController {
     }
 
     func translate() {
+        // The injected store, not `.standard`: a test must not inherit the developer's settings.
         let language =
-            UserDefaults.standard.string(forKey: SettingsStore.targetLanguageKey)
+            defaults.string(forKey: SettingsStore.targetLanguageKey)
             ?? SettingsStore.defaultTargetLanguage
         requestID += 1
         let id = requestID
@@ -145,7 +161,7 @@ final class PanelController {
                 guard id == requestID, case .success(let text) = model.state else {
                     return
                 }
-                replace(with: text)
+                await performReplace(text)
                 if selection != nil, !expanded { notice = .stale }
             }
         }
@@ -191,7 +207,18 @@ final class PanelController {
 
     /// Writes `text` back once; the source is consumed on success so it is never reused.
     func replace(with text: String) {
-        guard let selection, write(selection, text) else {
+        Task { [weak self] in await self?.performReplace(text) }
+    }
+
+    /// A direct accessibility write and a paste both land asynchronously, so the outcome decides
+    /// what the user sees rather than the call itself.
+    private func performReplace(_ text: String) async {
+        guard let selection else {
+            replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
+            return
+        }
+        let outcome = await write(selection, text)
+        guard outcome != .refused else {
             replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
             return
         }
@@ -202,7 +229,34 @@ final class PanelController {
     }
 
     func close() {
+        invalidate()
         panel?.close()
+    }
+
+    /// The panel's own keys, run from its event monitor: copy the result, write it back, or
+    /// dismiss. Esc stops an in-flight request first, which is what the footer hint promises.
+    func run(_ command: FloatingPanel.Command) {
+        switch command {
+        case .cancel:
+            if model.state == .loading { stop() } else { close() }
+        case .copy:
+            guard case .success(let text) = model.state else { return }
+            Clipboard.copy(text)
+        case .replace:
+            guard case .success(let text) = model.state, selection != nil else { return }
+            replace(with: text)
+        }
+    }
+
+    /// Drops any outstanding read and returns to the compact, unexpanded state. Closing has to
+    /// invalidate even when no panel was ever shown, so a slow answer cannot open one the user
+    /// already dismissed.
+    private func invalidate() {
+        requestID += 1
+        readingID = nil
+        model.cancel()
+        notice = nil
+        expanded = false
     }
 
     private func show() {
@@ -227,33 +281,42 @@ final class PanelController {
     }
 
     private func makePanel() -> FloatingPanel {
-        let panel = FloatingPanel(rootView: PanelView(controller: self))
-        panel.onClose = { [weak self] in
-            self?.requestID += 1
-            self?.model.cancel()
-            self?.notice = nil
-            self?.expanded = false
-        }
+        let panel = makeWindow(PanelView(controller: self))
+        panel.onClose = { [weak self] in self?.invalidate() }
         panel.onDrag = { [weak self] topCenter in
             guard let self, SettingsStore.panelPosition(in: defaults) == .fixed else { return }
             SettingsStore.setPanelFixedAnchor(topCenter, in: defaults)
         }
+        panel.onCommand = { [weak self] command in self?.run(command) }
         return panel
     }
 }
 
 /// Frameless, fully transparent panel whose only content is a native glass view, so the window
 /// server draws just the rounded glass and its shadow. Closes (cancelling, like Esc) on losing key.
-final class FloatingPanel: NSPanel, NSWindowDelegate {
+/// Not final: tests that only assert controller state substitute a panel that stays off screen.
+class FloatingPanel: NSPanel, NSWindowDelegate {
+    /// What the panel does with a key it claims. Owlet is an accessory app whose panel never
+    /// activates it, so a SwiftUI key equivalent would have to travel through a menu bar that is
+    /// never active: the panel reads the key event itself instead.
+    enum Command {
+        case replace
+        case copy
+        case cancel
+    }
+
     var onClose: () -> Void = {}
     /// User drag ended at this top-center point; the panel then stays anchored there.
     var onDrag: (NSPoint) -> Void = { _ in }
+    var onCommand: (Command) -> Void = { _ in }
     private var anchor = PanelPlacement.Anchor.topCenter(nil)
     /// Set while the panel moves itself, so only user drags reach `onDrag`.
     private var placing = false
     private let host: NSHostingController<PanelView>
     private var sizeObservation: NSKeyValueObservation?
     private var closing = false
+    /// Live while the panel is up; removed on close so the panel holds nothing after it goes.
+    private var keys: Any?
 
     init(rootView: PanelView) {
         host = NSHostingController(rootView: rootView)
@@ -282,6 +345,29 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
         place(size: host.preferredContentSize)
         orderFrontRegardless()
         makeKey()
+        if keys == nil { keys = watchKeys() }
+    }
+
+    /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.
+    /// Return and keypad Enter both count, so a full keyboard reaches replace either way.
+    static func command(for event: NSEvent) -> Command? {
+        switch (event.keyCode, event.modifierFlags.intersection(.deviceIndependentFlagsMask)) {
+        case (36, .command), (76, .command): .replace
+        case (8, [.command, .shift]): .copy
+        case (53, []): .cancel
+        default: nil
+        }
+    }
+
+    /// Consumes the keys this panel claims, so they never reach a text field behind them.
+    private func watchKeys() -> Any? {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, event.window === self, let command = Self.command(for: event) else {
+                return event
+            }
+            onCommand(command)
+            return nil
+        }
     }
 
     func windowDidMove(_ notification: Notification) {
@@ -301,6 +387,8 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
         guard !closing else { return }
         closing = true
         defer { closing = false }
+        if let keys { NSEvent.removeMonitor(keys) }
+        keys = nil
         onClose()
         super.close()
     }
@@ -393,8 +481,7 @@ struct PanelView: View {
         case .missingConfig, .failure: settings()
         case .stale:
             guard case .success(let text) = controller.model.state else { return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+            Clipboard.copy(text)
         case .cancelled: controller.translate()
         case .translating: break
         }

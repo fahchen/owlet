@@ -216,8 +216,7 @@ struct TranslationView: View {
             } else {
                 Button {
                     guard let result else { return }
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(result, forType: .string)
+                    Clipboard.copy(result)
                 } label: {
                     Label("复制", systemImage: "doc.on.doc")
                 }

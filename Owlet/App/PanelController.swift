@@ -61,10 +61,13 @@ final class PanelController {
         requestID += 1
         let id = requestID
         let task = model.translate(to: language)
-        if autoReplace, let task {
+        // Auto write-back is one-shot: only the first request after a replace trigger, and only with a selection.
+        let auto = autoReplace && selection != nil
+        autoReplace = false
+        if auto, let task {
             Task {
                 await task.value
-                guard id == requestID, autoReplace, case .success(let text) = model.state else {
+                guard id == requestID, case .success(let text) = model.state else {
                     return
                 }
                 replace(with: text)
@@ -80,9 +83,9 @@ final class PanelController {
         guard let task else { return }
         Task {
             await task.value
-            guard !expanded, notice == .translating else { return }
+            guard id == requestID, !expanded, notice == .translating else { return }
             switch model.state {
-            case .success: if !autoReplace { expanded = true }
+            case .success: if !auto { expanded = true }
             case .failure(let message): notice = .failure(message)
             default: break
             }

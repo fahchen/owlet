@@ -170,7 +170,7 @@ struct TranslationView: View {
                 }
             } trailing: {
                 if model.operation == .translate {
-                    languagePicker.buttonStyle(.borderless).disabled(isBusy)
+                    Text(Self.languages.first { $0.0 == targetLanguage }?.1 ?? targetLanguage)
                 } else {
                     Text("保留原意")
                 }

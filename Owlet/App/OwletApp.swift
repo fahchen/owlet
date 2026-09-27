@@ -11,7 +11,7 @@ struct OwletApp: App {
     }()
     @State private var panel = PanelController(
         model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
-    @State private var page: MainView.Page? = .processing
+    @State private var page: MainView.Page = .processing
 
     var body: some Scene {
         Window("Owlet", id: "main") {
@@ -36,11 +36,12 @@ private struct MainView: View {
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
-    @Binding var page: Page?
+    @Binding var page: Page
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $page) {
+            // A sidebar List allows an empty selection; ignore it so a row stays highlighted.
+            List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 Section("随手处理") {
                     Label("文本处理", systemImage: "translate").tag(Page.processing)
                 }
@@ -52,9 +53,9 @@ private struct MainView: View {
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
         } detail: {
             switch page {
+            case .processing: TranslationView(model: translation) { page = .settings }
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             case .settings: ServiceSettingsView()
-            default: TranslationView(model: translation) { page = .settings }
             }
         }
         .frame(minWidth: 760, minHeight: 500)
@@ -64,7 +65,7 @@ private struct MainView: View {
 /// Opens the main window on a page; also recreates the window if it was closed.
 @MainActor private struct OpenMainWindow {
     let openWindow: OpenWindowAction
-    let page: Binding<MainView.Page?>
+    let page: Binding<MainView.Page>
 
     func callAsFunction(_ target: MainView.Page) {
         page.wrappedValue = target
@@ -75,11 +76,11 @@ private struct MainView: View {
 
 /// 设置… (⌘,) in the app menu and the menu bar menu.
 private struct SettingsButton: View {
-    @Binding var page: MainView.Page?
+    @Binding var page: MainView.Page
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Settings…") {
+        Button("设置…") {
             OpenMainWindow(openWindow: openWindow, page: $page)(.settings)
         }
         .keyboardShortcut(",", modifiers: .command)
@@ -91,7 +92,7 @@ private struct SettingsButton: View {
 private struct MenuBarLabel: View {
     let shortcuts: ShortcutController
     let panel: PanelController
-    @Binding var page: MainView.Page?
+    @Binding var page: MainView.Page
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -117,12 +118,12 @@ private struct MenuBarLabel: View {
 
 private struct MenuContent: View {
     let shortcuts: ShortcutController
-    @Binding var page: MainView.Page?
+    @Binding var page: MainView.Page
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         let open = OpenMainWindow(openWindow: openWindow, page: $page)
-        Button("Open Owlet") {
+        Button("打开 Owlet") {
             NSApp.activate()
             openWindow(id: "main")
         }
@@ -135,6 +136,6 @@ private struct MenuContent: View {
         }
         SettingsButton(page: $page)
         Divider()
-        Button("Quit") { NSApp.terminate(nil) }
+        Button("退出 Owlet") { NSApp.terminate(nil) }
     }
 }

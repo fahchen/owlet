@@ -129,7 +129,7 @@
 
 - [x] 完成
 
-**缺口：**`PanelControllerTests.successWritesOnce` 与 `newRequestSupersedesOld` 因应用宿主测试挂起而 disabled，完整快捷流程仍为手测。
+**缺口：**`PanelControllerTests.successWritesOnce`、`newRequestSupersedesOld` 与 `plainTranslateDoesNotWrite` 因同一原因（面板展开后应用宿主测试挂起）disabled，完整快捷流程仍为手测；四个 disabled 测试见 `PanelControllerTests.swift`。
 
 **说明：**复用翻译与安全写回，提供无需再次点击替换的独立快捷操作。
 
@@ -429,7 +429,7 @@
 
 不改产品行为，只把界面换成原生组件。组件对照、令牌退役表、文案规则、例外与验收清单见 [docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。
 
-说明：本里程碑尚未开始，T18–T25 均未完成。当前实现已采用部分原生组件：主窗口为 `NavigationSplitView`（`OwletApp.swift` 的 `MainView`，侧边栏用 `List(selection:)` + `Section`，对应 T20 的一部分）；文本处理工具栏使用分段 `Picker`（翻译｜润色）与目标语言弹出式菜单（对应 T21 的一部分）；浮窗、设置与快捷键按钮使用 `.glass`／`.glassProminent`（`PanelController.swift`、`ExpandedPanel.swift`、`ShortcutSettingsView.swift`、`ServiceSettingsView.swift`，对应 T18 的一部分）；设置与快捷键页使用 `.formStyle(.grouped)`；文本处理页与设置页使用 `.safeAreaBar` 页脚。仍未完成的主要子项：T18 的内容区 `.bordered`／`.borderedProminent` 划分与外观验收；T19 的独立 Settings 窗口与分栏；T20 的 `.badge` 计数与侧边栏收起／切换（`⌃⌘S`）；T21 的跨整窗工具栏与删除底部动作栏；T22 的 720pt 响应式双栏；T23 的列表、搜索与 `ContentUnavailableView`；T24 的呼吸边框与动作行；T25 的七组菜单与文案收口。
+说明：本里程碑尚未开始，T18–T25 均未完成。当前实现已采用部分原生组件：主窗口为 `NavigationSplitView`（`OwletApp.swift` 的 `MainView`，侧边栏用 `List(selection:)` + `Section`，对应 T20 的一部分）；文本处理工具栏使用分段 `Picker`（翻译｜润色）与目标语言弹出式菜单（对应 T21 的一部分）；浮窗、设置与快捷键按钮使用 `.glass`／`.glassProminent`（`PanelController.swift`、`ExpandedPanel.swift`、`ShortcutSettingsView.swift`、`ServiceSettingsView.swift`，对应 T18 的一部分）；设置与快捷键页使用 `.formStyle(.grouped)`；文本处理页与设置页使用 `.safeAreaBar` 页脚。仍未完成的主要子项：T18 的内容区 `.bordered`／`.borderedProminent` 划分与外观验收；T19 的独立 Settings 窗口与分栏；T20 的 `.badge` 计数，以及确认工具栏自带的侧边栏收起／展开按钮可用；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，未添加；T21 的跨整窗工具栏与删除底部动作栏；T22 的 720pt 响应式双栏；T23 的列表、搜索与 `ContentUnavailableView`；T24 的呼吸边框与动作行；T25 的七组菜单与文案收口。
 
 ## T18：退役自定义令牌与按钮样式
 
@@ -598,7 +598,7 @@
 
 - [ ] 完成
 
-**缺口：**未开始——已有 `MenuBarExtra` 与应用菜单 `设置… (⌘,)`；仍缺七组菜单、`Show/Hide Sidebar (⌃⌘S)` 与按钮文案统一。
+**缺口：**未开始——已有 `MenuBarExtra` 与应用菜单 `设置… (⌘,)`；仍缺七组菜单、`SidebarCommands()`（`Show/Hide Sidebar (⌃⌘S)`）与按钮文案统一。
 
 **说明：**补齐菜单栏，并按文案规则统一叫法。
 

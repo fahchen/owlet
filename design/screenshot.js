@@ -3,15 +3,21 @@ const fs = await import('node:fs/promises');
 const path = await import('node:path');
 const assert = (await import('node:assert/strict')).default;
 const directory = designDirectory;
-const html = await fs.readFile(path.join(directory, 'index.html'), 'utf8');
+let html = await fs.readFile(path.join(directory, 'index.html'), 'utf8');
+for (const filename of ['owlet.png', 'owlet-mark-white.png']) {
+  const data = await fs.readFile(path.join(directory, 'logo', filename));
+  html = html.replaceAll(`logo/${filename}`, `data:image/png;base64,${data.toString('base64')}`);
+}
 const task = await taskSpace(captureSpace ?? 'Owlet design screenshots');
 console.log({ spaceId: task.spaceId });
 const page = task.page('p1');
 await page.cdp('Emulation.setDeviceMetricsOverride', {
   width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false,
 });
-// A data URL uses default demo data without reading or changing saved preferences.
-await page.goto('data:text/html;base64,' + Buffer.from(html).toString('base64'));
+// A blank document uses default demo data without reading saved preferences or URL size limits.
+await page.goto('about:blank');
+const { frameTree } = await page.cdp('Page.getFrameTree');
+await page.cdp('Page.setDocumentContent', { frameId: frameTree.frame.id, html });
 await page.evaluate(async () => { await document.fonts.ready; });
 const scenarios = await page.evaluate(() => states);
 assert(scenarios.length > 0, 'No design states found');

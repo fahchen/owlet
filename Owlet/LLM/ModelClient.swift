@@ -40,6 +40,32 @@ struct ModelClient: Sendable {
         let target = operation == .translate ? targetLanguage : nil
         let request = try makeRequest(
             text: text, operation: operation, targetLanguage: target, config: config)
+        let data = try await send(request)
+        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
+        if choice?.finishReason == "length" { throw ModelError.truncated }
+        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
+            throw ModelError.refused
+        }
+        guard let content = choice?.message.content,
+            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw ModelError.emptyResponse }
+        return try TranslationResult.parse(
+            content, submitted: text, targetLanguage: target
+        ).text
+    }
+
+    /// Lists model ids from the OpenAI-style `GET /models` endpoint.
+    func listModels(baseURL: URL, apiKey: String) async throws -> [String] {
+        var request = URLRequest(url: baseURL.appending(path: "models"))
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        let data = try await send(request)
+        guard let list = try? JSONDecoder().decode(ModelList.self, from: data) else {
+            throw ModelError.format
+        }
+        return list.data.map(\.id)
+    }
+
+    private func send(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -55,17 +81,7 @@ struct ModelClient: Sendable {
             if http.statusCode == 401 || http.statusCode == 403 { throw ModelError.unauthorized }
             if !(200..<300).contains(http.statusCode) { throw ModelError.http(http.statusCode) }
         }
-        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
-        if choice?.finishReason == "length" { throw ModelError.truncated }
-        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
-            throw ModelError.refused
-        }
-        guard let content = choice?.message.content,
-            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw ModelError.emptyResponse }
-        return try TranslationResult.parse(
-            content, submitted: text, targetLanguage: target
-        ).text
+        return data
     }
 
     func makeRequest(
@@ -126,4 +142,9 @@ struct ChatResponse: Decodable {
         }
     }
     var choices: [Choice]
+}
+
+struct ModelList: Decodable {
+    struct Model: Decodable { var id: String }
+    var data: [Model]
 }

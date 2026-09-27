@@ -136,3 +136,33 @@ enum TestReplies {
         #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"\#(text)","target":"T:\#(text)"}]}"#
     }
 }
+
+@Test func listModelsRequestsAndDecodes() async throws {
+    let seen = Captured()
+    let client = ModelClient(transport: { request in
+        seen.request = request
+        return try await stub(
+            body:
+                #"{"object":"list","data":[{"id":"deepseek-chat","object":"model","owned_by":"deepseek"},{"id":"deepseek-reasoner","object":"model","owned_by":"deepseek"}]}"#
+        )(request)
+    })
+    let ids = try await client.listModels(
+        baseURL: URL(string: "https://api.deepseek.com")!, apiKey: "sk-test")
+    #expect(ids == ["deepseek-chat", "deepseek-reasoner"])
+    #expect(seen.request?.url?.absoluteString == "https://api.deepseek.com/models")
+    #expect(seen.request?.httpMethod == "GET")
+    #expect(seen.request?.value(forHTTPHeaderField: "Authorization") == "Bearer sk-test")
+}
+
+@Test func listModelsMapsErrors() async {
+    let url = URL(string: "https://api.deepseek.com")!
+    await #expect(throws: ModelError.unauthorized) {
+        try await ModelClient(transport: stub(status: 401, body: "")).listModels(
+            baseURL: url, apiKey: "k")
+    }
+    await #expect(throws: ModelError.format) {
+        try await ModelClient(transport: stub(body: "{}")).listModels(baseURL: url, apiKey: "k")
+    }
+}
+
+final class Captured: @unchecked Sendable { var request: URLRequest? }

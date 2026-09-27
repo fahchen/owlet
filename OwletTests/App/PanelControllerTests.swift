@@ -313,17 +313,22 @@ struct PanelControllerTests {
         #expect(panel.model.state == .idle)
     }
 
-    /// The panel is the glass and nothing else: no hand-set corner radius, and no window shadow
-    /// whose square frame-shape would draw a rectangular edge around the rounded glass.
-    @Test func usesTheSystemGlassShapeOnly() async throws {
+    /// The panel keeps the system glass defaults and casts a shadow that follows the glass: the
+    /// window's shape comes from a container masked to the glass's own corner radius, which is what
+    /// stops the window server from shadowing a rectangle around rounded glass.
+    @Test func shapesItsShadowLikeTheGlass() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
         panel.trigger()
         let window = try #require(panel.panel)
-        let glass = try #require(window.contentView as? NSGlassEffectView)
+        let shape = try #require(window.contentView)
+        let glass = try #require(shape.subviews.first as? NSGlassEffectView)
         #expect(glass.cornerRadius == NSGlassEffectView().cornerRadius)
         #expect(glass.style == NSGlassEffectView().style)
-        #expect(!window.hasShadow)
+        #expect(window.hasShadow)
+        #expect(shape.layer?.cornerRadius == glass.cornerRadius)
+        #expect(shape.layer?.masksToBounds == true)
+        #expect(glass.frame == shape.bounds)
         panel.close()
     }
 
@@ -353,7 +358,7 @@ struct PanelControllerTests {
         panel.read = { $0(.failure(.unreadable)) }
         panel.trigger()
         let window = try #require(panel.panel)
-        #expect(window.contentView is NSGlassEffectView)
+        #expect(window.contentView?.subviews.first is NSGlassEffectView)
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()

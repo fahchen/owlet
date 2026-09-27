@@ -341,6 +341,9 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     private let host: NSHostingController<PanelView>
     private var sizeObservation: NSKeyValueObservation?
     private var closing = false
+    /// The rounded shape the window presents to the window server, so the shadow follows the glass
+    /// instead of the rectangle around it.
+    private let shape = NSView()
     /// Live while the panel is up; removed on close so the panel holds nothing after it goes.
     private var keys: Any?
 
@@ -352,16 +355,24 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        // A borderless window publishes its square frame as its shape, so the window server shadows
-        // a rectangle around the rounded glass; the glass draws its own edge, which is the whole look.
-        hasShadow = false
+        // The glass needs a shadow to read against a light background, and a borderless window takes
+        // its shape — and so its shadow — from its content layer.
+        hasShadow = true
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         delegate = self
-        // The glass keeps its own default corner radius and style: the panel has no shape of its own.
+        // The glass keeps its own default corner radius and style. It is wrapped in a container
+        // masked to that same shape, because a square layer is what used to cast a square shadow
+        // around rounded glass: the rounded mask is what the window server now follows.
         let glass = NSGlassEffectView()
         glass.contentView = host.view
-        contentView = glass
+        glass.frame = shape.bounds
+        glass.autoresizingMask = [.width, .height]
+        shape.addSubview(glass)
+        shape.wantsLayer = true
+        shape.layer?.cornerRadius = glass.cornerRadius
+        shape.layer?.masksToBounds = true
+        contentView = shape
         sizeObservation = host.observe(\.preferredContentSize) { [weak self] host, _ in
             MainActor.assumeIsolated { self?.fit(host.preferredContentSize) }
         }
@@ -450,9 +461,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
             setFrame(
                 NSRect(x: top.x - size.width / 2, y: top.y - size.height, width: size.width, height: size.height),
                 display: true)
+            invalidateShadow()
             return
         }
         setFrame(PanelPlacement.frame(size: size, anchor: anchor, within: visible), display: true)
+        // The shape changed with the size, so the shadow has to be recomputed from it.
+        invalidateShadow()
     }
 }
 

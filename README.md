@@ -64,7 +64,7 @@ BDD 场景尚未绑定自动化步骤；原生应用已经实现该原型覆盖�
 
 处理中使用约 430px 宽的单行紧凑条：选中文字摘要、加载指示、状态文字与右端停止按钮。不显示结果占位区、学习推荐或完整操作栏；按 `spec/product.md`，Esc 关闭并取消本次操作。整圈呼吸动画尚未实现（当前只用旋转指示），保留为待做设计，见 [未实现功能清单](docs/unimplemented-features.md)；展开动画已实现（`PanelView` 的 `.smooth(0.3)`，减少动态效果时关闭）。
 
-浮层外观以 macOS Tahoe Spotlight 为参考：中性半透明材质、系统默认的玻璃外观（无自绘边框与投影）、单行处理条及下方结果展开。保留 Owlet 的翻译与润色动作，不复制搜索功能；网页材质是视觉近似，非系统原生渲染。参考：[Apple macOS Tahoe](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/)。
+浮层外观以 macOS Tahoe Spotlight 为参考：中性半透明材质、系统默认的玻璃外观（无自绘边框，投影跟随玻璃圆角）、单行处理条及下方结果展开。保留 Owlet 的翻译与润色动作，不复制搜索功能；网页材质是视觉近似，非系统原生渲染。参考：[Apple macOS Tahoe](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/)。
 
 设置页现在只有“模型服务”与“浮窗”两个分组；查看／编辑翻译与润色 System Prompt、恢复默认、JSON 返回示例均未实现，见 [未实现功能清单](docs/unimplemented-features.md)。状态预览仍含“JSON 格式错误”。默认 Prompt 与原生 JSON 契约见 [spec/llm/contract.md](spec/llm/contract.md)；原型不请求真实模型。
 

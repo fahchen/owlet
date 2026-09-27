@@ -23,7 +23,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | 侧边栏是真正的 source list | 178px 固定栏，自己画红绿灯、自己画分组标题、选中态是自定义白胶囊；`设置` 与 `本地` 钉在栏底 | `NavigationSplitView` + `List(selection:)`：工具栏自带的收起／展开按钮来自系统（设计图里的切换按钮就是它）；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，当前未添加，见 tasks/todo.md T25；选中态是系统外观；`设置` 移入同一分组，取消栏底钉死；`本地` 角标删除；`.badge` 计数未采用 | `sidebars.md › Best practices`；`sidebars.md › Desktop (macOS)`：**Avoid putting critical information or actions at the bottom of a sidebar.** |
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
-| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；`NSPanel.hasShadow = false`，避免窗口按方形 frame 投出矩形阴影；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
+| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
 | 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 6 个横向分区（文本处理 8 / 快捷键 3 / 设置 5 / 紧凑条 10 / 展开 7 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
@@ -60,7 +60,7 @@
 - 侧栏导航（文本处理／快捷键／设置）→ `List(selection:)` 绑定 `enum Page`，导航不等于动作，收敛后只有三个页面；快捷键页的"全局／面板内"分组用 `Form` + `Section`；列表搜索与筛选无对应状态，随生词本／历史一并移除（见 [docs/unimplemented-features.md](unimplemented-features.md)）。
 
 ### 3.4 组件 › 呈现
-- 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，保留其默认圆角与样式，不叠自绘边框与内阴影；`hasShadow = false`，窗口不按方形 frame 投出矩形阴影；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
+- 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，保留其默认圆角与样式，不叠自绘边框与内阴影；窗口的 `contentView` 是按玻璃圆角遮罩的容器，`hasShadow = true` 的投影因此跟随玻璃形状——浅色背景上也需要它来分辨浮层边界；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
 - 紧凑提示条（失败／权限／未配置／取消／未能写回）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 1）；展开态内联状态行（`result-notice`）用 `Label(systemImage:)` + 恢复按钮放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
 
 ### 3.5 组件 › 选择与输入

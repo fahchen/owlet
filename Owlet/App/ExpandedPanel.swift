@@ -9,10 +9,14 @@ struct ExpandedPanel: View {
     /// Nil when the panel was built without the notebook, which the tests do.
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
+    /// True after a successful write-back, so the body confirms it and the footer offers 完成.
+    let confirmed: Bool
     let notice: PanelController.Notice?
     let recover: (PanelController.Notice) -> Void
     let retry: () -> Void
     let cancel: () -> Void
+    /// Closes the panel from 完成; the confirmation has already done everything else.
+    let done: () -> Void
     let openSettings: () -> Void
 
     var body: some View {
@@ -24,8 +28,8 @@ struct ExpandedPanel: View {
             Divider()
             ScrollView {
                 PanelBody(
-                    model: model, notice: notice, recover: recover, collection: collection,
-                    openNotebook: openNotebook)
+                    model: model, notice: notice, confirmed: confirmed, recover: recover,
+                    collection: collection, openNotebook: openNotebook)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: 440)
@@ -35,9 +39,11 @@ struct ExpandedPanel: View {
                 state: model.state,
                 operation: model.operation,
                 cancelled: notice == .cancelled,
+                confirmed: confirmed,
                 replace: replace,
                 retry: canRetry ? retry : nil,
-                cancel: cancel)
+                cancel: cancel,
+                done: done)
         }
         .frame(width: 560)
     }
@@ -112,6 +118,8 @@ private struct ToolButton: View {
 private struct PanelBody: View {
     @Bindable var model: TranslationModel
     let notice: PanelController.Notice?
+    /// True after a successful write-back; the result section then confirms it.
+    let confirmed: Bool
     let recover: (PanelController.Notice) -> Void
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
@@ -187,8 +195,14 @@ private struct PanelBody: View {
     }
 
     @ViewBuilder private var status: some View {
-        if let notice {
-            StatusNote(error: notice != .cancelled) {
+        if confirmed {
+            StatusNote(symbol: "checkmark", tint: .green) {
+                Text("已写回原选区，译文已保留。")
+                    .font(.system(size: 12))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else if let notice {
+            StatusNote(symbol: notice != .cancelled ? "exclamationmark.triangle" : "info.circle") {
                 Text(notice.message)
                     .font(.system(size: 12))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -257,13 +271,14 @@ private struct LabelRow<Leading: View, Trailing: View>: View {
 
 /// In-content status: symbol and message left, recovery entry right.
 private struct StatusNote<Content: View>: View {
-    var error = true
+    var symbol = "exclamationmark.triangle"
+    var tint: Color = .secondary
     @ViewBuilder let content: Content
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: error ? "exclamationmark.triangle" : "info.circle")
-                .foregroundStyle(.secondary)
+            Image(systemName: symbol)
+                .foregroundStyle(tint)
                 .accessibilityHidden(true)
             content
         }
@@ -279,9 +294,12 @@ private struct PanelFooter: View {
     let operation: Operation
     /// Idle because the user stopped processing; the main button then reads "重新处理".
     let cancelled: Bool
+    /// The result was written back, so the main button is 完成 instead of 替换.
+    let confirmed: Bool
     let replace: ((String) -> Void)?
     let retry: (() -> Void)?
     let cancel: () -> Void
+    let done: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -329,7 +347,11 @@ private struct PanelFooter: View {
             .buttonStyle(.glass)
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .help("复制结果 ⌘⇧C")
-            if let replace {
+            if confirmed {
+                Button("完成 Esc", action: done)
+                    .buttonStyle(.glassProminent)
+                    .help("完成 Esc")
+            } else if let replace {
                 Button("替换 ⌘↩") { replace(text) }
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.return, modifiers: .command)

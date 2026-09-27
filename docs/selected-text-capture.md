@@ -44,7 +44,7 @@
 - 总预算覆盖排队与全部 AX 读取；每步开始前检查是否已过期，避免多次调用逐项累积等待。
 - 到达总预算即按 `.unreadable` 呈现恢复入口；已经执行的同步 AX 调用可能稍后才返回。总超时只停止接收结果，不宣称已终止系统调用。
 - 串行队列最多保留一个执行中的读取和一个最新待处理操作；新的触发取代旧待处理操作，避免连续快捷键造成无界排队。
-- 使用 `PanelController` 的操作标识机制统一约束读取与模型请求。新触发、Esc 关闭或取消均使旧标识失效；迟到结果不得改输入、弹出浮窗、请求模型或恢复替换意图。
+- 使用 `PanelController` 的操作标识机制统一约束读取与模型请求。新触发、Esc 关闭或取消均使旧标识失效；迟到结果不得改输入、弹出浮窗、请求模型或恢复替换意图。浮窗不因失去键盘焦点关闭，失焦不使本次操作失效；只有 Esc、显式关闭（完成）或点击浮窗外部才关闭。
 - UI 状态只在主线程更新。工作队列内部持有 AX 对象；实现时遵守 Swift 并发隔离规则，不为跨执行器传递对象而随意添加 `@unchecked Sendable`。
 
 ## Electron 兼容
@@ -88,6 +88,8 @@
 - [x] 文本确实没变时如实返回失败，读不到文本与替换成同一段文字都不误判为失败（`pasteThatTheAppIgnoresIsRefused`、`unreadableElementIsNotEvidenceOfFailure`、`replacingWithTheSameTextCountsAsPasted`）。
 - [x] 按键在所属应用前置之后才发出，且即使应用已经是前台也仍然请求前置（`theAppComesForwardBeforeTheKeyIsPressed`、`comingForwardIsAlwaysAskedFor`）。
 - [x] 写回先把键盘让出去但不关闭面板，失败时把结果留在屏幕内（`writeBackReleasesTheKeyboardWithoutDismissing`、`refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable`）。
+- [x] 写回成功后保留面板并确认，结果仍可复制，Esc／完成关闭（`successfulWriteBackConfirmsAndEscCloses`、`finishClosesTheConfirmation`）。
+- [x] 失焦不关闭且不取消写回，点击浮窗外部关闭、点击内部不关闭，外部点击监听随可见性安装与移除（`losingKeyNeitherClosesNorCancelsTheWrite`、`mouseDownOutsideDismissesButInsideDoesNot`、`mouseMonitorFollowsVisibility`）。
 - [x] 合成按键是完整的 ⌘ 包夹序列，而不是只带 flags 的一个按键（`commandPressBracketsTheKey`）。
 - [x] 超时只先给出提示：迟到但有效的读取仍会生效，关闭后到达的读取被丢弃（`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`、`lateReadAfterCloseIsIgnored`）。
 - [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。

@@ -52,6 +52,25 @@ final class CollectionAction {
         }
     }
 
+    /// Saves a checked learning recommendation together with the Chinese meaning the learning
+    /// response already returned, so collecting it is immediate and costs no second request.
+    @discardableResult
+    func collect(_ draft: VocabularyDraft, meaning: String) -> VocabularyEntry? {
+        do {
+            let entry = try store.collect(draft)
+            let trimmed = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+            if entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !trimmed.isEmpty {
+                entry.meaning = trimmed
+                try store.save()
+            }
+            status = .saved
+            return entry
+        } catch {
+            status = .saveFailed(error.localizedDescription)
+            return nil
+        }
+    }
+
     /// Runs or retries the meaning request for an entry that has none yet.
     func fillMeaning(for entry: VocabularyEntry) {
         guard let config = config() else {

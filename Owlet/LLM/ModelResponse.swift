@@ -141,15 +141,15 @@ struct LearningResult: Equatable {
         ]
     }
 
-    /// Returns the item matching `expression`; an empty list or a mismatch is a format error so
-    /// the saved entry stays and the user can retry.
-    static func item(_ content: String, expression: String) throws -> Item {
+    /// Validates the whole learning payload: only `items`, non-blank fields, a known kind, and each
+    /// expression appearing in its own context; an empty list is valid because padding is forbidden.
+    static func parse(_ content: String) throws -> [Item] {
         guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             Set(object.keys) == ["items"],
             let rawItems = object["items"] as? [Any]
         else { throw ModelError.format }
-        let items = try rawItems.map { raw -> Item in
+        return try rawItems.map { raw -> Item in
             guard let dict = raw as? [String: Any],
                 Set(dict.keys) == ["text", "language", "kind", "meaning", "context"],
                 let text = dict["text"] as? String, !TranslationResult.isBlank(text),
@@ -157,13 +157,23 @@ struct LearningResult: Equatable {
                 let kind = dict["kind"] as? String,
                 ["word", "phrase", "sentence"].contains(kind),
                 let meaning = dict["meaning"] as? String, !TranslationResult.isBlank(meaning),
-                let context = dict["context"] as? String, !TranslationResult.isBlank(context)
+                let context = dict["context"] as? String, !TranslationResult.isBlank(context),
+                TranslationResult.normalized(context).localizedStandardContains(
+                    TranslationResult.normalized(text))
             else { throw ModelError.format }
             return Item(
                 text: text, language: language, kind: kind, meaning: meaning, context: context)
         }
+    }
+
+    /// Returns the item matching `expression`; an empty list or a mismatch is a format error so the
+    /// saved entry stays and the user can retry.
+    static func item(_ content: String, expression: String) throws -> Item {
         let wanted = TranslationResult.normalized(expression)
-        guard let match = items.first(where: { TranslationResult.normalized($0.text) == wanted })
+        guard
+            let match = try parse(content).first(where: {
+                TranslationResult.normalized($0.text) == wanted
+            })
         else { throw ModelError.format }
         return match
     }

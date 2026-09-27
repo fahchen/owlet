@@ -52,14 +52,7 @@ struct ModelClient: Sendable {
         let request = try makeRequest(
             text: text, operation: operation, targetLanguage: target, config: config)
         let data = try await send(request)
-        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
-        if choice?.finishReason == "length" { throw ModelError.truncated }
-        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
-            throw ModelError.refused
-        }
-        guard let content = choice?.message.content,
-            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw ModelError.emptyResponse }
+        let content = try decodedContent(data)
         return try TranslationResult.parse(
             content, submitted: text, targetLanguage: target)
     }
@@ -108,15 +101,69 @@ struct ModelClient: Sendable {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let data = try await send(request)
-        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
-        if choice?.finishReason == "length" { throw ModelError.truncated }
-        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
-            throw ModelError.refused
-        }
-        guard let content = choice?.message.content,
-            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw ModelError.emptyResponse }
-        return try LearningResult.item(content, expression: expression).meaning
+        return try LearningResult.item(try decodedContent(data), expression: expression).meaning
+    }
+
+    /// Runs the optional learning request as its own call, so a failure here can only ever affect the
+    /// learning area and never the main result the caller already has.
+    func learning(
+        text: String, operation: Operation, targetLanguage: String, result: String,
+        config: ServiceConfig
+    ) async throws -> [LearningResult.Item] {
+        let request = try makeLearningRequest(
+            text: text, operation: operation, targetLanguage: targetLanguage, result: result,
+            config: config)
+        let data = try await send(request)
+        return try LearningResult.parse(try decodedContent(data))
+    }
+
+    /// Builds the separate learning request: the same behavior prompt as the main request plus the
+    /// learning task and the `$defs.learning` contract, with the original and result as data.
+    func makeLearningRequest(
+        text: String, operation: Operation, targetLanguage: String, result: String,
+        config: ServiceConfig
+    ) throws -> URLRequest {
+        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let task =
+            operation == .polish
+            ? "从这次润色的原文与结果中挑选值得学习的表达，用简体中文解释修改的原因，并区分语法错误与风格偏好。"
+            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用简体中文解释含义与用法。"
+        let system = """
+            \(promptForOperation(operation))
+
+            \(task)不强凑条目，没有值得推荐的内容时 items 为空数组。
+            Respond with one json object with key items (array of {text, language, kind, meaning, context}). \
+            kind is one of word, phrase, sentence. meaning is Simplified Chinese. context must come from \
+            the original or the result, and text must appear in context. Example json: \
+            {"items":[{"text":"take a step back","language":"en","kind":"phrase",\
+            "meaning":"退一步重新审视。","context":"Let's take a step back."}]}
+            """
+        let responseFormat: [String: Any] =
+            !config.provider.supportsJSONSchema
+            ? ["type": "json_object"]
+            : [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "learning", "strict": true,
+                    "schema": LearningResult.providerSchema,
+                ],
+            ]
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "original": text, "result": result,
+        ])
+        let body: [String: Any] = [
+            "model": config.model,
+            "messages": [
+                ["role": "system", "content": system],
+                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
+            ],
+            "response_format": responseFormat,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
     }
 
     /// Lists model ids from the OpenAI-style `GET /models` endpoint.
@@ -128,6 +175,20 @@ struct ModelClient: Sendable {
             throw ModelError.format
         }
         return list.data.map(\.id)
+    }
+
+    /// Decodes the provider envelope and applies the shared truncation and content-policy rules
+    /// before any contract parsing, so every request type fails the same way.
+    private func decodedContent(_ data: Data) throws -> String {
+        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
+        if choice?.finishReason == "length" { throw ModelError.truncated }
+        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
+            throw ModelError.refused
+        }
+        guard let content = choice?.message.content,
+            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw ModelError.emptyResponse }
+        return content
     }
 
     private func send(_ request: URLRequest) async throws -> Data {

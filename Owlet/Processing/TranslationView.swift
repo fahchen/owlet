@@ -127,6 +127,8 @@ struct TranslationView: View {
     let openSettings: () -> Void
     let collection: CollectionAction
     let openNotebook: () -> Void
+    /// One learning section per page session, so 收起／展开 reuses what was already generated.
+    @State private var learning = LearningModel()
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -150,8 +152,11 @@ struct TranslationView: View {
         // Switching the operation runs the same text again at once, so the two results can be
         // compared without pressing the button a second time. Switching back is served from cache.
         .onChange(of: model.operation) { _, _ in
+            learning.reset()
             if model.hasBeenSent { model.translate(to: targetLanguage) }
         }
+        // The source text changed, so the old result and its learning items no longer apply.
+        .onChange(of: model.input) { _, _ in learning.reset() }
         .toolbar {
             if model.operation == .translate {
                 ToolbarItem(placement: .primaryAction) { languagePicker.disabled(isBusy) }
@@ -242,35 +247,16 @@ struct TranslationView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
             .accessibilityAddTraits(.updatesFrequently)
-            if result != nil { collectRow }
-            // Reserved for the unbuilt 学习表达 disclosure (25pt gap, hairline, 14pt inset, row).
-            if result != nil { Color.clear.frame(height: 61) }
+            if result != nil { learningSection }
         }
     }
 
-    private func collect(_ region: CollectedRegion) {
-        guard
-            let draft = VocabularyDraft.from(
-                region: region, model: model, selection: TextSelection.current())
-        else { return }
-        collection.collect(draft)
-    }
-
-    private var collectRow: some View {
-        HStack(spacing: 12) {
-            Menu {
-                Button("收藏原文") { collect(.source) }
-                Button(model.operation == .polish ? "收藏润色结果" : "收藏译文") { collect(.result) }
-            } label: {
-                Label("收藏选中内容", systemImage: "book")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            CollectionFeedback(collection: collection, openNotebook: openNotebook)
-            Spacer(minLength: 0)
+    @ViewBuilder private var learningSection: some View {
+        if let request = LearningRequest.from(model) {
+            LearningView(
+                learning: learning, request: request, collection: collection,
+                openNotebook: openNotebook)
         }
-        .font(.system(size: 12))
-        .frame(minHeight: 30)
     }
 
     @ViewBuilder private var status: some View {

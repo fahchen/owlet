@@ -18,6 +18,8 @@ struct ExpandedPanel: View {
     /// Closes the panel from 完成; the confirmation has already done everything else.
     let done: () -> Void
     let openSettings: () -> Void
+    /// One learning section per panel session, so 收起／展开 reuses what was already generated.
+    @State private var learning = LearningModel()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +31,7 @@ struct ExpandedPanel: View {
             ScrollView {
                 PanelBody(
                     model: model, notice: notice, confirmed: confirmed, recover: recover,
-                    collection: collection, openNotebook: openNotebook)
+                    collection: collection, openNotebook: openNotebook, learning: learning)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: 440)
@@ -123,6 +125,7 @@ private struct PanelBody: View {
     let recover: (PanelController.Notice) -> Void
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
+    let learning: LearningModel
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -152,6 +155,10 @@ private struct PanelBody: View {
         .padding(.top, 14)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A learning result describes one specific result, so changing the text or the operation
+        // discards it and the next 展开 starts a fresh request.
+        .onChange(of: model.input) { _, _ in learning.reset() }
+        .onChange(of: model.operation) { _, _ in learning.reset() }
     }
 
     private var hasResultSection: Bool {
@@ -181,7 +188,11 @@ private struct PanelBody: View {
                     .lineSpacing(5)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if let collection { collectRow(collection) }
+                if let collection, let request = LearningRequest.from(model) {
+                    LearningView(
+                        learning: learning, request: request, collection: collection,
+                        openNotebook: openNotebook)
+                }
             } else {
                 Text(model.input)
                     .font(.system(size: 13))
@@ -222,33 +233,6 @@ private struct PanelBody: View {
         .buttonStyle(.borderless)
         .fixedSize()
         .font(.system(size: 11))
-    }
-
-    private func collectRow(_ collection: CollectionAction) -> some View {
-        HStack(spacing: 10) {
-            Menu {
-                Button("收藏原文") { collect(.source, collection) }
-                Button(model.operation == .polish ? "收藏润色结果" : "收藏译文") {
-                    collect(.result, collection)
-                }
-            } label: {
-                Label("收藏选中内容", systemImage: "book")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            CollectionFeedback(collection: collection, openNotebook: openNotebook)
-            Spacer(minLength: 0)
-        }
-        .font(.system(size: 11))
-        .padding(.top, 4)
-    }
-
-    private func collect(_ region: CollectedRegion, _ collection: CollectionAction) {
-        guard
-            let draft = VocabularyDraft.from(
-                region: region, model: model, selection: TextSelection.current())
-        else { return }
-        collection.collect(draft)
     }
 }
 

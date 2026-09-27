@@ -1,0 +1,130 @@
+import Foundation
+import Observation
+
+/// The inputs a learning request needs, kept separate so the model can tell a stale request from a
+/// fresh one and only re-request when the user's result actually changed.
+struct LearningRequest: Equatable {
+    var text: String
+    var operation: Operation
+    /// The result language; ignored for polish, whose result stays in the source language.
+    var targetLanguage: String
+    var result: String
+
+    /// Builds the request from a finished result; nil until the model has one to reason about.
+    @MainActor static func from(_ model: TranslationModel) -> LearningRequest? {
+        guard case .success(let text) = model.state, let languages = model.languages else {
+            return nil
+        }
+        return LearningRequest(
+            text: model.input, operation: model.operation, targetLanguage: languages.target,
+            result: text)
+    }
+}
+
+/// Owns the optional 学习表达 disclosure: it stays silent until the user expands it, then spends at
+/// most one request and never touches the main result.
+@MainActor @Observable
+final class LearningModel {
+    enum State: Equatable {
+        case idle
+        case loading
+        case failure(String)
+        case success([LearningResult.Item])
+    }
+
+    /// The disclosure state; the section requests only when this turns true or T13 enables auto.
+    var isExpanded = false
+    private(set) var state: State = .idle
+    /// The recommendation indices the user checked, so only what they chose reaches the notebook.
+    var selected: Set<Int> = []
+    /// T13 supplies the per-operation switch; the default keeps learning off until the user asks.
+    var autoRequest: (Operation) -> Bool = { _ in false }
+    /// The request in flight; tests await it, the views only observe `state`.
+    private(set) var task: Task<Void, Never>?
+
+    private let client: ModelClient
+    private let config: () -> ServiceConfig?
+    /// Identifies the current request, so a late response cannot land on a newer operation.
+    private var requestID = 0
+
+    init(
+        client: ModelClient = ModelClient(),
+        config: @escaping () -> ServiceConfig? = SettingsStore.currentConfig
+    ) {
+        self.client = client
+        self.config = config
+    }
+
+    /// Responds to 展开: requests once, and a later 收起／展开 reuses whatever this produced.
+    func generate(for request: LearningRequest) {
+        guard state == .idle else { return }
+        send(request)
+    }
+
+    /// Retries only a failed request, so one press of 重试 costs exactly one request.
+    func retry(for request: LearningRequest) {
+        guard case .failure = state else { return }
+        send(request)
+    }
+
+    /// Auto-requests on a finished result only when T13's per-operation switch is on.
+    func generateIfAutoRequested(for request: LearningRequest) {
+        guard autoRequest(request.operation) else { return }
+        generate(for: request)
+    }
+
+    /// Drops the items and ignores any in-flight response, because they describe the old result.
+    func reset() {
+        task?.cancel()
+        task = nil
+        requestID += 1
+        state = .idle
+        selected = []
+        isExpanded = false
+    }
+
+    /// Collects exactly the checked recommendations, carrying the meaning the learning response
+    /// already returned so no checked item spends a second request.
+    func collectSelected(into collection: CollectionAction, for request: LearningRequest) {
+        guard case .success(let items) = state else { return }
+        let polish = request.operation == .polish
+        for index in selected.sorted() where items.indices.contains(index) {
+            let item = items[index]
+            collection.collect(
+                VocabularyDraft(
+                    expression: item.text, language: item.language, context: item.context,
+                    polishBefore: polish ? request.text : nil,
+                    polishAfter: polish ? request.result : nil),
+                meaning: item.meaning)
+        }
+    }
+
+    private func send(_ request: LearningRequest) {
+        guard let config = config() else {
+            state = .failure("模型服务未配置")
+            return
+        }
+        task?.cancel()
+        requestID += 1
+        let id = requestID
+        state = .loading
+        let client = client
+        task = Task {
+            do {
+                let items = try await client.learning(
+                    text: request.text, operation: request.operation,
+                    targetLanguage: request.targetLanguage, result: request.result,
+                    config: config)
+                try Task.checkCancellation()
+                guard id == self.requestID else { return }
+                self.state = .success(items)
+            } catch is CancellationError {
+                // A newer request or a reset owns the state; leaving it alone avoids overwriting it.
+            } catch {
+                guard id == self.requestID else { return }
+                let message = (error as? ModelError)?.message ?? error.localizedDescription
+                self.state = .failure(message)
+            }
+        }
+    }
+}

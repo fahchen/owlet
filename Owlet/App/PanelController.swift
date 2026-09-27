@@ -293,7 +293,7 @@ final class PanelController {
 }
 
 /// Frameless, fully transparent panel whose only content is a native glass view, so the window
-/// server draws just the rounded glass and its shadow. Closes (cancelling, like Esc) on losing key.
+/// server draws the glass alone. Closes (cancelling, like Esc) on losing key.
 /// Not final: tests that only assert controller state substitute a panel that stays off screen.
 class FloatingPanel: NSPanel, NSWindowDelegate {
     /// What the panel does with a key it claims. Owlet is an accessory app whose panel never
@@ -326,12 +326,14 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        // A borderless window publishes its square frame as its shape, so the window server shadows
+        // a rectangle around the rounded glass; the glass draws its own edge, which is the whole look.
+        hasShadow = false
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         delegate = self
+        // The glass keeps its own default corner radius and style: the panel has no shape of its own.
         let glass = NSGlassEffectView()
-        glass.cornerRadius = 16
         glass.contentView = host.view
         contentView = glass
         sizeObservation = host.observe(\.preferredContentSize) { [weak self] host, _ in
@@ -345,6 +347,10 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         place(size: host.preferredContentSize)
         orderFrontRegardless()
         makeKey()
+        // Becoming key hands the responder to SwiftUI's key view proxy, which focuses the first
+        // control; the panel has nothing to type into on open, so it starts with nothing focused.
+        // A click or Tab still reaches every control.
+        makeFirstResponder(nil)
         if keys == nil { keys = watchKeys() }
     }
 
@@ -412,11 +418,9 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
             setFrame(
                 NSRect(x: top.x - size.width / 2, y: top.y - size.height, width: size.width, height: size.height),
                 display: true)
-            invalidateShadow()
             return
         }
         setFrame(PanelPlacement.frame(size: size, anchor: anchor, within: visible), display: true)
-        invalidateShadow()
     }
 }
 

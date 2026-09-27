@@ -9,13 +9,15 @@ struct OwletApp: App {
         controller.start()
         return controller
     }()
+    @State private var collection = CollectionAction()
     @State private var panel = PanelController(
         model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
     @State private var page: MainView.Page = .processing
 
     var body: some Scene {
         Window("Owlet", id: "main") {
-            MainView(translation: translation, shortcuts: shortcuts, page: $page)
+            MainView(translation: translation, shortcuts: shortcuts, page: $page, collection: collection)
+                .modelContainer(collection.store.container)
         }
         .defaultSize(width: 1080, height: 690)
         .commands {
@@ -24,7 +26,7 @@ struct OwletApp: App {
         MenuBarExtra {
             MenuContent(shortcuts: shortcuts, page: $page)
         } label: {
-            MenuBarLabel(shortcuts: shortcuts, panel: panel, page: $page)
+            MenuBarLabel(shortcuts: shortcuts, panel: panel, page: $page, collection: collection)
         }
     }
 }
@@ -32,11 +34,12 @@ struct OwletApp: App {
 /// Main window (design/screenshots/workspace.png): native collapsible sidebar and page
 /// detail; settings is a sidebar page, not a separate window.
 private struct MainView: View {
-    enum Page: Hashable { case processing, shortcuts, settings }
+    enum Page: Hashable { case processing, vocabulary, shortcuts, settings }
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
     @Binding var page: Page
+    let collection: CollectionAction
 
     var body: some View {
         NavigationSplitView {
@@ -44,6 +47,9 @@ private struct MainView: View {
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 Section("随手处理") {
                     Label("文本处理", systemImage: "translate").tag(Page.processing)
+                }
+                Section("我的积累") {
+                    Label("生词本", systemImage: "book").tag(Page.vocabulary)
                 }
                 Section {
                     Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
@@ -53,7 +59,12 @@ private struct MainView: View {
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
         } detail: {
             switch page {
-            case .processing: TranslationView(model: translation) { page = .settings }
+            case .processing:
+                TranslationView(
+                    model: translation, openSettings: { page = .settings }, collection: collection,
+                    openNotebook: { page = .vocabulary })
+            case .vocabulary:
+                VocabularyView(collection: collection, openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             case .settings: ServiceSettingsView()
             }
@@ -93,6 +104,7 @@ private struct MenuBarLabel: View {
     let shortcuts: ShortcutController
     let panel: PanelController
     @Binding var page: MainView.Page
+    let collection: CollectionAction
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -112,6 +124,8 @@ private struct MenuBarLabel: View {
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
                 panel.openSettings = { open(.settings) }
                 panel.openManualInput = { open(.processing) }
+                panel.openNotebook = { open(.vocabulary) }
+                panel.collection = collection
             }
     }
 }

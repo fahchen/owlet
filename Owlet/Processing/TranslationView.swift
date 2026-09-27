@@ -15,14 +15,19 @@ final class TranslationModel {
         didSet {
             // A result belongs to the text it was computed from, so it is dropped the moment that
             // text changes: there is no cache across texts.
-            if input != oldValue { results.removeAll() }
+            if input != oldValue {
+                results.removeAll()
+                languages = nil
+            }
         }
     }
     var operation: Operation = .translate
     private(set) var state: State = .idle
+    /// Languages of the latest successful result, so a collected expression keeps its own language.
+    private(set) var languages: (source: String, target: String)?
     /// Results already computed for the current text, so switching the operation back and forth does
     /// not pay for the same request twice.
-    private var results: [ResultKey: String] = [:]
+    private var results: [ResultKey: TranslationResult] = [:]
 
     private struct ResultKey: Hashable {
         let operation: Operation
@@ -81,27 +86,33 @@ final class TranslationModel {
         if let ready = results[key] {
             // A finished task, so a caller that awaits the request behaves the same either way — the
             // panel's one-shot write-back has to reach the result whether it was computed or cached.
-            state = .success(ready)
+            state = .success(ready.text)
+            languages = (ready.sourceLanguage, ready.targetLanguage)
             return Task {}
         }
         state = .loading
         let client = client
         let task = Task {
-            let result: State
+            let outcome: State
+            var full: TranslationResult?
             do {
-                result = .success(
-                    try await client.process(
-                        text, operation: operation, to: targetLanguage, config: config))
+                let result = try await client.processResult(
+                    text, operation: operation, to: targetLanguage, config: config)
+                full = result
+                outcome = .success(result.text)
             } catch let error as ModelError {
-                result = .failure(error.message)
+                outcome = .failure(error.message)
             } catch is CancellationError {
                 return
             } catch {
-                result = .failure(error.localizedDescription)
+                outcome = .failure(error.localizedDescription)
             }
             guard id == self.operationID else { return }
-            if case .success(let ready) = result { self.results[key] = ready }
-            self.state = result
+            if let full {
+                self.results[key] = full
+                self.languages = (full.sourceLanguage, full.targetLanguage)
+            }
+            self.state = outcome
         }
         self.task = task
         return task
@@ -114,6 +125,8 @@ struct TranslationView: View {
     @Bindable var model: TranslationModel
     /// Shows the 设置 page for service errors.
     let openSettings: () -> Void
+    let collection: CollectionAction
+    let openNotebook: () -> Void
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -229,11 +242,35 @@ struct TranslationView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
             .accessibilityAddTraits(.updatesFrequently)
-            // Reserved for the unbuilt 收藏选中内容 row so the layout stays stable.
-            Color.clear.frame(height: 30)
+            if result != nil { collectRow }
             // Reserved for the unbuilt 学习表达 disclosure (25pt gap, hairline, 14pt inset, row).
             if result != nil { Color.clear.frame(height: 61) }
         }
+    }
+
+    private func collect(_ region: CollectedRegion) {
+        guard
+            let draft = VocabularyDraft.from(
+                region: region, model: model, selection: TextSelection.current())
+        else { return }
+        collection.collect(draft)
+    }
+
+    private var collectRow: some View {
+        HStack(spacing: 12) {
+            Menu {
+                Button("收藏原文") { collect(.source) }
+                Button(model.operation == .polish ? "收藏润色结果" : "收藏译文") { collect(.result) }
+            } label: {
+                Label("收藏选中内容", systemImage: "book")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            CollectionFeedback(collection: collection, openNotebook: openNotebook)
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 12))
+        .frame(minHeight: 30)
     }
 
     @ViewBuilder private var status: some View {

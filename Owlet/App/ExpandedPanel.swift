@@ -6,6 +6,9 @@ struct ExpandedPanel: View {
     @Bindable var model: TranslationModel
     /// Writes the result back to the original selection; nil when there is no source.
     let replace: ((String) -> Void)?
+    /// Nil when the panel was built without the notebook, which the tests do.
+    let collection: CollectionAction?
+    let openNotebook: (() -> Void)?
     let notice: PanelController.Notice?
     let recover: (PanelController.Notice) -> Void
     let retry: () -> Void
@@ -20,7 +23,9 @@ struct ExpandedPanel: View {
                 openSettings: openSettings)
             Divider()
             ScrollView {
-                PanelBody(model: model, notice: notice, recover: recover)
+                PanelBody(
+                    model: model, notice: notice, recover: recover, collection: collection,
+                    openNotebook: openNotebook)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: 440)
@@ -108,6 +113,8 @@ private struct PanelBody: View {
     @Bindable var model: TranslationModel
     let notice: PanelController.Notice?
     let recover: (PanelController.Notice) -> Void
+    let collection: CollectionAction?
+    let openNotebook: (() -> Void)?
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -166,6 +173,7 @@ private struct PanelBody: View {
                     .lineSpacing(5)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if let collection { collectRow(collection) }
             } else {
                 Text(model.input)
                     .font(.system(size: 13))
@@ -200,6 +208,33 @@ private struct PanelBody: View {
         .buttonStyle(.borderless)
         .fixedSize()
         .font(.system(size: 11))
+    }
+
+    private func collectRow(_ collection: CollectionAction) -> some View {
+        HStack(spacing: 10) {
+            Menu {
+                Button("收藏原文") { collect(.source, collection) }
+                Button(model.operation == .polish ? "收藏润色结果" : "收藏译文") {
+                    collect(.result, collection)
+                }
+            } label: {
+                Label("收藏选中内容", systemImage: "book")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            CollectionFeedback(collection: collection, openNotebook: openNotebook)
+            Spacer(minLength: 0)
+        }
+        .font(.system(size: 11))
+        .padding(.top, 4)
+    }
+
+    private func collect(_ region: CollectedRegion, _ collection: CollectionAction) {
+        guard
+            let draft = VocabularyDraft.from(
+                region: region, model: model, selection: TextSelection.current())
+        else { return }
+        collection.collect(draft)
     }
 }
 

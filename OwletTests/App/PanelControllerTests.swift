@@ -26,7 +26,8 @@ struct PanelControllerTests {
         }
         let model = TranslationModel(
             client: ModelClient(transport: transport), config: { testConfig })
-        let panel = PanelController(model: model)
+        let panel = PanelController(
+            model: model, defaults: UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!)
         let writes = Box()
         let selection = selection
         panel.read = { $0(.success(selection)) }
@@ -185,20 +186,5 @@ struct PanelControllerTests {
         #expect(panel.model.input.isEmpty)
         #expect(writes.texts.isEmpty)
         panel.close()
-    }
-
-    @Test func panelFrameStaysInsideVisibleFrame() {
-        let visible = NSRect(x: 0, y: 0, width: 1000, height: 800)
-        let size = NSSize(width: 560, height: 300)
-        #expect(
-            FloatingPanel.frame(size: size, topLeft: NSPoint(x: 100, y: 700), within: visible)
-                == NSRect(x: 100, y: 400, width: 560, height: 300))
-        #expect(
-            FloatingPanel.frame(size: size, topLeft: NSPoint(x: 900, y: 100), within: visible)
-                == NSRect(x: 440, y: 0, width: 560, height: 300))
-        #expect(
-            FloatingPanel.frame(
-                size: NSSize(width: 560, height: 1200), topLeft: NSPoint(x: -50, y: 900), within: visible)
-                == NSRect(x: 0, y: 0, width: 560, height: 800))
     }
 }

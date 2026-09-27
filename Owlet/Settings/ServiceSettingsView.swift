@@ -4,6 +4,7 @@ struct ServiceSettingsView: View {
     @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
+    @AppStorage(SettingsStore.panelPositionKey) private var panelPosition = PanelPosition.fixed
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
@@ -44,6 +45,12 @@ struct ServiceSettingsView: View {
                     }
                     FormField(title: "模型名称") { modelField }
                 }
+                .padding(.vertical, 17)
+                Picker("浮窗位置", selection: $panelPosition) {
+                    ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
                 .padding(.vertical, 17)
             }
             .padding(.horizontal, 32)

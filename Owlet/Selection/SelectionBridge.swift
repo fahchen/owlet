@@ -15,6 +15,8 @@ struct Selection {
     let element: AXUIElement
     let app: NSRunningApplication?
     let source: Source
+    /// Selection rect in AX coordinates (top-left origin, y down); nil when not requested or unavailable.
+    var bounds: CGRect? = nil
 }
 
 /// Comparable facts about where a selection lives, re-checked before writing back.
@@ -40,8 +42,12 @@ enum SelectionBridge {
     private static let worker = SerialLatest()
 
     /// Reads the selection off the main thread; `completion` runs on main, only if the
-    /// frontmost app is still the one read. Past `budget` AX steps are skipped.
-    @MainActor static func read(completion: @escaping @MainActor (Result<Selection, SelectionError>) -> Void) {
+    /// frontmost app is still the one read. Past `budget` AX steps are skipped. `bounds` also
+    /// reads the selection rect, costing one more AX call.
+    @MainActor static func read(
+        bounds wantsBounds: Bool = false,
+        completion: @escaping @MainActor (Result<Selection, SelectionError>) -> Void
+    ) {
         guard AXIsProcessTrusted() else { return completion(.failure(.permission)) }
         guard let app = NSWorkspace.shared.frontmostApplication,
             app.processIdentifier != ProcessInfo.processInfo.processIdentifier
@@ -60,6 +66,12 @@ enum SelectionBridge {
             }
             // AX handles stay with this one operation; handed to main exactly once.
             nonisolated(unsafe) let result = capture(appElement, pid: pid, copy: bounded)
+            let rect: CGRect? =
+                if wantsBounds, ContinuousClock.now < deadline, case .success(let captured) = result {
+                    selectionBounds(captured.element, source: captured.source)
+                } else {
+                    nil
+                }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
@@ -67,7 +79,8 @@ enum SelectionBridge {
                     }
                     completion(
                         result.map {
-                            Selection(text: $0.text, element: $0.element, app: app, source: $0.source)
+                            Selection(
+                                text: $0.text, element: $0.element, app: app, source: $0.source, bounds: rect)
                         })
                 }
             }
@@ -109,6 +122,26 @@ enum SelectionBridge {
         else { return false }
         return AXUIElementSetAttributeValue(
             element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
+    }
+
+    /// Screen rect of the selected range via `kAXBoundsForRangeParameterizedAttribute`; nil
+    /// without a range or when the app reports nothing usable.
+    private static func selectionBounds(_ element: AXUIElement, source: Source) -> CGRect? {
+        guard let location = source.location, let length = source.length else { return nil }
+        var range = CFRange(location: location, length: length)
+        guard let rangeValue = AXValueCreate(.cfRange, &range) else { return nil }
+        var value: AnyObject?
+        guard
+            AXUIElementCopyParameterizedAttributeValue(
+                element, kAXBoundsForRangeParameterizedAttribute as CFString, rangeValue, &value) == .success,
+            let value, CFGetTypeID(value) == AXValueGetTypeID()
+        else { return nil }
+        let axValue = unsafeDowncast(value, to: AXValue.self)
+        var rect = CGRect.zero
+        guard AXValueGetType(axValue) == .cgRect, AXValueGetValue(axValue, .cgRect, &rect),
+            rect.width > 0 || rect.height > 0
+        else { return nil }
+        return rect
     }
 
     static func canReplace(original: Source, current: Source, sameElement: Bool) -> Bool {

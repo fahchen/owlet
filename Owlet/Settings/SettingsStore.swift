@@ -103,3 +103,35 @@ extension SettingsStore {
         }
     }
 }
+
+/// Where the floating panel opens.
+enum PanelPosition: String, CaseIterable, Sendable {
+    case fixed, followSelection
+
+    var title: String {
+        switch self {
+        case .fixed: "固定位置"
+        case .followSelection: "跟随选区"
+        }
+    }
+}
+
+extension SettingsStore {
+    static let panelPositionKey = "panel.position"
+    /// Top-center of the panel after the user drags it, in AppKit screen coordinates.
+    static let panelFixedAnchorKey = "panel.fixedAnchor"
+
+    static func panelPosition(in defaults: UserDefaults = .standard) -> PanelPosition {
+        defaults.string(forKey: panelPositionKey).flatMap(PanelPosition.init) ?? .fixed
+    }
+
+    static func panelFixedAnchor(in defaults: UserDefaults = .standard) -> CGPoint? {
+        guard let values = defaults.array(forKey: panelFixedAnchorKey) as? [Double], values.count == 2
+        else { return nil }
+        return CGPoint(x: values[0], y: values[1])
+    }
+
+    static func setPanelFixedAnchor(_ point: CGPoint, in defaults: UserDefaults = .standard) {
+        defaults.set([Double(point.x), Double(point.y)], forKey: panelFixedAnchorKey)
+    }
+}

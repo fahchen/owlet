@@ -65,8 +65,7 @@ final class PanelController {
     /// The in-flight request will write back on success; labels the processing bar.
     private(set) var replacing = false
     let model: TranslationModel
-    var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void =
-        SelectionBridge.read
+    var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: (Selection, String) -> Bool = SelectionBridge.replace
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
@@ -77,8 +76,16 @@ final class PanelController {
     /// Operation whose selection read is still outstanding.
     private var readingID: Int?
 
-    init(model: TranslationModel) {
+    private let defaults: UserDefaults
+
+    init(model: TranslationModel, defaults: UserDefaults = .standard) {
         self.model = model
+        self.defaults = defaults
+        // Selection bounds cost an extra AX call, so they are read only when placement uses them.
+        read = { completion in
+            SelectionBridge.read(
+                bounds: SettingsStore.panelPosition(in: defaults) == .followSelection, completion: completion)
+        }
     }
 
     /// Invalidates the previous operation, then captures the selection before showing anything.
@@ -199,7 +206,22 @@ final class PanelController {
     private func show() {
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        panel.show(at: NSEvent.mouseLocation)
+        panel.show(anchor: anchor())
+    }
+
+    private func anchor() -> PanelPlacement.Anchor {
+        switch SettingsStore.panelPosition(in: defaults) {
+        case .fixed:
+            return .topCenter(SettingsStore.panelFixedAnchor(in: defaults))
+        case .followSelection:
+            // AX coordinates are relative to the primary screen, which is always first.
+            let bounds = selection?.bounds.flatMap { rect in
+                NSScreen.screens.first.map {
+                    PanelPlacement.appKitRect(fromAX: rect, primaryScreenHeight: $0.frame.height)
+                }
+            }
+            return PanelPlacement.followAnchor(selectionBounds: bounds, mouse: NSEvent.mouseLocation)
+        }
     }
 
     private func makePanel() -> FloatingPanel {
@@ -210,14 +232,23 @@ final class PanelController {
             self?.notice = nil
             self?.expanded = false
         }
+        panel.onDrag = { [weak self] topCenter in
+            guard let self, SettingsStore.panelPosition(in: defaults) == .fixed else { return }
+            SettingsStore.setPanelFixedAnchor(topCenter, in: defaults)
+        }
         return panel
     }
 }
 
 /// Frameless, fully transparent panel whose only content is a native glass view, so the window
 /// server draws just the rounded glass and its shadow. Closes (cancelling, like Esc) on losing key.
-final class FloatingPanel: NSPanel {
+final class FloatingPanel: NSPanel, NSWindowDelegate {
     var onClose: () -> Void = {}
+    /// User drag ended at this top-center point; the panel then stays anchored there.
+    var onDrag: (NSPoint) -> Void = { _ in }
+    private var anchor = PanelPlacement.Anchor.topCenter(nil)
+    /// Set while the panel moves itself, so only user drags reach `onDrag`.
+    private var placing = false
     private let host: NSHostingController<PanelView>
     private var sizeObservation: NSKeyValueObservation?
     private var closing = false
@@ -233,6 +264,7 @@ final class FloatingPanel: NSPanel {
         hasShadow = true
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
+        delegate = self
         let glass = NSGlassEffectView()
         glass.cornerRadius = 16
         glass.contentView = host.view
@@ -242,12 +274,19 @@ final class FloatingPanel: NSPanel {
         }
     }
 
-    /// Shows with the top-left corner at `point`, kept inside the screen containing it.
-    func show(at point: NSPoint) {
-        let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
-        place(size: host.preferredContentSize, topLeft: point, in: screen)
+    /// Shows at `anchor`, kept inside the visible frame of the screen containing it.
+    func show(anchor: PanelPlacement.Anchor) {
+        self.anchor = anchor
+        place(size: host.preferredContentSize)
         orderFrontRegardless()
         makeKey()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        guard !placing else { return }
+        let topCenter = NSPoint(x: frame.midX, y: frame.maxY)
+        anchor = .topCenter(topCenter)
+        onDrag(topCenter)
     }
 
     override var canBecomeKey: Bool { true }
@@ -264,29 +303,22 @@ final class FloatingPanel: NSPanel {
         super.close()
     }
 
-    /// Content-driven resizes keep the top edge fixed, so the compact bar expands downward.
+    /// Content-driven resizes re-place from the anchor, so the compact bar expands downward
+    /// (or, below a selection near the screen bottom, flips above it).
     private func fit(_ size: NSSize) {
         guard size != frame.size else { return }
-        place(size: size, topLeft: NSPoint(x: frame.minX, y: frame.maxY), in: screen)
+        place(size: size)
     }
 
-    private func place(size: NSSize, topLeft: NSPoint, in screen: NSScreen?) {
-        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
-            setFrame(
-                NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height), display: true)
-            return
+    private func place(size: NSSize) {
+        let screen = anchor.reference.flatMap { point in
+            NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
         }
-        setFrame(Self.frame(size: size, topLeft: topLeft, within: visible), display: true)
+        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else { return }
+        placing = true
+        defer { placing = false }
+        setFrame(PanelPlacement.frame(size: size, anchor: anchor, within: visible), display: true)
         invalidateShadow()
-    }
-
-    /// Frame of `size` anchored at `topLeft`, shifted and height-capped to stay inside `visible`.
-    nonisolated static func frame(size: NSSize, topLeft: NSPoint, within visible: NSRect) -> NSRect {
-        let width = min(size.width, visible.width)
-        let height = min(size.height, visible.height)
-        let x = min(max(topLeft.x, visible.minX), visible.maxX - width)
-        let top = min(max(topLeft.y, visible.minY + height), visible.maxY)
-        return NSRect(x: x, y: top - height, width: width, height: height)
     }
 }
 

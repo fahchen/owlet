@@ -22,11 +22,13 @@
 2. 在主线程检查 `AXIsProcessTrusted()`，记录 `NSWorkspace.shared.frontmostApplication` 及其 PID。未授权返回 `.permission`；无前台应用或来源为 Owlet 自身，返回 `.unreadable`。
 3. 在专用串行工作队列创建 `AXUIElementCreateApplication(pid)`，后续读取限定于这一应用。设置 AX 消息超时，再读取 `kAXFocusedUIElementAttribute`。
 4. 核验返回对象类型，读取 `kAXSubroleAttribute`。若为 `kAXSecureTextFieldSubrole`，立即返回 `.secure`，不得读取文本或选区内容。无法确认必要属性时按读取失败处理。
-5. 读取 `kAXSelectedTextAttribute`。仅接受字符串；缺失、错误或仅含空白时返回 `.unreadable`。用去首尾空白后的副本判断是否为空，实际保留原文空白与换行。
-6. 从同一元素获取现有 `Source` 所需的文档与选区范围；范围必须通过 CF 类型和 AXValue 类型检查后解码。`Source.text` 复用本次读到的原文，不再次读取生成另一份内容。
-7. 回到主线程，确认操作未过期、未取消且前台应用仍为原 PID，才接收结果。成功时先保存 `Selection`、导入输入，再显示浮窗并启动对应模型请求。
+5. 读取选区。先看聚焦元素自己的 `kAXSelectedTextAttribute`；Safari 的网页选区只通过 `kAXSelectedTextMarkerRangeAttribute` 加 `kAXStringForTextMarkerRangeParameterizedAttribute` 暴露，所以在同一元素上再试一次文本标记范围。仅接受字符串，用去首尾空白后的副本判断是否为空，实际保留原文空白与换行。
+6. 聚焦元素没有选区时向外找：先沿 `kAXParentAttribute` 向上最多 8 层（网页选区常落在 `AXWebArea` 上），再从聚焦元素的子树开始、最后到所属窗口做广度优先搜索，最多 400 个节点（PDF 阅读器的文字层在子节点里）。每个元素在发消息前都设置 AX 消息超时，所有读取共用一次触发预算，预算用尽后读取返回 nil，搜索随之结束。
+7. 仍然找不到就复制选区：保存剪贴板，合成 ⌘C，最多轮询 20×20ms 等剪贴板变化，取到非空文本后立即把剪贴板放回；拿不到新内容仍返回 `.unreadable`。密码字段在第 4 步已经返回 `.secure`，不会走到这里。
+8. 选区范围（`SelectedRange`）只在放置浮窗需要跟随选区时读取：解码 `kAXSelectedTextRangeAttribute`，经 CF 类型与 AXValue 类型检查。范围缺失只影响放置位置，不影响翻译。
+9. 回到主线程，确认操作未过期、未取消且前台应用仍为原 PID，才接收结果。成功时先保存 `Selection`、导入输入，再显示浮窗并启动对应模型请求。
 
-读取文字成功不等于写回成功。写回不再比较捕获时的文本与选区范围，直接尝试辅助功能写入，失败再粘贴；仅在无权限或无法前置所属应用时拒绝，结果仍可复制。
+读取文字成功不等于写回成功。写回不再比较捕获时的文本与选区范围：先按捕获到的元素直接尝试辅助功能写入（快，且不碰剪贴板），元素拒绝这一写入时改走粘贴——把结果放进剪贴板、把所属应用前置、合成 ⌘V，停留 350ms 让目标应用读完剪贴板后放回用户原来的内容。仅在无辅助功能权限、所属应用已退出或无法前置时拒绝，此时结果仍可复制。
 
 ## 响应时间与并发
 
@@ -56,7 +58,7 @@
 
 工具栏尚未展开时显示紧凑提示；已展开时保留内容区并显示错误。用户主动选择手动输入后进入完整窗口，该输入不继承外部选区的写回权限。具体交互遵循[产品定义](../spec/product.md)与[错误呈现决策](../spec/processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)。
 
-仅在用户触发时读取，不记录选中文字、文档路径或 AX 属性内容到诊断日志。`AXUIElement` 和来源上下文只保留于当前操作，不持久化为可恢复的写回权限。
+仅在用户触发时读取，不记录选中文字、文档路径或 AX 属性内容到诊断日志。`AXUIElement` 和来源上下文只保留于当前操作，不持久化为可恢复的写回权限。复制回退与写回粘贴都会临时改写剪贴板，并在各自完成后放回用户原来的内容。
 
 ## 实施顺序（已完成）
 
@@ -71,8 +73,11 @@
 自动化检查（已覆盖）：
 
 - [x] 密码字段：记录属性调用，断言从未请求文本和选区（`secureFieldNeverReadsTextOrRange`）。
-- [x] 文本与 `Source.text` 一致，只读取一次（`textIsReadOnceAndReusedForSource`）。
-- [x] 超时与取消：迟到回调不打开浮窗、不改输入、不发请求（`readPastBudgetIsUnreadable`、`lateReadAfterTimeoutOrCloseIsIgnored`）。
+- [x] 文本只读取一次，选区范围经类型检查后解码（`textIsReadOnceAndTheRangeIsDecoded`）。
+- [x] 选区在聚焦元素、祖先、子树与网页文本标记范围里都能找到，空白选区不当作选区（`searchFindsSelectionOnAnAncestor`、`searchFindsSelectionInADescendant`、`searchReadsSelectionThroughAWebKitMarkerRange`、`searchSkipsBlankSelections`、`searchWithoutAnySelectionIsNil`）。
+- [x] 复制回退只在搜索落空时运行，密码字段永不触发，剪贴板被放回（`copyFallbackReadsWhenTheSearchFindsNothing`、`copyFallbackIsSkippedForASecureField`、`copyFallbackIsSkippedWhenTheSearchSucceeds`、`copyFallbackRestoresThePreviousPasteboard`、`copyFallbackWithoutANewCopyIsNil`）。
+- [x] 写回先直写、后粘贴，无权限或无法前置时拒绝（`directWriteIsUsedWhenTheElementAcceptsIt`、`pasteIsUsedWhenTheDirectWriteFails`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
+- [x] 超时只先给出提示：迟到但有效的读取仍会生效，关闭后到达的读取被丢弃（`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`、`lateReadAfterCloseIsIgnored`）。
 - [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。
 - [x] 缺失、错误类型、空白选区安全失败，保留空白与 Unicode（`wrongTypesFailSafely`、`blankOrMissingIsUnreadable`、`missingFocusedElementIsUnreadable`）。
 

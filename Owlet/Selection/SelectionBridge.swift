@@ -26,18 +26,17 @@ struct Selection {
     let text: String
     let element: AXUIElement
     let app: NSRunningApplication?
-    let source: Source
+    /// Range of the selection inside `element`, kept only so the panel can be placed under it; nil
+    /// when the app reports none, which costs placement but not the translation.
+    let range: SelectedRange?
     /// Selection rect in AX coordinates (top-left origin, y down); nil when not requested or unavailable.
     var bounds: CGRect? = nil
 }
 
-/// Where a selection lives, kept to identify the owning app and to place the panel.
-struct Source: Equatable {
-    let pid: pid_t?
-    let document: String?
-    let text: String?
-    let location: Int?
-    let length: Int?
+/// A selection's offset and length, as the owning app reported them.
+struct SelectedRange: Equatable {
+    let location: Int
+    let length: Int
 }
 
 /// Reads the selection of the focused element through the Accessibility API.
@@ -129,10 +128,12 @@ enum SelectionBridge {
             }
             // AX handles stay with this one operation; handed to main exactly once.
             nonisolated(unsafe) let result = capture(
-                appElement, pid: pid, copy: bounded, copySelection: copySelection())
+                appElement, copy: bounded, copySelection: copySelection())
             let rect: CGRect? =
-                if wantsBounds, ContinuousClock.now < deadline, case .success(let captured) = result {
-                    selectionBounds(captured.element, source: captured.source)
+                if wantsBounds, ContinuousClock.now < deadline, case .success(let captured) = result,
+                    let range = captured.range
+                {
+                    selectionBounds(captured.element, range: range)
                 } else {
                     nil
                 }
@@ -144,7 +145,7 @@ enum SelectionBridge {
                     completion(
                         result.map {
                             Selection(
-                                text: $0.text, element: $0.element, app: app, source: $0.source, bounds: rect)
+                                text: $0.text, element: $0.element, app: app, range: $0.range, bounds: rect)
                         })
                 }
             }
@@ -152,14 +153,14 @@ enum SelectionBridge {
     }
 
     /// Reads the focused element of `appElement`, checking the secure subrole before any text is
-    /// touched, then searches outwards for the selection and reuses the single text read for
-    /// `Source.text`. `copySelection` is the ⌘C fallback, run only when the search finds nothing
-    /// and the field is known not to be secure.
+    /// touched, then searches outwards for the selection and falls back to copying it with ⌘C when
+    /// the search finds nothing. `copySelection` therefore only runs once the field is known not to
+    /// be secure.
     static func capture(
-        _ appElement: AXUIElement, pid: pid_t, copy: Reader,
+        _ appElement: AXUIElement, copy: Reader,
         marker: MarkerString = SelectionBridge.markerString,
         copySelection: CopySelection? = nil
-    ) -> Result<(text: String, element: AXUIElement, source: Source), SelectionError> {
+    ) -> Result<(text: String, element: AXUIElement, range: SelectedRange?), SelectionError> {
         guard let element = focusedElement(appElement, copy: copy) else {
             return .failure(.unreadable)
         }
@@ -168,12 +169,12 @@ enum SelectionBridge {
         if subrole as? String == kAXSecureTextFieldSubrole { return .failure(.secure) }
         if let found = search(element, copy: copy, marker: marker) {
             return classify(trusted: true, subrole: nil, text: found.text).map { text in
-                (text, found.element, source(found.element, pid: pid, text: text, copy: copy))
+                (text, found.element, selectedRange(found.element, copy: copy))
             }
         }
         guard let copied = copySelection?() else { return .failure(.unreadable) }
         return classify(trusted: true, subrole: nil, text: copied).map { text in
-            (text, element, source(element, pid: pid, text: text, copy: copy))
+            (text, element, selectedRange(element, copy: copy))
         }
     }
 
@@ -407,9 +408,8 @@ enum SelectionBridge {
 
     /// Screen rect of the selected range via `kAXBoundsForRangeParameterizedAttribute`; nil
     /// without a range or when the app reports nothing usable.
-    private static func selectionBounds(_ element: AXUIElement, source: Source) -> CGRect? {
-        guard let location = source.location, let length = source.length else { return nil }
-        var range = CFRange(location: location, length: length)
+    private static func selectionBounds(_ element: AXUIElement, range: SelectedRange) -> CGRect? {
+        var range = CFRange(location: range.location, length: range.length)
         guard let rangeValue = AXValueCreate(.cfRange, &range) else { return nil }
         var value: AnyObject?
         guard
@@ -425,20 +425,18 @@ enum SelectionBridge {
         return rect
     }
 
-    private static func source(_ element: AXUIElement, pid: pid_t?, text: String?, copy: Reader)
-        -> Source
-    {
+    /// Selection range of an element; the range only places the panel, so an app that reports none
+    /// is not a failure and nothing else is read to describe the selection.
+    private static func selectedRange(_ element: AXUIElement, copy: Reader) -> SelectedRange? {
+        guard let value = copy(timed(element), kAXSelectedTextRangeAttribute),
+            CFGetTypeID(value) == AXValueGetTypeID()
+        else { return nil }
+        let axValue = unsafeDowncast(value, to: AXValue.self)
         var range = CFRange()
-        let value = copy(element, kAXSelectedTextRangeAttribute)
-        let hasRange =
-            value.map {
-                CFGetTypeID($0) == AXValueGetTypeID()
-                    && AXValueGetType(unsafeDowncast($0, to: AXValue.self)) == .cfRange
-                    && AXValueGetValue(unsafeDowncast($0, to: AXValue.self), .cfRange, &range)
-            } == true
-        return Source(
-            pid: pid, document: copy(element, kAXDocumentAttribute) as? String, text: text,
-            location: hasRange ? range.location : nil, length: hasRange ? range.length : nil)
+        guard AXValueGetType(axValue) == .cfRange, AXValueGetValue(axValue, .cfRange, &range) else {
+            return nil
+        }
+        return SelectedRange(location: range.location, length: range.length)
     }
 
     static func classify(trusted: Bool, subrole: String?, text: String?)

@@ -8,9 +8,9 @@ import Testing
 /// Serialized: each test shows a real panel, and a panel closes when another one takes key.
 @MainActor @Suite(.serialized)
 struct PanelControllerTests {
-    let source = Source(pid: 1, document: nil, text: "Hello", location: 0, length: 5)
+    let range = SelectedRange(location: 0, length: 5)
     var selection: Selection {
-        Selection(text: "Hello", element: AXUIElementCreateApplication(1), app: nil, source: source)
+        Selection(text: "Hello", element: AXUIElementCreateApplication(1), app: nil, range: range)
     }
 
     /// Transport that waits until released, so tests control when a response arrives.

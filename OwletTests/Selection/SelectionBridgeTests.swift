@@ -25,8 +25,6 @@ struct SelectionBridgeTests {
         #expect(SelectionBridge.classify(trusted: true, subrole: nil, text: "Hello") == .success("Hello"))
     }
 
-    let source = Source(pid: 1, document: "file:///a", text: "Hello", location: 3, length: 5)
-
     // Distinct opaque AX handles; the injected reader never sends them real AX messages.
     let app = AXUIElementCreateApplication(1)
     let field = AXUIElementCreateApplication(2)
@@ -47,7 +45,7 @@ struct SelectionBridgeTests {
     @Test func secureFieldNeverReadsTextOrRange() {
         let log = Log()
         let result = SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader(
                 [
                     kAXSubroleAttribute: kAXSecureTextFieldSubrole as CFString,
@@ -57,45 +55,42 @@ struct SelectionBridgeTests {
         #expect(log.calls == [kAXFocusedUIElementAttribute, kAXSubroleAttribute])
     }
 
-    @Test func textIsReadOnceAndReusedForSource() {
+    @Test func textIsReadOnceAndTheRangeIsDecoded() {
         let log = Log()
         var range = CFRange(location: 3, length: 9)
         let text = "  héllo\n世界 "
         let result = SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader(
                 [
                     kAXSelectedTextAttribute: text as CFString,
                     kAXSelectedTextRangeAttribute: AXValueCreate(.cfRange, &range)!,
-                    kAXDocumentAttribute: "file:///a" as CFString,
                 ], log: log))
         let captured = try? result.get()
         #expect(captured?.text == text)
-        #expect(
-            captured?.source
-                == Source(pid: 9, document: "file:///a", text: text, location: 3, length: 9))
+        #expect(captured?.range == SelectedRange(location: 3, length: 9))
         #expect(log.calls.filter { $0 == kAXSelectedTextAttribute }.count == 1)
     }
 
     @Test func wrongTypesFailSafely() {
         let wrongText = SelectionBridge.capture(
-            app, pid: 9, copy: reader([kAXSelectedTextAttribute: 42 as CFNumber], log: Log()))
+            app, copy: reader([kAXSelectedTextAttribute: 42 as CFNumber], log: Log()))
         #expect(wrongText.map(\.text) == .failure(.unreadable))
         let wrongSubrole = SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader(
                 [kAXSubroleAttribute: 1 as CFNumber, kAXSelectedTextAttribute: "hi" as CFString],
                 log: Log()))
         #expect(wrongSubrole.map(\.text) == .failure(.unreadable))
         let wrongRange = try? SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader(
                 [
                     kAXSelectedTextAttribute: "hi" as CFString,
                     kAXSelectedTextRangeAttribute: "0,2" as CFString,
                 ], log: Log())
         ).get()
-        #expect(wrongRange?.source.location == nil)
+        #expect(wrongRange?.range == nil)
     }
 
     // MARK: Selection search
@@ -177,10 +172,10 @@ struct SelectionBridgeTests {
     /// reach them; its text must reach the caller like an accessibility read would.
     @Test func copyFallbackReadsWhenTheSearchFindsNothing() {
         let result = SelectionBridge.capture(
-            app, pid: 9, copy: reader([:], log: Log()), copySelection: { "copied from page" })
+            app, copy: reader([:], log: Log()), copySelection: { "copied from page" })
         let captured = try? result.get()
         #expect(captured?.text == "copied from page")
-        #expect(captured?.source.text == "copied from page")
+        #expect(captured?.range == nil)
         #expect(captured.map { CFEqual($0.element, field) } == true)
     }
 
@@ -188,7 +183,7 @@ struct SelectionBridgeTests {
     @Test func copyFallbackIsSkippedForASecureField() {
         let called = Mutex(false)
         let result = SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader([kAXSubroleAttribute: kAXSecureTextFieldSubrole as CFString], log: Log()),
             copySelection: {
                 called.withLock { $0 = true }
@@ -202,7 +197,7 @@ struct SelectionBridgeTests {
     @Test func copyFallbackIsSkippedWhenTheSearchSucceeds() {
         let called = Mutex(false)
         let result = SelectionBridge.capture(
-            app, pid: 9,
+            app,
             copy: reader([kAXSelectedTextAttribute: "accessibility text" as CFString], log: Log()),
             copySelection: {
                 called.withLock { $0 = true }
@@ -236,7 +231,8 @@ struct SelectionBridgeTests {
     @Test @MainActor func directWriteIsUsedWhenTheElementAcceptsIt() async {
         let pasted = Mutex(false)
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
+            with: "你好",
             seams: seams(write: { _, _ in true }, press: { pasted.withLock { $0 = true } }))
         #expect(outcome == .written)
         #expect(pasted.withLock { $0 } == false)
@@ -247,7 +243,8 @@ struct SelectionBridgeTests {
         let pasted = Mutex(false)
         let fake = FakePasteboard("user text")
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
+            with: "你好",
             seams: seams(
                 write: { _, _ in false },
                 press: { pasted.withLock { $0 = true } },
@@ -262,7 +259,8 @@ struct SelectionBridgeTests {
         let pasted = Mutex(false)
         let fake = FakePasteboard("user text")
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
+            with: "你好",
             seams: seams(
                 write: { _, _ in false },
                 activate: { _ in false },
@@ -275,7 +273,8 @@ struct SelectionBridgeTests {
 
     @Test @MainActor func replaceRefusesWithoutAccessibilityPermission() async {
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
+            with: "你好",
             seams: SelectionBridge.WritebackSeams(trusted: { false }))
         #expect(outcome == .refused)
     }
@@ -328,7 +327,7 @@ struct SelectionBridgeTests {
     }
 
     @Test func missingFocusedElementIsUnreadable() {
-        let result = SelectionBridge.capture(app, pid: 9, copy: { _, _ in nil })
+        let result = SelectionBridge.capture(app, copy: { _, _ in nil })
         #expect(result.map(\.text) == .failure(.unreadable))
     }
 }

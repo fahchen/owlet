@@ -2,16 +2,13 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// 快捷键 page body (design/screenshots/shortcuts.png): global recorders, then fixed in-app keys.
+/// 快捷键 page body (design/screenshots/shortcuts.png): global recorders, then the panel's fixed keys.
 struct ShortcutSettingsView: View {
     let controller: ShortcutController
     @State private var recording: ShortcutAction?
 
     /// Prototype order: 翻译, 润色, 翻译并替换.
     private static let order: [ShortcutAction] = [.translate, .polish, .translateReplace]
-    private static let inApp = [
-        ("提交文本", "⌘ ↩", "应用内"), ("替换结果", "⌘ ↩", "浮动工具栏"), ("关闭 / 取消", "Esc", "浮动工具栏"),
-    ]
 
     var body: some View {
         Form {
@@ -40,22 +37,27 @@ struct ShortcutSettingsView: View {
                 notice
             }
             Section {
-                ForEach(Self.inApp, id: \.0) { name, keys, scope in
+                ForEach(PanelKey.all, id: \.keys) { key in
                     LabeledContent {
-                        Text(keys).monospacedDigit()
+                        Text(key.keys).monospacedDigit()
                     } label: {
-                        Text(name)
-                        Text(scope)
+                        Text(key.title)
+                        Text(key.scope)
                     }
                 }
             } header: {
-                Text("应用内")
+                Text("面板内")
             } footer: {
-                Text("录制后立即生效").foregroundStyle(.secondary)
+                panelKeyNotice
             }
         }
         .formStyle(.grouped)
         .navigationTitle("快捷键")
+    }
+
+    private var panelKeyNotice: some View {
+        Text("面板打开时这些键始终生效，且不能更改；上面三个快捷键由你录制。")
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder private var notice: some View {

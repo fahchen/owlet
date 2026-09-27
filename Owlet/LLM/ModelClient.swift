@@ -83,21 +83,28 @@ struct ModelClient: Sendable {
             \(operation.prompt)
 
             \(task)
-            Respond with one JSON object with keys source_language, target_language and segments \
+            Respond with one json object with keys source_language, target_language and segments \
             (array of {source, target}). Concatenated sources must equal the user message exactly.
+            Example json: {"source_language":"en","target_language":"zh-Hans",\
+            "segments":[{"source":"...","target":"..."}]}
             """
-        let body: [String: Any] = [
-            "model": config.model,
-            "messages": [
-                ["role": "system", "content": system], ["role": "user", "content": text],
-            ],
-            "response_format": [
+        // Without schema support the prompt above must mention "json" and spell out the shape.
+        let responseFormat: [String: Any] =
+            !config.provider.supportsJSONSchema
+            ? ["type": "json_object"]
+            : [
                 "type": "json_schema",
                 "json_schema": [
                     "name": operation == .translate ? "translation" : "polish", "strict": true,
                     "schema": TranslationResult.providerSchema,
                 ],
+            ]
+        let body: [String: Any] = [
+            "model": config.model,
+            "messages": [
+                ["role": "system", "content": system], ["role": "user", "content": text],
             ],
+            "response_format": responseFormat,
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request

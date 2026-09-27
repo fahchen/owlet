@@ -47,6 +47,35 @@ func chatBody(_ content: String, finishReason: String = "stop", refusal: String?
     #expect(!String(decoding: schema, as: UTF8.self).contains("minLength"))
 }
 
+@Test func deepSeekUsesJSONObjectFormat() throws {
+    let config = ServiceConfig(
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-chat", apiKey: "k",
+        provider: .deepSeek)
+    let request = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: config)
+    #expect(request.url?.absoluteString == "https://api.deepseek.com/chat/completions")
+    let json = try #require(
+        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+    #expect((json["response_format"] as? [String: String]) == ["type": "json_object"])
+    let messages = try #require(json["messages"] as? [[String: String]])
+    #expect(messages.first?["content"]?.contains("json") == true)
+}
+
+@Test func deepSeekPresetMatchesDocs() {
+    #expect(Provider.deepSeek.preset?.baseURL == "https://api.deepseek.com")
+    #expect(Provider.openAICompatible.preset == nil)
+    #expect(Provider.openAICompatible.keychainAccount == "default")
+}
+
+@Test func deepSeekResponseParses() async throws {
+    let content = #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Hi","target":"你好"}]}"#
+    let client = ModelClient(transport: stub(body: chatBody(content)))
+    let config = ServiceConfig(
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-chat", apiKey: "k",
+        provider: .deepSeek)
+    #expect(try await client.translate("Hi", to: "zh-Hans", config: config) == "你好")
+}
+
 @Test func unauthorizedMapsToAuthError() async {
     let client = ModelClient(transport: stub(status: 401, body: "{}"))
     await #expect(throws: ModelError.unauthorized) {

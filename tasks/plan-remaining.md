@@ -8,16 +8,18 @@
 
 | 任务 | 现状 | 证据 | 剩余缺口 |
 |---|---|---|---|
-| T08 手动收藏与生词本列表 | 已实现 | `Owlet/Vocabulary/`、`OwletTests/Vocabulary/VocabularyStoreTests.swift` | 搜索／筛选／导出属 T09 |
-| T09 收藏管理与导出 | 已实现 | `Owlet/Vocabulary/VocabularyExport.swift`、`VocabularyExportTests.swift` | 重复表达追加语境属 T11 |
+| T08 手动收藏与生词本列表 | 已实现（已勾选） | `Owlet/Vocabulary/`、`OwletTests/Vocabulary/VocabularyStoreTests.swift` | 搜索／筛选／导出属 T09 |
+| T09 收藏管理与导出 | 已实现（已勾选） | `Owlet/Vocabulary/VocabularyExport.swift`、`VocabularyExportTests.swift` | 重复表达追加语境属 T11 |
 | T12 自定义 System Prompt | 已实现 | `Owlet/Settings/PromptSettingsView.swift`、`OwletTests/Settings/Prompt*Tests.swift` | 无 |
-| T15 持久化历史及详情 | 已实现 | `Owlet/History/`、`OwletTests/History/HistoryStoreTests.swift` | 搜索／删除属 T16 |
+| T15 持久化历史及详情 | 已实现（已勾选） | `Owlet/History/`、`OwletTests/History/HistoryStoreTests.swift` | 搜索／删除属 T16 |
 | T18 退役自定义令牌与按钮样式 | 已实现 | `Owlet/` 内没有自定义颜色令牌 | 无 |
 | T20 主窗口改 NavigationSplitView | 已实现 | `Owlet/App/OwletApp.swift` | 无 |
 | T19 设置改为独立 Settings 窗口 | **已否决** | 应用与设计都把设置作为主窗口侧栏页面 | 保持否决，见未实现清单 |
 | T23 列表、搜索与空状态 | 部分 | 生词本的搜索与空状态已实现 | 历史搜索属 T16 |
 
 ## 二、实现任务（按依赖排序，括号是并行轮次）
+
+已完成：T08、T09、T10、T12、T15、T16、T18、T20，以及 Dock 图标。下表只剩未完成项。
 
 1. **T14 翻译显示方式**（第 1 轮）：分区／逐句对照，保存后持久化，窗口与浮层共用；切换显示不重新请求；复制与替换只输出译文。落地后 `aligned` 徽标取消。
 2. **T10 学习表达与收藏**（第 1 轮，与 T14 冲突同一批文件则串行）：学习区块在**浮层与应用窗口都出现**，含展开、整理中、生成失败、无推荐；勾选条目后入库并给出反馈；缺少中文释义时补充、失败可重试。**同时删除 `收藏选中内容` 动作**（`ExpandedPanel.swift` 与 `TranslationView.swift` 各一处，设计与文档各一处），并清掉 `TranslationView.swift` 里那句 "Reserved for the unbuilt 学习表达 disclosure" 占位注释。落地后 `learning*`、`saved` 徽标取消。

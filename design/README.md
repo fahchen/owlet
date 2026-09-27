@@ -29,6 +29,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [workspace-polish.png](screenshots/workspace-polish.png) | 文本处理 · 润色结果 | 同一页面切到润色：标签改为润色结果与保留原意。 |
 | [workspace-error.png](screenshots/workspace-error.png) | 文本处理 · 请求失败 | 行内提示 ModelError 的原始文案，并提供服务设置入口。 |
 | [workspace-unconfigured.png](screenshots/workspace-unconfigured.png) | 文本处理 · 服务未配置 | 缺少服务配置时提示并指向设置。 |
+| [workspace-learning.png](screenshots/workspace-learning.png) | 文本处理 · 学习表达 | 结果下方的学习表达区块：勾选推荐后主动入库。 |
 | [workspace-collapsed.png](screenshots/workspace-collapsed.png) | 文本处理 · 侧栏收起 | NavigationSplitView 收起侧栏后页面不变。 |
 | [shortcuts.png](screenshots/shortcuts.png) | 快捷键 · 未设置 | 三个全局动作未录制；面板内固定键只读。 |
 | [shortcuts-recording.png](screenshots/shortcuts-recording.png) | 快捷键 · 录制中 | 录制按钮等待新组合键；Esc 取消，Delete 清除。 |

@@ -10,12 +10,7 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 生词本：词汇／短语／整句收藏、列表、详情、搜索、语言筛选、编辑、删除、导出 | 个人生词本（收藏行为见 学习内容与收藏） | [book-list](../design/screenshots/book-list.png)、[book-detail](../design/screenshots/book-detail.png)、[book-empty](../design/screenshots/book-empty.png)、[no-results](../design/screenshots/no-results.png) | T08、T09、T11 |
-| 历史记录：列表、详情、搜索、按翻译／润色筛选、删除单条、清空全部、从历史收藏 | 历史记录 | [history-list](../design/screenshots/history-list.png)、[history-detail](../design/screenshots/history-detail.png)、[history-empty](../design/screenshots/history-empty.png) | T15、T16、T17 |
-| 学习表达：展开、整理中、生成失败、无推荐、勾选入库、自动请求开关 | 学习内容与收藏 | [learning](../design/screenshots/learning.png)、[learning-loading](../design/screenshots/learning-loading.png)、[learning-error](../design/screenshots/learning-error.png)、[learning-empty](../design/screenshots/learning-empty.png)、[saved](../design/screenshots/saved.png) | T10、T13 |
-| 收藏选中内容：手选原文／结果片段收藏 | 学习内容与收藏 | —（无独立画面；就地反馈并入学习区块的 [saved](../design/screenshots/saved.png)） | T08 |
 | 翻译显示方式 · 逐句对照：原文／译文按语义配对显示 | 翻译 | [aligned](../design/screenshots/aligned.png) | T14 |
-| System Prompt 查看／编辑／保存／恢复默认 | 模型与数据设置 | [settings-prompts](../design/screenshots/settings-prompts.png) | T12 |
 | 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
 | 内容区响应式的原文／译文两栏并排（实现为单列 `VStack`） | 两种界面形态（布局细节见 `spec/DESIGN.md › 布局约束`） | [workspace-narrow](../design/screenshots/workspace-narrow.png)（窄窗口下的堆叠分支；宽窗口并排尚未出图） | T22 |
 | 处理中的整圈边框呼吸（实现只用 `ProgressView`） | 两种界面形态 | —（仍无画面） | T24 |

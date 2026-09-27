@@ -21,7 +21,8 @@ final class PanelController {
     /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
     private(set) var autoReplace = false
     let model: TranslationModel
-    var read: () -> Result<Selection, SelectionError> = SelectionBridge.read
+    var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void =
+        SelectionBridge.read
     var write: (Selection, String) -> Bool = SelectionBridge.replace
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
@@ -29,15 +30,32 @@ final class PanelController {
     private var panel: FloatingPanel?
     /// Guards against a superseded request acting on a newer result.
     private var requestID = 0
+    /// Operation whose selection read is still outstanding.
+    private var readingID: Int?
 
     init(model: TranslationModel) {
         self.model = model
     }
 
-    /// Captures source and selection before showing anything, then translates.
+    /// Invalidates the previous operation, then captures the selection before showing anything.
+    /// A read that misses the budget, or lands after a newer trigger or close, is ignored.
     func trigger(_ operation: Operation = .translate, replace: Bool = false) {
-        let result = read()
+        requestID += 1
+        let id = requestID
+        readingID = id
         model.cancel()
+        read { [weak self] in self?.accept($0, id: id, operation: operation, replace: replace) }
+        Task { [weak self] in
+            try? await Task.sleep(for: SelectionBridge.budget)
+            self?.accept(.failure(.unreadable), id: id, operation: operation, replace: replace)
+        }
+    }
+
+    private func accept(
+        _ result: Result<Selection, SelectionError>, id: Int, operation: Operation, replace: Bool
+    ) {
+        guard id == requestID, readingID == id else { return }
+        readingID = nil
         model.operation = operation
         autoReplace = replace
         selection = nil
@@ -169,6 +187,11 @@ private struct PanelView: View {
 
     @ViewBuilder private var compact: some View {
         HStack {
+            Image("OwletMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+                .accessibilityLabel("Owlet")
             switch controller.notice {
             case .translating, nil:
                 ProgressView().controlSize(.small)

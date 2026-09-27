@@ -27,7 +27,7 @@ struct PanelControllerTests {
         let panel = PanelController(model: model)
         let writes = Box()
         let selection = selection
-        panel.read = { .success(selection) }
+        panel.read = { $0(.success(selection)) }
         panel.write = { _, text in
             writes.texts.append(text)
             return writable
@@ -104,11 +104,59 @@ struct PanelControllerTests {
 
     @Test func noSelectionDoesNotWrite() async {
         let (panel, writes) = makePanel()
-        panel.read = { .failure(.unreadable) }
+        panel.read = { $0(.failure(.unreadable)) }
         panel.trigger(replace: true)
         await settle()
         #expect(writes.texts.isEmpty)
         #expect(panel.notice == .unreadable)
+        panel.close()
+    }
+
+    typealias Completion = @MainActor (Result<Selection, SelectionError>) -> Void
+    final class Reads { var completions: [Completion] = [] }
+
+    func deferredReads(_ panel: PanelController) -> Reads {
+        let reads = Reads()
+        panel.read = { reads.completions.append($0) }
+        return reads
+    }
+
+    @Test func readPastBudgetIsUnreadable() async {
+        let (panel, _) = makePanel()
+        _ = deferredReads(panel)
+        panel.trigger()
+        #expect(panel.notice == nil)
+        try? await Task.sleep(for: .milliseconds(250))
+        #expect(panel.notice == .unreadable)
+        panel.close()
+    }
+
+    @Test func lateReadAfterTimeoutOrCloseIsIgnored() async {
+        let (panel, writes) = makePanel()
+        let reads = deferredReads(panel)
+        panel.trigger(.polish, replace: true)
+        try? await Task.sleep(for: .milliseconds(250))
+        panel.close()
+        reads.completions[0](.success(selection))
+        await settle()
+        #expect(panel.selection == nil)
+        #expect(panel.model.input.isEmpty)
+        #expect(panel.notice == nil)
+        #expect(writes.texts.isEmpty)
+    }
+
+    @Test func rapidTriggersAcceptOnlyLatestRead() async {
+        let (panel, writes) = makePanel()
+        let reads = deferredReads(panel)
+        panel.trigger(replace: true)
+        panel.trigger()
+        reads.completions[1](.failure(.unreadable))
+        reads.completions[0](.success(selection))
+        await settle()
+        #expect(panel.notice == .unreadable)
+        #expect(panel.selection == nil)
+        #expect(panel.model.input.isEmpty)
+        #expect(writes.texts.isEmpty)
         panel.close()
     }
 }

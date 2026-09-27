@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Synchronization
 
 enum SelectionError: Error, Equatable {
     case permission
@@ -33,14 +34,39 @@ enum SelectionBridge {
     /// Copies one AX attribute; injectable so tests can observe which attributes are read.
     typealias Reader = (AXUIElement, String) -> AnyObject?
 
-    static func read() -> Result<Selection, SelectionError> {
-        guard AXIsProcessTrusted() else { return .failure(.permission) }
+    /// AX messaging timeout per call and total budget from trigger; engineering values.
+    static let messagingTimeout: Float = 0.1
+    static let budget: Duration = .milliseconds(150)
+    private static let worker = SerialLatest()
+
+    /// Reads the selection off the main thread; `completion` runs on main, only if the
+    /// frontmost app is still the one read. Past `budget` AX steps are skipped.
+    @MainActor static func read(completion: @escaping @MainActor (Result<Selection, SelectionError>) -> Void) {
+        guard AXIsProcessTrusted() else { return completion(.failure(.permission)) }
         guard let app = NSWorkspace.shared.frontmostApplication,
             app.processIdentifier != ProcessInfo.processInfo.processIdentifier
-        else { return .failure(.unreadable) }
+        else { return completion(.failure(.unreadable)) }
         let pid = app.processIdentifier
-        return capture(AXUIElementCreateApplication(pid), pid: pid, copy: copy).map {
-            Selection(text: $0.text, element: $0.element, app: app, source: $0.source)
+        let deadline = ContinuousClock.now + budget
+        worker.submit {
+            let appElement = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(appElement, messagingTimeout)
+            let bounded: Reader = { element, attribute in
+                ContinuousClock.now < deadline ? copy(element, attribute) : nil
+            }
+            // AX handles stay with this one operation; handed to main exactly once.
+            nonisolated(unsafe) let result = capture(appElement, pid: pid, copy: bounded)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+                        return completion(.failure(.unreadable))
+                    }
+                    completion(
+                        result.map {
+                            Selection(text: $0.text, element: $0.element, app: app, source: $0.source)
+                        })
+                }
+            }
         }
     }
 
@@ -124,5 +150,37 @@ enum SelectionBridge {
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success
         else { return nil }
         return value
+    }
+}
+
+/// Serial queue that keeps at most one running job and one latest pending; a newer
+/// submit replaces the pending one so rapid triggers never queue up.
+final class SerialLatest: Sendable {
+    private let queue = DispatchQueue(label: "owlet.selection")
+    private let state = Mutex<(running: Bool, pending: (@Sendable () -> Void)?)>((false, nil))
+
+    func submit(_ job: @escaping @Sendable () -> Void) {
+        let start = state.withLock { state in
+            if state.running {
+                state.pending = job
+                return false
+            }
+            state.running = true
+            return true
+        }
+        if start { run(job) }
+    }
+
+    private func run(_ job: @escaping @Sendable () -> Void) {
+        queue.async {
+            job()
+            let next = self.state.withLock { state in
+                let next = state.pending
+                state.pending = nil
+                state.running = next != nil
+                return next
+            }
+            if let next { self.run(next) }
+        }
     }
 }

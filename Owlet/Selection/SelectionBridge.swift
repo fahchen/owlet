@@ -16,7 +16,8 @@ enum ReplaceOutcome: Equatable {
     /// The element refuses direct writes (non-editable text in a web page or PDF), so the text
     /// was pasted over the selection with a synthesized ⌘V.
     case pasted
-    /// Nothing changed: the selection moved, or its element could not be reached.
+    /// Nothing changed: no running owning app, no accessibility permission, or the app would not
+    /// come forward for the paste.
     case refused
 }
 
@@ -30,7 +31,7 @@ struct Selection {
     var bounds: CGRect? = nil
 }
 
-/// Comparable facts about where a selection lives, re-checked before writing back.
+/// Where a selection lives, kept to identify the owning app and to place the panel.
 struct Source: Equatable {
     let pid: pid_t?
     let document: String?
@@ -49,6 +50,49 @@ enum SelectionBridge {
 
     /// String behind a WebKit text marker range; injectable so tests never send real AX messages.
     typealias MarkerString = @Sendable (AXUIElement, AnyObject) -> String?
+
+    /// Presses ⌘C and returns what the app copied, or nil when nothing new arrived; injectable so
+    /// tests never post real key events.
+    typealias CopySelection = () -> String?
+
+    /// Presses ⌘V; injectable so tests never post real key events.
+    typealias PasteSelection = () -> Void
+
+    /// Pasteboard seam for the copy and paste fallbacks, so tests never touch the real pasteboard.
+    struct Pasteboard: Sendable {
+        var changeCount: @Sendable () -> Int
+        var string: @Sendable () -> String?
+        var write: @Sendable (String) -> Void
+        var snapshot: @Sendable () -> [[NSPasteboard.PasteboardType: Data]]
+        var restore: @Sendable ([[NSPasteboard.PasteboardType: Data]]) -> Void
+
+        /// The system pasteboard; every call reads `NSPasteboard.general` fresh so no handle is shared.
+        static let system = Pasteboard(
+            changeCount: { NSPasteboard.general.changeCount },
+            string: { NSPasteboard.general.string(forType: .string) },
+            write: { text in
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(text, forType: .string)
+            },
+            snapshot: { SelectionBridge.snapshot(NSPasteboard.general) },
+            restore: { SelectionBridge.restore($0, to: NSPasteboard.general) })
+    }
+
+    /// Effect seams for one write-back, so tests can drive the decision without accessibility
+    /// messages, a real pasteboard or real key events.
+    struct WritebackSeams {
+        var trusted: () -> Bool = { AXIsProcessTrusted() }
+        var write: @MainActor (AXUIElement, String) -> Bool = {
+            SelectionBridge.writeThroughAccessibility($0, $1)
+        }
+        var activate: @MainActor (NSRunningApplication) async -> Bool = {
+            await SelectionBridge.bringForward($0)
+        }
+        var press: PasteSelection = SelectionBridge.pasteSelection()
+        var pasteboard: Pasteboard = .system
+        var settle: Duration = .milliseconds(350)
+    }
 
     /// AX messaging timeout per call and total budget from trigger; engineering values. The
     /// budget has to cover a browser or Electron app building its accessibility tree on request,
@@ -84,7 +128,8 @@ enum SelectionBridge {
                 ContinuousClock.now < deadline ? copy(element, attribute) : nil
             }
             // AX handles stay with this one operation; handed to main exactly once.
-            nonisolated(unsafe) let result = capture(appElement, pid: pid, copy: bounded)
+            nonisolated(unsafe) let result = capture(
+                appElement, pid: pid, copy: bounded, copySelection: copySelection())
             let rect: CGRect? =
                 if wantsBounds, ContinuousClock.now < deadline, case .success(let captured) = result {
                     selectionBounds(captured.element, source: captured.source)
@@ -108,10 +153,12 @@ enum SelectionBridge {
 
     /// Reads the focused element of `appElement`, checking the secure subrole before any text is
     /// touched, then searches outwards for the selection and reuses the single text read for
-    /// `Source.text`.
+    /// `Source.text`. `copySelection` is the ⌘C fallback, run only when the search finds nothing
+    /// and the field is known not to be secure.
     static func capture(
         _ appElement: AXUIElement, pid: pid_t, copy: Reader,
-        marker: MarkerString = SelectionBridge.markerString
+        marker: MarkerString = SelectionBridge.markerString,
+        copySelection: CopySelection? = nil
     ) -> Result<(text: String, element: AXUIElement, source: Source), SelectionError> {
         guard let element = focusedElement(appElement, copy: copy) else {
             return .failure(.unreadable)
@@ -119,11 +166,14 @@ enum SelectionBridge {
         let subrole = copy(element, kAXSubroleAttribute)
         if let subrole, !(subrole is String) { return .failure(.unreadable) }
         if subrole as? String == kAXSecureTextFieldSubrole { return .failure(.secure) }
-        guard let found = search(element, copy: copy, marker: marker) else {
-            return .failure(.unreadable)
+        if let found = search(element, copy: copy, marker: marker) {
+            return classify(trusted: true, subrole: nil, text: found.text).map { text in
+                (text, found.element, source(found.element, pid: pid, text: text, copy: copy))
+            }
         }
-        return classify(trusted: true, subrole: nil, text: found.text).map { text in
-            (text, found.element, source(found.element, pid: pid, text: text, copy: copy))
+        guard let copied = copySelection?() else { return .failure(.unreadable) }
+        return classify(trusted: true, subrole: nil, text: copied).map { text in
+            (text, element, source(element, pid: pid, text: text, copy: copy))
         }
     }
 
@@ -223,67 +273,56 @@ enum SelectionBridge {
         return unsafeDowncast(value, to: AXUIElement.self)
     }
 
-    /// Writes `text` over the original selection once, preferring a direct accessibility write and
-    /// falling back to a paste when the element refuses one. Refuses without writing if the
-    /// selection moved in the meantime.
+    /// Writes `text` over the selection once using the real accessibility API and pasteboard.
     @MainActor static func replace(_ selection: Selection, with text: String) async -> ReplaceOutcome {
-        guard AXIsProcessTrusted() else { return .refused }
+        await replace(selection, with: text, seams: WritebackSeams())
+    }
+
+    /// Writes `text` over the selection once: a direct accessibility write when the element accepts
+    /// one (fast, touches no pasteboard), otherwise a paste. Refuses only when there is no running
+    /// owning app, no accessibility permission, or the app will not come forward.
+    @MainActor static func replace(
+        _ selection: Selection, with text: String,
+        seams: WritebackSeams
+    ) async -> ReplaceOutcome {
+        guard seams.trusted() else { return .refused }
         // The app that owned the selection, not the frontmost app: the panel is key while the
         // user clicks, so the frontmost app can be Owlet itself.
-        guard let app = selection.app ?? NSWorkspace.shared.frontmostApplication else {
-            return .refused
-        }
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        AXUIElementSetMessagingTimeout(appElement, messagingTimeout)
-        guard let element = focusedElement(appElement, copy: copy) else {
-            return .refused
-        }
-        let direct = copy(element, kAXSubroleAttribute) as? String
-        if direct == kAXSecureTextFieldSubrole { return .refused }
-        let current = source(
-            element, pid: app.processIdentifier,
-            text: copy(element, kAXSelectedTextAttribute) as? String, copy: copy)
-        let sameElement = CFEqual(element, selection.element)
-        if canReplace(original: selection.source, current: current, sameElement: sameElement),
-            AXUIElementSetAttributeValue(
-                element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
-        {
-            return .written
-        }
-        guard canPaste(original: selection.source, current: current, sameElement: sameElement) else {
-            return .refused
-        }
-        return await paste(text, to: app) ? .pasted : .refused
+        guard let app = selection.app ?? NSWorkspace.shared.frontmostApplication,
+            !app.isTerminated
+        else { return .refused }
+        if seams.write(selection.element, text) { return .written }
+        return await paste(text, to: app, seams: seams) ? .pasted : .refused
     }
 
-    /// Pasting may only go ahead when the same element still holds the same text. A non-editable
-    /// selection has no range to compare, so the text itself is the whole check.
-    static func canPaste(original: Source, current: Source, sameElement: Bool) -> Bool {
-        sameElement && original.text.map(isNotBlank) == true && original.text == current.text
+    /// Direct accessibility write; false when the element refuses, which is the case for a
+    /// non-editable page or PDF selection.
+    static func writeThroughAccessibility(_ element: AXUIElement, _ text: String) -> Bool {
+        timed(element)
+        return AXUIElementSetAttributeValue(
+            element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
     }
 
-    /// Puts `text` on the clipboard, brings `app` forward and presses ⌘V, then hands the previous
-    /// clipboard back once the paste has landed.
-    @MainActor private static func paste(_ text: String, to app: NSRunningApplication) async -> Bool {
-        let pasteboard = NSPasteboard.general
-        let saved = snapshot(pasteboard)
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        guard await activate(app) else {
-            restore(saved, to: pasteboard)
+    /// Puts `text` on the pasteboard, brings `app` forward and presses ⌘V, then hands the previous
+    /// pasteboard back; false without a paste when the app never came forward.
+    @MainActor private static func paste(
+        _ text: String, to app: NSRunningApplication, seams: WritebackSeams
+    ) async -> Bool {
+        let saved = seams.pasteboard.snapshot()
+        seams.pasteboard.write(text)
+        guard await seams.activate(app) else {
+            seams.pasteboard.restore(saved)
             return false
         }
-        postCommandV()
-        // The target app reads the clipboard asynchronously; give it a moment before restoring.
-        Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            restore(saved, to: pasteboard)
-        }
+        seams.press()
+        // The target app reads the pasteboard asynchronously; hold the result only long enough for it.
+        try? await Task.sleep(for: seams.settle)
+        seams.pasteboard.restore(saved)
         return true
     }
 
-    /// Waits for `app` to become frontmost; ⌘V must not be posted anywhere else.
-    @MainActor private static func activate(_ app: NSRunningApplication) async -> Bool {
+    /// Waits for `app` to become frontmost; a synthetic ⌘V must not be posted anywhere else.
+    @MainActor static func bringForward(_ app: NSRunningApplication) async -> Bool {
         if NSWorkspace.shared.frontmostApplication?.processIdentifier != app.processIdentifier {
             _ = app.activate()
         }
@@ -296,11 +335,47 @@ enum SelectionBridge {
         return false
     }
 
-    /// Keycode 9 is the V key in every layout; modifiers are the same Command-V every app knows.
-    private static func postCommandV() {
+    /// Real ⌘V press; the caller owns placing the result on the pasteboard.
+    static func pasteSelection() -> PasteSelection { pressCommandV }
+
+    /// Real ⌘C read: keeps the previous pasteboard, presses ⌘C, waits briefly for the pasteboard to
+    /// change and hands the previous contents back; nil and no copy when nothing changed.
+    static func copySelection(
+        pasteboard: Pasteboard = .system,
+        press: @escaping () -> Void = pressCommandC,
+        sleep: @escaping () -> Void = { Thread.sleep(forTimeInterval: 0.02) }
+    ) -> CopySelection {
+        {
+            let before = pasteboard.changeCount()
+            let saved = pasteboard.snapshot()
+            press()
+            var copied: String?
+            for _ in 0..<copyAttempts {
+                if pasteboard.changeCount() != before, let text = pasteboard.string(), isNotBlank(text) {
+                    copied = text
+                    break
+                }
+                sleep()
+            }
+            pasteboard.restore(saved)
+            return copied
+        }
+    }
+
+    /// Twenty 20 ms polls: a slow app yields nothing and the worker never waits longer than 400 ms.
+    private static let copyAttempts = 20
+
+    /// Synthetic ⌘C; keycode 8 is the C key in every layout.
+    static func pressCommandC() { postCommand(keyCode: 8) }
+
+    /// Synthetic ⌘V; keycode 9 is the V key in every layout.
+    static func pressCommandV() { postCommand(keyCode: 9) }
+
+    /// Posts one Command-modified key down and up at the annotated session tap.
+    private static func postCommand(keyCode: CGKeyCode) {
         let source = CGEventSource(stateID: .combinedSessionState)
         for isDown in [true, false] {
-            guard let event = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: isDown)
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: isDown)
             else { continue }
             event.flags = .maskCommand
             event.post(tap: .cgAnnotatedSessionEventTap)
@@ -348,10 +423,6 @@ enum SelectionBridge {
             rect.width > 0 || rect.height > 0
         else { return nil }
         return rect
-    }
-
-    static func canReplace(original: Source, current: Source, sameElement: Bool) -> Bool {
-        sameElement && original.text != nil && original.location != nil && original == current
     }
 
     private static func source(_ element: AXUIElement, pid: pid_t?, text: String?, copy: Reader)

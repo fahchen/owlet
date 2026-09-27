@@ -1,4 +1,6 @@
+import AppKit
 import ApplicationServices
+import Synchronization
 import Testing
 
 @testable import Owlet
@@ -24,31 +26,6 @@ struct SelectionBridgeTests {
     }
 
     let source = Source(pid: 1, document: "file:///a", text: "Hello", location: 3, length: 5)
-
-    @Test func unchangedSourceCanBeReplaced() {
-        #expect(SelectionBridge.canReplace(original: source, current: source, sameElement: true))
-    }
-
-    @Test func mismatchedSourceIsRefused() {
-        #expect(!SelectionBridge.canReplace(original: source, current: source, sameElement: false))
-        let otherApp = Source(pid: 2, document: "file:///a", text: "Hello", location: 3, length: 5)
-        #expect(!SelectionBridge.canReplace(original: source, current: otherApp, sameElement: true))
-        let unknown = Source(pid: 1, document: nil, text: nil, location: nil, length: nil)
-        #expect(!SelectionBridge.canReplace(original: unknown, current: unknown, sameElement: true))
-    }
-
-    @Test func changedDocumentOrTextIsRefused() {
-        let doc = Source(pid: 1, document: "file:///b", text: "Hello", location: 3, length: 5)
-        let edited = Source(pid: 1, document: "file:///a", text: "Hallo", location: 3, length: 5)
-        #expect(!SelectionBridge.canReplace(original: source, current: doc, sameElement: true))
-        #expect(!SelectionBridge.canReplace(original: source, current: edited, sameElement: true))
-    }
-
-    /// After a write-back the selection holds the result, so a second attempt is refused.
-    @Test func repeatedReplaceIsRefused() {
-        let after = Source(pid: 1, document: "file:///a", text: "你好", location: 3, length: 2)
-        #expect(!SelectionBridge.canReplace(original: source, current: after, sameElement: true))
-    }
 
     // Distinct opaque AX handles; the injected reader never sends them real AX messages.
     let app = AXUIElementCreateApplication(1)
@@ -196,24 +173,158 @@ struct SelectionBridgeTests {
 
     // MARK: Write-back
 
-    /// A non-editable selection has no range to compare, so the text itself is the whole check.
-    @Test func nonEditableSelectionCanBePasted() {
-        let original = Source(pid: 1, document: nil, text: "Hello", location: nil, length: nil)
-        #expect(SelectionBridge.canPaste(original: original, current: original, sameElement: true))
+    /// Page and PDF selections answer no accessibility attribute, so a ⌘C read is the only way to
+    /// reach them; its text must reach the caller like an accessibility read would.
+    @Test func copyFallbackReadsWhenTheSearchFindsNothing() {
+        let result = SelectionBridge.capture(
+            app, pid: 9, copy: reader([:], log: Log()), copySelection: { "copied from page" })
+        let captured = try? result.get()
+        #expect(captured?.text == "copied from page")
+        #expect(captured?.source.text == "copied from page")
+        #expect(captured.map { CFEqual($0.element, field) } == true)
     }
 
-    @Test func pasteRefusedWhenTheSelectionMoved() {
-        let original = Source(pid: 1, document: nil, text: "Hello", location: nil, length: nil)
-        let moved = Source(pid: 1, document: nil, text: "World", location: nil, length: nil)
-        let blank = Source(pid: 1, document: nil, text: "  ", location: nil, length: nil)
-        #expect(!SelectionBridge.canPaste(original: original, current: moved, sameElement: true))
-        #expect(!SelectionBridge.canPaste(original: original, current: original, sameElement: false))
-        #expect(!SelectionBridge.canPaste(original: blank, current: blank, sameElement: true))
-        #expect(
-            !SelectionBridge.canPaste(
-                original: Source(pid: 1, document: nil, text: nil, location: nil, length: nil),
-                current: Source(pid: 1, document: nil, text: nil, location: nil, length: nil),
-                sameElement: true))
+    /// A field known to be secure never reaches the fallback, so ⌘C is never pressed there.
+    @Test func copyFallbackIsSkippedForASecureField() {
+        let called = Mutex(false)
+        let result = SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader([kAXSubroleAttribute: kAXSecureTextFieldSubrole as CFString], log: Log()),
+            copySelection: {
+                called.withLock { $0 = true }
+                return "pw"
+            })
+        #expect(result.map(\.text) == .failure(.secure))
+        #expect(called.withLock { $0 } == false)
+    }
+
+    /// An accessibility read is authoritative, so the fallback must not press ⌘C over it.
+    @Test func copyFallbackIsSkippedWhenTheSearchSucceeds() {
+        let called = Mutex(false)
+        let result = SelectionBridge.capture(
+            app, pid: 9,
+            copy: reader([kAXSelectedTextAttribute: "accessibility text" as CFString], log: Log()),
+            copySelection: {
+                called.withLock { $0 = true }
+                return "pasteboard text"
+            })
+        #expect(result.map(\.text) == .success("accessibility text"))
+        #expect(called.withLock { $0 } == false)
+    }
+
+    /// The ⌘C read hands the user's own pasteboard back and keeps nothing.
+    @Test func copyFallbackRestoresThePreviousPasteboard() {
+        let fake = FakePasteboard("user text")
+        let seam = fake.seam()
+        let copy = SelectionBridge.copySelection(
+            pasteboard: seam,
+            press: { seam.write("copied text") },
+            sleep: {})
+        #expect(copy() == "copied text")
+        #expect(fake.text == "user text")
+    }
+
+    /// A copy that changes nothing yields no text and leaves the pasteboard alone.
+    @Test func copyFallbackWithoutANewCopyIsNil() {
+        let fake = FakePasteboard("user text")
+        let copy = SelectionBridge.copySelection(
+            pasteboard: fake.seam(), press: {}, sleep: {})
+        #expect(copy() == nil)
+        #expect(fake.text == "user text")
+    }
+
+    @Test @MainActor func directWriteIsUsedWhenTheElementAcceptsIt() async {
+        let pasted = Mutex(false)
+        let outcome = await SelectionBridge.replace(
+            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            seams: seams(write: { _, _ in true }, press: { pasted.withLock { $0 = true } }))
+        #expect(outcome == .written)
+        #expect(pasted.withLock { $0 } == false)
+    }
+
+    /// A page or PDF selection refuses a direct write, so the result goes through the pasteboard.
+    @Test @MainActor func pasteIsUsedWhenTheDirectWriteFails() async {
+        let pasted = Mutex(false)
+        let fake = FakePasteboard("user text")
+        let outcome = await SelectionBridge.replace(
+            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            seams: seams(
+                write: { _, _ in false },
+                press: { pasted.withLock { $0 = true } },
+                pasteboard: fake.seam()))
+        #expect(outcome == .pasted)
+        #expect(pasted.withLock { $0 })
+        #expect(fake.text == "user text")
+    }
+
+    /// The paste never runs when the app will not come forward, and the pasteboard still returns.
+    @Test @MainActor func pasteRefusesWithoutFrontingTheApp() async {
+        let pasted = Mutex(false)
+        let fake = FakePasteboard("user text")
+        let outcome = await SelectionBridge.replace(
+            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            seams: seams(
+                write: { _, _ in false },
+                activate: { _ in false },
+                press: { pasted.withLock { $0 = true } },
+                pasteboard: fake.seam()))
+        #expect(outcome == .refused)
+        #expect(pasted.withLock { $0 } == false)
+        #expect(fake.text == "user text")
+    }
+
+    @Test @MainActor func replaceRefusesWithoutAccessibilityPermission() async {
+        let outcome = await SelectionBridge.replace(
+            Selection(text: "Hello", element: field, app: .current, source: source), with: "你好",
+            seams: SelectionBridge.WritebackSeams(trusted: { false }))
+        #expect(outcome == .refused)
+    }
+
+    /// Builds write-back seams that never touch accessibility, the pasteboard or real key events.
+    @MainActor func seams(
+        write: @escaping @MainActor (AXUIElement, String) -> Bool,
+        activate: @escaping @MainActor (NSRunningApplication) async -> Bool = { _ in true },
+        press: @escaping SelectionBridge.PasteSelection,
+        pasteboard: SelectionBridge.Pasteboard = .system
+    ) -> SelectionBridge.WritebackSeams {
+        SelectionBridge.WritebackSeams(
+            trusted: { true }, write: write, activate: activate, press: press, pasteboard: pasteboard,
+            settle: .zero)
+    }
+
+    /// In-memory pasteboard so the fallback tests never touch the real pasteboard.
+    final class FakePasteboard: Sendable {
+        private let content: Mutex<(text: String?, changeCount: Int)>
+
+        init(_ text: String? = nil) { content = Mutex((text, 0)) }
+
+        var text: String? { content.withLock { $0.text } }
+
+        func seam() -> SelectionBridge.Pasteboard {
+            SelectionBridge.Pasteboard(
+                changeCount: { self.content.withLock { $0.changeCount } },
+                string: { self.content.withLock { $0.text } },
+                write: { text in
+                    self.content.withLock {
+                        $0.text = text
+                        $0.changeCount += 1
+                    }
+                },
+                snapshot: {
+                    self.content.withLock {
+                        let item: [NSPasteboard.PasteboardType: Data] = [
+                            .string: Data(($0.text ?? "").utf8)
+                        ]
+                        return [item]
+                    }
+                },
+                restore: { items in
+                    self.content.withLock {
+                        $0.text = items.first?[.string].flatMap { String(data: $0, encoding: .utf8) }
+                        $0.changeCount += 1
+                    }
+                })
+        }
     }
 
     @Test func missingFocusedElementIsUnreadable() {

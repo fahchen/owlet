@@ -458,9 +458,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
 
     /// Closes when a click landed outside the glass; a click on the panel is the user acting on it.
     func dismissIfOutside(_ screenPoint: NSPoint) {
-        guard isVisible, !suspendsDismissal, !frame.contains(screenPoint) else { return }
+        guard isVisible, !suspendsDismissal, Self.dismisses(screenPoint, from: frame) else { return }
         close()
     }
+
+    /// Whether a click is a click outside the glass. Pure, so the rule is tested without a window.
+    static func dismisses(_ point: NSPoint, from frame: NSRect) -> Bool { !frame.contains(point) }
 
     /// Whether the outside-click monitor is installed, so a test can prove it follows visibility.
     var watchesMouse: Bool { mouseMonitor != nil }

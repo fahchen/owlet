@@ -26,12 +26,19 @@ struct PanelControllerTests {
         override func show(anchor: PanelPlacement.Anchor) {}
     }
 
-    /// An off-screen panel that remembers being asked to release the keyboard, so the write-back's
-    /// first step can be asserted without a real window the test host cannot keep key on.
+    /// An off-screen panel that records being presented and being asked to release the keyboard.
+    /// The test host cannot hold key on a real panel, so "the panel is up" and "the write-back let
+    /// the keyboard go" are asserted against these counters instead of window state.
     final class RecordingPanel: FloatingPanel {
         private(set) var releases = 0
-        override func show(anchor: PanelPlacement.Anchor) {}
+        private(set) var shows = 0
+        private(set) var closes = 0
+        override func show(anchor: PanelPlacement.Anchor) { shows += 1 }
         override func releaseKeyboard() { releases += 1 }
+        override func close() {
+            closes += 1
+            super.close()
+        }
     }
 
     func makePanel(
@@ -58,6 +65,17 @@ struct PanelControllerTests {
     }
 
     final class Box { var texts: [String] = [] }
+
+    /// A controller wired to one recording stub, so "the panel is up" and "it was dismissed" are
+    /// counters rather than window state the test host cannot guarantee.
+    func recordingPanel(gate: Gate? = nil, outcome: ReplaceOutcome = .pasted)
+        -> (PanelController, Box, RecordingPanel)
+    {
+        let (panel, writes) = makePanel(gate: gate, outcome: outcome)
+        let stub = RecordingPanel(rootView: PanelView(controller: panel))
+        panel.makeWindow = { _ in stub }
+        return (panel, writes, stub)
+    }
 
     func settle() async {
         for _ in 0..<50 { await Task.yield() }
@@ -194,15 +212,13 @@ struct PanelControllerTests {
     /// longer dismisses: the panel stays up and the pending auto-replace still writes.
     @Test func losingKeyNeitherClosesNorCancelsTheWrite() async throws {
         let gate = Gate()
-        let (panel, writes) = makePanel(gate: gate, realWindow: true)
+        let (panel, writes, stub) = recordingPanel(gate: gate)
         panel.trigger(replace: true)
         await settle()
         #expect(panel.notice == .translating)
         #expect(panel.replacing)
-        let window = try #require(panel.panel)
-        #expect(window.isVisible)
-        window.resignKey()
-        #expect(window.isVisible)
+        stub.resignKey()
+        #expect(stub.closes == 0)
         #expect(panel.notice == .translating)
         gate.release()
         await settle()
@@ -275,7 +291,7 @@ struct PanelControllerTests {
     /// A successful write-back confirms instead of vanishing: the panel stays on screen with the
     /// result still copyable, and Esc closes it.
     @Test func successfulWriteBackConfirmsAndEscCloses() async throws {
-        let (panel, _) = makePanel(outcome: .pasted, realWindow: true)
+        let (panel, _, stub) = recordingPanel()
         panel.trigger()
         await settle()
         #expect(panel.model.state == .success("T:Hello"))
@@ -285,38 +301,33 @@ struct PanelControllerTests {
         #expect(panel.selection == nil)
         #expect(panel.model.state == .success("T:Hello"))
         #expect(panel.inlineNotice == nil)
-        let window = try #require(panel.panel)
-        #expect(window.isVisible)
+        // Presented rather than hidden: the confirmation has to be on screen to be read.
+        #expect(stub.shows >= 1)
         panel.run(.cancel)
-        #expect(!window.isVisible)
+        #expect(stub.closes == 1)
         #expect(!panel.writebackConfirmed)
     }
 
     /// 完成 closes the confirmation through the same controller close the footer button calls.
     @Test func finishClosesTheConfirmation() async throws {
-        let (panel, _) = makePanel(outcome: .pasted, realWindow: true)
+        let (panel, _, stub) = recordingPanel()
         panel.trigger()
         await settle()
         panel.replace(with: "T:Hello")
         for _ in 0..<40 where !panel.writebackConfirmed { try? await Task.sleep(for: .milliseconds(50)) }
-        let window = try #require(panel.panel)
-        #expect(window.isVisible)
+        #expect(stub.shows >= 1)
         panel.close()
-        #expect(!window.isVisible)
+        #expect(stub.closes == 1)
         #expect(!panel.writebackConfirmed)
     }
 
     /// A click that misses the glass dismisses the panel; a click on the panel is not a dismissal.
-    @Test func mouseDownOutsideDismissesButInsideDoesNot() async throws {
-        let (panel, _) = makePanel(realWindow: true)
-        panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
-        let window = try #require(panel.panel)
-        #expect(window.isVisible)
-        window.dismissIfOutside(NSPoint(x: window.frame.midX, y: window.frame.midY))
-        #expect(window.isVisible)
-        window.dismissIfOutside(NSPoint(x: window.frame.maxX + 500, y: window.frame.maxY + 500))
-        #expect(!window.isVisible)
+    @Test func clicksOutsideTheGlassDismissAndClicksInsideDoNot() {
+        let frame = NSRect(x: 100, y: 100, width: 560, height: 200)
+        #expect(!FloatingPanel.dismisses(NSPoint(x: frame.midX, y: frame.midY), from: frame))
+        #expect(!FloatingPanel.dismisses(NSPoint(x: frame.minX, y: frame.minY), from: frame))
+        #expect(FloatingPanel.dismisses(NSPoint(x: frame.maxX + 1, y: frame.midY), from: frame))
+        #expect(FloatingPanel.dismisses(NSPoint(x: frame.midX, y: frame.maxY + 1), from: frame))
     }
 
     /// The outside-click monitor lives exactly while the panel is visible, so a hidden panel cannot
@@ -334,19 +345,18 @@ struct PanelControllerTests {
     /// A write-back takes the panel off screen without dismissing it, and a miss brings it back with
     /// the result still copyable.
     @Test func writeBackBringsThePanelBackOnAMiss() async throws {
-        let (panel, _) = makePanel(outcome: .refused, realWindow: true)
+        let (panel, _, stub) = recordingPanel(outcome: .refused)
         panel.trigger()
         await settle()
-        let window = try #require(panel.panel)
-        #expect(window.isVisible)
         #expect(panel.selection != nil)
         panel.replace(with: "T:Hello")
         for _ in 0..<40 where panel.writebackRefusal == nil { try? await Task.sleep(for: .milliseconds(50)) }
         await settle()
         #expect(panel.writebackRefusal == .unwritten)
         #expect(panel.selection != nil)
-        #expect(window.isVisible)
-        #expect(window.watchesMouse)
+        // Presented again, because a missed write is exactly when the result needs copying.
+        #expect(stub.shows >= 2)
+        #expect(stub.closes == 0)
         #expect(!panel.writebackConfirmed)
         panel.close()
     }

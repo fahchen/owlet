@@ -41,11 +41,13 @@ struct Shortcut: Codable, Equatable, Sendable {
 enum ShortcutAction: UInt32, CaseIterable, Sendable {
     case translate = 1
     case translateReplace = 2
+    case polish = 3
 
     var title: String {
         switch self {
         case .translate: "翻译"
         case .translateReplace: "翻译并替换"
+        case .polish: "润色"
         }
     }
 
@@ -53,6 +55,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
         switch self {
         case .translate: SettingsStore.translateShortcutKey
         case .translateReplace: SettingsStore.translateReplaceShortcutKey
+        case .polish: SettingsStore.polishShortcutKey
         }
     }
 }

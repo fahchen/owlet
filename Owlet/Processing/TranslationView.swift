@@ -12,6 +12,7 @@ final class TranslationModel {
     }
 
     var input = ""
+    var operation: Operation = .translate
     private(set) var state: State = .idle
     private let client: ModelClient
     private let config: () -> ServiceConfig?
@@ -36,13 +37,14 @@ final class TranslationModel {
         state = .failure(message)
     }
 
-    /// Starts a translation; any in-flight one is cancelled and its result ignored.
+    /// Starts the current operation; any in-flight one is cancelled and its result ignored.
     @discardableResult
     func translate(to targetLanguage: String) -> Task<Void, Never>? {
         task?.cancel()
         operationID += 1
         let id = operationID
         let text = input
+        let operation = operation
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             state = .idle
             return nil
@@ -57,7 +59,8 @@ final class TranslationModel {
             let result: State
             do {
                 result = .success(
-                    try await client.translate(text, to: targetLanguage, config: config))
+                    try await client.process(
+                        text, operation: operation, to: targetLanguage, config: config))
             } catch let error as ModelError {
                 result = .failure(error.message)
             } catch is CancellationError {
@@ -93,7 +96,7 @@ struct TranslationView: View {
                 .font(.body)
                 .frame(minHeight: 120)
             HStack {
-                Button("Translate") { model.translate(to: targetLanguage) }
+                Button(model.operation.title) { model.translate(to: targetLanguage) }
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(model.state == .loading)
                 if model.state == .loading { ProgressView().controlSize(.small) }
@@ -104,10 +107,16 @@ struct TranslationView: View {
         .padding()
         .frame(minWidth: 480, minHeight: 360)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Picker("Target Language", selection: $targetLanguage) {
-                    ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
+            ToolbarItemGroup(placement: .primaryAction) {
+                if model.operation == .translate {
+                    Picker("Target Language", selection: $targetLanguage) {
+                        ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
+                    }
                 }
+                Picker("Operation", selection: $model.operation) {
+                    ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
         }
     }

@@ -35,7 +35,8 @@ struct TranslationResult: Equatable {
         ]
     }
 
-    static func parse(_ content: String, submitted: String, targetLanguage: String) throws
+    /// A nil `targetLanguage` (polish) requires the result to stay in the source language.
+    static func parse(_ content: String, submitted: String, targetLanguage: String?) throws
         -> TranslationResult
     {
         guard let data = unfenced(content)?.data(using: .utf8),
@@ -53,7 +54,7 @@ struct TranslationResult: Equatable {
             return Segment(source: source, target: target)
         }
         guard !isBlank(sourceLanguage),
-            sameLanguage(target, targetLanguage),
+            sameLanguage(target, targetLanguage ?? sourceLanguage),
             normalized(segments.map(\.source).joined()) == normalized(submitted)
         else { throw ModelError.format }
         return TranslationResult(

@@ -30,7 +30,16 @@ struct ModelClient: Sendable {
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
     {
-        let request = try makeRequest(text: text, targetLanguage: targetLanguage, config: config)
+        try await process(text, operation: .translate, to: targetLanguage, config: config)
+    }
+
+    /// `targetLanguage` is ignored for polish, whose result must stay in the source language.
+    func process(
+        _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig
+    ) async throws -> String {
+        let target = operation == .translate ? targetLanguage : nil
+        let request = try makeRequest(
+            text: text, operation: operation, targetLanguage: target, config: config)
         let data: Data
         let response: URLResponse
         do {
@@ -55,21 +64,25 @@ struct ModelClient: Sendable {
             !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw ModelError.emptyResponse }
         return try TranslationResult.parse(
-            content, submitted: text, targetLanguage: targetLanguage
+            content, submitted: text, targetLanguage: target
         ).text
     }
 
-    func makeRequest(text: String, targetLanguage: String, config: ServiceConfig) throws
-        -> URLRequest
-    {
+    func makeRequest(
+        text: String, operation: Operation = .translate, targetLanguage: String?,
+        config: ServiceConfig
+    ) throws -> URLRequest {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let task =
+            targetLanguage.map { "Operation: translate. Target language: \($0)." }
+            ?? "Operation: polish. target_language must equal source_language."
         let system = """
-            \(DefaultPrompts.translate)
+            \(operation.prompt)
 
-            Operation: translate. Target language: \(targetLanguage).
+            \(task)
             Respond with one JSON object with keys source_language, target_language and segments \
             (array of {source, target}). Concatenated sources must equal the user message exactly.
             """
@@ -81,7 +94,7 @@ struct ModelClient: Sendable {
             "response_format": [
                 "type": "json_schema",
                 "json_schema": [
-                    "name": "translation", "strict": true,
+                    "name": operation == .translate ? "translation" : "polish", "strict": true,
                     "schema": TranslationResult.providerSchema,
                 ],
             ],

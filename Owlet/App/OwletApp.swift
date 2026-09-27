@@ -62,7 +62,13 @@ private struct MenuBarLabel: View {
     var body: some View {
         Image(systemName: "character.bubble")
             .onAppear {
-                shortcuts.onAction = { panel.trigger(replace: $0 == .translateReplace) }
+                shortcuts.onAction = { action in
+                    switch action {
+                    case .translate: panel.trigger()
+                    case .translateReplace: panel.trigger(replace: true)
+                    case .polish: panel.trigger(.polish)
+                    }
+                }
                 panel.openSettings = {
                     NSApp.activate()
                     openSettings()

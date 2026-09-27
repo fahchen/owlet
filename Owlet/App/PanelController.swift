@@ -35,9 +35,10 @@ final class PanelController {
     }
 
     /// Captures source and selection before showing anything, then translates.
-    func trigger(replace: Bool = false) {
+    func trigger(_ operation: Operation = .translate, replace: Bool = false) {
         let result = read()
         model.cancel()
+        model.operation = operation
         autoReplace = replace
         selection = nil
         replaceMessage = nil
@@ -171,7 +172,7 @@ private struct PanelView: View {
             switch controller.notice {
             case .translating, nil:
                 ProgressView().controlSize(.small)
-                Text("翻译中…")
+                Text("\(controller.model.operation.title)中…")
             case .permission:
                 Text("需要辅助功能权限以读取选区。")
                 Button("权限设置") {

@@ -10,6 +10,7 @@ struct OwletApp: App {
         return controller
     }()
     @State private var collection = CollectionAction()
+    @State private var history = HistoryRecorder()
     @State private var panel = PanelController(
         model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
     @State private var page: MainView.Page = .processing
@@ -20,7 +21,7 @@ struct OwletApp: App {
         Window("Owlet", id: "main") {
             MainView(
                 translation: translation, shortcuts: shortcuts, page: $page,
-                collection: collection, promptFocus: $promptFocus
+                collection: collection, history: history, promptFocus: $promptFocus
             )
             .modelContainer(collection.store.container)
         }
@@ -33,7 +34,7 @@ struct OwletApp: App {
         } label: {
             MenuBarLabel(
                 shortcuts: shortcuts, panel: panel, page: $page,
-                collection: collection, promptFocus: $promptFocus)
+                collection: collection, history: history, promptFocus: $promptFocus)
         }
     }
 }
@@ -41,12 +42,13 @@ struct OwletApp: App {
 /// Main window (design/screenshots/workspace.png): native collapsible sidebar and page
 /// detail; settings is a sidebar page, not a separate window.
 private struct MainView: View {
-    enum Page: Hashable { case processing, vocabulary, shortcuts, settings }
+    enum Page: Hashable { case processing, vocabulary, history, shortcuts, settings }
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
     @Binding var page: Page
     let collection: CollectionAction
+    let history: HistoryRecorder
     @Binding var promptFocus: Operation?
 
     var body: some View {
@@ -58,6 +60,7 @@ private struct MainView: View {
                 }
                 Section("我的积累") {
                     Label("生词本", systemImage: "book").tag(Page.vocabulary)
+                    Label("历史记录", systemImage: "clock").tag(Page.history)
                 }
                 Section {
                     Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
@@ -73,11 +76,14 @@ private struct MainView: View {
                     openNotebook: { page = .vocabulary })
             case .vocabulary:
                 VocabularyView(collection: collection, openProcessing: { page = .processing })
+            case .history:
+                HistoryView(store: HistoryStore.shared, openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             case .settings: ServiceSettingsView(promptFocus: $promptFocus)
             }
         }
         .frame(minWidth: 760, minHeight: 500)
+        .task { history.observe(translation) }
     }
 }
 
@@ -113,6 +119,7 @@ private struct MenuBarLabel: View {
     let panel: PanelController
     @Binding var page: MainView.Page
     let collection: CollectionAction
+    let history: HistoryRecorder
     @Binding var promptFocus: Operation?
     @Environment(\.openWindow) private var openWindow
 
@@ -135,6 +142,7 @@ private struct MenuBarLabel: View {
                 panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
+                history.observe(panel.model)
                 // The format error's 提示词设置 entry lands on the failing operation's editor, not on
                 // the service fields it used to open.
                 panel.openPromptSettings = { operation in

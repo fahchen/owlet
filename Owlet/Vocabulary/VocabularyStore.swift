@@ -55,7 +55,10 @@ final class VocabularyStore {
 
     private static func makeContainer() -> ModelContainer {
         do {
-            return try ModelContainer(for: VocabularyEntry.self, VocabularyContext.self)
+            // History shares this container; the two model sets are unrelated, so neither can cascade
+            // into the other.
+            return try ModelContainer(
+                for: VocabularyEntry.self, VocabularyContext.self, HistoryRecord.self)
         } catch {
             // Without its store the app cannot keep a collection, so failing loudly beats losing it.
             fatalError("Could not open the vocabulary store: \(error)")

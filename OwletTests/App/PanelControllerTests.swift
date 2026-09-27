@@ -19,15 +19,17 @@ struct PanelControllerTests {
         func release() { continuations.removeFirst().resume() }
     }
 
-    func makePanel(gate: Gate? = nil, writable: Bool = true) -> (PanelController, Box) {
+    func makePanel(
+        gate: Gate? = nil, writable: Bool = true,
+        defaults: UserDefaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
+    ) -> (PanelController, Box) {
         let transport: Transport = { request in
             if let gate { await withCheckedContinuation { gate.continuations.append($0) } }
             return try await stub(body: chatBody(TestReplies.reply(for: "Hello")))(request)
         }
         let model = TranslationModel(
             client: ModelClient(transport: transport), config: { testConfig })
-        let panel = PanelController(
-            model: model, defaults: UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!)
+        let panel = PanelController(model: model, defaults: defaults)
         let writes = Box()
         let selection = selection
         panel.read = { $0(.success(selection)) }
@@ -186,5 +188,105 @@ struct PanelControllerTests {
         #expect(panel.model.input.isEmpty)
         #expect(writes.texts.isEmpty)
         panel.close()
+    }
+
+    /// Losing key (click elsewhere) closes like Esc: the request is invalidated, so the pending
+    /// auto-replace never writes and the late response is dropped.
+    @Test func resignKeyClosesAndCancelsAutoReplace() async throws {
+        let gate = Gate()
+        let (panel, writes) = makePanel(gate: gate)
+        panel.trigger(replace: true)
+        await settle()
+        #expect(panel.notice == .translating)
+        #expect(panel.replacing)
+        let window = try #require(panel.panel)
+        #expect(window.isVisible)
+        window.resignKey()
+        #expect(!window.isVisible)
+        #expect(panel.notice == nil)
+        #expect(panel.model.state == .idle)
+        gate.release()
+        await settle()
+        #expect(writes.texts.isEmpty)
+        #expect(panel.model.state == .idle)
+        #expect(panel.notice == nil)
+    }
+
+    /// Focus returning to the target app during write-back resigns key mid-replace; the
+    /// write still happens exactly once and the panel ends closed.
+    @Test func resignKeyDuringWriteBackWritesOnce() async throws {
+        let (panel, writes) = makePanel()
+        panel.write = { [weak panel] _, text in
+            writes.texts.append(text)
+            panel?.panel?.resignKey()
+            return true
+        }
+        panel.trigger(replace: true)
+        // The stubbed response can take longer than `settle()` when the suite runs back to back.
+        for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(writes.texts == ["T:Hello"])
+        #expect(panel.selection == nil)
+        #expect(try #require(panel.panel).isVisible == false)
+    }
+
+    /// `close()` re-entered from `onClose`, or via `resignKey` while closing, runs `onClose` once.
+    @Test func closeIsNotReentrant() async throws {
+        let (panel, _) = makePanel()
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        var closes = 0
+        window.onClose = {
+            closes += 1
+            window.close()
+            window.resignKey()
+        }
+        window.close()
+        #expect(closes == 1)
+        #expect(!window.isVisible)
+        window.resignKey()
+        #expect(closes == 1)
+    }
+
+    /// Fixed mode: a user move of the glass-backed panel saves its top-center; self-placement does not.
+    @Test func dragSavesFixedAnchor() async throws {
+        let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
+        let (panel, _) = makePanel(defaults: defaults)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        #expect(window.contentView is NSGlassEffectView)
+        #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
+        window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
+        await settle()
+        #expect(SettingsStore.panelFixedAnchor(in: defaults) == NSPoint(x: window.frame.midX, y: window.frame.maxY))
+        panel.close()
+    }
+
+    /// Follow-selection mode: the panel sits just below the selection and a drag is not saved.
+    @Test func followSelectionPlacesBelowAndIgnoresDrag() async throws {
+        let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
+        defaults.set(PanelPosition.followSelection.rawValue, forKey: SettingsStore.panelPositionKey)
+        let gate = Gate()
+        let (panel, _) = makePanel(gate: gate, defaults: defaults)
+        let screen = try #require(NSScreen.screens.first)
+        let visible = screen.visibleFrame
+        // AX rect near the top-left of the primary screen's visible area (y down from the top).
+        let axRect = CGRect(
+            x: visible.minX + 100, y: screen.frame.maxY - visible.maxY + 100, width: 80, height: 20)
+        var selection = selection
+        selection.bounds = axRect
+        panel.read = { [selection] in $0(.success(selection)) }
+        panel.trigger()
+        await settle()
+        let window = try #require(panel.panel)
+        let rect = PanelPlacement.appKitRect(fromAX: axRect, primaryScreenHeight: screen.frame.height)
+        #expect(window.frame.minX == rect.minX)
+        #expect(window.frame.maxY == rect.minY - PanelPlacement.gap)
+        window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
+        await settle()
+        #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
+        panel.close()
+        gate.release()
     }
 }

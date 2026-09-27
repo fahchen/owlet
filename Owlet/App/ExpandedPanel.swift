@@ -284,22 +284,18 @@ private struct PanelFooter: View {
             }
             .buttonStyle(.glass)
             if let replace {
-                Button {
-                    replace(text)
-                } label: {
-                    Text("替换  ⌘↩")
-                }
-                .buttonStyle(.glassProminent)
-                .keyboardShortcut(.return, modifiers: .command)
-                .accessibilityLabel("替换")
+                Button("替换") { replace(text) }
+                    .buttonStyle(.glassProminent)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .help("替换 ⌘↩")
             }
         default:
             if let retry {
-                Button(action: retry) {
-                    Text("\(retryTitle)  ⌘↩")
-                }
-                .buttonStyle(.glassProminent)
-                .keyboardShortcut(.return, modifiers: .command)
+                Button(retryTitle, action: retry)
+                    .buttonStyle(.glassProminent)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .accessibilityLabel(retryTitle)
+                    .help("\(retryTitle) ⌘↩")
             }
         }
     }

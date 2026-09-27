@@ -70,7 +70,8 @@ final class PanelController {
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
 
-    private var panel: FloatingPanel?
+    /// Internal read for tests that drive the real window (resign key, drag).
+    private(set) var panel: FloatingPanel?
     /// Guards against a superseded request acting on a newer result.
     private var requestID = 0
     /// Operation whose selection read is still outstanding.
@@ -314,9 +315,14 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
         let screen = anchor.reference.flatMap { point in
             NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
         }
-        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else { return }
         placing = true
         defer { placing = false }
+        guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
+            // No screen to place on: resize in place so the glass and its shadow still track content.
+            setContentSize(size)
+            invalidateShadow()
+            return
+        }
         setFrame(PanelPlacement.frame(size: size, anchor: anchor, within: visible), display: true)
         invalidateShadow()
     }

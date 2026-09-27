@@ -1,6 +1,6 @@
 # 实现计划：macOS 翻译与润色工具
 
-状态：里程碑 1（T01–T07）已实现并有单元测试覆盖，里程碑 2–5（T08–T25）尚未实施；计划其余内容仍待用户审阅。产品范围以 `spec/product.md` 为准，行为场景见 `spec/README.md`。
+状态：里程碑 1（T01–T07）已实现并有单元测试覆盖；里程碑 2–4 的 T08、T09、T12、T15 也已实现并合入，T10、T11、T13、T14、T16、T17、T22、T24、T25 仍待实施，剩余清单见 [tasks/plan-remaining.md](plan-remaining.md)。产品范围以 `spec/product.md` 为准，行为场景见 `spec/README.md`。
 
 ## 概述
 

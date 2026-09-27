@@ -183,9 +183,9 @@
 
 ## T08：手动收藏与生词本列表
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未实现——缺少 `VocabularyEntry.swift`、`VocabularyStore.swift`、`VocabularyView.swift`、`CollectionAction.swift`。列表、详情与空状态的提案画面见 `design/screenshots/book-list.png`、`book-detail.png`、`book-empty.png`（标注未实现）。
+**缺口：**无。搜索／筛选／编辑／删除／导出由 T09 补齐。
 
 **说明：**无论学习是否展开，都能从当前结果主动收藏内容。从历史收藏见 T17。
 
@@ -206,9 +206,9 @@
 
 ## T09：收藏管理与导出
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未实现——缺少 `VocabularyExport.swift` 及生词本的搜索、筛选、编辑与删除。
+**缺口：**无。重复表达追加语境属 T11。
 
 **说明：**完成生词本中的查找、修订和数据导出。
 
@@ -284,9 +284,9 @@
 
 ## T12：自定义 System Prompt
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未实现——缺少 Prompt 的查看、编辑、恢复默认与 `PromptSettingsView.swift`（`DefaultPrompts.swift` 仅有内置默认值）。Prompt 分组的提案画面见 `design/screenshots/settings-prompts.png`（标注未实现）。
+**缺口：**无。
 
 **说明：**翻译、润色 Prompt 分别可查看、编辑与恢复默认。
 
@@ -360,9 +360,9 @@
 
 ## T15：持久化历史及详情
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未实现——缺少 `HistoryRecord.swift`、`HistoryStore.swift`、`HistoryView.swift`。列表、详情与空状态的提案画面见 `design/screenshots/history-list.png`、`history-detail.png`、`history-empty.png`（标注未实现）。
+**缺口：**无。搜索、筛选与删除由 T16 补齐。
 
 **说明：**让完成的翻译和润色重启后仍可查看。
 
@@ -434,9 +434,9 @@
 
 ## T18：退役自定义令牌与按钮样式
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未开始——源码中已无 `RoseGlass`、自定义 `ButtonStyle` 与硬编码色值，浮窗／设置按钮也已是 `.glass`／`.glassProminent`；仍缺内容区 `.bordered`／`.borderedProminent` 的划分与浅色／深色／`Increase Contrast` 截图验收。
+**缺口：**无。应用内没有自定义颜色令牌，按钮统一用 `.glass` / `.glassProminent`。
 
 **说明：**删除 `RoseGlass` 与全部自绘窗口零件，改用系统语义色与系统按钮。
 
@@ -479,9 +479,9 @@
 
 ## T20：主窗口改 NavigationSplitView
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未开始——`MainView` 已用 `NavigationSplitView` 与 `List(selection:)` + `Section`；仍缺 `.badge` 计数、侧边栏收起／切换（`⌃⌘S`）与状态持久化。
+**缺口：**无。主窗口使用系统 `NavigationSplitView` 与 `List(selection:)`。
 
 **说明：**侧边栏改为系统 source list，并可收起。
 

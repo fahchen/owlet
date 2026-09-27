@@ -103,6 +103,24 @@ final class PanelController {
             SelectionBridge.read(
                 bounds: SettingsStore.panelPosition(in: defaults) == .followSelection, completion: completion)
         }
+        trackProcessing()
+    }
+
+    /// Mirrors the model's processing state onto the panel edge; observation fires once, so it
+    /// re-registers and defers the read until the mutation has landed.
+    private func trackProcessing() {
+        withObservationTracking {
+            _ = model.state
+        } onChange: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.trackProcessing()
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.panel?.setProcessing(self.model.state == .loading)
+                }
+            }
+        }
     }
 
     /// Invalidates the previous operation, then captures the selection before showing anything.
@@ -308,6 +326,7 @@ final class PanelController {
     private func show() {
         let panel = self.panel ?? makePanel()
         self.panel = panel
+        panel.setProcessing(model.state == .loading)
         panel.show(anchor: anchor())
     }
 
@@ -338,6 +357,51 @@ final class PanelController {
     }
 }
 
+/// The processing edge highlight: one accent colour, no gradient, held at a steady visible level
+/// when Reduce Motion asks the panel not to animate.
+enum ProcessingEdge {
+    static let brightOpacity: Float = 1
+    static let dimOpacity: Float = 0.3
+    /// Reduce Motion keeps a single visible level instead of pulsing.
+    static let steadyOpacity: Float = 0.65
+    static let duration: CFTimeInterval = 1.1
+    static let lineWidth: CGFloat = 1.5
+
+    /// The edge's opacity; a steady value whenever Reduce Motion is on.
+    static func opacity(reduceMotion: Bool, bright: Bool) -> Float {
+        reduceMotion ? steadyOpacity : (bright ? brightOpacity : dimOpacity)
+    }
+}
+
+/// Window content container masked to the glass corner radius that also hosts the processing edge,
+/// so the breathing mark rides the exact panel edge without becoming another view or shadow.
+final class PanelSurface: NSView {
+    let edge = CAShapeLayer()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        edge.fillColor = nil
+        edge.lineWidth = ProcessingEdge.lineWidth
+        edge.opacity = 0
+        edge.zPosition = 1
+        layer?.addSublayer(edge)
+    }
+
+    required init?(coder: NSCoder) { fatalError("PanelSurface is created in code only") }
+
+    override func layout() {
+        super.layout()
+        edge.strokeColor = NSColor.controlAccentColor.cgColor
+        edge.frame = bounds
+        let radius = layer?.cornerRadius ?? 0
+        let inset = edge.lineWidth / 2
+        edge.path = CGPath(
+            roundedRect: bounds.insetBy(dx: inset, dy: inset), cornerWidth: radius,
+            cornerHeight: radius, transform: nil)
+    }
+}
+
 /// Frameless, fully transparent panel whose only content is a native glass view, so the window
 /// server draws the glass alone. Dismisses on intent only — Esc, 完成, or a click outside — never on
 /// losing key, because an inactive app can take and drop key with no user action at all.
@@ -359,6 +423,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// While a write-back is in flight the panel lets go of the keyboard without dismissing itself:
     /// the keystroke has to reach the app underneath, and the panel has to survive to report a miss.
     var suspendsDismissal = false
+    /// Overridable so a test can prove Reduce Motion holds the processing edge steady.
+    var prefersReducedMotion: () -> Bool = {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+    /// Key of the breathing animation, so a test can tell it is running and remove it cleanly.
+    static let breatheKey = "processingEdge"
     private var anchor = PanelPlacement.Anchor.topCenter(nil)
     /// Set while the panel moves itself, so only user drags reach `onDrag`.
     private var placing = false
@@ -366,8 +436,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     private var sizeObservation: NSKeyValueObservation?
     private var closing = false
     /// The rounded shape the window presents to the window server, so the shadow follows the glass
-    /// instead of the rectangle around it.
-    private let shape = NSView()
+    /// instead of the rectangle around it; it also hosts the processing edge.
+    private let shape = PanelSurface()
     /// Live while the panel is up; removed on close so the panel holds nothing after it goes.
     private var keys: Any?
     /// Live while the panel is visible; a click that lands outside the glass dismisses it.
@@ -423,6 +493,28 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     func releaseKeyboard() {
         orderOut(nil)
         stopWatchingMouse()
+    }
+
+    /// Runs or stops the processing edge: one colour, no gradient, and a steady mark under Reduce
+    /// Motion so the state never depends on the animation alone.
+    func setProcessing(_ active: Bool) {
+        guard let edge = (contentView as? PanelSurface)?.edge else { return }
+        edge.removeAnimation(forKey: Self.breatheKey)
+        guard active else {
+            edge.opacity = 0
+            return
+        }
+        let reduced = prefersReducedMotion()
+        edge.opacity = ProcessingEdge.opacity(reduceMotion: reduced, bright: true)
+        guard !reduced else { return }
+        let breathe = CABasicAnimation(keyPath: "opacity")
+        breathe.fromValue = ProcessingEdge.opacity(reduceMotion: false, bright: false)
+        breathe.toValue = ProcessingEdge.opacity(reduceMotion: false, bright: true)
+        breathe.duration = ProcessingEdge.duration
+        breathe.autoreverses = true
+        breathe.repeatCount = .infinity
+        breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        edge.add(breathe, forKey: Self.breatheKey)
     }
 
     /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.

@@ -104,6 +104,28 @@ extension SettingsStore {
     }
 }
 
+/// How a result is laid out: whole 原文／译文 regions, or the response's paired sentences.
+enum TranslationDisplayMode: String, CaseIterable, Sendable {
+    case sectioned
+    case aligned
+
+    var title: String {
+        switch self {
+        case .sectioned: "原文／译文分区"
+        case .aligned: "逐句对照"
+        }
+    }
+}
+
+extension SettingsStore {
+    static let displayModeKey = "translation.displayMode"
+
+    /// The saved display preference, defaulting to 分区 so an untouched install keeps the old layout.
+    static func displayMode(in defaults: UserDefaults = .standard) -> TranslationDisplayMode {
+        defaults.string(forKey: displayModeKey).flatMap(TranslationDisplayMode.init) ?? .sectioned
+    }
+}
+
 /// Where the floating panel opens.
 enum PanelPosition: String, CaseIterable, Sendable {
     case fixed, followSelection

@@ -128,23 +128,17 @@ private struct PanelBody: View {
     let learning: LearningModel
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
+    @AppStorage(SettingsStore.displayModeKey) private var displayMode =
+        TranslationDisplayMode.sectioned
+    /// While 逐句对照 shows the response pairs, the source field is folded into them and only
+    /// 编辑原文 brings it back for a retry.
+    @State private var editingSource = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 7) {
-                LabelRow {
-                    Text("自动识别")
-                } trailing: {
-                    Text("原文")
-                }
-                TextField("原文", text: $model.input, axis: .vertical)
-                    .labelsHidden()
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .lineSpacing(4)
-                    .lineLimit(1...5)
+            if !showsAlignedPairs || editingSource {
+                sourceEditor.padding(.bottom, 12)
             }
-            .padding(.bottom, 12)
             if hasResultSection {
                 Divider()
                 resultSection.padding(.top, 12)
@@ -155,10 +149,36 @@ private struct PanelBody: View {
         .padding(.top, 14)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // A learning result describes one specific result, so changing the text or the operation
-        // discards it and the next 展开 starts a fresh request.
+        // A learning result describes one specific result, so changing the operation discards it,
+        // and a finished result collapses the source field back into the pairs.
+        .onChange(of: model.operation) { _, _ in
+            learning.reset()
+            editingSource = false
+        }
         .onChange(of: model.input) { _, _ in learning.reset() }
-        .onChange(of: model.operation) { _, _ in learning.reset() }
+        .onChange(of: showsAlignedPairs) { _, _ in editingSource = false }
+    }
+
+    private var sourceEditor: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            LabelRow {
+                Text("自动识别")
+            } trailing: {
+                Text("原文")
+            }
+            TextField("原文", text: $model.input, axis: .vertical)
+                .labelsHidden()
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .lineSpacing(4)
+                .lineLimit(1...5)
+        }
+    }
+
+    /// Only a finished result has pairs to group; a run in progress still shows the source field.
+    private var showsAlignedPairs: Bool {
+        guard displayMode == .aligned, case .success = model.state else { return false }
+        return !model.segments.isEmpty
     }
 
     private var hasResultSection: Bool {
@@ -176,6 +196,8 @@ private struct PanelBody: View {
                         ProgressView().controlSize(.mini)
                         Text("\(model.operation.title)中")
                     }
+                } else if displayMode == .aligned {
+                    Text("逐句对照")
                 } else {
                     Text(model.operation == .polish ? "润色结果" : "译文")
                 }
@@ -183,11 +205,22 @@ private struct PanelBody: View {
                 if model.operation == .polish { Text("保留原意") } else { languagePicker }
             }
             if case .success(let text) = model.state {
-                Text(text)
-                    .font(.system(size: 13))
-                    .lineSpacing(5)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if showsAlignedPairs {
+                    AlignedSegments(
+                        segments: model.segments, sourceSize: 12, targetSize: 13,
+                        lineSpacing: 4, pairSpacing: 12)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Button(editingSource ? "收起原文" : "编辑原文") { editingSource.toggle() }
+                            .buttonStyle(.glass)
+                    }
+                } else {
+                    Text(text)
+                        .font(.system(size: 13))
+                        .lineSpacing(5)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if let collection, let request = LearningRequest.from(model) {
                     LearningView(
                         learning: learning, request: request, collection: collection,
@@ -272,7 +305,7 @@ private struct StatusNote<Content: View>: View {
     }
 }
 
-/// Fixed footer: shortcut hint left, copy and prominent replace (or retry/cancel) right.
+/// Fixed footer: the actions only, with copy and the single prominent action at the trailing end.
 private struct PanelFooter: View {
     let state: TranslationModel.State
     let operation: Operation
@@ -287,9 +320,6 @@ private struct PanelFooter: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(hint)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
             Spacer(minLength: 0)
             GlassEffectContainer {
                 HStack(spacing: 6) { actions }
@@ -298,15 +328,6 @@ private struct PanelFooter: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 45)
-    }
-
-    private var hint: String {
-        if state == .loading { return "Esc 取消" }
-        let action: ShortcutAction = operation == .polish ? .polish : .translate
-        guard let shortcut = SettingsStore.shortcut(forKey: action.defaultsKey, in: .standard) else {
-            return "快捷键未设置"
-        }
-        return "\(shortcut.displayString) 唤起"
     }
 
     private func copy(_ text: String) {

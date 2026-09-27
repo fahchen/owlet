@@ -16,9 +16,13 @@ func stub(status: Int = 200, body: String) -> Transport {
     }
 }
 
-func chatBody(_ content: String) -> String {
+func chatBody(_ content: String, finishReason: String = "stop", refusal: String? = nil)
+    -> String
+{
+    var message: [String: Any] = ["content": content]
+    message["refusal"] = refusal
     let data = try! JSONSerialization.data(withJSONObject: [
-        "choices": [["message": ["content": content], "finish_reason": "stop"]]
+        "choices": [["message": message, "finish_reason": finishReason]]
     ])
     return String(decoding: data, as: UTF8.self)
 }
@@ -36,6 +40,11 @@ func chatBody(_ content: String) -> String {
     #expect(messages.last == ["role": "user", "content": "Hello"])
     #expect(messages.first?["role"] == "system")
     #expect(messages.first?["content"]?.contains("Hello") == false)
+    #expect(messages.first?["content"]?.hasPrefix(DefaultPrompts.translate) == true)
+    let format = try #require(json["response_format"] as? [String: Any])
+    #expect(format["type"] as? String == "json_schema")
+    let schema = try JSONSerialization.data(withJSONObject: format["json_schema"]!)
+    #expect(!String(decoding: schema, as: UTF8.self).contains("minLength"))
 }
 
 @Test func unauthorizedMapsToAuthError() async {
@@ -90,9 +99,11 @@ func chatBody(_ content: String) -> String {
     let second = model.translate(to: "zh-Hans")
     await second?.value
     await first?.value
-    #expect(model.state == .success(TestReplies.reply(for: "new")))
+    #expect(model.state == .success("T:new"))
 }
 
 enum TestReplies {
-    static func reply(for text: String) -> String { "T:\(text)" }
+    static func reply(for text: String) -> String {
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"\#(text)","target":"T:\#(text)"}]}"#
+    }
 }

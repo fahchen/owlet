@@ -95,6 +95,7 @@ struct TranslationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("原文").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $model.input)
                 .font(.body)
                 .frame(minHeight: 120)
@@ -120,11 +121,6 @@ struct TranslationView: View {
             }
             .sharedBackgroundVisibility(.hidden)
             ToolbarItemGroup(placement: .primaryAction) {
-                if model.operation == .translate {
-                    Picker("Target Language", selection: $targetLanguage) {
-                        ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
-                    }
-                }
                 Picker("Operation", selection: $model.operation) {
                     ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -139,29 +135,43 @@ struct TranslationView: View {
             EmptyView()
         case .success(let text):
             VStack(alignment: .leading, spacing: 10) {
-                Text("Result").font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text(model.operation.title).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    if model.operation == .translate { languagePicker }
+                }
                 Text(text).textSelection(.enabled)
                 Divider()
                 HStack {
+                    Text("快捷键未设置").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("Copy", systemImage: "doc.on.doc") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                     }
                     if let replace {
-                        Button("Replace") { replace(text) }
-                            .buttonStyle(.glassProminent)
+                        Button {
+                            replace(text)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("Replace")
+                                Text("⌘↩").font(.caption.monospaced()).opacity(0.8)
+                            }
+                        }
+                        .buttonStyle(.glassProminent)
                     }
                 }
                 if let replaceMessage { Text(replaceMessage).foregroundStyle(.red) }
             }
         case .failure(let message):
-            HStack {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
-                Button("Retry") { model.translate(to: targetLanguage) }
-                settingsButton
+            HStack(spacing: 8) {
+                Text(message).lineLimit(1)
+                settingsLink("服务设置")
             }
+            .font(.callout)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.quaternary, in: Capsule())
         case .missingConfig:
             HStack {
                 Label("Service is not configured: Base URL, model and API key are required.", systemImage: "gearshape")
@@ -170,11 +180,21 @@ struct TranslationView: View {
         }
     }
 
-    @ViewBuilder private var settingsButton: some View {
+    private var languagePicker: some View {
+        Picker("Target Language", selection: $targetLanguage) {
+            ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private var settingsButton: some View { settingsLink("Open Service Settings") }
+
+    @ViewBuilder private func settingsLink(_ title: String) -> some View {
         if let openSettings {
-            Button("Open Service Settings", action: openSettings)
+            Button(title, action: openSettings).buttonStyle(.link).foregroundStyle(Self.accent)
         } else {
-            SettingsLink { Text("Open Service Settings") }
+            SettingsLink { Text(title) }.buttonStyle(.link).foregroundStyle(Self.accent)
         }
     }
 }

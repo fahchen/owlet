@@ -14,12 +14,11 @@ struct ShortcutSettingsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    GroupTitle("全局")
-                    ForEach(Self.order, id: \.self) { action in
-                        FormRow(title: action.title) {
+        Form {
+            Section {
+                ForEach(Self.order, id: \.self) { action in
+                    LabeledContent(action.title) {
+                        GlassEffectContainer {
                             HStack(spacing: 8) {
                                 ShortcutRecorder(
                                     title: action.title, shortcut: controller.shortcuts[action],
@@ -29,50 +28,47 @@ struct ShortcutSettingsView: View {
                                     recording = nil
                                     controller.set(nil, for: action)
                                 }
-                                .buttonStyle(.plain)
-                                .font(.system(size: 10))
-                                .foregroundStyle(RoseGlass.muted)
-                                .padding(5)
-                                .contentShape(Rectangle())
+                                .buttonStyle(.glass)
                                 .accessibilityLabel("清除\(action.title)快捷键")
                             }
                         }
                     }
-                    notice
-                        .padding(.bottom, 18)
-                    GroupTitle("应用内")
-                    ForEach(Self.inApp, id: \.0) { name, keys, scope in
-                        FormRow(title: name, detail: scope) { KbdChip(keys: keys) }
+                }
+            } header: {
+                Text("全局")
+            } footer: {
+                notice
+            }
+            Section {
+                ForEach(Self.inApp, id: \.0) { name, keys, scope in
+                    LabeledContent {
+                        Text(keys).monospacedDigit()
+                    } label: {
+                        Text(name)
+                        Text(scope)
                     }
                 }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 28)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            PageFooter {
-                Text("录制后立即生效")
-            } trailing: {
-                EmptyView()
+            } header: {
+                Text("应用内")
+            } footer: {
+                Text("录制后立即生效").foregroundStyle(.secondary)
             }
         }
-        .foregroundStyle(RoseGlass.ink)
-        .tint(RoseGlass.accent)
+        .formStyle(.grouped)
+        .navigationTitle("快捷键")
     }
 
     @ViewBuilder private var notice: some View {
         Group {
             if let error = controller.registrationError {
-                Text(error).foregroundStyle(RoseGlass.errorText)
+                Label(error, systemImage: "exclamationmark.triangle")
             } else if recording != nil {
-                Text("按新组合键；Esc 取消，Delete 清除。").foregroundStyle(RoseGlass.muted)
+                Text("按新组合键；Esc 取消，Delete 清除。")
             } else {
                 Text(" ").accessibilityHidden(true)
             }
         }
-        .font(.system(size: 11))
-        .lineSpacing(4)
-        .frame(minHeight: 20, alignment: .top)
-        .padding(.top, 11)
+        .foregroundStyle(.secondary)
         .accessibilityAddTraits(.updatesFrequently)
     }
 
@@ -91,31 +87,23 @@ private struct ShortcutRecorder: View {
     @State private var monitor: Any?
 
     var body: some View {
-        Button {
-            recording ? stop() : start()
-        } label: {
-            Text(recording ? "请按快捷键…" : shortcut?.displayString ?? "未设置")
-                .font(.system(size: 12))
-                .monospacedDigit()
-                .foregroundStyle(recording ? RoseGlass.accent : RoseGlass.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .frame(minWidth: 91, minHeight: 32)
-                .background(
-                    recording ? RoseGlass.tint : RoseGlass.paper,
-                    in: .rect(cornerRadius: 8, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(recording ? RoseGlass.accent : RoseGlass.line)
-                }
-                .contentShape(.rect(cornerRadius: 8))
+        Group {
+            if recording {
+                Button(action: stop) { label }.buttonStyle(.glassProminent)
+            } else {
+                Button(action: start) { label }.buttonStyle(.glass)
+            }
         }
-        .buttonStyle(.plain)
         .accessibilityLabel("录制\(title)快捷键")
         .accessibilityValue(shortcut?.displayString ?? "未设置")
         .onChange(of: recording) { _, now in if !now { removeMonitor() } }
         .onDisappear(perform: stop)
+    }
+
+    private var label: some View {
+        Text(recording ? "请按快捷键…" : shortcut?.displayString ?? "未设置")
+            .monospacedDigit()
+            .frame(minWidth: 70)
     }
 
     private func start() {

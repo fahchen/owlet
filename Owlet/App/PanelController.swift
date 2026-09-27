@@ -463,22 +463,3 @@ struct NoticeStrip<Actions: View>: View {
         .accessibilityElement(children: .contain)
     }
 }
-
-/// Owlet Rose Glass tokens (spec/DESIGN.md), OKLCH converted to sRGB; the floating panel no
-/// longer uses them, the main window and settings still do.
-enum RoseGlass {
-    /// oklch(47% .17 350)
-    static let accent = Color(red: 0.605, green: 0.127, blue: 0.408)
-    /// oklch(27% .012 350)
-    static let ink = Color(red: 0.170, green: 0.142, blue: 0.154)
-    /// oklch(49% .012 350)
-    static let muted = Color(red: 0.400, green: 0.368, blue: 0.381)
-    /// oklch(99% .003 350)
-    static let paper = Color(red: 0.994, green: 0.984, blue: 0.988)
-    /// oklch(60% .012 350 / .17)
-    static let line = Color(red: 0.526, green: 0.492, blue: 0.506).opacity(0.17)
-    /// oklch(96% .025 45)
-    static let errorFill = Color(red: 1, green: 0.93, blue: 0.895)
-    /// oklch(62% .008 265 / .17)
-    static let skeleton = Color(red: 0.55, green: 0.56, blue: 0.58).opacity(0.17)
-}

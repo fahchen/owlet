@@ -26,6 +26,9 @@ typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
 struct ModelClient: Sendable {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
+    /// a test can substitute a hostile one; the fixed contract is appended by `makeRequest` either way.
+    var promptForOperation: @Sendable (Operation) -> String = { SettingsStore.prompt(for: $0) }
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
@@ -96,7 +99,7 @@ struct ModelClient: Sendable {
             targetLanguage.map { "Operation: translate. Target language: \($0)." }
             ?? "Operation: polish. target_language must equal source_language."
         let system = """
-            \(operation.prompt)
+            \(promptForOperation(operation))
 
             \(task)
             Respond with one json object with keys source_language, target_language and segments \

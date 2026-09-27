@@ -65,6 +65,9 @@ final class PanelController {
     /// Why a finished result was not written back, if it was not; the expanded view then offers to
     /// copy it instead of pretending the other app took it.
     private(set) var writebackRefusal: Notice?
+    /// True after the other app took the result, so the expanded view confirms the write-back and
+    /// keeps the result copyable until Esc or 完成 dismisses the panel.
+    private(set) var writebackConfirmed = false
     /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
@@ -137,6 +140,7 @@ final class PanelController {
         autoReplace = replace
         selection = nil
         writebackRefusal = nil
+        writebackConfirmed = false
         switch result {
         case .success(let selection):
             self.selection = selection
@@ -160,6 +164,7 @@ final class PanelController {
         requestID += 1
         let id = requestID
         if expanded { notice = nil }
+        writebackConfirmed = false
         let task = model.translate(to: language)
         // Auto write-back is one-shot: only the first request after a replace trigger, and only with a selection.
         let auto = autoReplace && selection != nil
@@ -234,25 +239,28 @@ final class PanelController {
     @discardableResult
     private func performReplace(_ text: String) async -> ReplaceOutcome {
         guard let selection else {
-            writebackRefusal = .unwritten
+            // A write with nothing selected is a miss, but it must not overwrite the confirmation of
+            // one that already landed.
+            if !writebackConfirmed { writebackRefusal = .unwritten }
             return .refused
         }
         // The panel owns the keyboard while it is up and a synthetic ⌘V follows the keyboard, so the
-        // panel steps aside first; it comes back if the text never changed, because a miss is exactly
-        // when the user needs the result to copy.
-        let wasVisible = panel?.isVisible == true
+        // panel steps aside first; it comes back either way, because a miss needs the result to copy
+        // and a hit now confirms the write-back instead of vanishing.
         panel?.suspendsDismissal = true
         panel?.releaseKeyboard()
         let outcome = await write(selection, text)
         panel?.suspendsDismissal = false
-        guard let refusal = Self.refusal(outcome) else {
-            self.selection = nil
-            writebackRefusal = nil
-            close()
+        if let refusal = Self.refusal(outcome) {
+            writebackRefusal = refusal
+            show()
             return outcome
         }
-        writebackRefusal = refusal
-        if wasVisible { show() }
+        self.selection = nil
+        writebackRefusal = nil
+        writebackConfirmed = true
+        expanded = true
+        show()
         return outcome
     }
 
@@ -294,6 +302,7 @@ final class PanelController {
         model.cancel()
         notice = nil
         expanded = false
+        writebackConfirmed = false
     }
 
     private func show() {
@@ -330,7 +339,8 @@ final class PanelController {
 }
 
 /// Frameless, fully transparent panel whose only content is a native glass view, so the window
-/// server draws the glass alone. Closes (cancelling, like Esc) on losing key.
+/// server draws the glass alone. Dismisses on intent only — Esc, 完成, or a click outside — never on
+/// losing key, because an inactive app can take and drop key with no user action at all.
 /// Not final: tests that only assert controller state substitute a panel that stays off screen.
 class FloatingPanel: NSPanel, NSWindowDelegate {
     /// What the panel does with a key it claims. Owlet is an accessory app whose panel never
@@ -360,6 +370,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     private let shape = NSView()
     /// Live while the panel is up; removed on close so the panel holds nothing after it goes.
     private var keys: Any?
+    /// Live while the panel is visible; a click that lands outside the glass dismisses it.
+    private var mouseMonitor: Any?
 
     init(rootView: PanelView) {
         host = NSHostingController(rootView: rootView)
@@ -403,12 +415,14 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         // A click or Tab still reaches every control.
         makeFirstResponder(nil)
         if keys == nil { keys = watchKeys() }
+        if mouseMonitor == nil { mouseMonitor = watchMouse() }
     }
 
     /// Hands the keyboard to whatever is underneath without dismissing the panel: a synthetic ⌘V
     /// follows the keyboard, so the panel cannot still own it when the keystroke goes out.
     func releaseKeyboard() {
         orderOut(nil)
+        stopWatchingMouse()
     }
 
     /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.
@@ -433,6 +447,29 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         }
     }
 
+    /// Installs the outside-click monitor while the panel is visible: a click that misses the glass
+    /// is a dismissal, but losing key — by deactivation or a system dialog — is not.
+    private func watchMouse() -> Any? {
+        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) {
+            [weak self] _ in
+            self?.dismissIfOutside(NSEvent.mouseLocation)
+        }
+    }
+
+    /// Closes when a click landed outside the glass; a click on the panel is the user acting on it.
+    func dismissIfOutside(_ screenPoint: NSPoint) {
+        guard isVisible, !suspendsDismissal, !frame.contains(screenPoint) else { return }
+        close()
+    }
+
+    /// Whether the outside-click monitor is installed, so a test can prove it follows visibility.
+    var watchesMouse: Bool { mouseMonitor != nil }
+
+    private func stopWatchingMouse() {
+        if let mouseMonitor { NSEvent.removeMonitor(mouseMonitor) }
+        mouseMonitor = nil
+    }
+
     func windowDidMove(_ notification: Notification) {
         guard !placing else { return }
         let topCenter = NSPoint(x: frame.midX, y: frame.maxY)
@@ -442,16 +479,13 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
 
     override var canBecomeKey: Bool { true }
     override func cancelOperation(_ sender: Any?) { close() }
-    override func resignKey() {
-        super.resignKey()
-        if isVisible, !suspendsDismissal { close() }
-    }
     override func close() {
         guard !closing else { return }
         closing = true
         defer { closing = false }
         if let keys { NSEvent.removeMonitor(keys) }
         keys = nil
+        stopWatchingMouse()
         onClose()
         super.close()
     }
@@ -505,10 +539,12 @@ struct PanelView: View {
             replace: replaceAction,
             collection: controller.collection,
             openNotebook: controller.openNotebook,
+            confirmed: controller.writebackConfirmed,
             notice: controller.inlineNotice,
             recover: recover,
             retry: controller.translate,
             cancel: controller.stop,
+            done: controller.close,
             openSettings: settings)
     }
 

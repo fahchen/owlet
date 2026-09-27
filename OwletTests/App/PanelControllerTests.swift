@@ -6,7 +6,7 @@ import Testing
 
 @testable import Owlet
 
-/// Serialized: each test shows a real panel, and a panel closes when another one takes key.
+/// Serialized: each test may show a real panel, and real panels compete for key.
 @MainActor @Suite(.serialized)
 struct PanelControllerTests {
     let range = SelectedRange(location: 0, length: 5)
@@ -20,8 +20,8 @@ struct PanelControllerTests {
         func release() { continuations.removeFirst().resume() }
     }
 
-    /// A panel that never goes on screen. The test host is not the active application, so a real
-    /// panel loses key the moment it takes it; a test of controller state must not race that.
+    /// A panel that never goes on screen, so a test of controller state does not depend on the
+    /// window server and the test host's key changes.
     final class OffScreenPanel: FloatingPanel {
         override func show(anchor: PanelPlacement.Anchor) {}
     }
@@ -159,9 +159,9 @@ struct PanelControllerTests {
         #expect(writes.texts.isEmpty)
     }
 
-    /// A paste is a write too: the source is still consumed, no refusal is left and the
-    /// panel does not stay up. Driven through the footer's entry point, which is what a click or
-    /// ⌘↩ reaches, so the assertion does not depend on the window's key state.
+    /// A paste is a write too: the source is still consumed, no refusal is left and the panel
+    /// confirms the write-back instead of closing. Driven through the footer's entry point, which
+    /// is what a click or ⌘↩ reaches, so the assertion does not depend on the window's key state.
     @Test func pastedWriteConsumesTheSelection() async {
         let (panel, writes) = makePanel(outcome: .pasted)
         panel.trigger()
@@ -172,7 +172,7 @@ struct PanelControllerTests {
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
         #expect(panel.writebackRefusal == nil)
-        #expect(panel.panel?.isVisible != true)
+        #expect(panel.writebackConfirmed)
     }
 
     @Test func rapidTriggersAcceptOnlyLatestRead() async {
@@ -190,9 +190,9 @@ struct PanelControllerTests {
         panel.close()
     }
 
-    /// Losing key (click elsewhere) closes like Esc: the request is invalidated, so the pending
-    /// auto-replace never writes and the late response is dropped.
-    @Test func resignKeyClosesAndCancelsAutoReplace() async throws {
+    /// Losing key (deactivation, a system dialog, or an inactive app taking key and dropping it) no
+    /// longer dismisses: the panel stays up and the pending auto-replace still writes.
+    @Test func losingKeyNeitherClosesNorCancelsTheWrite() async throws {
         let gate = Gate()
         let (panel, writes) = makePanel(gate: gate, realWindow: true)
         panel.trigger(replace: true)
@@ -202,14 +202,13 @@ struct PanelControllerTests {
         let window = try #require(panel.panel)
         #expect(window.isVisible)
         window.resignKey()
-        #expect(!window.isVisible)
-        #expect(panel.notice == nil)
-        #expect(panel.model.state == .idle)
+        #expect(window.isVisible)
+        #expect(panel.notice == .translating)
         gate.release()
         await settle()
-        #expect(writes.texts.isEmpty)
-        #expect(panel.model.state == .idle)
-        #expect(panel.notice == nil)
+        #expect(writes.texts == ["T:Hello"])
+        #expect(panel.writebackConfirmed)
+        panel.close()
     }
 
     /// The write-back takes the keyboard away from the panel first — a synthetic ⌘V follows the
@@ -243,7 +242,9 @@ struct PanelControllerTests {
         #expect(releasesAtWrite.withLock { $0 } == 1)
         #expect(!stub.isVisible)
         #expect(panel.selection == nil)
-        #expect(closes == 1)
+        // The panel is not dismissed: it comes back to confirm the write-back.
+        #expect(closes == 0)
+        #expect(panel.writebackConfirmed)
     }
 
     /// A write-back that never landed comes back with the result still in hand, so the failure is
@@ -256,6 +257,7 @@ struct PanelControllerTests {
         }
         #expect(panel.writebackRefusal == .unwritten)
         #expect(panel.selection != nil)
+        #expect(!panel.writebackConfirmed)
     }
 
     /// A read-only selection is reported as such rather than as a generic failure.
@@ -267,9 +269,89 @@ struct PanelControllerTests {
         }
         #expect(panel.writebackRefusal == .unwritable)
         #expect(panel.selection != nil)
+        #expect(!panel.writebackConfirmed)
     }
 
-    /// `close()` re-entered from `onClose`, or via `resignKey` while closing, runs `onClose` once.
+    /// A successful write-back confirms instead of vanishing: the panel stays on screen with the
+    /// result still copyable, and Esc closes it.
+    @Test func successfulWriteBackConfirmsAndEscCloses() async throws {
+        let (panel, _) = makePanel(outcome: .pasted, realWindow: true)
+        panel.trigger()
+        await settle()
+        #expect(panel.model.state == .success("T:Hello"))
+        panel.replace(with: "T:Hello")
+        for _ in 0..<40 where !panel.writebackConfirmed { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(panel.writebackConfirmed)
+        #expect(panel.selection == nil)
+        #expect(panel.model.state == .success("T:Hello"))
+        #expect(panel.inlineNotice == nil)
+        let window = try #require(panel.panel)
+        #expect(window.isVisible)
+        panel.run(.cancel)
+        #expect(!window.isVisible)
+        #expect(!panel.writebackConfirmed)
+    }
+
+    /// 完成 closes the confirmation through the same controller close the footer button calls.
+    @Test func finishClosesTheConfirmation() async throws {
+        let (panel, _) = makePanel(outcome: .pasted, realWindow: true)
+        panel.trigger()
+        await settle()
+        panel.replace(with: "T:Hello")
+        for _ in 0..<40 where !panel.writebackConfirmed { try? await Task.sleep(for: .milliseconds(50)) }
+        let window = try #require(panel.panel)
+        #expect(window.isVisible)
+        panel.close()
+        #expect(!window.isVisible)
+        #expect(!panel.writebackConfirmed)
+    }
+
+    /// A click that misses the glass dismisses the panel; a click on the panel is not a dismissal.
+    @Test func mouseDownOutsideDismissesButInsideDoesNot() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        #expect(window.isVisible)
+        window.dismissIfOutside(NSPoint(x: window.frame.midX, y: window.frame.midY))
+        #expect(window.isVisible)
+        window.dismissIfOutside(NSPoint(x: window.frame.maxX + 500, y: window.frame.maxY + 500))
+        #expect(!window.isVisible)
+    }
+
+    /// The outside-click monitor lives exactly while the panel is visible, so a hidden panel cannot
+    /// swallow the next click.
+    @Test func mouseMonitorFollowsVisibility() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        #expect(window.watchesMouse)
+        panel.close()
+        #expect(!window.watchesMouse)
+    }
+
+    /// A write-back takes the panel off screen without dismissing it, and a miss brings it back with
+    /// the result still copyable.
+    @Test func writeBackBringsThePanelBackOnAMiss() async throws {
+        let (panel, _) = makePanel(outcome: .refused, realWindow: true)
+        panel.trigger()
+        await settle()
+        let window = try #require(panel.panel)
+        #expect(window.isVisible)
+        #expect(panel.selection != nil)
+        panel.replace(with: "T:Hello")
+        for _ in 0..<40 where panel.writebackRefusal == nil { try? await Task.sleep(for: .milliseconds(50)) }
+        await settle()
+        #expect(panel.writebackRefusal == .unwritten)
+        #expect(panel.selection != nil)
+        #expect(window.isVisible)
+        #expect(window.watchesMouse)
+        #expect(!panel.writebackConfirmed)
+        panel.close()
+    }
+
+    /// `close()` re-entered from `onClose` runs `onClose` once, and a later key change is inert.
     @Test func closeIsNotReentrant() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }

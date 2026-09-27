@@ -88,7 +88,7 @@
 | `direct-selection-error.png` / `direct-permission.png` / `direct-unconfigured.png` / `direct-error.png` / `direct-format-error.png` / `direct-cancelled.png` | 与上一行逐像素相同：直接替换流程复用同一条紧凑玻璃条与同一套恢复入口，仅快捷键发起的流程不同 |
 | `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |
 | `empty.png` | 已展开且原文为空：`canRetry` 为假，`PanelHeader` 不传 `retry`、`PanelFooter` 默认分支没有按钮，只留快捷键提示；原文栏仍可编辑 |
-| `success.png`（提案 · 未实现） | 写回成功确认：建议在展开结果内确认替换、动作行以 `完成` 关闭；应用现在写回成功即 `close()`，没有这一屏 |
+| `success.png` | 写回成功确认：展开结果内确认替换、动作行以 `完成` 关闭；应用已落地：写回成功保留面板、按 Esc／完成关闭 |
 | `book-list.png` / `book-detail.png` / `book-empty.png` / `no-results.png`（提案 · 未实现） | 统一工具栏 · 搜索框 · 弹出式按钮 `全部语言` · `导出…` · `List` 行 · `ContentUnavailableView` 空状态（拟用，未落地） |
 | `history-list.png` / `history-detail.png` / `history-empty.png`（提案 · 未实现） | 同构工具栏 · 类型筛选 · 破坏性 `清空历史` · 详情可复制与收藏 |
 | `learning.png` / `learning-loading.png` / `learning-error.png` / `learning-empty.png` / `saved.png`（提案 · 未实现） | 展开结果内的独立区块 · `ProgressView`／`.redacted` 占位 · 就地重试 · 可勾选列表与 `收藏所选` · 动作行 leading 端 `收藏选中内容` |
@@ -122,7 +122,7 @@
 | `aligned` | 提案（T14）：`Owlet/Processing/TranslationView.swift` 只拼接输出译文，没有配对视图 |
 | `settings-prompts` | 提案（T12）：`Owlet/LLM/DefaultPrompts.swift` 只有内置默认值，没有编辑界面 |
 | `workspace-narrow` | 提案（T22）：`Owlet/Processing/TranslationView.swift` 是单列 `VStack` |
-| `success` | 提案（写回完成确认）：`Owlet/App/PanelController.swift` 的 `replace(with:)` 写回成功即 `close()`，没有确认屏 |
+| `success` | 已落地（写回完成确认）：`Owlet/App/PanelController.swift` 的 `writebackConfirmed` 在写回成功后保留面板，`Owlet/App/ExpandedPanel.swift` 渲染确认行并把「替换」换成「完成」 |
 
 ## 5. 设计令牌退役表
 

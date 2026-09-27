@@ -17,13 +17,12 @@
 | 翻译显示方式 · 逐句对照：原文／译文按语义配对显示 | 翻译 | [aligned](../design/screenshots/aligned.png) | T14 |
 | System Prompt 查看／编辑／保存／恢复默认 | 模型与数据设置 | [settings-prompts](../design/screenshots/settings-prompts.png) | T12 |
 | 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
-| 直接替换的完成确认界面（写回成功后直接关闭） | 翻译并直接替换 | [success](../design/screenshots/success.png) | T06 |
 | 内容区响应式的原文／译文两栏并排（实现为单列 `VStack`） | 两种界面形态（布局细节见 `spec/DESIGN.md › 布局约束`） | [workspace-narrow](../design/screenshots/workspace-narrow.png)（窄窗口下的堆叠分支；宽窗口并排尚未出图） | T22 |
 | 处理中的整圈边框呼吸（实现只用 `ProgressView`） | 两种界面形态 | —（仍无画面） | T24 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 | 「提示词设置」恢复入口（返回格式错误时的按钮落不到 Prompt 编辑） | 定义边界 | [format-error](../design/screenshots/format-error.png)、[direct-format-error](../design/screenshots/direct-format-error.png)（展示当前按钮；落点仍是服务设置） | T12 |
 
-其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”的提案画面（应用写回成功后直接关闭）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的 16 张提案画面均标注未实现，不改变实现现状。
+其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用已落地（写回成功保留面板、按 Esc／完成关闭），原型徽标沿用旧画面；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
 
 - **主窗口的错误提示是英文原文。** `TranslationView` 对 `.failure` 直接渲染 `ModelError.message`，而该文案是英文（如 `Authentication failed. Check the API key.`、`Network error: …`）；浮窗侧则把这些映射成中文。证据：`Owlet/LLM/ModelClient.swift` 的 `ModelError.message`、`Owlet/Processing/TranslationView.swift` 的 `status`。设计图的 `workspace-error` 因此画的是英文文案。
 - **设置里模型列表失败也显示原始错误。** `ServiceSettingsView.modelField` 的 `.failed` 分支渲染 `Label(message, …)`，`message` 同样来自英文的 `ModelError` 或 `localizedDescription`。证据：`Owlet/Settings/ServiceSettingsView.swift`。
@@ -41,6 +40,5 @@
 
 - **设置是主窗口的侧栏页面，不是独立窗口。** `MainView` 用 `NavigationSplitView`，`.settings` 只是 `Page` 的一个 case；`⌘,` 由 `SettingsButton` 切到该页面，应用里没有 `Settings` scene。证据：`Owlet/App/OwletApp.swift`。
 - **格式错误的恢复入口到不了 Prompt 编辑器。** 格式错误时 `Notice.actionTitle` 返回"提示词设置"，但 `PanelView.recover` 把 `.failure` 一律映射到 `settings()`，而设置页只有"模型服务"与"浮窗"两个分组，没有 Prompt 编辑，只有 `DefaultPrompts` 常量。证据：`Owlet/App/PanelController.swift`、`Owlet/Processing/TranslationView.swift`、`Owlet/Settings/ServiceSettingsView.swift`、`Owlet/LLM/DefaultPrompts.swift`。
-- **替换成功后浮窗直接关闭，没有确认屏。** `replace(with:)` 写回成功即调用 `close()`，`Notice` 没有成功分支，`ExpandedPanel` 也没有成功内联行；提案画面为 [success](../design/screenshots/success.png)（未实现）。证据：`Owlet/App/PanelController.swift`、`Owlet/App/ExpandedPanel.swift`。
-- **面板只在第一次成功后才展开，之后一直保持展开。** `expanded` 只在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；因此设计里的 `success` 没有对应界面（提案画面 [success](../design/screenshots/success.png) 未实现），`empty` 对应展开后原文被清空的界面（[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`。
+- **面板在首次成功或写回成功后展开，之后一直保持展开。** `expanded` 在首次 `.success` 或写回成功时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；`empty` 对应展开后原文被清空的界面（[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`、`performReplace`。
 - **写回失败只有两种文案，共用同一个布局。** `inlineNotice` 在 `.success` 且 `writebackRefusal` 非空时返回它：粘贴确实没落到任何地方是 `Notice.unwritten`（"未能写回原应用"），选区可证明不能容纳文字是 `Notice.unwritable`（"原选区不可编辑"）。`ExpandedPanel` 渲染的是 `notice.message`，两个状态下布局相同、动作都是"复制结果"，因此设计图只出一张（`result-unwritten`／`unwritten`），文案变体不单独出图。

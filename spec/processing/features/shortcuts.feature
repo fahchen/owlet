@@ -18,6 +18,21 @@ Feature: 快捷入口与浮窗
       When 用户按下 Esc
       Then 浮窗关闭
 
+    Scenario: 失去焦点不关闭浮窗
+      Given 文本处理浮窗已打开
+      When 浮窗失去键盘焦点
+      Then 浮窗保持打开
+
+    Scenario: 点击浮窗外部关闭
+      Given 文本处理浮窗已打开
+      When 用户点击浮窗以外的区域
+      Then 浮窗关闭
+
+    Scenario: 点击浮窗内部不关闭
+      Given 文本处理浮窗已打开
+      When 用户点击浮窗内部
+      Then 浮窗保持打开
+
     Scenario: 未授权读取外部选区
       Given 应用没有读取外部选区所需权限
       And 浮动工具栏尚未展开

@@ -1,5 +1,13 @@
 # Owlet · Rose Glass
 
+## 设计规则（优先于下文）
+
+- 所有组件使用 macOS 26 原生 SwiftUI / AppKit 与原生 Liquid Glass，不做任何定制：不用自定义颜色、tint、accent token，不加自定义填充、边框、渐变、光晕、阴影、圆角样式、下划线链接或自定义 ButtonStyle。
+- 按钮使用 `.buttonStyle(.glass)`，主操作用 `.glassProminent`，并放在 `GlassEffectContainer` 中，作为玻璃浮于面板玻璃之上。
+- 面板背景为原生 Liquid Glass（`NSGlassEffectView` 或形状内的 `.glassEffect`），其上不再绘制任何东西。
+- 使用系统强调色、系统字体与 SF Symbols。
+- `design/screenshots/` 只约束布局（元素顺序、位置、尺寸、间距），不约束组件样式；下文的配色与样式描述以本规则为准。
+
 中性浅色界面，玫瑰粉作为 primary color，用于白天阅读与工作沟通中短暂唤起的语言工具。保留系统字体、紧凑布局与 Liquid Glass 材质。
 
 | 角色 | OKLCH | 用途 |

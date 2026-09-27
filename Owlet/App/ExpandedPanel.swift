@@ -18,13 +18,14 @@ struct ExpandedPanel: View {
                 operation: $model.operation,
                 retry: canRetry ? retry : nil,
                 openSettings: openSettings)
-            RoseGlass.hairline.frame(height: 1)
+            Divider()
             ScrollView {
                 PanelBody(model: model, notice: notice, recover: recover)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: 440)
-            RoseGlass.hairline.frame(height: 1)
+            .layoutPriority(-1)
+            Divider()
             PanelFooter(
                 state: model.state,
                 operation: model.operation,
@@ -54,7 +55,7 @@ struct PanelHeader: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
-                    .foregroundStyle(RoseGlass.muted)
+                    .foregroundStyle(.secondary)
                     .accessibilityLabel("Owlet")
                 Picker("快捷操作", selection: $operation) {
                     ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -64,17 +65,19 @@ struct PanelHeader: View {
                 .buttonStyle(.borderless)
                 .fixedSize()
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(RoseGlass.ink)
             }
             Spacer(minLength: 0)
-            HStack(spacing: 1) {
-                if let retry {
-                    ToolButton(title: "重新处理", systemImage: "arrow.clockwise", action: retry)
+            GlassEffectContainer {
+                HStack(spacing: 6) {
+                    if let retry {
+                        ToolButton(title: "重新处理", systemImage: "arrow.clockwise", action: retry)
+                    }
+                    ToolButton(title: "打开设置", systemImage: "slider.horizontal.3", action: openSettings)
                 }
-                ToolButton(title: "打开设置", systemImage: "slider.horizontal.3", action: openSettings)
             }
         }
-        .padding(.horizontal, 13)
+        .padding(.leading, 13)
+        .padding(.trailing, 8)
         .frame(height: 42)
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())
@@ -89,11 +92,7 @@ private struct ToolButton: View {
     var body: some View {
         Button(title, systemImage: systemImage, action: action)
             .labelStyle(.iconOnly)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(RoseGlass.muted)
-            .frame(width: 28, height: 28)
-            .contentShape(Rectangle())
-            .buttonStyle(.plain)
+            .buttonStyle(.glass)
             .help(title)
     }
 }
@@ -119,12 +118,11 @@ private struct PanelBody: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .lineSpacing(4)
-                    .foregroundStyle(RoseGlass.ink)
                     .lineLimit(1...5)
             }
             .padding(.bottom, 12)
             if hasResultSection {
-                RoseGlass.line.frame(height: 1)
+                Divider()
                 resultSection.padding(.top, 12)
             }
             status
@@ -147,7 +145,7 @@ private struct PanelBody: View {
             LabelRow {
                 if model.state == .loading {
                     HStack(spacing: 6) {
-                        Circle().fill(RoseGlass.accent).frame(width: 5, height: 5)
+                        ProgressView().controlSize(.mini)
                         Text("\(model.operation.title)中")
                     }
                 } else {
@@ -160,28 +158,29 @@ private struct PanelBody: View {
                 Text(text)
                     .font(.system(size: 13))
                     .lineSpacing(5)
-                    .foregroundStyle(RoseGlass.ink)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                VStack(alignment: .leading, spacing: 9) {
-                    RoundedRectangle(cornerRadius: 4).fill(RoseGlass.skeleton).frame(height: 9)
-                    RoundedRectangle(cornerRadius: 4).fill(RoseGlass.skeleton).frame(width: 300, height: 9)
-                }
-                .padding(.vertical, 6)
-                .accessibilityLabel("正在生成结果")
+                Text(model.input)
+                    .font(.system(size: 13))
+                    .lineSpacing(5)
+                    .lineLimit(2)
+                    .redacted(reason: .placeholder)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("正在生成结果")
             }
         }
     }
 
     @ViewBuilder private var status: some View {
         if let notice {
-            StatusNote(neutral: notice == .cancelled) {
+            StatusNote(error: notice != .cancelled) {
                 Text(notice.message)
                     .font(.system(size: 12))
-                    .foregroundStyle(RoseGlass.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                InlineAction(notice.actionTitle) { recover(notice) }
+                GlassEffectContainer {
+                    Button(notice.actionTitle) { recover(notice) }.buttonStyle(.glass)
+                }
             }
         }
     }
@@ -210,27 +209,26 @@ private struct LabelRow<Leading: View, Trailing: View>: View {
             trailing
         }
         .font(.system(size: 10))
-        .foregroundStyle(RoseGlass.muted)
+        .foregroundStyle(.secondary)
         .frame(minHeight: 16)
     }
 }
 
-/// In-content status: message left, recovery entry right; warm red for errors, neutral when cancelled.
+/// In-content status: symbol and message left, recovery entry right.
 private struct StatusNote<Content: View>: View {
-    var neutral = false
+    var error = true
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 12) { content }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
-            .background(
-                neutral ? RoseGlass.neutralFill : RoseGlass.errorFill,
-                in: .rect(cornerRadius: 8, style: .continuous)
-            )
-            .padding(.top, 10)
-            .accessibilityElement(children: .contain)
+        HStack(spacing: 10) {
+            Image(systemName: error ? "exclamationmark.triangle" : "info.circle")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            content
+        }
+        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+        .padding(.top, 10)
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -248,14 +246,15 @@ private struct PanelFooter: View {
         HStack(spacing: 6) {
             Text(hint)
                 .font(.system(size: 10))
-                .foregroundStyle(RoseGlass.muted)
+                .foregroundStyle(.secondary)
             Spacer(minLength: 0)
-            actions
+            GlassEffectContainer {
+                HStack(spacing: 6) { actions }
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 45)
-        .background(RoseGlass.footer)
     }
 
     private var hint: String {
@@ -275,7 +274,7 @@ private struct PanelFooter: View {
     @ViewBuilder private var actions: some View {
         switch state {
         case .loading:
-            Button("取消", action: cancel).buttonStyle(FooterButtonStyle())
+            Button("取消", action: cancel).buttonStyle(.glass)
         case .success(let text):
             Button {
                 NSPasteboard.general.clearContents()
@@ -283,74 +282,25 @@ private struct PanelFooter: View {
             } label: {
                 Label("复制", systemImage: "doc.on.doc")
             }
-            .buttonStyle(FooterButtonStyle())
+            .buttonStyle(.glass)
             if let replace {
                 Button {
                     replace(text)
                 } label: {
-                    Text("替换")
-                    KeyCap("⌘ ↩")
+                    Text("替换  ⌘↩")
                 }
-                .buttonStyle(FooterButtonStyle(prominent: true))
+                .buttonStyle(.glassProminent)
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel("替换")
             }
         default:
             if let retry {
                 Button(action: retry) {
-                    Text(retryTitle)
-                    KeyCap("⌘ ↩")
+                    Text("\(retryTitle)  ⌘↩")
                 }
-                .buttonStyle(FooterButtonStyle(prominent: true))
+                .buttonStyle(.glassProminent)
                 .keyboardShortcut(.return, modifiers: .command)
             }
         }
-    }
-}
-
-/// Footer glass button: 8pt-radius near-white glass, or rose-tinted glass when prominent.
-private struct FooterButtonStyle: ButtonStyle {
-    var prominent = false
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) { configuration.label }
-            .labelStyle(FooterLabelStyle())
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(prominent ? RoseGlass.paper : RoseGlass.ink)
-            .padding(.horizontal, 10)
-            .frame(minHeight: 36)
-            .glassEffect(
-                prominent ? .regular.tint(RoseGlass.accent).interactive() : .regular.interactive(),
-                in: .rect(cornerRadius: 8, style: .continuous)
-            )
-            .contentShape(.rect(cornerRadius: 8))
-            .opacity(configuration.isPressed ? 0.85 : isEnabled ? 1 : 0.5)
-    }
-}
-
-private struct FooterLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) {
-            configuration.icon.font(.system(size: 12))
-            configuration.title
-        }
-    }
-}
-
-/// Key hint inside the prominent button: translucent white chip.
-private struct KeyCap: View {
-    let keys: String
-
-    init(_ keys: String) { self.keys = keys }
-
-    var body: some View {
-        Text(keys)
-            .font(.system(size: 10, weight: .semibold))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(.white.opacity(0.22), in: .rect(cornerRadius: 4))
-            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.white.opacity(0.6), lineWidth: 1))
-            .accessibilityHidden(true)
     }
 }

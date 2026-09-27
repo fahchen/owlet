@@ -1,10 +1,12 @@
+import AppKit
 import ApplicationServices
 import Foundation
 import Testing
 
 @testable import Owlet
 
-@MainActor
+/// Serialized: each test shows a real panel, and a panel closes when another one takes key.
+@MainActor @Suite(.serialized)
 struct PanelControllerTests {
     let source = Source(pid: 1, document: nil, text: "Hello", location: 0, length: 5)
     var selection: Selection {
@@ -183,5 +185,20 @@ struct PanelControllerTests {
         #expect(panel.model.input.isEmpty)
         #expect(writes.texts.isEmpty)
         panel.close()
+    }
+
+    @Test func panelFrameStaysInsideVisibleFrame() {
+        let visible = NSRect(x: 0, y: 0, width: 1000, height: 800)
+        let size = NSSize(width: 560, height: 300)
+        #expect(
+            FloatingPanel.frame(size: size, topLeft: NSPoint(x: 100, y: 700), within: visible)
+                == NSRect(x: 100, y: 400, width: 560, height: 300))
+        #expect(
+            FloatingPanel.frame(size: size, topLeft: NSPoint(x: 900, y: 100), within: visible)
+                == NSRect(x: 440, y: 0, width: 560, height: 300))
+        #expect(
+            FloatingPanel.frame(
+                size: NSSize(width: 560, height: 1200), topLeft: NSPoint(x: -50, y: 900), within: visible)
+                == NSRect(x: 0, y: 0, width: 560, height: 800))
     }
 }

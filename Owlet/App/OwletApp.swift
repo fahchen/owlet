@@ -76,6 +76,16 @@ private struct Sidebar: View {
                 page = .processing
             }
             .padding(.bottom, 18)
+            // Reserves the unbuilt 我的积累 group (label, 生词本, 历史记录) so 快捷键 sits where
+            // the prototype places it.
+            VStack(alignment: .leading, spacing: 0) {
+                SectionLabel("我的积累")
+                NavRow("生词本", systemImage: "bookmark", selected: false) {}
+                NavRow("历史记录", systemImage: "clock", selected: false) {}
+            }
+            .padding(.bottom, 18)
+            .hidden()
+            .accessibilityHidden(true)
             NavRow("快捷键", systemImage: "slider.horizontal.3", selected: page == .shortcuts) {
                 page = .shortcuts
             }

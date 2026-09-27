@@ -198,6 +198,8 @@ struct TranslationView: View {
             .accessibilityAddTraits(.updatesFrequently)
             // Reserved for the unbuilt 收藏选中内容 row so the layout stays stable.
             Color.clear.frame(height: 30)
+            // Reserved for the unbuilt 学习表达 disclosure (25pt gap, hairline, 14pt inset, row).
+            if result != nil { Color.clear.frame(height: 61) }
         }
         .padding(.top, 25)
     }

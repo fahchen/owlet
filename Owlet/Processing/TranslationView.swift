@@ -23,6 +23,13 @@ final class TranslationModel {
         self.config = config
     }
 
+    /// Cancels any in-flight translation and ignores its late result.
+    func cancel() {
+        task?.cancel()
+        operationID += 1
+        if state == .loading { state = .idle }
+    }
+
     /// Starts a translation; any in-flight one is cancelled and its result ignored.
     @discardableResult
     func translate(to targetLanguage: String) -> Task<Void, Never>? {
@@ -62,6 +69,8 @@ final class TranslationModel {
 
 struct TranslationView: View {
     @Bindable var model: TranslationModel
+    /// Used where `SettingsLink` has no scene, e.g. the floating panel.
+    var openSettings: (() -> Void)?
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -110,12 +119,21 @@ struct TranslationView: View {
             HStack {
                 Text(message).foregroundStyle(.red)
                 Button("Retry") { model.translate(to: targetLanguage) }
+                settingsButton
             }
         case .missingConfig:
             HStack {
                 Text("Service is not configured: Base URL, model and API key are required.")
-                SettingsLink { Text("Open Service Settings") }
+                settingsButton
             }
+        }
+    }
+
+    @ViewBuilder private var settingsButton: some View {
+        if let openSettings {
+            Button("Open Service Settings", action: openSettings)
+        } else {
+            SettingsLink { Text("Open Service Settings") }
         }
     }
 }

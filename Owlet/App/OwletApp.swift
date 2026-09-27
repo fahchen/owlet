@@ -9,15 +9,18 @@ struct OwletApp: App {
         controller.start()
         return controller
     }()
+    @State private var panel = PanelController(
+        model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
+    @State private var page: MainView.Page? = .processing
 
     var body: some Scene {
         Window("Owlet", id: "main") {
-            MainView(translation: translation, shortcuts: shortcuts)
+            MainView(translation: translation, shortcuts: shortcuts, page: $page)
         }
         MenuBarExtra {
-            MenuContent(shortcuts: shortcuts)
+            MenuContent(shortcuts: shortcuts, page: $page)
         } label: {
-            MenuBarLabel(shortcuts: shortcuts)
+            MenuBarLabel(shortcuts: shortcuts, panel: panel, page: $page)
         }
         Settings {
             ServiceSettingsView()
@@ -30,7 +33,7 @@ private struct MainView: View {
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
-    @State private var page: Page? = .processing
+    @Binding var page: Page?
 
     var body: some View {
         NavigationSplitView {
@@ -47,16 +50,25 @@ private struct MainView: View {
     }
 }
 
-/// The menu bar label is always rendered, so it wires the shortcut to `openWindow`,
-/// which also recreates the main window after the user closes it.
+/// The menu bar label is always rendered, so it wires the shortcut and the panel's
+/// recovery entries to scene actions that also recreate closed windows.
 private struct MenuBarLabel: View {
     let shortcuts: ShortcutController
+    let panel: PanelController
+    @Binding var page: MainView.Page?
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Image(systemName: "character.bubble")
             .onAppear {
-                shortcuts.onTranslate = {
+                shortcuts.onTranslate = { panel.trigger() }
+                panel.openSettings = {
+                    NSApp.activate()
+                    openSettings()
+                }
+                panel.openManualInput = {
+                    page = .processing
                     NSApp.activate()
                     openWindow(id: "main")
                 }
@@ -66,6 +78,7 @@ private struct MenuBarLabel: View {
 
 private struct MenuContent: View {
     let shortcuts: ShortcutController
+    @Binding var page: MainView.Page?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -73,7 +86,15 @@ private struct MenuContent: View {
             NSApp.activate()
             openWindow(id: "main")
         }
-        Text("翻译：\(shortcuts.translate?.displayString ?? "未设置")")
+        if let shortcut = shortcuts.translate {
+            Text("翻译：\(shortcut.displayString)")
+        } else {
+            Button("翻译快捷键未设置，前往快捷键页…") {
+                page = .shortcuts
+                NSApp.activate()
+                openWindow(id: "main")
+            }
+        }
         SettingsLink { Text("Settings…") }
         Divider()
         Button("Quit") { NSApp.terminate(nil) }

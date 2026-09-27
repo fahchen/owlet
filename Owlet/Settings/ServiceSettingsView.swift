@@ -14,29 +14,59 @@ struct ServiceSettingsView: View {
         case failed(String)
     }
 
+    @FocusState private var focus: Field?
+
+    private enum Field { case baseURL, model, apiKey }
+
     var body: some View {
-        Form {
-            Section("Service") {
-                Picker("Provider", selection: $provider) {
-                    ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                GroupTitle("模型服务")
+                FormRow(title: "服务商") {
+                    SelectField(
+                        title: "服务商", selection: $provider,
+                        options: Provider.allCases.map { ($0, $0.title) }
+                    )
+                    .frame(width: 220)
                 }
-                TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
-                modelField
-                SecureField("API Key", text: $apiKey)
-                HStack {
-                    Spacer()
-                    if saved { Text("Saved").foregroundStyle(.secondary) }
-                    Button("Save API Key") {
-                        saved = SettingsStore.setAPIKey(apiKey, for: provider)
-                        if saved { loadModels() }
+                VStack(alignment: .leading, spacing: 17) {
+                    FormField(title: "Base URL") {
+                        TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
+                            .textFieldStyle(.plain)
+                            .focused($focus, equals: .baseURL)
+                            .modifier(FieldBox(focused: focus == .baseURL))
                     }
-                    .buttonStyle(.borderedProminent)
+                    FormField(title: "API Key") {
+                        SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
+                            .textFieldStyle(.plain)
+                            .focused($focus, equals: .apiKey)
+                            .modifier(FieldBox(focused: focus == .apiKey))
+                    }
+                    FormField(title: "模型名称") { modelField }
                 }
+                .padding(.vertical, 17)
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 28)
+            PageFooter {
+                if saved {
+                    Label("已保存", systemImage: "checkmark")
+                        .foregroundStyle(RoseGlass.green)
+                }
+            } trailing: {
+                Button("保存设置") {
+                    saved = SettingsStore.setAPIKey(apiKey, for: provider)
+                    if saved { loadModels() }
+                }
+                .buttonStyle(MainButtonStyle(prominent: true))
             }
         }
-        .formStyle(.grouped)
-        .tint(TranslationView.accent)
-        .frame(width: 560)
+        .foregroundStyle(RoseGlass.ink)
+        .tint(RoseGlass.accent)
+        .frame(width: 600)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(RoseGlass.window)
+        .navigationTitle("设置")
         .onAppear {
             apiKey = SettingsStore.apiKey(for: provider) ?? ""
             loadModels()
@@ -52,24 +82,35 @@ struct ServiceSettingsView: View {
     @ViewBuilder private var modelField: some View {
         switch models {
         case .loaded(let ids):
-            Picker("Model", selection: $model) {
-                // Keep a saved model selectable even if the list no longer offers it.
-                ForEach(ids.contains(model) ? ids : [model] + ids, id: \.self) { Text($0).tag($0) }
-            }
+            // Keep a saved model selectable even if the list no longer offers it.
+            SelectField(
+                title: "模型名称", selection: $model,
+                options: (ids.contains(model) ? ids : [model] + ids).map { ($0, $0) })
         case .loading:
-            HStack {
-                TextField("Model", text: $model)
-                ProgressView().controlSize(.small)
+            modelText.overlay(alignment: .trailing) {
+                ProgressView().controlSize(.small).padding(.trailing, 10)
             }
         case .failed(let message):
-            TextField("Model", text: $model)
-            HStack {
-                Text(message).foregroundStyle(.secondary)
-                Button("Retry") { loadModels() }
+            modelText
+            HStack(spacing: 8) {
+                Text(message).foregroundStyle(RoseGlass.errorText)
+                Spacer(minLength: 0)
+                Button("重试") { loadModels() }
+                    .buttonStyle(.plain)
+                    .underline()
+                    .foregroundStyle(RoseGlass.accent)
             }
+            .font(.system(size: 11))
         case .idle:
-            TextField("Model", text: $model)
+            modelText
         }
+    }
+
+    private var modelText: some View {
+        TextField("模型名称", text: $model, prompt: Text("填写服务商提供的模型名称"))
+            .textFieldStyle(.plain)
+            .focused($focus, equals: .model)
+            .modifier(FieldBox(focused: focus == .model))
     }
 
     /// DeepSeek only: fetch the model list once a key is saved; other providers stay free-form.

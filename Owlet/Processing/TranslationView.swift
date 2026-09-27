@@ -336,7 +336,7 @@ private struct StatusBlock<Action: View>: View {
 }
 
 /// Footer button: near-white bordered secondary, or solid rose primary.
-private struct MainButtonStyle: ButtonStyle {
+struct MainButtonStyle: ButtonStyle {
     var prominent = false
     @Environment(\.isEnabled) private var isEnabled
 

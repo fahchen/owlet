@@ -28,7 +28,7 @@ for (const [id, name, description, filename] of scenarios) {
     openExperience(id);
     document.getAnimations().forEach(animation => animation.cancel());
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const element = document.querySelector(id === 'menubar' ? '#menubar' : '#window');
+    const element = document.querySelector(id.startsWith('menubar') ? '#menubar' : '#window');
     const rect = element.getBoundingClientRect();
     const x = Math.max(0, Math.floor(rect.left) - 24);
     const y = Math.max(0, Math.floor(rect.top) - 24);

@@ -66,6 +66,7 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 /* Source list */
 .sidebar{padding:8px 10px 12px;background:oklch(93% .012 350/.4);border-right:1px solid var(--line)}
 .section-label{font-size:11px;font-weight:600;color:var(--muted);padding:12px 8px 3px;margin:0}
+.section-footer{font-size:11px;line-height:1.7;color:var(--muted);margin:2px 0 12px}
 .navgroup{margin:0 0 6px}
 .nav{display:flex;align-items:center;gap:8px;min-height:26px;padding:4px 8px;width:100%;text-align:left;font-size:13px;color:var(--ink)}
 .nav svg{width:16px;height:16px}
@@ -87,7 +88,6 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .result.english{letter-spacing:0}
 .result.redacted{color:var(--muted)}
 .result.redacted span{background:oklch(62% .008 265/.14);border-radius:3px;color:transparent}
-.result-scroll{max-height:250px;overflow:auto;padding-right:5px}
 .reserved{height:30px}
 .reserved.learning{height:61px}
 .spin{width:13px;height:13px;flex:none;border-radius:50%;border:1.5px solid oklch(60% .012 350/.3);border-top-color:var(--muted);animation:spin .7s linear infinite}
@@ -102,7 +102,7 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .glass-btn svg{width:14px;height:14px;color:inherit}
 .glass-btn.prominent{border-color:transparent;background:var(--accent);color:oklch(99% .003 350);font-weight:600;box-shadow:0 1px 3px oklch(35% .12 350/.28)}
 .glass-btn.prominent:hover{background:oklch(44% .18 350)}
-.footer{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 22px;flex-shrink:0;border-top:1px solid var(--line);background:oklch(98% .006 350/.9)}
+.footer{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-shrink:0;border-top:1px solid var(--line);background:oklch(98% .006 350/.9)}
 .footer small{font-size:11px}
 .footer .actions{display:flex;gap:8px;margin-left:auto}
 .footer .glass-btn{height:30px;font-size:13px;padding:0 13px}
@@ -119,9 +119,9 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .formrow .field input{flex:1;min-width:0}
 .formrow .field select{flex:0 0 auto;min-width:190px}
 .formrow .spin{margin-left:auto}
-.formrow .error{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:4px 0 12px}
-.formrow .error svg{width:15px;height:15px}
-.settings-note{font-size:11px;color:var(--muted);line-height:1.7;margin:0 0 18px}
+.formrow .error{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);min-width:0}
+.formrow .error svg{width:15px;height:15px;flex:none}
+.formrow .glass-btn{flex:none}
 
 /* Shortcut rows */
 .keyrow{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -131,8 +131,7 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .keyrow .keys{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .recorder{min-width:91px;font-size:12px;padding:7px 12px;border:1px solid var(--line);background:var(--paper);font-variant-numeric:tabular-nums}
 .recorder.recording{border-color:var(--accent);background:var(--tint);color:var(--accent);font-weight:600}
-.notice{font-size:11px;line-height:1.7;color:var(--muted);min-height:20px;margin:12px 0 18px}
-.notice svg{width:14px;height:14px}
+.section-footer svg{width:14px;height:14px}
 
 /* Floating panel */
 .window.floating{display:flex;flex-direction:column;width:560px;min-height:0;height:auto;max-height:calc(100vh - 200px);margin:clamp(20px,5vh,55px) auto 0;border-radius:16px;background:oklch(99% .006 350/.55);backdrop-filter:blur(30px) saturate(1.5)}
@@ -166,9 +165,15 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .strip .msg{flex:1;min-width:0;font-size:12px;margin:0}
 
 /* Menu bar */
-.mac-menubar{position:fixed;inset:0 0 auto;height:28px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;background:oklch(97% .012 350/.45);backdrop-filter:blur(24px);z-index:40;font-size:12px}
+.mac-menubar{position:fixed;inset:0 0 auto;z-index:40;background:oklch(97% .012 350/.45);backdrop-filter:blur(24px);font-size:12px}
+.mac-menubar .bar{display:flex;align-items:center;justify-content:space-between;height:28px;padding:0 26px}
 .mac-menubar button{width:32px;height:25px;display:grid;place-items:center;border-radius:5px}
 .mac-menubar svg{width:19px;height:19px}
+.mac-menubar .menu{width:250px;margin:0 12px 10px auto;padding:5px;border:1px solid var(--line);border-radius:8px;background:oklch(99% .004 350/.94);backdrop-filter:blur(24px);box-shadow:0 10px 30px -8px oklch(20% .012 350/.3)}
+.mac-menubar .mi{display:flex;justify-content:space-between;gap:22px;font-size:13px;padding:4px 9px;border-radius:5px;white-space:nowrap;overflow:hidden}
+.mac-menubar .mi .key{color:var(--muted)}
+.mac-menubar .mi.muted{color:var(--muted)}
+.mac-menubar .msep{height:1px;background:var(--line);margin:5px 9px}
 .flow-preview .mac-menubar{position:relative;inset:auto;width:560px}
 
 /* Board: bands grouped by window or panel, stacked vertically. */
@@ -204,7 +209,7 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 @media(prefers-reduced-transparency:reduce){.window,.window.floating{background:oklch(97% .01 350);backdrop-filter:none}.appbar,.glass-btn{backdrop-filter:none}.glass-btn{background:var(--paper)}}
 </style></head><body>
 <svg style="display:none" aria-hidden="true"><defs>
-<symbol id="owlet" viewBox="0 0 28 28"><image href="logo/owlet.png" width="28" height="28"/></symbol>
+<symbol id="owlet" viewBox="0 0 28 28"><image href="logo/owlet-mark-white.png" width="28" height="28"/></symbol>
 <symbol id="sidebarIcon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></symbol>
 <symbol id="infoCircle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
 <symbol id="translate" viewBox="0 0 24 24"><path d="M3 5h12M9 3v2M5 5c1 6 5 9 9 11M13 5C12 11 8 15 3 17M14 21l4-11 4 11M15.5 17h5"/></symbol>
@@ -217,7 +222,7 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 <symbol id="check" viewBox="0 0 24 24"><path d="m5 13 4.5 4.5L19 7"/></symbol>
 </defs></svg>
 <div id="experience" class="stage">
-<div id="menubar" class="mac-menubar"><span>Finder</span><button aria-label="打开 Owlet 主界面" title="Owlet" onclick="openApp('processing')"><svg><use href="#owlet"/></svg></button></div>
+<div id="menubar" class="mac-menubar"></div>
 <header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="stale">原选区已变化</option><option value="error">请求失败</option></select></div></header>
 <div class="state-browser"><span>状态预览</span><button aria-label="上一个状态" onclick="stepState(-1)">←</button><select id="statePicker" aria-label="界面状态" onchange="preview(this.value)"></select><button aria-label="下一个状态" onclick="stepState(1)">→</button><small id="stateCount"></small></div>
 <div class="window" id="window"><header class="appbar" id="appbar"></header><aside class="sidebar" id="sidebar"></aside><main class="page" id="main"></main></div>
@@ -245,6 +250,7 @@ const langName=v=>(LANGS.find(l=>l[0]===v)||LANGS[0])[1];
 const SHORTCUTS=[['翻译','translate'],['润色','polish'],['翻译并替换','translateReplace']];
 const IN_APP=[['提交文本','⌘ ↩','应用内'],['替换结果','⌘ ↩','浮动工具栏'],['关闭 / 取消','Esc','浮动工具栏']];
 // PanelController.Notice：消息与唯一的恢复入口，实现于 Owlet/App/PanelController.swift。
+const MODEL_LIST_ERROR='Authentication failed. Check the API key.';
 const NOTICES={
   permission:{message:'需要选区读取权限',action:'权限设置'},
   unreadable:{message:'未能读取到文字',action:'手动输入'},
@@ -258,14 +264,21 @@ const NOTICES={
 // 每个状态：surface（app / compact / panel / menubar）、页面或浮窗内容、以及可交互演示所需的字段。
 const states=[
  ['workspace','文本处理 · 结果','工具栏、原文、译文与底部操作栏；预留的收藏与学习两行仍为空位。','workspace.png'],
- ['workspace-empty','文本处理 · 输入','没有结果时页面只是输入区，复制不可用。','workspace-empty.png'],
+ ['workspace-empty','文本处理 · 空输入','没有选区也没有文本：占位提示可见，复制与提交都不可用。','workspace-empty.png'],
+ ['workspace-input','文本处理 · 已输入','有文本但还没结果：可提交，复制仍不可用。','workspace-input.png'],
  ['workspace-loading','文本处理 · 处理中','结果区以占位文本表示处理中，底部改为取消。','workspace-loading.png'],
- ['workspace-error','文本处理 · 请求失败','行内状态提示失败原因，并提供服务设置入口。','workspace-error.png'],
+ ['workspace-polish','文本处理 · 润色结果','同一页面切到润色：标签改为润色结果与保留原意。','workspace-polish.png'],
+ ['workspace-error','文本处理 · 请求失败','行内提示 ModelError 的原始文案，并提供服务设置入口。','workspace-error.png'],
+ ['workspace-unconfigured','文本处理 · 服务未配置','缺少服务配置时提示并指向设置。','workspace-unconfigured.png'],
  ['workspace-collapsed','文本处理 · 侧栏收起','NavigationSplitView 收起侧栏后页面不变。','workspace-collapsed.png'],
  ['shortcuts','快捷键 · 未设置','三个全局动作未录制；应用内快捷键固定。','shortcuts.png'],
  ['shortcuts-recording','快捷键 · 录制中','录制按钮等待新组合键；Esc 取消，Delete 清除。','shortcuts-recording.png'],
- ['settings','设置 · 模型服务','分组表单：服务商、Base URL、API Key、模型名称与浮窗位置。','settings.png'],
- ['settings-models','设置 · 模型列表失败','DeepSeek 取模型列表失败时就地提示并给重试。','settings-models.png'],
+ ['shortcuts-conflict','快捷键 · 组合冲突','与已录制动作冲突时提示换一个组合。','shortcuts-conflict.png'],
+ ['settings','设置 · 模型服务','DeepSeek 已保存：Base URL、Key、模型列表选择与浮窗位置。','settings.png'],
+ ['settings-openai','设置 · 自定义服务商','OpenAI Compatible 默认项：Base URL 与模型名称是自由填写，显示占位文案。','settings-openai.png'],
+ ['settings-saved','设置 · 已保存','保存后在页脚左侧确认，模型列表随保存重新读取。','settings-saved.png'],
+ ['settings-models','设置 · 模型列表失败','DeepSeek 取模型列表失败时就地提示原始错误并给重试。','settings-models.png'],
+ ['settings-models-loading','设置 · 模型列表读取中','读取模型列表时在名称行尾显示小号指示器。','settings-models-loading.png'],
  ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
  ['polish-loading','润色 · 处理中','复用同一条紧凑条，只改状态文字。','polish-loading.png'],
  ['direct-loading','直接替换 · 处理中','独立快捷键授权本次写回，状态文字标明。','direct-loading.png'],
@@ -280,21 +293,31 @@ const states=[
  ['polish','润色 · 结果','同一面板，标签改为润色结果与保留原意。','polish.png'],
  ['long','翻译 · 长文本','结果滚动，复制与替换固定在底部。','long.png'],
  ['result-loading','翻译 · 结果区处理中','已展开时重新处理保持展开，在结果区显示加载。','result-loading.png'],
- ['result-notice','翻译 · 结果区提示','展开态的错误在内容区就地呈现，不收起面板。','result-notice.png'],
- ['menubar','菜单栏 · 常驻','点击菜单栏图标打开主界面；快捷键唤起浮动面板。','menubar.png']
+ ['result-stale','翻译 · 写回被拒','结果仍保留，就地说明未写回并可复制。','result-stale.png'],
+ ['result-notice','翻译 · 结果区失败','展开态失败不收起面板：结果区隐藏，行内提示加底部重试。','result-notice.png'],
+ ['result-cancelled','翻译 · 结果区已取消','取消后结果区隐藏，行内提示与底部都回到重新处理。','result-cancelled.png'],
+ ['menubar','菜单栏 · 常驻','点击菜单栏图标展开菜单，不直接开窗。','menubar.png'],
+ ['menubar-menu','菜单栏 · 展开菜单','菜单：打开 Owlet、三个快捷键状态、设置…（⌘,）与退出。','menubar-menu.png']
 ];
 const config={
   workspace:{surface:'app',page:'processing',phase:'result'},
-  'workspace-empty':{surface:'app',page:'processing',phase:'input'},
+  'workspace-empty':{surface:'app',page:'processing',phase:'input',empty:true},
+  'workspace-input':{surface:'app',page:'processing',phase:'input'},
   'workspace-loading':{surface:'app',page:'processing',phase:'loading'},
-  'workspace-error':{surface:'app',page:'processing',phase:'failure'},
+  'workspace-polish':{surface:'app',page:'processing',phase:'result',operation:'polish'},
+  'workspace-error':{surface:'app',page:'processing',phase:'failure',message:'Authentication failed. Check the API key.'},
+  'workspace-unconfigured':{surface:'app',page:'processing',phase:'missingConfig'},
   'workspace-collapsed':{surface:'app',page:'processing',phase:'result',collapsed:true},
   shortcuts:{surface:'app',page:'shortcuts'},
   'shortcuts-recording':{surface:'app',page:'shortcuts',recording:'translate'},
+  'shortcuts-conflict':{surface:'app',page:'shortcuts',conflict:true},
   settings:{surface:'app',page:'settings'},
+  'settings-openai':{surface:'app',page:'settings',provider:'openai'},
+  'settings-saved':{surface:'app',page:'settings',saved:true},
   'settings-models':{surface:'app',page:'settings',models:'failed'},
+  'settings-models-loading':{surface:'app',page:'settings',models:'loading'},
   loading:{surface:'compact',view:'translate',strip:'loading'},
-  'polish-loading':{surface:'compact',view:'polish',strip:'loading'},
+  'polish-loading':{surface:'compact',view:'polish',strip:'loading',operation:'polish'},
   'direct-loading':{surface:'compact',view:'direct',strip:'loading'},
   error:{surface:'compact',view:'translate',strip:'notice',notice:'connection'},
   'format-error':{surface:'compact',view:'translate',strip:'notice',notice:'format'},
@@ -304,29 +327,32 @@ const config={
   'selection-error':{surface:'compact',view:'translate',strip:'notice',notice:'unreadable'},
   stale:{surface:'compact',view:'direct',strip:'notice',notice:'stale'},
   result:{surface:'panel',view:'translate',phase:'success'},
-  polish:{surface:'panel',view:'polish',phase:'success'},
+  polish:{surface:'panel',view:'polish',phase:'success',operation:'polish'},
   long:{surface:'panel',view:'translate',phase:'success',long:true},
   'result-loading':{surface:'panel',view:'translate',phase:'loading'},
-  'result-notice':{surface:'panel',view:'translate',phase:'success',notice:'connection'},
-  menubar:{surface:'menubar',view:'translate',phase:'success'}
+  'result-stale':{surface:'panel',view:'translate',phase:'success',notice:'stale'},
+  'result-notice':{surface:'panel',view:'translate',phase:'failure',notice:'connection'},
+  'result-cancelled':{surface:'panel',view:'translate',phase:'idle',notice:'cancelled'},
+  menubar:{surface:'menubar',view:'translate',phase:'success'},
+  'menubar-menu':{surface:'menubar',view:'translate',phase:'success',menubarMenu:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
- {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。',nodes:['workspace','workspace-empty','workspace-loading','workspace-error','workspace-collapsed']},
- {title:'应用窗口 · 快捷键',note:'全局动作录制与应用内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording']},
- {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-models']},
+ {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-error','workspace-unconfigured','workspace-collapsed']},
+ {title:'应用窗口 · 快捷键',note:'全局动作录制与应用内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
+ {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-openai','settings-saved','settings-models','settings-models-loading']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','stale']},
- {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区。',nodes:['result','polish','long','result-loading','result-notice']},
- {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar']}
+ {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区。',nodes:['result','polish','long','result-loading','result-stale','result-notice','result-cancelled']},
+ {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']}
 ];
 
 let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false;
-let phase='success',notice=null,long=false,recording=null,saved=false,shortcutDraft=null;
+let phase='success',notice=null,long=false,recording=null,saved=false,shortcutDraft=null,conflict=false,menubarMenu=false;
 let scenario='normal',toastTimer,external="Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.";
 let sourceSnapshot=external,buildingBoard=false,boardBuilt=false;
 
 function cfg(){return config[state]||config.result}
-function resultText(){if(cfg().view==='polish')return samples[which].polish;const base=samples[which][prefs.target]||samples[which].zh;return long?(base+'\n\n'+base):base}
+function resultText(){if(currentOperation()==='polish')return samples[which].polish;const base=samples[which][prefs.target]||samples[which].zh;return long?(base+'\n\n'+base):base}
 function inputText(){return long?longText:samples[which].text}
 function toast(msg){$('#toast').textContent=msg;$('#toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.add('hidden'),2600)}
 function toggleSource(){$('#sourceDrawer').classList.toggle('hidden')}
@@ -346,44 +372,50 @@ function appbarHTML(){
 function appbarTools(){
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
-  return `<select class="popup" aria-label="目标语言" ${busy?'disabled':''} onchange="prefs.target=this.value;render()">${LANGS.map(([v,l])=>`<option value="${v}" ${prefs.target===v?'selected':''}>${l}</option>`).join('')}</select>`
+  return (currentOperation()==='polish'?'':`<select class="popup" aria-label="目标语言" ${busy?'disabled':''} onchange="prefs.target=this.value;render()">${LANGS.map(([v,l])=>`<option value="${v}" ${prefs.target===v?'selected':''}>${l}</option>`).join('')}</select>`)
    +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
 }
 function setOperation(v){operationOverride=v;render()}
-function currentOperation(){return operationOverride||(state==='polish'?'polish':'translate')}
+function currentOperation(){return operationOverride||cfg().operation||'translate'}
 function processingHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='result',failed=phase==='failure';
-  const source=`<section class="source-section"><div class="labelrow"><span class="label">${done||busy?'自动识别':'输入文本'}</span><span>${done||busy?'原文':'⌘ V 粘贴'}</span></div><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="sourceSnapshot=this.value">${esc(inputText())}</textarea></section>`;
-  const label=busy?`<span class="pending-label"><span class="spin" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
+  const source=`<section class="source-section"><div class="labelrow"><span class="label">${done||busy?'自动识别':'输入文本'}</span><span>${done||busy?'原文':'⌘ V 粘贴'}</span></div><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="sourceSnapshot=this.value">${cfg().empty?'':esc(inputText())}</textarea></section>`;
+  const label=busy?`<span class="pending-label"><span class="spin mini" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
   const meta=op==='polish'?'保留原意':langName(prefs.target);
   const result=done?esc(resultText()):`<span>${esc(inputText().slice(0,140))}</span>`;
   const resultSection=(done||busy)?`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${result}</div><div class="reserved" aria-hidden="true"></div>${done?'<div class="reserved learning" aria-hidden="true"></div>':''}</section>`:'';
-  const status=failed?`<div class="status" role="alert">${icon('warn')}<span class="msg">连接暂时中断，原文未修改，可以重试。</span><button class="glass-btn" onclick="openApp('settings')">服务设置</button></div>`:'';
-  const footer=`<footer class="footer"><small>${busy?'处理中':''}</small><div class="actions">${busy?`<button class="glass-btn" onclick="cancelRun()">取消</button>`:`<button class="glass-btn" ${done?'':'disabled'} onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" ${busy?'disabled':''} onclick="run()">${op==='polish'?'润色文本':'翻译文本'} <kbd>⌘ ↩</kbd></button>`}</div></footer>`;
+  const notice=phase==='missingConfig'?{message:'模型服务未配置',action:'配置服务'}
+    :failed?{message:cfg().message||'Network error: The Internet connection appears to be offline.',action:'服务设置'}:null;
+  const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openApp('settings')">${notice.action}</button></div>`:'';
+  const footer=`<footer class="footer"><small>${busy?'处理中':''}</small><div class="actions">${busy?`<button class="glass-btn" onclick="cancelRun()">取消</button>`:`<button class="glass-btn" ${done?'':'disabled'} onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" ${busy||cfg().empty?'disabled':''} onclick="run()">${op==='polish'?'润色文本':'翻译文本'} <kbd>⌘ ↩</kbd></button>`}</div></footer>`;
   return `<div class="body" id="body">${source}${resultSection}${status}</div>${footer}`;
 }
+function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){
   const rows=SHORTCUTS.map(([name,key])=>{
     const isRec=recording===key;
-    return `<div class="keyrow"><span class="name">${name}</span><span style="display:flex;gap:8px;align-items:center"><button class="recorder ${isRec?'recording':''}" aria-label="录制${name}快捷键" onclick="startRecording('${key}')">${isRec?'请按快捷键…':(shortcutDraft&&shortcutDraft.key===key?shortcutDraft.label:'未设置')}</button><button class="muted" style="font-size:10px;padding:5px" aria-label="清除${name}快捷键" onclick="clearRecording('${key}')">清除</button></span></div>`;
+    return `<div class="keyrow"><span class="name">${name}</span><span style="display:flex;gap:8px;align-items:center"><button class="recorder ${isRec?'recording':''}" aria-label="录制${name}快捷键" onclick="startRecording('${key}')">${isRec?'请按快捷键…':(bindingOf(key)||'未设置')}</button><button class="glass-btn" aria-label="清除${name}快捷键" onclick="clearRecording('${key}')">清除</button></span></div>`;
   }).join('');
-  const note=recording?'按新组合键；Esc 取消，Delete 清除。':'';
-  return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}</div><p class="notice" role="status">${esc(note)}</p><div class="form-section"><p class="group-title">应用内</p>${IN_APP.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('')}</div></div></div><footer class="footer"><small>录制后立即生效</small><div class="actions"></div></footer>`;
+  const note=conflict
+    ?`${icon('warn')}该组合已用于“翻译”，请换一个。`
+    :recording?'按新组合键；Esc 取消，Delete 清除。':'';
+  const inApp=IN_APP.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('');
+  return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}<p class="section-footer" role="status">${note||'&nbsp;'}</p></div><div class="form-section"><p class="group-title">应用内</p>${inApp}<p class="section-footer">录制后立即生效</p></div></div></div>`;
 }
 function settingsHTML(){
-  const failed=cfg().models==='failed';
+  const failed=cfg().models==='failed',openai=cfg().provider==='openai';
+  const loading=cfg().models==='loading';
   const modelRow=failed
-    ?`<div class="formrow"><label>模型名称</label><span class="field"><input value="deepseek-chat" aria-label="模型名称"><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></span></div><div class="error">${icon('warn')}暂时无法读取模型列表，可手动填写名称。</div>`
-    :`<div class="formrow"><label>模型名称</label><span class="field"><select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select></span></div>`;
+    ?`<div class="formrow"><label>模型名称</label><span class="field"><input value="deepseek-chat" aria-label="模型名称"></span></div><div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`
+    :`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':loading?'<input value="deepseek-chat" aria-label="模型名称"><span class="spin" aria-hidden="true"></span>':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`;
   return `<div class="body" id="body"><div class="form">`
    +`<div class="form-section"><p class="group-title">模型服务</p>`
-   +`<div class="formrow"><label>服务商</label><span class="field"><select class="popup" aria-label="服务商" style="height:auto;padding:7px 26px 7px 9px"><option>OpenAI Compatible</option><option selected>DeepSeek</option></select></span></div>`
-   +`<div class="formrow"><label>Base URL</label><span class="field"><input value="https://api.deepseek.com" aria-label="Base URL"></span></div>`
-   +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="sk-example" aria-label="API Key" autocomplete="off"></span></div>`
+   +`<div class="formrow"><label>服务商</label><span class="field"><select class="popup" aria-label="服务商" style="height:auto;padding:7px 26px 7px 9px"><option ${openai?'selected':''}>OpenAI Compatible</option><option ${openai?'':'selected'}>DeepSeek</option></select></span></div>`
+   +`<div class="formrow"><label>Base URL</label><span class="field"><input value="${openai?'':'https://api.deepseek.com'}" placeholder="https://api.openai.com/v1" aria-label="Base URL"></span></div>`
+   +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="${openai?'':'sk-example'}" placeholder="sk-…" aria-label="API Key" autocomplete="off"></span></div>`
    +modelRow
    +`</div>`
    +`<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`
-   +`<p class="settings-note">API Key 存入钥匙串，其余设置保存在本机。翻译与润色共用服务商与模型。</p>`
    +`</div></div><footer class="footer">${saved?`<span class="saved">${icon('check')}已保存</span>`:''}<div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
 }
 function appHTML(){
@@ -395,15 +427,15 @@ function appHTML(){
 // ---------- 浮窗 ----------
 function panelHeaderHTML(){
   const op=currentOperation();
-  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value==='direct'?'translate':this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option><option value="direct" ${cfg().view==='direct'?'selected':''}>翻译并替换</option></select></span><span class="quick-tools">${phase==='success'||phase==='failure'?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openApp('settings')">${icon('gear')}</button></span></header>`;
+  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option></select></span><span class="quick-tools">${phase!=='loading'?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openApp('settings')">${icon('gear')}</button></span></header>`;
 }
 function panelBodyHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='success';
   const source=`<section class="source-section"><div class="labelrow"><span class="label">自动识别</span><span>原文</span></div><textarea class="source" aria-label="原文" spellcheck="false">${esc(long?longText:samples[which].text)}</textarea></section>`;
   const label=busy?`<span class="pending-label"><span class="spin mini" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
   const meta=op==='polish'?'保留原意':`<select class="popup" aria-label="目标语言" style="height:auto;padding:3px 20px 3px 5px;border:0;background-color:transparent;font-size:11px;color:var(--muted)" onchange="prefs.target=this.value;render()">${LANGS.map(([v,l])=>`<option value="${v}" ${prefs.target===v?'selected':''}>${l}</option>`).join('')}</select>`;
-  const result=(done||busy)?`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'} ${long?'result-scroll':''}">${done?esc(resultText()):`<span>${esc(samples[which].text.slice(0,110))}</span>`}</div></section>`:'';
-  const note=(notice&&phase!=='loading')?`<div class="status" role="alert">${icon(notice==='cancelled'?'infoCircle':'warn')}<span class="msg">${esc(NOTICES[notice].message)}</span><button class="glass-btn" onclick="recover('${notice}')">${NOTICES[notice].action}</button></div>`:'';
+  const result=(done||busy)?`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${done?esc(resultText()):`<span>${esc(samples[which].text.slice(0,110))}</span>`}</div></section>`:'';
+  const note=notice?`<div class="status" role="alert">${icon(notice==='cancelled'?'infoCircle':'warn')}<span class="msg">${esc(NOTICES[notice].message)}</span><button class="glass-btn" onclick="recover('${notice}')">${NOTICES[notice].action}</button></div>`:'';
   return `<div class="panel-body" id="body">${source}${result}${note}</div>`;
 }
 function panelFooterHTML(){
@@ -412,7 +444,7 @@ function panelFooterHTML(){
   let actions;
   if(busy)actions=`<button class="glass-btn" onclick="cancelRun()">取消</button>`;
   else if(phase==='success')actions=`<button class="glass-btn" onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" onclick="replaceResult()">替换 <kbd>⌘ ↩</kbd></button>`;
-  else actions=`<button class="glass-btn prominent" onclick="run()">${notice==='cancelled'?'重新处理':(notice==='missingConfig'?'配置服务':'重试')} <kbd>⌘ ↩</kbd></button>`;
+  else actions=`<button class="glass-btn prominent" onclick="run()">${phase==='idle'?'重新处理':'重试'} <kbd>⌘ ↩</kbd></button>`;
   return `<footer class="footer panel-footer"><span class="hint">${hint}</span><span class="actions">${actions}</span></footer>`;
 }
 function compactHTML(){
@@ -436,6 +468,10 @@ function render(){
   frame.classList.toggle('compact',surface==='compact');
   frame.classList.toggle('narrow',sidebarCollapsed||!!c.collapsed);
   frame.classList.toggle('hidden',surface==='menubar');
+  // The menu bar mockup belongs to its own states only; leftover content would float over other captures.
+  const bar=$('#menubar');
+  bar.classList.toggle('hidden',surface!=='menubar');
+  bar.innerHTML=surface==='menubar'?menubarHTML():'';
   appPage=c.page||appPage;
   $('#sidebar').innerHTML=surface==='app'?sidebarHTML():'';
   $('#appbar').innerHTML=surface==='app'?appbarHTML():'';
@@ -448,7 +484,7 @@ function preview(id){
   const c=config[id];
   phase=c.strip==='loading'?'loading':c.phase||'success';
   notice=c.strip==='notice'?c.notice:(c.notice||null);
-  long=!!c.long;recording=c.recording||null;saved=false;operationOverride=null;
+  long=!!c.long;recording=c.recording||null;saved=!!c.saved;conflict=!!c.conflict;menubarMenu=!!c.menubarMenu;operationOverride=null;
   if(c.surface==='menubar'){$('#window').classList.add('hidden');$('#sourceDrawer').classList.add('hidden')}
   sidebarCollapsed=!!c.collapsed;external=inputText();sourceSnapshot=external;$('#external').value=external;
   render();syncPicker();
@@ -470,6 +506,7 @@ function recover(kind){
   if(kind==='stale'){copyResult();return}
   if(kind==='cancelled'){run();return}
   if(kind==='unreadable'){openApp('processing');return}
+  if(kind==='permission'){toast('正式应用会打开「隐私与安全性 › 辅助功能」');return}
   openApp('settings');
 }
 async function copyResult(){try{await navigator.clipboard.writeText(resultText());toast('已复制')}catch{toast('浏览器限制剪贴板，请选中结果后按 ⌘C')}}
@@ -491,6 +528,18 @@ addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.metaKey){const c=cfg();if(c.surface!=='app'){cfg().view==='direct'?replaceResult():run()}}
 });
 
+function toggleMenuBar(){preview(menubarMenu?'menubar':'menubar-menu')}
+function menubarHTML(){
+  const bar=`<div class="bar"><span>Finder</span><button aria-label="Owlet" title="Owlet" aria-haspopup="menu" onclick="toggleMenuBar()">${icon('owlet')}</button></div>`;
+  if(!menubarMenu)return bar;
+  const ordered=[SHORTCUTS[0],SHORTCUTS[2],SHORTCUTS[1]];
+  const items=ordered.map(([name,key])=>shortcutDraft&&shortcutDraft.key===key
+    ?`<div class="mi">${name}：${shortcutDraft.label}</div>`
+    :`<div class="mi">${name}快捷键未设置，前往快捷键页…</div>`).join('');
+  return bar+`<div class="menu" role="menu">`
+   +`<div class="mi">打开 Owlet</div>${items}`
+   +`<div class="mi"><span>设置…</span><span class="key">⌘,</span></div><div class="msep"></div><div class="mi">退出 Owlet</div></div>`;
+}
 // ---------- 状态总览 ----------
 function buildBoard(){
   buildingBoard=true;const canvas=$('#boardCanvas');canvas.innerHTML='';let n=0;
@@ -501,7 +550,7 @@ function buildBoard(){
     canvas.append(lane);
     for(const id of panel.nodes){
       preview(id);
-      const source=id==='menubar'?$('#menubar'):$('#window');
+      const source=id.startsWith('menubar')?$('#menubar'):$('#window');
       const clone=source.cloneNode(true);const scrollTop=$('#body')?.scrollTop||0;
       clone.classList.remove('hidden');clone.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));clone.removeAttribute('id');
       clone.querySelectorAll('*').forEach(e=>{for(const a of [...e.attributes])if(a.name.startsWith('on'))e.removeAttribute(a.name);if(e.matches('button,input,select,textarea,summary'))e.setAttribute('tabindex','-1')});
@@ -513,7 +562,7 @@ function buildBoard(){
       lane.querySelector('.window-nodes').append(node);
       const slot=node.querySelector('.flow-preview');slot.append(clone);
       const floating=clone.classList.contains('floating'),compact=clone.classList.contains('compact');
-      const h=id==='menubar'?160:floating?(compact?60:source.offsetHeight):387;
+      const h=id.startsWith('menubar')?160:floating?(compact?60:source.offsetHeight):387;
       slot.style.height=h+'px';
       if(clone.querySelector('.body'))clone.querySelector('.body').scrollTop=scrollTop;
     }
@@ -531,7 +580,7 @@ window.checkDesignStates=()=>{
   const checks=[];
   for(const [id] of states){
     preview(id);
-    if(id==='menubar'){checks.push(id);continue}
+    if(id.startsWith('menubar')){checks.push(id);continue}
     const frame=$('#window'),c=config[id];
     if(c.surface==='app'){
       if(!frame.querySelector('.appbar .appbar-tools'))throw Error(id+': 缺少工具栏');

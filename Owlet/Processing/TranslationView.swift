@@ -41,6 +41,16 @@ final class TranslationModel {
     private let config: () -> ServiceConfig?
     private var operationID = 0
     private var task: Task<Void, Never>?
+    /// True once a produced result still owes its one automatic learning decision; the claim below
+    /// clears it, so a result the user has already seen is never retroactively requested.
+    private var autoLearningPending = false
+
+    /// Consumes the pending automatic learning decision for the newest result, returning true only
+    /// for the first caller; the model keeps it so rebuilding a view cannot re-run an old request.
+    func claimAutoLearningRequest() -> Bool {
+        defer { autoLearningPending = false }
+        return autoLearningPending
+    }
 
     init(client: ModelClient, config: @escaping () -> ServiceConfig?) {
         self.client = client
@@ -75,6 +85,7 @@ final class TranslationModel {
     func translate(to targetLanguage: String) -> Task<Void, Never>? {
         task?.cancel()
         operationID += 1
+        autoLearningPending = false
         let id = operationID
         let text = input
         let operation = operation
@@ -119,6 +130,7 @@ final class TranslationModel {
                 self.segments = full.segments
             }
             self.state = outcome
+            if case .success = outcome { self.autoLearningPending = true }
         }
         self.task = task
         return task

@@ -18,6 +18,10 @@ struct LearningView: View {
             if learning.isExpanded { content }
         }
         .padding(.top, 12)
+        // A result the user just produced is the only thing that may auto-request; the claim in the
+        // model makes a rebuilt view for an old result or a later 展开 spend nothing.
+        .onAppear { learning.generateIfAutoRequested(for: request) }
+        .onChange(of: request) { _, fresh in learning.generateIfAutoRequested(for: fresh) }
     }
 
     private var disclosure: some View {

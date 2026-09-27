@@ -9,6 +9,27 @@ struct LearningRequest: Equatable {
     /// The result language; ignored for polish, whose result stays in the source language.
     var targetLanguage: String
     var result: String
+    /// Consumes the one automatic decision for this result; the model owns that state, so a view
+    /// rebuilt for an old result cannot spend a request the switch did not ask for at the time.
+    var claimAutoRequest: @MainActor () -> Bool
+
+    init(
+        text: String, operation: Operation, targetLanguage: String, result: String,
+        claimAutoRequest: @escaping @MainActor () -> Bool = { true }
+    ) {
+        self.text = text
+        self.operation = operation
+        self.targetLanguage = targetLanguage
+        self.result = result
+        self.claimAutoRequest = claimAutoRequest
+    }
+
+    /// Two requests describe the same result when their displayed content matches; the claim closure
+    /// is deliberately left out, so a rebuilt view still compares equal to the request it reused.
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.text == rhs.text && lhs.operation == rhs.operation
+            && lhs.targetLanguage == rhs.targetLanguage && lhs.result == rhs.result
+    }
 
     /// Builds the request from a finished result; nil until the model has one to reason about.
     @MainActor static func from(_ model: TranslationModel) -> LearningRequest? {
@@ -17,7 +38,7 @@ struct LearningRequest: Equatable {
         }
         return LearningRequest(
             text: model.input, operation: model.operation, targetLanguage: languages.target,
-            result: text)
+            result: text, claimAutoRequest: { model.claimAutoLearningRequest() })
     }
 }
 
@@ -37,8 +58,8 @@ final class LearningModel {
     private(set) var state: State = .idle
     /// The recommendation indices the user checked, so only what they chose reaches the notebook.
     var selected: Set<Int> = []
-    /// T13 supplies the per-operation switch; the default keeps learning off until the user asks.
-    var autoRequest: (Operation) -> Bool = { _ in false }
+    /// T13's per-operation switch; off unless the user turned it on in settings.
+    var autoRequest: (Operation) -> Bool = { SettingsStore.autoRequestsLearning(for: $0) }
     /// The request in flight; tests await it, the views only observe `state`.
     private(set) var task: Task<Void, Never>?
 
@@ -67,8 +88,10 @@ final class LearningModel {
         send(request)
     }
 
-    /// Auto-requests on a finished result only when T13's per-operation switch is on.
+    /// Auto-requests on a finished result only when the switch is on, spending the one automatic
+    /// decision first so neither a rebuilt view nor a toggled switch can request a seen result again.
     func generateIfAutoRequested(for request: LearningRequest) {
+        guard request.claimAutoRequest() else { return }
         guard autoRequest(request.operation) else { return }
         generate(for: request)
     }

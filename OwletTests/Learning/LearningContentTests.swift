@@ -102,6 +102,8 @@ struct LearningContentTests {
                 return try await stub(body: chatBody(learningPayload))(request)
             }),
             config: { testConfig })
+        // The switch is injected so the assertion does not read the developer's own settings.
+        model.autoRequest = { _ in false }
 
         model.generateIfAutoRequested(for: request)
         #expect(calls.withLock { $0 } == 0)

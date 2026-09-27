@@ -158,6 +158,27 @@ extension SettingsStore {
     }
 }
 
+/// Per-operation 学习表达 switches; an absent key reads as off, so learning stays opt-in.
+extension SettingsStore {
+    static let translateLearningKey = "learning.auto.translate"
+    static let polishLearningKey = "learning.auto.polish"
+
+    /// The stored key for one operation, so the two switches can never share a value.
+    static func learningKey(for operation: Operation) -> String {
+        switch operation {
+        case .translate: translateLearningKey
+        case .polish: polishLearningKey
+        }
+    }
+
+    /// Whether a later successful result of this operation should request learning on its own.
+    static func autoRequestsLearning(
+        for operation: Operation, in defaults: UserDefaults = .standard
+    ) -> Bool {
+        defaults.bool(forKey: learningKey(for: operation))
+    }
+}
+
 extension SettingsStore {
     /// The built-in prompt an operation falls back to; a custom prompt never changes it.
     static func defaultPrompt(for operation: Operation) -> String { operation.prompt }

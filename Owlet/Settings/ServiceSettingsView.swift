@@ -9,6 +9,8 @@ struct ServiceSettingsView: View {
     @AppStorage(SettingsStore.panelPositionKey) private var panelPosition = PanelPosition.fixed
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
+    @AppStorage(SettingsStore.translateLearningKey) private var translateLearning = false
+    @AppStorage(SettingsStore.polishLearningKey) private var polishLearning = false
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
@@ -43,6 +45,10 @@ struct ServiceSettingsView: View {
                 Picker("翻译显示方式", selection: $displayMode) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+            }
+            Section("学习") {
+                Toggle("翻译后自动请求学习表达", isOn: $translateLearning)
+                Toggle("润色后自动请求学习表达", isOn: $polishLearning)
             }
             Section("浮窗") {
                 Picker("浮窗位置", selection: $panelPosition) {

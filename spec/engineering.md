@@ -21,7 +21,7 @@ git diff --check
 
 浏览器控制台可执行 `checkDesignStates()` 与 `checkFlowBoard()`，检查设计状态布局和状态图覆盖；不代表原生验收通过。
 
-原生 build/test 命令见 `../tasks/plan.md`，属于拟议命令；仓库尚无 Xcode 工程，不能声称可运行。工程创建后必须更新为真实 project、scheme 与测试 target。工程由 `project.yml`（XcodeGen）生成，`Owlet.xcodeproj` 不入库。`mise run check` 执行 `git diff --check`、`swift-format lint --strict`、生成工程并运行测试；`mise run setup` 安装 pre-commit hook，CI 同样运行 `mise run check`。
+原生 build/test 命令见 `../tasks/plan.md`，属于拟议命令；仓库尚无 Xcode 工程，不能声称可运行。工程创建后必须更新为真实 project、scheme 与测试 target。工程由 `project.yml`（XcodeGen）生成，`Owlet.xcodeproj` 不入库。`mise run check` 执行 `git diff --check`、`swift-format lint --strict`、生成工程并运行测试；`mise run setup` 安装 pre-commit hook，CI 同样运行 `mise run check`。`mise run prod` 走 [scripts/prod-build.sh](../scripts/prod-build.sh) 产出 Release 通用二进制：默认 ad-hoc 签名，给 `--team` 则用 Apple Development 签名，打包前校验签名、最低系统版本、图标与调试授权。
 
 ## 结构
 

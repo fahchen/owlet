@@ -6,3 +6,4 @@ DerivedData/
 xcuserdata/
 Owlet.xcodeproj/
 .build/
+dist/

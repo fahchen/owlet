@@ -88,6 +88,22 @@ BDD 场景尚未绑定自动化步骤；原生应用已经实现原型中已实�
 
 展开面板的动作行左端是快捷键提示（`Esc 取消` / `快捷键未设置` / 已录制的全局快捷键 + ` 唤起`），右端是 `复制 ⌘⇧C` 与 prominent 的 `替换 ⌘↩`；重新处理位于浮窗右上角。学习表达与 `收藏选中内容` 未实现，提案画面为 `learning*` 与 `saved`；写回成功后保留面板并确认（`writebackConfirmed`），动作行改出 `完成 Esc`，见 [未实现功能清单](docs/unimplemented-features.md)。浮窗只在 Esc、显式关闭或点击浮窗外部时关闭，失去键盘焦点不关闭。
 
+## 生产构建
+
+Release、通用二进制（arm64 + x86_64）、验证后打包到 `dist/`（已在 `.gitignore` 里）：
+
+```sh
+mise run prod                       # 现在：ad-hoc 签名
+mise run prod -- --arch arm64       # 只要本机架构，快一些
+mise run prod -- --team Z98NKJSF69  # 有证书后：Apple Development 签名
+```
+
+脚本是 [scripts/prod-build.sh](scripts/prod-build.sh)，做的事：构建 → 校验（bundle id、最低系统版本、图标、签名可验证、不带 `get-task-allow`）→ 用 `ditto` 打包并打印 SHA-256。
+
+两种签名的差别只在权限与提示：ad-hoc 的包拷到另一台 Mac 需要右键打开一次，而且**每次重编都要重新授权辅助功能**；`--team` 指定证书后签名带上 Team ID，授权一次就长期有效，但因为没有公证，首次打开仍会提示一次。用 `scp` 或 `rsync` 传，别用 AirDrop——前者不写 quarantine 标记。
+
+`project.yml` 没有设 `MARKETING_VERSION`，所以产物名字用提交号（`Owlet-<commit>-universal.zip`）；想要版本号就在 `project.yml` 里加上这个设置，脚本会自动改用它。
+
 ## 开发
 
 原生应用已实现原型中已实现的部分：文本处理、快捷键、设置、浮动面板与菜单栏；提案画面与尚未实现的功能见 [未实现功能清单](docs/unimplemented-features.md)。

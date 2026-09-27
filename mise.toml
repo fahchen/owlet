@@ -24,6 +24,10 @@ run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=
 depends = ["generate"]
 run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet test"
 
+[tasks.prod]
+description = "Release build, verified and packaged for another Mac"
+run = "scripts/prod-build.sh"
+
 [tasks.check]
 description = "Lint and test; used by pre-commit and CI"
 depends = ["lint", "test"]

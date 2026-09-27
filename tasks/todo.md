@@ -1,6 +1,6 @@
 # 首版实现任务清单
 
-状态：全部待实施。依赖、技术建议与构建命令见 `tasks/plan.md`。文件路径均为拟定，根目录为 `LanguageAssistant/`，测试位于 `LanguageAssistantTests/`；不为凑文件数创建额外抽象。每个任务控制在一次集中工作内，若实际超过约 5 个业务文件或两小时，应在实施前进一步拆分。
+状态：全部待实施。依赖、技术建议与构建命令见 `tasks/plan.md`。文件路径均为拟定，根目录为 `Owlet/`，测试位于 `OwletTests/`；不为凑文件数创建额外抽象。每个任务控制在一次集中工作内，若实际超过约 5 个业务文件或两小时，应在实施前进一步拆分。
 
 ## T01：手动输入翻译
 
@@ -19,9 +19,9 @@
 
 **依赖：**无
 
-**预计文件：**App.swift、TranslationView.swift、ModelClient.swift、SettingsStore.swift、ModelClientTests.swift（另含必要 Xcode 工程元数据）
+**预计文件：**OwletApp.swift、TranslationView.swift、ModelClient.swift、SettingsStore.swift、ModelClientTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T01a：自定义 System Prompt 与 JSON 返回
 
@@ -64,7 +64,7 @@
 
 **预计文件：**ShortcutController.swift、SelectionBridge.swift、PanelController.swift、TranslationView.swift、SelectionBridgeTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T03：安全替换原选区
 
@@ -85,7 +85,7 @@
 
 **预计文件：**SelectionBridge.swift、PanelController.swift、TranslationView.swift、SelectionBridgeTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T03a：翻译并直接替换
 
@@ -136,7 +136,7 @@
 
 **预计文件：**Operation.swift、ModelClient.swift、TranslationView.swift、ShortcutController.swift、OperationTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T05：持久化历史及详情
 
@@ -157,7 +157,7 @@
 
 **预计文件：**HistoryRecord.swift、HistoryStore.swift、HistoryView.swift、Operation.swift、HistoryStoreTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T06：历史搜索与删除
 
@@ -178,7 +178,7 @@
 
 **预计文件：**HistoryStore.swift、HistoryView.swift、HistoryStoreTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## 检查点 B
 
@@ -206,7 +206,7 @@
 
 **预计文件：**VocabularyEntry.swift、VocabularyStore.swift、VocabularyView.swift、CollectionAction.swift、VocabularyStoreTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T08：收藏管理与导出
 
@@ -227,7 +227,7 @@
 
 **预计文件：**VocabularyView.swift、VocabularyStore.swift、VocabularyExport.swift、VocabularyStoreTests.swift、VocabularyExportTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## 检查点 C
 
@@ -254,7 +254,7 @@
 
 **预计文件：**LearningContent.swift、LearningView.swift、ModelClient.swift、SettingsStore.swift、LearningContentTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## T10：重复表达追加语境
 
@@ -275,7 +275,7 @@
 
 **预计文件：**VocabularyStore.swift、CollectionAction.swift、VocabularyView.swift、VocabularyStoreTests.swift
 
-**规模：**M，约 3–5 个业务／测试文件；T01 另需最小工程元数据。
+**规模：**M，约 3–5 个业务／测试文件。
 
 ## 检查点 D
 
@@ -286,4 +286,4 @@
 ## 开始实施前
 
 - [ ] 用户审阅并认可计划及技术起点。
-- [ ] T01 核实 Xcode、macOS 26 或更新 SDK、Deployment Target 26.0 与构建命令。
+- [x] 工程初始化已核实 Xcode、macOS 26 SDK、Deployment Target 26.0 与 `mise run check`。

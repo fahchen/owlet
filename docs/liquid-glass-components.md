@@ -1,6 +1,6 @@
 # Owlet · macOS 26 Liquid Glass 组件对照
 
-状态：`design/index.html` 有 50 个状态（对应 `design/screenshots/`）：35 个对应 `Owlet/` 已实现的功能，设计图与实现一致；15 个是尚未实现功能的提案画面，画面上带“未实现”徽标、总览里各自成区，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
+状态：`design/index.html` 有 58 个状态（对应 `design/screenshots/`）：42 个对应 `Owlet/` 已实现的功能，设计图与实现一致；16 个是尚未实现功能的提案画面，画面上带“未实现”徽标、总览里各自成区，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
 
 ## 1. 两条判据
 **判据一：功能层用 Liquid Glass，内容层不用。** Liquid Glass 只属于浮在内容之上的控制与导航层——工具栏、侧边栏、面板、弹窗；内容层用系统材质，绝不叠玻璃。`materials.md › Liquid Glass`：**Don't use Liquid Glass in the content layer.**
@@ -25,7 +25,7 @@
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
 | 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
-| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 12 个横向分区（已实现的 6 区：文本处理 8 / 快捷键 3 / 设置 5 / 紧凑条 10 / 展开 7 / 菜单栏 2；提案的 6 区：生词本 4 / 历史记录 3 / 学习表达区块 5 / 逐句对照 1 / Prompt 1 / 窄窗口 1），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
+| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 14 个横向分区（已实现的 7 区：文本处理 8 / 快捷键 3 / 设置 5 / 紧凑条 10 / 直接替换紧凑提示 6 / 展开 8 / 菜单栏 2；提案的 7 区：生词本 4 / 历史记录 3 / 学习表达区块 5 / 逐句对照 1 / 直接替换完成 1 / Prompt 1 / 窄窗口 1），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
 ### 2.2 建议但当前未采纳
 
@@ -48,7 +48,7 @@
 
 ## 3. 组件对照总表
 
-按 Apple HIG 的组件分类（<https://developer.apple.com/design/human-interface-guidelines/components>）排列；只列 50 个状态（含 15 张提案画面）中真实出现的东西。
+按 Apple HIG 的组件分类（<https://developer.apple.com/design/human-interface-guidelines/components>）排列；只列 58 个状态（含 16 张提案画面）中真实出现的东西。
 
 ### 3.1 组件 › 布局与组织
 - 主窗口骨架（侧栏 + 内容）→ `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`，桌面端不用 `TabView`，分隔线用系统自带 divider，永不自绘 1px 竖线；侧边栏本体、`Section` 分组与选中态由 `List` 的 sidebar 外观与系统 source list 选中态负责；显示／隐藏用系统侧栏切换工具栏项 + `⌃⌘S`（`sidebars.md`：**Consider letting people hide the sidebar.**）；设置分区用 `Form` + `Section`（`.formStyle(.grouped)`），设置仍是主窗口侧栏页面，见 §6。
@@ -75,7 +75,7 @@
 
 ## 4. 逐屏对照
 
-与 `design/index.html` 的“状态总览”同一分组：先 6 个已实现分区（应用窗口的文本处理、快捷键、设置，浮动面板的紧凑条、展开，菜单栏），再 6 个提案分区（标题以“提案（未实现）”开头）；共 50 个状态、12 个窗口／面板。
+与 `design/index.html` 的“状态总览”同一分组：先 7 个已实现分区（应用窗口的文本处理、快捷键、设置，浮动面板的紧凑条、直接替换紧凑提示、展开，菜单栏），再 7 个提案分区（标题以“提案（未实现）”开头）；共 58 个状态、14 个窗口／面板。
 
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
@@ -84,7 +84,10 @@
 | `settings.png` / `settings-openai.png` / `settings-saved.png` / `settings-models.png` / `settings-models-loading.png` | inset grouped `Form` · 弹出式按钮／输入框／`SecureField` · 分组容器 · 底部 prominent `保存设置` · 模型列表失败时就地提示与 `重试`（在名称行下方，不替换控件）· 读取中只在页脚给出指示 |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
 | `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
+| `direct-selection-error.png` / `direct-permission.png` / `direct-unconfigured.png` / `direct-error.png` / `direct-format-error.png` / `direct-cancelled.png` | 与上一行逐像素相同：直接替换流程复用同一条紧凑玻璃条与同一套恢复入口，仅快捷键发起的流程不同 |
 | `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |
+| `empty.png` | 已展开且原文为空：`canRetry` 为假，`PanelHeader` 不传 `retry`、`PanelFooter` 默认分支没有按钮，只留快捷键提示；原文栏仍可编辑 |
+| `success.png`（提案 · 未实现） | 写回成功确认：建议在展开结果内确认替换、动作行以 `完成` 关闭；应用现在写回成功即 `close()`，没有这一屏 |
 | `book-list.png` / `book-detail.png` / `book-empty.png` / `no-results.png`（提案 · 未实现） | 统一工具栏 · 搜索框 · 弹出式按钮 `全部语言` · `导出…` · `List` 行 · `ContentUnavailableView` 空状态（拟用，未落地） |
 | `history-list.png` / `history-detail.png` / `history-empty.png`（提案 · 未实现） | 同构工具栏 · 类型筛选 · 破坏性 `清空历史` · 详情可复制与收藏 |
 | `learning.png` / `learning-loading.png` / `learning-error.png` / `learning-empty.png` / `saved.png`（提案 · 未实现） | 展开结果内的独立区块 · `ProgressView`／`.redacted` 占位 · 就地重试 · 可勾选列表与 `收藏所选` · 动作行 leading 端 `收藏选中内容` |
@@ -92,11 +95,11 @@
 | `settings-prompts.png`（提案 · 未实现） | `Form` 内的 Prompt 分组 · 文本编辑 · `查看默认 Prompt` / `恢复默认` · JSON 返回示例 |
 | `workspace-narrow.png`（提案 · 未实现） | 窄窗口（内容区 < 720pt）下的单列堆叠分支；宽窗口并排尚未出图 |
 
-未出图清单：`empty`、`success`、`settings-shortcuts`、`direct-format-error` 以及 `direct-*` 里与紧凑条重复的提示态仍无画面；其余 15 个原被移除的状态（`aligned`、`learning*`、`saved`、`book-*`、`history-*`、`no-results`、`settings-prompts`、`workspace-narrow`）已作为提案画面恢复，画面上带“未实现”徽标。逐条记录在 [docs/unimplemented-features.md](unimplemented-features.md)。
+旧原型的 40 个状态现已全部覆盖：`stale` 由 `unwritten` 承载、`settings-shortcuts` 由 `shortcuts-recording` 承载，其余 38 个各有画面（其中 16 个为提案，带“未实现”徽标，逐条记录在 [docs/unimplemented-features.md](unimplemented-features.md)）。
 
 ### 4.1 每个状态的实现位置
 
-50 个状态与 `Owlet/` 的对应关系（按实现文件分组；后 15 个是提案，尚无实现文件）：
+58 个状态与 `Owlet/` 的对应关系（按实现文件分组；后 16 个是提案，尚无实现文件）：
 
 | 状态 | 实现位置 |
 | --- | --- |
@@ -106,9 +109,11 @@
 | `settings`、`settings-openai`、`settings-saved`、`settings-models`、`settings-models-loading` | `Owlet/Settings/ServiceSettingsView.swift` · `Owlet/Settings/SettingsStore.swift` |
 | `loading`、`polish-loading`、`direct-loading` | `Owlet/App/PanelController.swift`（ProcessingStrip） |
 | `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
+| `direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` | `Owlet/App/PanelController.swift`：“翻译并替换”复用同一 `Notice`／`NoticeStrip`，与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 同屏 |
 | `result`、`polish`、`long`、`result-loading` | `Owlet/App/ExpandedPanel.swift`（PanelHeader／PanelBody／PanelFooter）· `Owlet/App/PanelController.swift`（展开时机） |
 | `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/ExpandedPanel.swift`（StatusNote）· `Owlet/App/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
 | `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefusal` → `inlineNotice` 返回 `.unwritten`／`.unwritable`）· `Owlet/App/ExpandedPanel.swift` |
+| `empty` | `Owlet/App/ExpandedPanel.swift`（`canRetry` 与 `PanelFooter` 默认分支）· `Owlet/App/PanelController.swift`（空原文时 `translate()` 置 `.idle`，展开态保留） |
 | `menubar`、`menubar-menu` | `Owlet/App/OwletApp.swift`（MenuBarExtra、MenuContent、MenuBarLabel） |
 | `book-list`、`book-detail`、`book-empty`、`no-results` | 提案（T08、T09、T11）：`Owlet/Vocabulary/VocabularyView.swift` 等尚未创建 |
 | `history-list`、`history-detail`、`history-empty` | 提案（T15、T16、T17）：`Owlet/History/HistoryView.swift` 等尚未创建 |
@@ -116,6 +121,7 @@
 | `aligned` | 提案（T14）：`Owlet/Processing/TranslationView.swift` 只拼接输出译文，没有配对视图 |
 | `settings-prompts` | 提案（T12）：`Owlet/LLM/DefaultPrompts.swift` 只有内置默认值，没有编辑界面 |
 | `workspace-narrow` | 提案（T22）：`Owlet/Processing/TranslationView.swift` 是单列 `VStack` |
+| `success` | 提案（写回完成确认）：`Owlet/App/PanelController.swift` 的 `replace(with:)` 写回成功即 `close()`，没有确认屏 |
 
 ## 5. 设计令牌退役表
 
@@ -171,8 +177,8 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 
 `design/index.html` 控制台里有两个自动检查：
 
-- `checkDesignStates()` → 50 个状态（含提案画面）逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（文本处理页还要有底部操作栏）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
-- `checkFlowBoard()` → 50 个状态全部出现在总览上、无重复，分区数与定义一致（12 个窗口／面板）；返回 `{states, frames, panels}`。
+- `checkDesignStates()` → 58 个状态（含提案画面）逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（文本处理页还要有底部操作栏）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
+- `checkFlowBoard()` → 58 个状态全部出现在总览上、无重复，分区数与定义一致（14 个窗口／面板）；返回 `{states, frames, panels}`。
 
 ## 9. 迁移顺序
 

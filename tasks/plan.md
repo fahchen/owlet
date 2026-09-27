@@ -8,7 +8,7 @@
 
 ## 当前基础与技术建议
 
-当前已有产品规格及 `design/index.html` 交互原型（50 个状态：35 个对应已实现功能，15 个是未实现功能的提案画面，画面上带“未实现”徽标）；已建立原生工程（`project.yml` 生成 `Owlet.xcodeproj`）与 `mise run check` 质量门槛，并已实现里程碑 1 的手动输入翻译、JSON 契约、快捷键录制、选区读取、安全写回、翻译并替换与润色（源码在 `Owlet/` 的 App、LLM、Processing、Selection、Settings、Shortcuts 目录，`OwletTests/` 下有对应单元测试）。原型检查不代表原生系统兼容性已验证。以下沿用建议技术起点。
+当前已有产品规格及 `design/index.html` 交互原型（58 个状态：42 个对应已实现功能，16 个是未实现功能的提案画面，画面上带“未实现”徽标）；已建立原生工程（`project.yml` 生成 `Owlet.xcodeproj`）与 `mise run check` 质量门槛，并已实现里程碑 1 的手动输入翻译、JSON 契约、快捷键录制、选区读取、安全写回、翻译并替换与润色（源码在 `Owlet/` 的 App、LLM、Processing、Selection、Settings、Shortcuts 目录，`OwletTests/` 下有对应单元测试）。原型检查不代表原生系统兼容性已验证。以下沿用建议技术起点。
 
 - 即时操作使用无侧栏的紧凑浮动工具栏；应用内统一文本处理页面、设置、生词本和历史使用完整管理窗口，后续复习属于管理窗口但不纳入首版。
 - 原生 SwiftUI 构建设置与列表，AppKit 管理浮窗、文本选择与应用焦点；不引入 Web 容器或后端服务。

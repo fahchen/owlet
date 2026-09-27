@@ -395,6 +395,13 @@ const states=[
  ['unconfigured','服务 · 未配置','缺少服务配置时提示并指向设置。','unconfigured.png'],
  ['selection-error','选区 · 读取失败','读取不到文字时不发起请求，可改用手动输入。','selection-error.png'],
  ['unwritten','直接替换 · 未能写回','未能写回原应用时就地提示，并可复制结果；同一布局也用于「原选区不可编辑」。','unwritten.png'],
+ // “翻译并替换”快捷键复用同一条紧凑提示路径，下列六个状态与翻译流程的对应画面相同。
+ ['direct-selection-error','直接替换 · 读取失败','与「选区 · 读取失败」是同一屏幕：直接替换流程读取不到文字时的紧凑条提示；Esc 关闭并取消。','direct-selection-error.png'],
+ ['direct-permission','直接替换 · 权限未授权','与「权限 · 未授权」是同一屏幕：直接替换流程的紧凑条内进入设置。','direct-permission.png'],
+ ['direct-unconfigured','直接替换 · 未配置','与「服务 · 未配置」是同一屏幕：直接替换流程的紧凑条内进入设置。','direct-unconfigured.png'],
+ ['direct-error','直接替换 · 请求失败','与「请求 · 失败」是同一屏幕：直接替换流程的紧凑条提示；Esc 关闭并取消。','direct-error.png'],
+ ['direct-format-error','直接替换 · 格式错误','与「请求 · 格式错误」是同一屏幕：直接替换流程不写回原文。','direct-format-error.png'],
+ ['direct-cancelled','直接替换 · 已取消','与「请求 · 已取消」是同一屏幕：直接替换流程的紧凑条内展示取消。','direct-cancelled.png'],
  ['result','翻译 · 结果','展开面板：头部操作选择、原文、译文与底部复制替换。','result.png'],
  ['polish','润色 · 结果','同一面板，标签改为润色结果与保留原意。','polish.png'],
  ['long','翻译 · 长文本','结果滚动，复制与替换固定在底部。','long.png'],
@@ -402,6 +409,7 @@ const states=[
  ['result-unwritten','翻译 · 未能写回','结果仍保留，就地说明未能写回并可复制；同一布局也用于「原选区不可编辑」。','result-unwritten.png'],
  ['result-notice','翻译 · 结果区失败','展开态失败不收起面板：结果区隐藏，行内提示加底部重试。','result-notice.png'],
  ['result-cancelled','翻译 · 结果区已取消','取消后结果区隐藏，行内提示与底部都回到重新处理。','result-cancelled.png'],
+ ['empty','输入 · 无选区','展开面板中原文为空：来源字段可编辑，清空后 canRetry 为假，头部不显示重新处理，动作行默认分支没有可重试动作时不渲染按钮，底部只留快捷键提示。','empty.png'],
  ['menubar','菜单栏 · 常驻','点击菜单栏图标展开菜单，不直接开窗。','menubar.png'],
  ['menubar-menu','菜单栏 · 展开菜单','菜单：打开 Owlet、三个快捷键状态、设置…（⌘,）与退出。','menubar-menu.png'],
  // 提案状态：下列画面在应用里尚未实现，保持原有 id 与名称，渲染改用当前视觉系统。
@@ -419,7 +427,9 @@ const states=[
  ['saved','收藏 · 已入库','收藏后就地反馈并保留入口，不跳转打断工作。','saved.png'],
  ['aligned','翻译 · 逐句对照','原文与译文按语义句子配对，换行不改变对应关系。','aligned.png'],
  ['settings-prompts','设置 · Prompt','Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。','settings-prompts.png'],
- ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png']
+ ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png'],
+ // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
+ ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png']
 ];
 const config={
   workspace:{surface:'app',page:'processing',phase:'result'},
@@ -448,6 +458,13 @@ const config={
   unconfigured:{surface:'compact',view:'translate',strip:'notice',notice:'missingConfig'},
   'selection-error':{surface:'compact',view:'translate',strip:'notice',notice:'unreadable'},
   unwritten:{surface:'compact',view:'direct',strip:'notice',notice:'unwritten'},
+  // 同一紧凑条组件，只是从“翻译并替换”流程进入：与上面对应的翻译流程状态逐像素相同。
+  'direct-selection-error':{surface:'compact',view:'direct',strip:'notice',notice:'unreadable'},
+  'direct-permission':{surface:'compact',view:'direct',strip:'notice',notice:'permission'},
+  'direct-unconfigured':{surface:'compact',view:'direct',strip:'notice',notice:'missingConfig'},
+  'direct-error':{surface:'compact',view:'direct',strip:'notice',notice:'connection'},
+  'direct-format-error':{surface:'compact',view:'direct',strip:'notice',notice:'format'},
+  'direct-cancelled':{surface:'compact',view:'direct',strip:'notice',notice:'cancelled'},
   result:{surface:'panel',view:'translate',phase:'success'},
   polish:{surface:'panel',view:'polish',phase:'success',operation:'polish'},
   long:{surface:'panel',view:'translate',phase:'success',long:true},
@@ -455,6 +472,8 @@ const config={
   'result-unwritten':{surface:'panel',view:'translate',phase:'success',notice:'unwritten'},
   'result-notice':{surface:'panel',view:'translate',phase:'failure',notice:'connection'},
   'result-cancelled':{surface:'panel',view:'translate',phase:'idle',notice:'cancelled'},
+  // 展开面板中原文被清空：canRetry 为假，头部无重新处理，动作行默认分支不渲染按钮。
+  empty:{surface:'panel',view:'translate',phase:'idle',empty:true},
   menubar:{surface:'menubar',view:'translate',phase:'success'},
   'menubar-menu':{surface:'menubar',view:'translate',phase:'success',menubarMenu:true},
   // proposal:true 的画面在应用里尚未实现；侧栏显示提案页面，画面上带“未实现”徽标。
@@ -472,7 +491,9 @@ const config={
   saved:{surface:'panel',view:'translate',phase:'success',learning:'saved',proposal:true},
   aligned:{surface:'panel',view:'translate',phase:'success',aligned:true,proposal:true},
   'settings-prompts':{surface:'app',page:'settings',prompts:true,proposal:true},
-  'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true,proposal:true}
+  'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true,proposal:true},
+  // 提案：写回成功后的确认屏，应用尚未实现。
+  success:{surface:'panel',view:'direct',phase:'success',success:true,proposal:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
@@ -480,13 +501,16 @@ const panels=[
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
  {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-openai','settings-saved','settings-models','settings-models-loading']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
- {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区。',nodes:['result','polish','long','result-loading','result-unwritten','result-notice','result-cancelled']},
+ // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
+ {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
+ {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区；原文被清空时头部不显示重新处理，动作行也没有按钮。',nodes:['result','polish','long','result-loading','result-unwritten','result-notice','result-cancelled','empty']},
  {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']},
  // 提案分区：与已实现的状态分开，标题与分区说明都标示未实现。
  {title:'提案（未实现） · 应用窗口 · 生词本',note:'未实现：这四张画面是提案，应用里还没有生词本页面。工具栏给出搜索与语言筛选，内容区列出收藏条目；详情可编辑表达与中文释义并保留原句语境，空状态与无匹配共用同一个空状态视图。实现任务见 T08、T09、T11。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'提案（未实现） · 应用窗口 · 历史记录',note:'未实现：这三张画面是提案，应用里还没有历史页面。与生词本同构；清空历史是破坏性动作，需要确认，且不影响收藏。实现任务见 T15、T16、T17。',nodes:['history-list','history-detail','history-empty']},
  {title:'提案（未实现） · 浮动面板 · 学习表达区块',note:'未实现：这五张画面是提案，应用里还没有学习表达区块。区块在展开结果内独立生成，不阻塞复制与替换；失败只重试学习内容，无推荐时不强凑条目。实现任务见 T10、T13。',nodes:['learning','learning-loading','learning-error','learning-empty','saved']},
  {title:'提案（未实现） · 浮动面板 · 展开',note:'未实现：这张画面是提案，应用里还没有逐句对照。原文与译文按语义句子配对，换行不改变对应关系；复制与替换仍只输出译文。实现任务见 T14。',nodes:['aligned']},
+ {title:'提案（未实现） · 浮动面板 · 直接替换完成',note:'未实现：这张画面是提案，应用在写回成功后直接关闭面板，没有确认屏。提案在写回成功后保留译文并确认替换，按 Esc 或完成返回工作。',nodes:['success']},
  {title:'提案（未实现） · 应用窗口 · 设置',note:'未实现：这张画面是提案，应用的设置页只有“模型服务”与“浮窗”两个分组。提案增加 Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。实现任务见 T12。',nodes:['settings-prompts']},
  {title:'提案（未实现） · 应用窗口 · 文本处理',note:'未实现：这张画面是提案，应用的文本处理页始终单列堆叠。提案以 720pt 为阈值：内容区足够宽时原文与译文并排，不足时上下堆叠；这里画的是窄窗口下的堆叠分支。实现任务见 T22。',nodes:['workspace-narrow']}
 ];
@@ -501,6 +525,7 @@ function resultText(){if(currentOperation()==='polish')return samples[which].pol
 function inputText(){return long?longText:samples[which].text}
 function toast(msg){$('#toast').textContent=msg;$('#toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.add('hidden'),2600)}
 function toggleSource(){$('#sourceDrawer').classList.toggle('hidden')}
+function closePanel(){$('#window').classList.add('hidden')}
 function sample(k){which=k;external=inputText();render()}
 
 // ---------- 应用窗口 ----------
@@ -617,7 +642,7 @@ function appHTML(){
 // ---------- 浮窗 ----------
 function panelHeaderHTML(){
   const op=currentOperation();
-  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option></select></span><span class="quick-tools">${phase!=='loading'?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openApp('settings')">${icon('gear')}</button></span></header>`;
+  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option></select></span><span class="quick-tools">${phase!=='loading'&&!cfg().empty?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openApp('settings')">${icon('gear')}</button></span></header>`;
 }
 function pairsHTML(){
   return (samples[which].pairs||[]).map(p=>`<div class="sentence-pair"><p class="sentence-source">${esc(p.source)}</p><p class="sentence-target">${esc(p[prefs.target]||p.zh)}</p></div>`).join('');
@@ -642,7 +667,7 @@ function learningBlockHTML(kind){
 }
 function panelBodyHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='success',aligned=!!cfg().aligned&&done;
-  const source=aligned?'':`<section class="source-section"><div class="labelrow"><span class="label">自动识别</span><span>原文</span></div><textarea class="source" aria-label="原文" spellcheck="false">${esc(long?longText:samples[which].text)}</textarea></section>`;
+  const source=aligned?'':`<section class="source-section"><div class="labelrow"><span class="label">自动识别</span><span>原文</span></div><textarea class="source" aria-label="原文" spellcheck="false">${cfg().empty?'':esc(long?longText:samples[which].text)}</textarea></section>`;
   const label=busy?`<span class="pending-label"><span class="spin mini" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
   const meta=op==='polish'?'保留原意':`<select class="popup" aria-label="目标语言" style="height:auto;padding:3px 20px 3px 5px;border:0;background-color:transparent;font-size:11px;color:var(--muted)" onchange="prefs.target=this.value;render()">${LANGS.map(([v,l])=>`<option value="${v}" ${prefs.target===v?'selected':''}>${l}</option>`).join('')}</select>`;
   let result='';
@@ -652,7 +677,7 @@ function panelBodyHTML(){
     result=`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${done?esc(resultText()):`<span>${esc(samples[which].text.slice(0,110))}</span>`}</div></section>`;
   }
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
-  const note=notice?`<div class="status" role="alert">${icon(notice==='cancelled'?'infoCircle':'warn')}<span class="msg">${esc(NOTICES[notice].message)}</span><button class="glass-btn" onclick="recover('${notice}')">${NOTICES[notice].action}</button></div>`:'';
+  const note=notice?`<div class="status" role="alert">${icon(notice==='cancelled'?'infoCircle':'warn')}<span class="msg">${esc(NOTICES[notice].message)}</span><button class="glass-btn" onclick="recover('${notice}')">${NOTICES[notice].action}</button></div>`:(cfg().success?`<p class="saved-feedback">${icon('check')}已写回原选区，译文已保留。</p>`:'');
   return `<div class="panel-body" id="body">${source}${result}${learning}${note}</div>`;
 }
 function panelFooterHTML(){
@@ -660,7 +685,11 @@ function panelFooterHTML(){
   const hint=busy?'Esc 取消':(shortcutDraft?'⌘⇧T 唤起':'快捷键未设置');
   let actions;
   if(busy)actions=`<button class="glass-btn" onclick="cancelRun()">取消</button>`;
+  // 提案：写回成功后保留译文并确认，而不是像现在这样直接关闭面板。
+  else if(phase==='success'&&cfg().success)actions=`<button class="glass-btn" onclick="copyResult()">${icon('copy')} 复制 ⌘⇧C</button><button class="glass-btn prominent" onclick="closePanel()">完成 Esc</button>`;
   else if(phase==='success')actions=`<button class="glass-btn" onclick="copyResult()">${icon('copy')} 复制 ⌘⇧C</button><button class="glass-btn prominent" onclick="replaceResult()">替换 ⌘↩</button>`;
+  // 原文为空时没有可重试动作，动作行不渲染按钮，只留快捷键提示。
+  else if(cfg().empty)actions='';
   else actions=`<button class="glass-btn prominent" onclick="run()">${phase==='idle'?'重新处理':'重试'} <kbd>⌘ ↩</kbd></button>`;
   // “收藏选中内容”是提案动作（T08、T24）：在动作行 leading 端，仅学习表达区块出现时给出。
   const collect=cfg().learning?`<button class="glass-btn">${icon('book')} 收藏选中内容</button>`:'';

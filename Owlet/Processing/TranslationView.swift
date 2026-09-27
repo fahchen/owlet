@@ -223,15 +223,13 @@ struct TranslationView: View {
                 }
                 .buttonStyle(.glass)
                 .disabled(result == nil)
-                Button {
+                Button("\(model.operation.title)文本") {
                     model.translate(to: targetLanguage)
-                } label: {
-                    Text("\(model.operation.title)文本  ⌘↩")
                 }
                 .buttonStyle(.glassProminent)
                 .keyboardShortcut(.return, modifiers: .command)
+                .help("\(model.operation.title)文本 ⌘↩")
                 .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityLabel("\(model.operation.title)文本")
             }
         }
     }

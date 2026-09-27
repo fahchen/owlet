@@ -216,9 +216,17 @@ struct PanelControllerTests {
     /// write still happens exactly once and the panel ends closed.
     @Test func resignKeyDuringWriteBackWritesOnce() async throws {
         let (panel, writes) = makePanel()
+        var closes = 0
         panel.write = { [weak panel] _, text in
             writes.texts.append(text)
-            panel?.panel?.resignKey()
+            if let window = panel?.panel {
+                let onClose = window.onClose
+                window.onClose = {
+                    closes += 1
+                    onClose()
+                }
+                window.resignKey()
+            }
             return true
         }
         panel.trigger(replace: true)
@@ -227,6 +235,7 @@ struct PanelControllerTests {
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
         #expect(try #require(panel.panel).isVisible == false)
+        #expect(closes == 1)
     }
 
     /// `close()` re-entered from `onClose`, or via `resignKey` while closing, runs `onClose` once.
@@ -236,8 +245,10 @@ struct PanelControllerTests {
         panel.trigger()
         let window = try #require(panel.panel)
         var closes = 0
+        let onClose = window.onClose
         window.onClose = {
             closes += 1
+            onClose()
             window.close()
             window.resignKey()
         }
@@ -246,6 +257,8 @@ struct PanelControllerTests {
         #expect(!window.isVisible)
         window.resignKey()
         #expect(closes == 1)
+        #expect(panel.notice == nil)
+        #expect(panel.model.state == .idle)
     }
 
     /// Fixed mode: a user move of the glass-backed panel saves its top-center; self-placement does not.

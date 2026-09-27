@@ -197,7 +197,8 @@ final class PanelController {
         }
         self.selection = nil
         replaceMessage = nil
-        close()
+        // Write-back can resign key and close the panel already; closing again would rerun onClose.
+        if panel?.isVisible == true { close() }
     }
 
     func close() {
@@ -318,8 +319,11 @@ final class FloatingPanel: NSPanel, NSWindowDelegate {
         placing = true
         defer { placing = false }
         guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
-            // No screen to place on: resize in place so the glass and its shadow still track content.
-            setContentSize(size)
+            // No screen to place on: keep the current top-center so the panel still expands downward.
+            let top = NSPoint(x: frame.midX, y: frame.maxY)
+            setFrame(
+                NSRect(x: top.x - size.width / 2, y: top.y - size.height, width: size.width, height: size.height),
+                display: true)
             invalidateShadow()
             return
         }

@@ -1,0 +1,36 @@
+[tools]
+xcodegen = "2.45.4"
+
+[tasks.lint]
+description = "Whitespace and swift-format lint"
+run = [
+  "git diff --check HEAD",
+  "xcrun swift-format lint --strict --recursive Owlet OwletTests",
+]
+
+[tasks.format]
+description = "Format Swift sources in place"
+run = "xcrun swift-format format --in-place --recursive Owlet OwletTests"
+
+[tasks.generate]
+description = "Generate Owlet.xcodeproj"
+run = "xcodegen generate --quiet"
+
+[tasks.build]
+depends = ["generate"]
+run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet build"
+
+[tasks.test]
+depends = ["generate"]
+run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet test"
+
+[tasks.check]
+description = "Lint and test; used by pre-commit and CI"
+depends = ["lint", "test"]
+
+[tasks.precommit]
+depends = ["check"]
+
+[tasks.setup]
+description = "Install tools and git pre-commit hook"
+run = ["mise install", "mise generate git-pre-commit --write --task=precommit"]

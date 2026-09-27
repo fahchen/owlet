@@ -1,0 +1,9 @@
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run check

@@ -1,0 +1,40 @@
+name: Owlet
+options:
+  bundleIdPrefix: dev.fahchen
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    CODE_SIGN_IDENTITY: "-"
+targets:
+  Owlet:
+    type: application
+    platform: macOS
+    sources: [Owlet]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fahchen.owlet
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_HARDENED_RUNTIME: YES
+  OwletTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [OwletTests]
+    dependencies:
+      - target: Owlet
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Owlet:
+    build:
+      targets:
+        Owlet: all
+    test:
+      targets: [OwletTests]

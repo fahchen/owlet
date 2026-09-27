@@ -1,37 +1,103 @@
 import SwiftData
 import SwiftUI
 
-/// Sidebar 历史记录 page: the finished results, their detail, and the empty state.
+/// Sidebar 历史记录 page: search, type filter and deletion over the finished results.
 struct HistoryView: View {
     let store: HistoryStore
     let openProcessing: () -> Void
     @Query(sort: \HistoryRecord.createdAt, order: .reverse) private var records: [HistoryRecord]
+    @State private var search = ""
+    /// Nil means 全部类型; the picker's tags are optional so the filter can be cleared.
+    @State private var operationFilter: Operation?
+    @State private var actionError: String?
 
     var body: some View {
         NavigationStack {
-            Group {
-                if records.isEmpty {
-                    ContentUnavailableView {
-                        Label("暂无历史", systemImage: "clock")
-                    } description: {
-                        Text("成功的翻译与润色会自动记录在这里。")
-                    } actions: {
-                        Button("开始翻译", action: openProcessing).buttonStyle(.glass)
-                    }
-                } else {
-                    List(records) { record in
-                        NavigationLink(value: record) {
-                            HistoryRow(record: record)
-                        }
-                    }
-                    .listStyle(.inset)
+            content
+                .navigationTitle("历史记录")
+                .searchable(text: $search, prompt: "搜索原文或结果")
+                .navigationDestination(for: HistoryRecord.self) { record in
+                    HistoryDetailView(record: record)
+                }
+                .toolbar { toolbar }
+                .safeAreaInset(edge: .top, spacing: 0) { errorBanner }
+                .confirmationDialog(
+                    "清空全部历史？",
+                    isPresented: Binding(
+                        get: { store.isConfirmingClear },
+                        set: { if !$0 { store.cancelClear() } }),
+                    titleVisibility: .visible
+                ) {
+                    Button("清空全部", role: .destructive) { clear() }
+                    Button("取消", role: .cancel) { store.cancelClear() }
+                } message: {
+                    Text("删除后无法恢复；生词本与收藏不受影响。")
+                }
+                .alert(
+                    "操作失败",
+                    isPresented: Binding(
+                        get: { actionError != nil },
+                        set: { if !$0 { actionError = nil } })
+                ) {
+                    Button("好", role: .cancel) {}
+                } message: {
+                    Text(actionError ?? "")
+                }
+        }
+    }
+
+    private var filtered: [HistoryRecord] {
+        HistoryFilter.apply(records, search: search, operation: operationFilter)
+    }
+
+    @ViewBuilder private var content: some View {
+        if records.isEmpty {
+            ContentUnavailableView {
+                Label("暂无历史", systemImage: "clock")
+            } description: {
+                Text("成功的翻译与润色会自动记录在这里。")
+            } actions: {
+                Button("开始翻译", action: openProcessing).buttonStyle(.glass)
+            }
+        } else if filtered.isEmpty {
+            ContentUnavailableView {
+                Label("无匹配结果", systemImage: "clock")
+            } description: {
+                Text("没有记录符合当前的搜索和筛选条件。")
+            } actions: {
+                Button("清除筛选") {
+                    search = ""
+                    operationFilter = nil
+                }
+                .buttonStyle(.glass)
+            }
+        } else {
+            List(filtered) { record in
+                HistoryRowLink(record: record) { delete(record) }
+            }
+            .listStyle(.inset)
+        }
+    }
+
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Picker("筛选类型", selection: $operationFilter) {
+                Text("全部类型").tag(Operation?.none)
+                ForEach(Operation.allCases, id: \.self) { operation in
+                    Text(operation.title).tag(Operation?.some(operation))
                 }
             }
-            .navigationTitle("历史记录")
-            .navigationDestination(for: HistoryRecord.self) { record in
-                HistoryDetailView(record: record)
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                store.requestClear()
+            } label: {
+                Label("清空历史", systemImage: "trash")
             }
-            .safeAreaInset(edge: .top, spacing: 0) { errorBanner }
+            .disabled(records.isEmpty)
         }
     }
 
@@ -49,6 +115,51 @@ struct HistoryView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
             .background(.bar)
+        }
+    }
+
+    private func delete(_ record: HistoryRecord) {
+        do {
+            try store.delete(record)
+            actionError = nil
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func clear() {
+        do {
+            try store.confirmClear()
+            actionError = nil
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+}
+
+/// One list row whose delete control is revealed on hover, so the list stays quiet at rest.
+private struct HistoryRowLink: View {
+    let record: HistoryRecord
+    let onDelete: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            NavigationLink(value: record) {
+                HistoryRow(record: record)
+            }
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .opacity(isHovering ? 1 : 0)
+            .help("删除")
+            .accessibilityLabel("删除 \(record.source)")
+        }
+        .onHover { isHovering = $0 }
+        .contextMenu {
+            Button("删除", role: .destructive, action: onDelete)
         }
     }
 }

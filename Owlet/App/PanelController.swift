@@ -12,7 +12,7 @@ final class PanelController {
         case missingConfig
         case failure(String)
         /// Direct replace refused because the selection changed; the result stays copyable.
-        case stale
+        case unwritten
         case cancelled
 
         var message: String {
@@ -29,7 +29,7 @@ final class PanelController {
                 } else {
                     message
                 }
-            case .stale: "原选区已变化，未替换"
+            case .unwritten: "未能写回原应用"
             case .cancelled: "已取消处理"
             }
         }
@@ -42,7 +42,7 @@ final class PanelController {
             case .unreadable: "手动输入"
             case .missingConfig: "配置服务"
             case .failure(let message): message == ModelError.format.message ? "提示词设置" : "服务设置"
-            case .stale: "复制结果"
+            case .unwritten: "复制结果"
             case .cancelled: "重新处理"
             }
         }
@@ -58,8 +58,8 @@ final class PanelController {
     private(set) var expanded = false
     private(set) var notice: Notice?
     private(set) var selection: Selection?
-    /// Shown in the expanded view when a write-back was refused.
-    private(set) var replaceMessage: String?
+    /// A finished result could not be written back, so the expanded view offers to copy it instead.
+    private(set) var writebackRefused = false
     /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
@@ -126,7 +126,7 @@ final class PanelController {
         model.operation = operation
         autoReplace = replace
         selection = nil
-        replaceMessage = nil
+        writebackRefused = false
         switch result {
         case .success(let selection):
             self.selection = selection
@@ -162,7 +162,7 @@ final class PanelController {
                     return
                 }
                 await performReplace(text)
-                if selection != nil, !expanded { notice = .stale }
+                if selection != nil, !expanded { notice = .unwritten }
             }
         }
         guard !expanded else { return }
@@ -199,7 +199,7 @@ final class PanelController {
             if notice == .permission || notice == .unreadable { return notice }
             return .failure(message)
         case .missingConfig: return .missingConfig
-        case .success: return replaceMessage == nil ? nil : .stale
+        case .success: return writebackRefused ? .unwritten : nil
         case .idle: return notice == .cancelled ? .cancelled : nil
         case .loading: return nil
         }
@@ -214,16 +214,16 @@ final class PanelController {
     /// what the user sees rather than the call itself.
     private func performReplace(_ text: String) async {
         guard let selection else {
-            replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
+            writebackRefused = true
             return
         }
         let outcome = await write(selection, text)
         guard outcome != .refused else {
-            replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
+            writebackRefused = true
             return
         }
         self.selection = nil
-        replaceMessage = nil
+        writebackRefused = false
         // Write-back can resign key and close the panel already; closing again would rerun onClose.
         if panel?.isVisible == true { close() }
     }
@@ -483,7 +483,7 @@ struct PanelView: View {
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
         case .unreadable: manualInput()
         case .missingConfig, .failure: settings()
-        case .stale:
+        case .unwritten:
             guard case .success(let text) = controller.model.state else { return }
             Clipboard.copy(text)
         case .cancelled: controller.translate()

@@ -102,7 +102,7 @@ struct PanelControllerTests {
         panel.close()
     }
 
-    /// Changed or read-only selection: write is refused, compact stale notice keeps the result copyable.
+    /// A refused write-back keeps the result copyable instead of claiming the selection moved.
     @Test(.disabled("Hangs in app-hosted test run once the panel expands; needs investigation"))
     func refusedWriteKeepsResult() async {
         let (panel, writes) = makePanel(outcome: .refused)
@@ -110,8 +110,8 @@ struct PanelControllerTests {
         await settle()
         #expect(writes.texts == ["T:Hello"])
         #expect(!panel.expanded)
-        #expect(panel.notice == .stale)
-        #expect(panel.replaceMessage != nil)
+        #expect(panel.notice == .unwritten)
+        #expect(panel.writebackRefused)
         #expect(panel.model.state == .success("T:Hello"))
         panel.close()
     }
@@ -188,7 +188,7 @@ struct PanelControllerTests {
         #expect(writes.texts.isEmpty)
     }
 
-    /// A paste is a write too: the source is still consumed, no stale notice is left and the
+    /// A paste is a write too: the source is still consumed, no refusal is left and the
     /// panel does not stay up. Driven through the footer's entry point, which is what a click or
     /// ⌘↩ reaches, so the assertion does not depend on the window's key state.
     @Test func pastedWriteConsumesTheSelection() async {
@@ -200,7 +200,7 @@ struct PanelControllerTests {
         for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
-        #expect(panel.replaceMessage == nil)
+        #expect(!panel.writebackRefused)
         #expect(panel.panel?.isVisible != true)
     }
 

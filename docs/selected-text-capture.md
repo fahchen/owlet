@@ -1,6 +1,6 @@
 # macOS 选中文字读取方案
 
-状态：待实施的读取链路完善方案。适用于 Owlet 的 macOS 26+ 原生应用。
+状态：AX 主路径已实现（`96f8f2e`、`ef8682e`、`671ebd3`），实机兼容性待验证。适用于 Owlet 的 macOS 26+ 原生应用。
 
 ## 目标与边界
 
@@ -10,13 +10,11 @@
 
 [实现计划](../tasks/plan.md)已约定模拟复制／粘贴并恢复剪贴板的兼容回退；本文不撤销该约定，也不将其混入 AX 读取。本文的失败行为描述 AX 主路径的返回结果；完整流程如需自动回退，应另行落实剪贴板恢复和焦点校验后再接入。当前 AX 主路径不读取、清空或写入剪贴板。
 
-## 现有基础
+## 实现位置
 
-- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift)：已有 `Selection`、`Source`、权限检查、AX 读取及错误分类。
-- [PanelController.swift](../Owlet/App/PanelController.swift)：`trigger` 已在 `show()` 之前同步读取选区，并按工具栏是否展开呈现错误。
-- [SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift)：已有权限、空文本、密码字段分类及来源校验测试。
-
-当前实现仍有需要完善之处：AX 调用同步执行；焦点元素与前台应用分别读取，可能跨应用错配；密码字段在分类前已读取文字。现有密码字段测试只验证返回分类，不能证明未访问敏感属性。
+- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift)：`read(completion:)` 按下述流程读取；`SerialLatest` 工作队列；可注入的 AX 属性读取器。
+- [PanelController.swift](../Owlet/App/PanelController.swift)：`trigger` 分配操作标识，异步接收读取结果并按工具栏是否展开呈现错误。
+- 测试：[SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift)、[SerialLatestTests.swift](../OwletTests/Selection/SerialLatestTests.swift)、[PanelControllerTests.swift](../OwletTests/App/PanelControllerTests.swift)。
 
 ## 读取流程
 
@@ -60,7 +58,7 @@
 
 仅在用户触发时读取，不记录选中文字、文档路径或 AX 属性内容到诊断日志。`AXUIElement` 和来源上下文只保留于当前操作，不持久化为可恢复的写回权限。
 
-## 实施顺序
+## 实施顺序（已完成）
 
 1. **修正捕获顺序与来源一致性**：沿用 `SelectionBridge`，先判密码字段再取文字，通过固定 PID 查找焦点控件，补齐返回类型检查，复用一次读取的原文。
 2. **使读取有界且不阻塞 UI**：将 `PanelController.read` 接口改为可异步完成，接入工作队列、总预算及操作标识；保留现有失败呈现。
@@ -70,14 +68,18 @@
 
 ## 验收
 
-自动化检查应覆盖真实边界，而不只测试最终分类：
+自动化检查（已覆盖）：
 
-- 密码字段：模拟 AX 属性读取并记录调用，断言从未请求文本和选区内容。
-- 来源一致性：捕获期间切换前台应用，结果被拒绝；文本与 `Source.text` 一致。
-- 超时与取消：模拟迟到回调，确认不会打开浮窗、覆盖输入或启动模型请求。
-- 连续触发：旧结果晚于新结果返回，只接收最新操作；待处理读取不持续累积。
-- 缺失、错误类型、空白选区：安全失败；有效原文保留空格、换行及 Unicode 内容。
+- [x] 密码字段：记录属性调用，断言从未请求文本和选区（`secureFieldNeverReadsTextOrRange`）。
+- [x] 文本与 `Source.text` 一致，只读取一次（`textIsReadOnceAndReusedForSource`）。
+- [x] 超时与取消：迟到回调不打开浮窗、不改输入、不发请求（`readPastBudgetIsUnreadable`、`lateReadAfterTimeoutOrCloseIsIgnored`）。
+- [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。
+- [x] 缺失、错误类型、空白选区安全失败，保留空白与 Unicode（`wrongTypesFailSafely`、`blankOrMissingIsUnreadable`、`missingFocusedElementIsUnreadable`）。
 
-实机检查使用 TextEdit、Safari、Chrome 与至少一个 Electron 编辑器，逐项记录读取成功、手动输入降级、首次授权后重试和焦点切换行为。另验证密码框、未授权、无选区及目标应用无响应场景。
+待补：
 
-AX 主路径执行前后检查剪贴板内容与 `changeCount` 不变。单元测试通过不能替代跨应用实测；应用支持清单以实测为准。
+- [ ] 捕获期间切换前台应用被拒绝：代码已在主线程比对 PID，尚无自动化测试。
+- [ ] AX 主路径前后剪贴板内容与 `changeCount` 不变：代码不访问剪贴板，尚无检查。
+- [ ] 实机：TextEdit、Safari、Chrome 与至少一个 Electron 编辑器，逐项记录读取成功、手动输入降级、首次授权后重试和焦点切换；另验证密码框、未授权、无选区及目标应用无响应。100／150 ms 参数随实测调整。
+
+单元测试通过不能替代跨应用实测；应用支持清单以实测为准。

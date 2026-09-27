@@ -8,7 +8,7 @@
 
 ## 技术约束
 
-macOS 26.0 起；SwiftUI + AppKit、URLSession、SwiftData 为既有计划中的建议，待确认。Keychain 保存密钥，普通配置不得保存明文密钥。JSON 字段仍以 `llm/contract.md` 的草案状态为准，需单独审阅后才能固定实现。
+macOS 26.0 起；SwiftUI + AppKit、URLSession、SwiftData 为既有计划中的建议，待确认。Keychain 保存密钥，普通配置不得保存明文密钥。JSON 契约以 `llm/contract.md` 为准，已确认。
 
 ## 命令
 
@@ -28,7 +28,7 @@ git diff --check
 - `design/index.html`：单文件交互原型。
 - `spec/product.md`、`spec/DESIGN.md`：产品与视觉决策。
 - `spec/{processing,learning,vocabulary,history,settings}/features/`：行为验收场景。
-- `spec/llm/`：默认 Prompt 与待确认 JSON 契约。
+- `spec/llm/`：默认 Prompt 与 JSON 契约。
 - `tasks/plan.md`、`tasks/todo.md`：已有计划和任务，尚未实施。
 - 原生源码与测试目录在工程方案确认后创建，不预建空模块。
 
@@ -69,10 +69,8 @@ struct TranslationSegment: Decodable {
 6. 收藏与历史独立持久化；Key 存入 Keychain。
 7. 中性背景，玫瑰色主按钮／选中态／焦点，呼吸灯尊重减少动态效果。
 
-## 待确认
+## 已确认
 
-- JSON 精确字段与校验规则。
-- SwiftUI + AppKit、SwiftData 技术方案与实际工程命名。
-- 默认全局快捷键与外部应用兼容清单。
+JSON 字段与校验规则、SwiftUI + AppKit + SwiftData、工程名 Owlet、快捷键无默认、选区回退、仅菜单栏及分发方式，见 `../tasks/plan.md` 与 `llm/contract.md`。
 
 签名分发在发布阶段确定，不阻塞本地工程规格审阅。本次仅整理 Specify，不推进新的 Plan、Tasks 或 Implement。

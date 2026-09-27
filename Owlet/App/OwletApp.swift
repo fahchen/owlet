@@ -41,6 +41,18 @@ private struct MainView: View {
                 Label("文本处理", systemImage: "text.bubble").tag(Page.processing)
                 Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
             }
+            .safeAreaInset(edge: .top, alignment: .leading) {
+                HStack(spacing: 8) {
+                    Image("OwletLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+                    Text("Owlet").font(.headline)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
         } detail: {
             switch page {
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
@@ -60,7 +72,11 @@ private struct MenuBarLabel: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Image(systemName: "character.bubble")
+        Image("OwletMark")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 18, height: 18)
+            .accessibilityLabel("Owlet")
             .onAppear {
                 shortcuts.onAction = { action in
                     switch action {

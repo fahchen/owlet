@@ -107,6 +107,14 @@ struct TranslationView: View {
         .padding()
         .frame(minWidth: 480, minHeight: 360)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Image("OwletMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .accessibilityLabel("Owlet")
+            }
+            .sharedBackgroundVisibility(.hidden)
             ToolbarItemGroup(placement: .primaryAction) {
                 if model.operation == .translate {
                     Picker("Target Language", selection: $targetLanguage) {

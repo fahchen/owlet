@@ -45,6 +45,20 @@ final class VocabularyContext {
     }
 }
 
+extension VocabularyContext {
+    /// Whether this snapshot is the same collected context as another after trimming each string's
+    /// leading and trailing whitespace only, so re-submitting one collect action never appends twice.
+    func hasSameContent(as other: VocabularyContext) -> Bool {
+        func normalized(_ value: String?) -> String? {
+            value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return source.trimmingCharacters(in: .whitespacesAndNewlines)
+            == other.source.trimmingCharacters(in: .whitespacesAndNewlines)
+            && normalized(polishBefore) == normalized(other.polishBefore)
+            && normalized(polishAfter) == normalized(other.polishAfter)
+    }
+}
+
 /// The snapshot a collect action takes from the current source or result.
 struct VocabularyDraft: Equatable {
     var expression: String

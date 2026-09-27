@@ -48,15 +48,59 @@ struct VocabularyStoreTests {
         let second = try store.collect(draft("follow up", context: "Another sentence."))
         #expect(try store.entries().count == 1)
         #expect(second.expression == "follow up")
-        // Appending a second context is T11; T08 must only avoid a duplicate entry.
-        #expect(second.contexts.count == 1)
+        // The second sentence is appended to the same entry instead of forking a duplicate.
+        #expect(second.contexts.count == 2)
+    }
+
+    @Test func appendingANewContextKeepsTheEarlierOneAndTheMeaning() throws {
+        let store = try makeStore()
+        let entry = try store.collect(draft("follow up"))
+        try store.update(entry, expression: entry.expression, meaning: "跟进，后续联系。")
+        let appended = try store.collect(
+            draft("follow up", context: "She will follow up next week."))
+        #expect(appended === entry)
+        #expect(try store.entries().count == 1)
+        #expect(appended.contexts.count == 2)
+        // The earlier context is still there and the meaning written before the append survives.
+        #expect(
+            Set(appended.contexts.map(\.source)) == [
+                "I will follow up tomorrow.", "She will follow up next week.",
+            ])
+        #expect(appended.meaning == "跟进，后续联系。")
+    }
+
+    @Test func theSameContextIsNotAppendedTwice() throws {
+        let store = try makeStore()
+        _ = try store.collect(draft("follow up"))
+        // Only leading and trailing whitespace is ignored, so this is the same context.
+        let again = try store.collect(draft("follow up", context: "  I will follow up tomorrow.  "))
+        #expect(again.contexts.count == 1)
+        #expect(try store.entries().count == 1)
+    }
+
+    @Test func aPolishPairIsADifferentContextFromThePlainSentence() throws {
+        let store = try makeStore()
+        _ = try store.collect(draft("This is bad.", context: "This is bad."))
+        let polished = try store.collect(
+            VocabularyDraft(
+                expression: "This is bad.", language: "en", context: "This is bad.",
+                polishBefore: "This are bad.", polishAfter: "This is bad."))
+        // The second collect carries a comparison the first one lacks, so it is a new context.
+        #expect(polished.contexts.count == 2)
+        #expect(
+            polished.contexts.contains {
+                $0.polishBefore == "This are bad." && $0.polishAfter == "This is bad."
+            })
     }
 
     @Test func separatesTheSameExpressionByLanguage() throws {
         let store = try makeStore()
-        _ = try store.collect(draft("手紙", language: "zh", context: "中文句子"))
-        _ = try store.collect(draft("手紙", language: "ja", context: "日本語の文"))
+        let chinese = try store.collect(draft("手紙", language: "zh", context: "中文句子"))
+        let japanese = try store.collect(draft("手紙", language: "ja", context: "日本語の文"))
         #expect(try store.entries().count == 2)
+        // A different language is always a different entry, so the two contexts never merge.
+        #expect(chinese.contexts.map(\.source) == ["中文句子"])
+        #expect(japanese.contexts.map(\.source) == ["日本語の文"])
     }
 
     @Test func deletingAnEntryCascadesToItsContexts() throws {
@@ -241,6 +285,32 @@ struct CollectionActionTests {
         await action.task?.value
         #expect(entry.meaning == "跟进，后续联系。")
         #expect(try store.entries().first?.meaning == "跟进，后续联系。")
+        #expect(action.status == .saved)
+    }
+
+    @Test func collectingAnExistingExpressionAppendsWithoutASecondMeaningRequest() async throws {
+        let store = try makeStore()
+        let calls = Mutex(0)
+        let client = ModelClient(transport: { request in
+            calls.withLock { $0 += 1 }
+            return try await stub(body: chatBody(self.meaningResponse))(request)
+        })
+        let action = CollectionAction(store: store, client: client, config: { testConfig })
+        let first = try #require(action.collect(draft()))
+        await action.task?.value
+        #expect(first.meaning == "跟进，后续联系。")
+
+        let second = try #require(
+            action.collect(
+                VocabularyDraft(
+                    expression: "follow up", language: "en",
+                    context: "She will follow up next week.", polishBefore: nil, polishAfter: nil)))
+        #expect(second === first)
+        #expect(try store.entries().count == 1)
+        #expect(second.contexts.count == 2)
+        // The stored meaning is not overwritten, and the append spends no second model request.
+        #expect(second.meaning == "跟进，后续联系。")
+        #expect(calls.withLock { $0 } == 1)
         #expect(action.status == .saved)
     }
 

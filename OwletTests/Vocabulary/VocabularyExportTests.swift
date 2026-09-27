@@ -58,6 +58,25 @@ struct VocabularyExportTests {
         #expect(english.contexts.contains { $0.source == "日本語の文。" })
     }
 
+    @Test func exportKeepsAnAppendedContext() throws {
+        let store = try makeStore()
+        _ = try store.collect(
+            VocabularyDraft(
+                expression: "follow up", language: "en", context: "I will follow up tomorrow.",
+                polishBefore: nil, polishAfter: nil))
+        _ = try store.collect(
+            VocabularyDraft(
+                expression: "follow up", language: "en", context: "She will follow up next week.",
+                polishBefore: nil, polishAfter: nil))
+        let document = VocabularyExport.document(try store.entries())
+        // The export reads the same entry, so both collected sentences reach the file.
+        #expect(document.entries.count == 1)
+        #expect(
+            Set(document.entries.first?.contexts.map(\.source) ?? []) == [
+                "I will follow up tomorrow.", "She will follow up next week.",
+            ])
+    }
+
     @Test func theFileIsReadableUTF8() throws {
         let store = try notebook()
         let data = try VocabularyExport.data(try store.entries())

@@ -262,6 +262,7 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .learning-message{font-size:11px;line-height:1.7;color:var(--muted);padding:7px 0;margin:0}
 .learning-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid oklch(50% .012 350/.12)}
 .learning-row:last-child{border-bottom:0}
+.formrow input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
 .learning-row input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;margin:3px 0 0;flex:none}
 .learning-row strong{font-size:12px;font-weight:550}
 .learning-row p{font-size:11px;line-height:1.6;color:var(--muted);margin:3px 0 0}
@@ -427,6 +428,7 @@ const states=[
  ['learning-empty','学习 · 无推荐','没有推荐时不强凑数量，保留手动收藏。','learning-empty.png'],
  ['saved','收藏 · 已入库','收藏后就地反馈并保留入口，不跳转打断工作。','saved.png'],
  ['aligned','翻译 · 逐句对照','原文与译文按语义句子配对，换行不改变对应关系。','aligned.png'],
+ ['settings-learning','设置 · 学习开关','翻译与润色各自控制是否在结果成功后台请求学习表达，默认关闭。','settings-learning.png'],
  ['settings-prompts','设置 · Prompt','Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。','settings-prompts.png'],
  ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png'],
  // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
@@ -491,6 +493,7 @@ const config={
   'learning-empty':{surface:'panel',view:'translate',phase:'success',learning:'empty'},
   'saved':{surface:'panel',view:'translate',phase:'success',learning:'saved'},
   'aligned':{surface:'panel',view:'translate',phase:'success',aligned:true},
+  'settings-learning':{surface:'app',page:'settings',learning:true},
   'settings-prompts':{surface:'app',page:'settings',prompts:true},
   'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true},
   // 提案：写回成功后的确认屏，应用尚未实现。
@@ -502,7 +505,7 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-openai','settings-saved','settings-models','settings-models-loading','settings-prompts']},
+ {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -602,6 +605,9 @@ function settingsHTML(){
    +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="${openai?'':'sk-example'}" placeholder="sk-…" aria-label="API Key" autocomplete="off"></span></div>`
    +modelRow
    +`</div>`
+   +(cfg().learning?`<div class="form-section"><p class="group-title">学习</p>`
+     +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
+     +`<div class="formrow"><label>润色后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="润色后自动请求学习表达"></span></div></div>`:'')
    +`<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`
    +`</div></div><footer class="footer"><span class="saved">${saved?`${icon('check')}已保存`:''}${loading?'<span class="spin" aria-hidden="true"></span>':''}</span><div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
 }
@@ -622,7 +628,9 @@ function detailHTML(kind){
      +`<div class="formrow"><label>中文释义</label><span class="field"><textarea rows="2" aria-label="中文释义">退一步，从新的角度重新审视。</textarea></span></div></div>`
      +`<p class="group-title">原句语境</p><div class="quote">${esc(samples.en.text)}</div></article></div>`;
   }
-  return `<div class="body" id="body"><article class="detail"><div class="labelrow"><span>英语 · 翻译</span><span>今天 09:41</span></div><div class="quote">${esc(samples.en.text)}</div><h2 class="detail-result">${esc(samples.en.zh)}</h2></article></div>`;
+  // 详情底部与应用一致：复制可用，收藏是唯一的 prominent 动作。
+  return `<div class="body" id="body"><article class="detail"><div class="labelrow"><span>英语 · 翻译</span><span>今天 09:41</span></div><div class="quote">${esc(samples.en.text)}</div><h2 class="detail-result">${esc(samples.en.zh)}</h2></article></div>`
+   +`<footer class="footer"><span class="saved"></span><div class="actions"><button class="glass-btn">${icon('copy')} 复制</button><button class="glass-btn prominent">收藏</button></div></footer>`;
 }
 function libraryHTML(kind){
   const c=cfg(),items=kind==='book'?BOOK:HISTORY;

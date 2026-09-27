@@ -34,3 +34,12 @@ depends = ["check"]
 [tasks.setup]
 description = "Install tools and git pre-commit hook"
 run = ["mise install", "mise generate git-pre-commit --write --task=precommit"]
+
+[tasks.dev]
+description = "Build and relaunch Owlet locally"
+depends = ["generate"]
+run = [
+  "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS,arch=arm64' -derivedDataPath .build -quiet build",
+  "pkill -x Owlet || true",
+  "open .build/Build/Products/Debug/Owlet.app",
+]

@@ -23,7 +23,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | 侧边栏是真正的 source list | 178px 固定栏，自己画红绿灯、自己画分组标题、选中态是自定义白胶囊；`设置` 与 `本地` 钉在栏底 | `NavigationSplitView` + `List(selection:)`：工具栏自带的收起／展开按钮来自系统（设计图里的切换按钮就是它）；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，当前未添加，见 tasks/todo.md T25；选中态是系统外观；`设置` 移入同一分组，取消栏底钉死；`本地` 角标删除；`.badge` 计数未采用 | `sidebars.md › Best practices`；`sidebars.md › Desktop (macOS)`：**Avoid putting critical information or actions at the bottom of a sidebar.** |
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
-| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 单层半透明玻璃 + 一道发丝描边 + 一道柔和投影；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
+| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；`NSPanel.hasShadow = false`，避免窗口按方形 frame 投出矩形阴影；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
 | 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 6 个横向分区（文本处理 8 / 快捷键 3 / 设置 5 / 紧凑条 10 / 展开 7 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
@@ -54,24 +54,24 @@
 - 主窗口骨架（侧栏 + 内容）→ `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`，桌面端不用 `TabView`，分隔线用系统自带 divider，永不自绘 1px 竖线；侧边栏本体、`Section` 分组与选中态由 `List` 的 sidebar 外观与系统 source list 选中态负责；显示／隐藏用系统侧栏切换工具栏项 + `⌃⌘S`（`sidebars.md`：**Consider letting people hide the sidebar.**）；设置分区用 `Form` + `Section`（`.formStyle(.grouped)`），设置仍是主窗口侧栏页面，见 §6。
 
 ### 3.2 组件 › 菜单与操作
-- 顶部工具栏 → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`，跨整窗、位于侧栏之上；`简体中文` → `Picker(.menu)`，`翻译｜润色` → `Picker(.segmented)`（段标签用名词）；底部操作栏的 `翻译文本` / `保存设置` / `复制` → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`，宾语保留在按钮里（§2.2 #8）；面板头部（重试 / 设置）与底部动作行（`复制` / `替换` / `取消`）用 `Button(.glass)` 包在 `GlassEffectContainer` 中，提示文字仍在（§2.2 #7）；菜单栏常驻图标用 `MenuBarExtra` + `Menu`（`the-menu-bar.md`：**Display a menu — not a popover — when people click your menu bar extra.**）。
+- 顶部工具栏 → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`，跨整窗、位于侧栏之上；`简体中文` → `Picker(.menu)`，`翻译｜润色` → `Picker(.segmented)`（段标签用名词）；底部操作栏的 `翻译文本` / `保存设置` / `复制` → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`，宾语保留在按钮里（§2.2 #8）；面板头部（重试 / 设置）与底部动作行（`复制 ⌘⇧C` / `替换 ⌘↩` / `取消`）用 `Button(.glass)` 包在 `GlassEffectContainer` 中，提示文字仍在（§2.2 #7）；菜单栏常驻图标用 `MenuBarExtra` + `Menu`（`the-menu-bar.md`：**Display a menu — not a popover — when people click your menu bar extra.**）。
 
 ### 3.3 组件 › 导航与搜索
-- 侧栏导航（文本处理／快捷键／设置）→ `List(selection:)` 绑定 `enum Page`，导航不等于动作，收敛后只有三个页面；快捷键页的"全局／应用内"分组用 `Form` + `Section`；列表搜索与筛选无对应状态，随生词本／历史一并移除（见 [docs/unimplemented-features.md](unimplemented-features.md)）。
+- 侧栏导航（文本处理／快捷键／设置）→ `List(selection:)` 绑定 `enum Page`，导航不等于动作，收敛后只有三个页面；快捷键页的"全局／面板内"分组用 `Form` + `Section`；列表搜索与筛选无对应状态，随生词本／历史一并移除（见 [docs/unimplemented-features.md](unimplemented-features.md)）。
 
 ### 3.4 组件 › 呈现
-- 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，不叠自绘边框与内阴影；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
-- 紧凑提示条（失败／权限／未配置／取消／选区失效）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 2）；展开态内联状态行（`result-notice`）用 `Label(systemImage:)` + 恢复按钮放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
+- 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，保留其默认圆角与样式，不叠自绘边框与内阴影；`hasShadow = false`，窗口不按方形 frame 投出矩形阴影；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
+- 紧凑提示条（失败／权限／未配置／取消／未能写回）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 1）；展开态内联状态行（`result-notice`）用 `Label(systemImage:)` + 恢复按钮放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
 
 ### 3.5 组件 › 选择与输入
-- 原文输入区 → 多行 `TextEditor`、单行 `TextField(axis: .vertical)`，聚焦态交给系统焦点环；服务设置用 `Form` 行内的 `TextField` / `SecureField` / `Picker(.menu)`（`entering-data.md`：永不预填密码；`pickers.md`：短列表用弹出式按钮）；快捷键录制控件**无系统组件**，实现用 `Button` + `.glass`，录制中换 `.glassProminent`，注册走 Carbon / `NSEvent`（§7 例外 3）；`⌘ V 粘贴` / `⌘ ↵` / `Esc` 提示在设计图与实现里都保留（§2.2 #7）。
+- 原文输入区 → 多行 `TextEditor`、单行 `TextField(axis: .vertical)`，聚焦态交给系统焦点环；服务设置用 `Form` 行内的 `TextField` / `SecureField` / `Picker(.menu)`（`entering-data.md`：永不预填密码；`pickers.md`：短列表用弹出式按钮）；快捷键录制控件**无系统组件**，实现用 `Button` + `.glass`，录制中换 `.glassProminent`，注册走 Carbon / `NSEvent`（§7 例外 2）；`⌘ V 粘贴` / `⌘ ↵` / `Esc` 提示在设计图与实现里都保留（§2.2 #7）。
 
 ### 3.6 组件 › 内容与状态
 - 译文／润色结果 → `Text` + `.textSelection(.enabled)` 与语义字号（`labels.md`：**Make useful label text selectable.**），分区标签行用 `LabeledContent` 或 `Section` 头 + `.secondary`；处理中骨架屏用 `.redacted(reason: .placeholder)` 作用在真实内容上，不手绘灰条。
 - 处理中指示 → `ProgressView().controlSize(.small / .mini)` + 状态文字，状态文字是动效之外的载体（整圈呼吸未采纳，T24）；内联提示用 `StatusNote`（`Label` + 恢复 `Button`）就地反馈；学习区块、生词本与历史状态无对应状态，全部属未实现功能，见 [docs/unimplemented-features.md](unimplemented-features.md)。
 
 ### 3.7 系统体验
-- 菜单栏常驻入口 → `MenuBarExtra` + `Menu`（`the-menu-bar.md › Menu bar extras`）；全局快捷键没有系统 API 提供"用户可录制"的 UI，注册用 Carbon `RegisterEventHotKey`（§7 例外 3）；应用图标由 `project.yml` 的 `ASSETCATALOG_COMPILER_APPICON_NAME` 指定（当前值 `OwletIcon` 与目录里的 `AppIcon.appiconset` 不一致，`AppIcon.appiconset` 也没有 `appearances` 条目，即没有深色／着色变体，见未实现清单），含 light / dark / tinted 变体。
+- 菜单栏常驻入口 → `MenuBarExtra` + `Menu`（`the-menu-bar.md › Menu bar extras`）；全局快捷键没有系统 API 提供"用户可录制"的 UI，注册用 Carbon `RegisterEventHotKey`（§7 例外 2）；应用图标由 `project.yml` 的 `ASSETCATALOG_COMPILER_APPICON_NAME` 指定（当前值 `OwletIcon` 与目录里的 `AppIcon.appiconset` 不一致，`AppIcon.appiconset` 也没有 `appearances` 条目，即没有深色／着色变体，见未实现清单），含 light / dark / tinted 变体。
 
 ## 4. 逐屏对照
 
@@ -80,11 +80,11 @@
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
 | `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 弹出式按钮 `简体中文` · 分段控件 `翻译｜润色` · `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote` · 底部操作栏 `复制` / `翻译文本`；收起态与展开态共用同一套工具栏 |
-| `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 分组 · 录制按钮（例外 3）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
+| `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
 | `settings.png` / `settings-openai.png` / `settings-saved.png` / `settings-models.png` / `settings-models-loading.png` | inset grouped `Form` · 弹出式按钮／输入框／`SecureField` · 分组容器 · 底部 prominent `保存设置` · 模型列表失败时就地提示与 `重试` |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
 | `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `stale.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
-| `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-stale.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制` / `替换` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |
+| `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |
 
 移除清单（现保留 35 个状态）：被移除的状态（`aligned`、`empty`、`success`、`learning*`、`saved`、`book-*`、`history-*`、`no-results`、`settings-prompts`、`settings-shortcuts`、`workspace-narrow`，以及 `direct-*` 里与紧凑条重复的提示态）不再有界面承载，逐条记录在 [docs/unimplemented-features.md](unimplemented-features.md)。
 
@@ -102,7 +102,7 @@
 | `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`stale` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
 | `result`、`polish`、`long`、`result-loading` | `Owlet/App/ExpandedPanel.swift`（PanelHeader／PanelBody／PanelFooter）· `Owlet/App/PanelController.swift`（展开时机） |
 | `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/ExpandedPanel.swift`（StatusNote）· `Owlet/App/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
-| `result-stale` | `Owlet/App/PanelController.swift`（`replaceMessage` → `inlineNotice` 返回 `.stale`）· `Owlet/App/ExpandedPanel.swift` |
+| `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefused` → `inlineNotice` 返回 `.unwritten`）· `Owlet/App/ExpandedPanel.swift` |
 | `menubar`、`menubar-menu` | `Owlet/App/OwletApp.swift`（MenuBarExtra、MenuContent、MenuBarLabel） |
 
 ## 5. 设计令牌退役表
@@ -127,14 +127,13 @@
 
 ## 7. 判断与例外
 
-macOS 26 没有提供系统对应物的四处必须自定义；例外 1 与例外 4 对应尚未实现的功能，当前实现还没走到它们。
+macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应尚未实现的功能，当前实现还没走到它。
 
 | 例外 | 做法 |
 | --- | --- |
-| 1 · 处理中的整圈边框呼吸（建议，未采纳，T24） | `ProgressView` 不能沿已有玻璃边缘呼吸，"单行状态条"在 macOS 上也没有对应控件。将来若采用：托盘仍用 `NSGlassEffectView`，内容只用 `Text` 与 `Button`，动画只作用在面板自身的 `border-color` 与边缘阴影上（单色 `separator` 色阶、2.1s 循环、无渐变、无新增描边、无 spinner），静止态也保留亮边，`翻译中…` 文字是动效之外的另一载体（`motion.md`：**Make motion optional.**）。当前实现只用一个 `ProgressView`。 |
-| 2 · 内联提示行 | macOS 没有系统 banner，而 `feedback.md` 要求状态反馈就近呈现。做法：`Label(systemImage:)` + 一个恢复 `Button` 放进内容流；失败态另给符号，不靠颜色单独表意。 |
-| 3 · 全局快捷键录制控件 | 没有任何系统 API 提供"点击后录制组合键"的 UI，Carbon 的 `RegisterEventHotKey` 只负责注册。实现中录制按钮用 `.glass`，录制中换成 `.glassProminent`（`Owlet/Shortcuts/ShortcutSettingsView.swift`），并保留 `Esc` 取消、`Delete` 清除、冲突提示与 `accessibilityLabel` / `accessibilityValue`。这是本项目唯一不可避免的自定义控件。 |
-| 4 · 逐句对照布局（建议，未实现，T14） | 没有系统组件表达"原文／译文按语义句子配对"。做法：`LazyVStack` 内的配对视图，子元素全部是系统 `Text`；配对关系由模型返回，不按显示行推断。 |
+| 1 · 内联提示行 | macOS 没有系统 banner，而 `feedback.md` 要求状态反馈就近呈现。做法：`Label(systemImage:)` + 一个恢复 `Button` 放进内容流；失败态另给符号，不靠颜色单独表意。 |
+| 2 · 全局快捷键录制控件 | 没有任何系统 API 提供"点击后录制组合键"的 UI，Carbon 的 `RegisterEventHotKey` 只负责注册。实现中录制按钮用 `.glass`，录制中换成 `.glassProminent`（`Owlet/Shortcuts/ShortcutSettingsView.swift`），并保留 `Esc` 取消、`Delete` 清除、冲突提示与 `accessibilityLabel` / `accessibilityValue`。这是本项目唯一不可避免的自定义控件。 |
+| 3 · 逐句对照布局（建议，未实现，T14） | 没有系统组件表达"原文／译文按语义句子配对"。做法：`LazyVStack` 内的配对视图，子元素全部是系统 `Text`；配对关系由模型返回，不按显示行推断。 |
 
 **其余判断（我的判断，不是 Apple 的条文）：**
 
@@ -148,7 +147,7 @@ macOS 26 没有提供系统对应物的四处必须自定义；例外 1 与例�
 1. **层纪律。** 玻璃只出现在工具栏、侧边栏、浮动面板、弹出视图；内容区、卡片、列表行、分组容器一律无玻璃。
 2. **玻璃数量。** 一屏内的自定义玻璃表面不超过"最重要的几个功能元素"，面板内不叠玻璃于玻璃之上。
 3. **颜色预算。** 每屏最多一个 tinted prominent 动作；控制标签单色；品牌色只在强调色、prominent 动作与状态指示。
-4. **辅助功能。** `Reduce Transparency` 有实底回退；`Increase Contrast` 有更强描边；`Reduce Motion` 去掉展开动画（`PanelController` 已有 `reduceMotion` 分支）；边框呼吸属未采纳建议（T24）；`workspace-collapsed.png` 与展开态功能完全一致。
+4. **辅助功能。** `Reduce Transparency` 有实底回退；`Increase Contrast` 有更强描边；`Reduce Motion` 去掉展开动画（`PanelController` 已有 `reduceMotion` 分支）；呼吸动画属未采纳建议（T24）；`workspace-collapsed.png` 与展开态功能完全一致。
 5. **对比度。** 正文 ≤17pt 达 4.5:1，≥18pt 或粗体达 3:1；玫瑰 `oklch(47% .17 350)` 在白底上约 8:1，作为强调色安全；次要文字用 `.secondary` 由系统保证。
 6. **点击区。** 桌面端默认 28×28pt，最小 20×20pt；工具栏图标按钮 28×28；列表行高不低于 28pt。
 7. **字号。** 桌面端默认 13pt，最小 10pt，不出现细体小字。
@@ -171,7 +170,7 @@ macOS 26 没有提供系统对应物的四处必须自定义；例外 1 与例�
 2. 主窗口改 `NavigationSplitView`（侧栏可收起）并把工具栏就位：`navigationTitle` + 弹出式按钮（左）+ 分段控件（右）（已落地）。
 3. 设置改为 `Settings` scene + 分栏，侧栏与工具栏移除入口（未采纳，T19）。
 4. 删除底部动作栏，动作迁入工具栏与内容区；文本处理页在内容区 ≥720pt 时两栏并排（均未采纳，实现保留 safe area bar 与单列 `VStack`，T22）。
-5. 列表换 `List` + `.searchable` + `ContentUnavailableView` + 上下文菜单（随生词本／历史一并未实现）；浮动面板的呼吸边框与 `收藏选中内容` 动作行未采纳（紧凑条与动作行已落地）。
+5. 列表换 `List` + `.searchable` + `ContentUnavailableView` + 上下文菜单（随生词本／历史一并未实现）；浮动面板的呼吸动画与 `收藏选中内容` 动作行未采纳（紧凑条与动作行已落地）。
 6. 菜单栏补全并收口文案（`⌘,` 已接，文案未收口）；辅助功能与外观终检见 §8。
 
 ## 10. 参考

@@ -27,7 +27,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [workspace-error.png](screenshots/workspace-error.png) | 文本处理 · 请求失败 | 行内提示 ModelError 的原始文案，并提供服务设置入口。 |
 | [workspace-unconfigured.png](screenshots/workspace-unconfigured.png) | 文本处理 · 服务未配置 | 缺少服务配置时提示并指向设置。 |
 | [workspace-collapsed.png](screenshots/workspace-collapsed.png) | 文本处理 · 侧栏收起 | NavigationSplitView 收起侧栏后页面不变。 |
-| [shortcuts.png](screenshots/shortcuts.png) | 快捷键 · 未设置 | 三个全局动作未录制；应用内快捷键固定。 |
+| [shortcuts.png](screenshots/shortcuts.png) | 快捷键 · 未设置 | 三个全局动作未录制；面板内固定键只读。 |
 | [shortcuts-recording.png](screenshots/shortcuts-recording.png) | 快捷键 · 录制中 | 录制按钮等待新组合键；Esc 取消，Delete 清除。 |
 | [shortcuts-conflict.png](screenshots/shortcuts-conflict.png) | 快捷键 · 组合冲突 | 与已录制动作冲突时提示换一个组合。 |
 | [settings.png](screenshots/settings.png) | 设置 · 模型服务 | DeepSeek 已保存：Base URL、Key、模型列表选择与浮窗位置。 |
@@ -44,12 +44,12 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [permission.png](screenshots/permission.png) | 权限 · 未授权 | 未授权时不发起请求，入口指向权限设置。 |
 | [unconfigured.png](screenshots/unconfigured.png) | 服务 · 未配置 | 缺少服务配置时提示并指向设置。 |
 | [selection-error.png](screenshots/selection-error.png) | 选区 · 读取失败 | 读取不到文字时不发起请求，可改用手动输入。 |
-| [stale.png](screenshots/stale.png) | 直接替换 · 选区失效 | 原选区变化时停止写回，只保留复制。 |
+| [stale.png](screenshots/stale.png) | 直接替换 · 未能写回 | 未能写回原应用时就地提示，并可复制结果。 |
 | [result.png](screenshots/result.png) | 翻译 · 结果 | 展开面板：头部操作选择、原文、译文与底部复制替换。 |
 | [polish.png](screenshots/polish.png) | 润色 · 结果 | 同一面板，标签改为润色结果与保留原意。 |
 | [long.png](screenshots/long.png) | 翻译 · 长文本 | 结果滚动，复制与替换固定在底部。 |
 | [result-loading.png](screenshots/result-loading.png) | 翻译 · 结果区处理中 | 已展开时重新处理保持展开，在结果区显示加载。 |
-| [result-stale.png](screenshots/result-stale.png) | 翻译 · 写回被拒 | 结果仍保留，就地说明未写回并可复制。 |
+| [result-unwritten.png](screenshots/result-unwritten.png) | 翻译 · 未能写回 | 结果仍保留，就地说明未能写回并可复制。 |
 | [result-notice.png](screenshots/result-notice.png) | 翻译 · 结果区失败 | 展开态失败不收起面板：结果区隐藏，行内提示加底部重试。 |
 | [result-cancelled.png](screenshots/result-cancelled.png) | 翻译 · 结果区已取消 | 取消后结果区隐藏，行内提示与底部都回到重新处理。 |
 | [menubar.png](screenshots/menubar.png) | 菜单栏 · 常驻 | 点击菜单栏图标展开菜单，不直接开窗。 |

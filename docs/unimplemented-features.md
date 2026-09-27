@@ -23,7 +23,7 @@
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 | 「提示词设置」恢复入口（返回格式错误时的按钮落不到 Prompt 编辑） | 定义边界 | `direct-format-error` | T12 |
 
-其余被移除、但不对应任何未实现功能的状态：`empty` 是无结果的纯输入态，实现已覆盖；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-cancelled` 是"翻译并直接替换"的紧凑提示，实现中由 `PanelController.Notice` 的 `stale`／`permission`／`missingConfig`／`failure`／`cancelled` 覆盖。只有 `direct-format-error` 因缺少可用的恢复入口留在上表。
+其余被移除、但不对应任何未实现功能的状态：`empty` 是无结果的纯输入态，实现已覆盖；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-cancelled` 是"翻译并直接替换"的紧凑提示，实现中由 `PanelController.Notice` 的 `unwritten`／`permission`／`missingConfig`／`failure`／`cancelled` 覆盖。只有 `direct-format-error` 因缺少可用的恢复入口留在上表。
 
 - **主窗口的错误提示是英文原文。** `TranslationView` 对 `.failure` 直接渲染 `ModelError.message`，而该文案是英文（如 `Authentication failed. Check the API key.`、`Network error: …`）；浮窗侧则把这些映射成中文。证据：`Owlet/LLM/ModelClient.swift` 的 `ModelError.message`、`Owlet/Processing/TranslationView.swift` 的 `status`。设计图的 `workspace-error` 因此画的是英文文案。
 - **设置里模型列表失败也显示原始错误。** `ServiceSettingsView.modelField` 的 `.failed` 分支渲染 `Label(message, …)`，`message` 同样来自英文的 `ModelError` 或 `localizedDescription`。证据：`Owlet/Settings/ServiceSettingsView.swift`。
@@ -43,4 +43,4 @@
 - **格式错误的恢复入口到不了 Prompt 编辑器。** 格式错误时 `Notice.actionTitle` 返回"提示词设置"，但 `PanelView.recover` 把 `.failure` 一律映射到 `settings()`，而设置页只有"模型服务"与"浮窗"两个分组，没有 Prompt 编辑，只有 `DefaultPrompts` 常量。证据：`Owlet/App/PanelController.swift`、`Owlet/Processing/TranslationView.swift`、`Owlet/Settings/ServiceSettingsView.swift`、`Owlet/LLM/DefaultPrompts.swift`。
 - **替换成功后浮窗直接关闭，没有确认屏。** `replace(with:)` 写回成功即调用 `close()`，`Notice` 没有成功分支，`ExpandedPanel` 也没有成功内联行。证据：`Owlet/App/PanelController.swift`、`Owlet/App/ExpandedPanel.swift`。
 - **面板只在第一次成功后才展开，之后一直保持展开。** `expanded` 只在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；因此设计里的 `success`／`empty` 状态没有对应界面。证据：`Owlet/App/PanelController.swift` 的 `translate()`。
-- **内联的选区失效提示显示的是 `Notice.stale` 的短消息，`replaceMessage` 从未显示。** `inlineNotice` 在 `.success` 且 `replaceMessage != nil` 时返回 `.stale`，`ExpandedPanel` 渲染的是 `notice.message`（"原选区已变化，未替换"）；`replaceMessage` 更完整的"原选区已变化或无法确认，未替换。可复制结果。"被赋值却没有视图读取。证据：`Owlet/App/PanelController.swift`、`Owlet/App/ExpandedPanel.swift`。
+- **展开态写回失败提示显示的是 `Notice.unwritten` 的短消息。** `inlineNotice` 在 `.success` 且 `writebackRefused` 为真时返回 `.unwritten`，`ExpandedPanel` 渲染的是 `notice.message`（"未能写回原应用"）。证据：`Owlet/App/PanelController.swift`、`Owlet/App/ExpandedPanel.swift`。

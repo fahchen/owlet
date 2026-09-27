@@ -15,7 +15,7 @@ Feature: 操作历史
 
     Scenario: 译文成功但替换失败
       Given 翻译并替换已生成译文
-      When 因原选区失效而未能写回
+      When 因未能写回原应用而替换失败
       Then 翻译历史仍保留原文和译文
 
     Scenario: 请求失败

@@ -134,7 +134,7 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .section-footer svg{width:14px;height:14px}
 
 /* Floating panel */
-.window.floating{display:flex;flex-direction:column;width:560px;min-height:0;height:auto;max-height:calc(100vh - 200px);margin:clamp(20px,5vh,55px) auto 0;border-radius:16px;background:oklch(99% .006 350/.55);backdrop-filter:blur(30px) saturate(1.5)}
+.window.floating{display:flex;flex-direction:column;width:560px;min-height:0;height:auto;max-height:calc(100vh - 200px);margin:clamp(20px,5vh,55px) auto 0;border:0;border-radius:8px;box-shadow:none;background:oklch(99% .006 350/.55);backdrop-filter:blur(30px) saturate(1.5)}
 .window.floating>.appbar,.window.floating>.sidebar{display:none}
 .window.floating>.page{grid-column:auto;grid-row:auto;background:transparent}
 .window.floating.compact{width:430px}
@@ -223,7 +223,7 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 </defs></svg>
 <div id="experience" class="stage">
 <div id="menubar" class="mac-menubar"></div>
-<header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="stale">原选区已变化</option><option value="error">请求失败</option></select></div></header>
+<header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="unwritten">未能写回</option><option value="error">请求失败</option></select></div></header>
 <div class="state-browser"><span>状态预览</span><button aria-label="上一个状态" onclick="stepState(-1)">←</button><select id="statePicker" aria-label="界面状态" onchange="preview(this.value)"></select><button aria-label="下一个状态" onclick="stepState(1)">→</button><small id="stateCount"></small></div>
 <div class="window" id="window"><header class="appbar" id="appbar"></header><aside class="sidebar" id="sidebar"></aside><main class="page" id="main"></main></div>
 <footer class="stage-footer"><span>macOS 26</span><span><button onclick="sample('en')">英语示例</button> / <button onclick="sample('ja')">日语示例</button><button onclick="toggleSource()">查看模拟原选区 ↗</button></span></footer>
@@ -248,7 +248,8 @@ const longText="Let's take a step back and look at the bigger picture before we 
 const LANGS=[['zh-Hans','简体中文'],['zh-Hant','繁體中文'],['en','English'],['ja','日本語']];
 const langName=v=>(LANGS.find(l=>l[0]===v)||LANGS[0])[1];
 const SHORTCUTS=[['翻译','translate'],['润色','polish'],['翻译并替换','translateReplace']];
-const IN_APP=[['提交文本','⌘ ↩','应用内'],['替换结果','⌘ ↩','浮动工具栏'],['关闭 / 取消','Esc','浮动工具栏']];
+// PanelKey.all：面板打开时始终生效的固定键，实现于 Owlet/Shortcuts/PanelKey.swift。
+const PANEL_KEYS=[['替换','⌘ ↩','浮动面板'],['复制','⌘ ⇧ C','浮动面板'],['停止处理 / 关闭','Esc','浮动面板']];
 // PanelController.Notice：消息与唯一的恢复入口，实现于 Owlet/App/PanelController.swift。
 const MODEL_LIST_ERROR='Authentication failed. Check the API key.';
 const NOTICES={
@@ -257,7 +258,7 @@ const NOTICES={
   missingConfig:{message:'模型服务未配置',action:'配置服务'},
   format:{message:'返回格式错误，请检查提示词',action:'提示词设置'},
   connection:{message:'连接失败，请检查模型服务',action:'服务设置'},
-  stale:{message:'原选区已变化，未替换',action:'复制结果'},
+  unwritten:{message:'未能写回原应用',action:'复制结果'},
   cancelled:{message:'已取消处理',action:'重新处理'}
 };
 
@@ -271,7 +272,7 @@ const states=[
  ['workspace-error','文本处理 · 请求失败','行内提示 ModelError 的原始文案，并提供服务设置入口。','workspace-error.png'],
  ['workspace-unconfigured','文本处理 · 服务未配置','缺少服务配置时提示并指向设置。','workspace-unconfigured.png'],
  ['workspace-collapsed','文本处理 · 侧栏收起','NavigationSplitView 收起侧栏后页面不变。','workspace-collapsed.png'],
- ['shortcuts','快捷键 · 未设置','三个全局动作未录制；应用内快捷键固定。','shortcuts.png'],
+ ['shortcuts','快捷键 · 未设置','三个全局动作未录制；面板内固定键只读。','shortcuts.png'],
  ['shortcuts-recording','快捷键 · 录制中','录制按钮等待新组合键；Esc 取消，Delete 清除。','shortcuts-recording.png'],
  ['shortcuts-conflict','快捷键 · 组合冲突','与已录制动作冲突时提示换一个组合。','shortcuts-conflict.png'],
  ['settings','设置 · 模型服务','DeepSeek 已保存：Base URL、Key、模型列表选择与浮窗位置。','settings.png'],
@@ -288,12 +289,12 @@ const states=[
  ['permission','权限 · 未授权','未授权时不发起请求，入口指向权限设置。','permission.png'],
  ['unconfigured','服务 · 未配置','缺少服务配置时提示并指向设置。','unconfigured.png'],
  ['selection-error','选区 · 读取失败','读取不到文字时不发起请求，可改用手动输入。','selection-error.png'],
- ['stale','直接替换 · 选区失效','原选区变化时停止写回，只保留复制。','stale.png'],
+ ['stale','直接替换 · 未能写回','未能写回原应用时就地提示，并可复制结果。','stale.png'],
  ['result','翻译 · 结果','展开面板：头部操作选择、原文、译文与底部复制替换。','result.png'],
  ['polish','润色 · 结果','同一面板，标签改为润色结果与保留原意。','polish.png'],
  ['long','翻译 · 长文本','结果滚动，复制与替换固定在底部。','long.png'],
  ['result-loading','翻译 · 结果区处理中','已展开时重新处理保持展开，在结果区显示加载。','result-loading.png'],
- ['result-stale','翻译 · 写回被拒','结果仍保留，就地说明未写回并可复制。','result-stale.png'],
+ ['result-unwritten','翻译 · 未能写回','结果仍保留，就地说明未能写回并可复制。','result-unwritten.png'],
  ['result-notice','翻译 · 结果区失败','展开态失败不收起面板：结果区隐藏，行内提示加底部重试。','result-notice.png'],
  ['result-cancelled','翻译 · 结果区已取消','取消后结果区隐藏，行内提示与底部都回到重新处理。','result-cancelled.png'],
  ['menubar','菜单栏 · 常驻','点击菜单栏图标展开菜单，不直接开窗。','menubar.png'],
@@ -325,12 +326,12 @@ const config={
   permission:{surface:'compact',view:'translate',strip:'notice',notice:'permission'},
   unconfigured:{surface:'compact',view:'translate',strip:'notice',notice:'missingConfig'},
   'selection-error':{surface:'compact',view:'translate',strip:'notice',notice:'unreadable'},
-  stale:{surface:'compact',view:'direct',strip:'notice',notice:'stale'},
+  stale:{surface:'compact',view:'direct',strip:'notice',notice:'unwritten'},
   result:{surface:'panel',view:'translate',phase:'success'},
   polish:{surface:'panel',view:'polish',phase:'success',operation:'polish'},
   long:{surface:'panel',view:'translate',phase:'success',long:true},
   'result-loading':{surface:'panel',view:'translate',phase:'loading'},
-  'result-stale':{surface:'panel',view:'translate',phase:'success',notice:'stale'},
+  'result-unwritten':{surface:'panel',view:'translate',phase:'success',notice:'unwritten'},
   'result-notice':{surface:'panel',view:'translate',phase:'failure',notice:'connection'},
   'result-cancelled':{surface:'panel',view:'translate',phase:'idle',notice:'cancelled'},
   menubar:{surface:'menubar',view:'translate',phase:'success'},
@@ -339,24 +340,24 @@ const config={
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
  {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-error','workspace-unconfigured','workspace-collapsed']},
- {title:'应用窗口 · 快捷键',note:'全局动作录制与应用内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
+ {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
  {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。',nodes:['settings','settings-openai','settings-saved','settings-models','settings-models-loading']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','stale']},
- {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区。',nodes:['result','polish','long','result-loading','result-stale','result-notice','result-cancelled']},
+ {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区。',nodes:['result','polish','long','result-loading','result-unwritten','result-notice','result-cancelled']},
  {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']}
 ];
 
 let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false;
 let phase='success',notice=null,long=false,recording=null,saved=false,shortcutDraft=null,conflict=false,menubarMenu=false;
 let scenario='normal',toastTimer,external="Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.";
-let sourceSnapshot=external,buildingBoard=false,boardBuilt=false;
+let buildingBoard=false,boardBuilt=false;
 
 function cfg(){return config[state]||config.result}
 function resultText(){if(currentOperation()==='polish')return samples[which].polish;const base=samples[which][prefs.target]||samples[which].zh;return long?(base+'\n\n'+base):base}
 function inputText(){return long?longText:samples[which].text}
 function toast(msg){$('#toast').textContent=msg;$('#toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.add('hidden'),2600)}
 function toggleSource(){$('#sourceDrawer').classList.toggle('hidden')}
-function sample(k){which=k;external=inputText();sourceSnapshot=external;render()}
+function sample(k){which=k;external=inputText();render()}
 
 // ---------- 应用窗口 ----------
 function sidebarHTML(){
@@ -379,7 +380,7 @@ function setOperation(v){operationOverride=v;render()}
 function currentOperation(){return operationOverride||cfg().operation||'translate'}
 function processingHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='result',failed=phase==='failure';
-  const source=`<section class="source-section"><div class="labelrow"><span class="label">${done||busy?'自动识别':'输入文本'}</span><span>${done||busy?'原文':'⌘ V 粘贴'}</span></div><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="sourceSnapshot=this.value">${cfg().empty?'':esc(inputText())}</textarea></section>`;
+  const source=`<section class="source-section"><div class="labelrow"><span class="label">${done||busy?'自动识别':'输入文本'}</span><span>${done||busy?'原文':'⌘ V 粘贴'}</span></div><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="external=this.value">${cfg().empty?'':esc(inputText())}</textarea></section>`;
   const label=busy?`<span class="pending-label"><span class="spin mini" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
   const meta=op==='polish'?'保留原意':langName(prefs.target);
   const result=done?esc(resultText()):`<span>${esc(inputText().slice(0,140))}</span>`;
@@ -399,8 +400,8 @@ function shortcutsHTML(){
   const note=conflict
     ?`${icon('warn')}该组合已用于“翻译”，请换一个。`
     :recording?'按新组合键；Esc 取消，Delete 清除。':'';
-  const inApp=IN_APP.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('');
-  return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}<p class="section-footer" role="status">${note||'&nbsp;'}</p></div><div class="form-section"><p class="group-title">应用内</p>${inApp}<p class="section-footer">录制后立即生效</p></div></div></div>`;
+  const panelKeys=PANEL_KEYS.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('');
+  return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}<p class="section-footer" role="status">${note||'&nbsp;'}</p></div><div class="form-section"><p class="group-title">面板内</p>${panelKeys}<p class="section-footer">面板打开时这些键始终生效，且不能更改；上面三个快捷键由你录制。</p></div></div></div>`;
 }
 function settingsHTML(){
   const failed=cfg().models==='failed',openai=cfg().provider==='openai';
@@ -443,7 +444,7 @@ function panelFooterHTML(){
   const hint=busy?'Esc 取消':(shortcutDraft?'⌘⇧T 唤起':'快捷键未设置');
   let actions;
   if(busy)actions=`<button class="glass-btn" onclick="cancelRun()">取消</button>`;
-  else if(phase==='success')actions=`<button class="glass-btn" onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" onclick="replaceResult()">替换 <kbd>⌘ ↩</kbd></button>`;
+  else if(phase==='success')actions=`<button class="glass-btn" onclick="copyResult()">${icon('copy')} 复制 ⌘⇧C</button><button class="glass-btn prominent" onclick="replaceResult()">替换 ⌘↩</button>`;
   else actions=`<button class="glass-btn prominent" onclick="run()">${phase==='idle'?'重新处理':'重试'} <kbd>⌘ ↩</kbd></button>`;
   return `<footer class="footer panel-footer"><span class="hint">${hint}</span><span class="actions">${actions}</span></footer>`;
 }
@@ -486,7 +487,7 @@ function preview(id){
   notice=c.strip==='notice'?c.notice:(c.notice||null);
   long=!!c.long;recording=c.recording||null;saved=!!c.saved;conflict=!!c.conflict;menubarMenu=!!c.menubarMenu;operationOverride=null;
   if(c.surface==='menubar'){$('#window').classList.add('hidden');$('#sourceDrawer').classList.add('hidden')}
-  sidebarCollapsed=!!c.collapsed;external=inputText();sourceSnapshot=external;$('#external').value=external;
+  sidebarCollapsed=!!c.collapsed;external=inputText();$('#external').value=external;
   render();syncPicker();
 }
 function stepState(d){const i=states.findIndex(s=>s[0]===state);preview(states[(i+d+states.length)%states.length][0])}
@@ -499,11 +500,11 @@ function run(){
 }
 function cancelRun(){const c=cfg();if(c.surface==='app'){phase='result';render();return}if(c.surface==='compact'&&c.strip==='loading'){state='cancelled';phase='success';notice='cancelled';render();syncPicker();return}phase='success';notice='cancelled';render()}
 function replaceResult(){
-  if(scenario==='stale'||$('#external').value!==sourceSnapshot){state='stale';phase='success';notice='stale';render();syncPicker();toast('原选区已变化，未替换');return}
+  if(scenario==='unwritten'){state='stale';phase='success';notice='unwritten';render();syncPicker();toast('未能写回原应用');return}
   $('#external').value=resultText();$('#window').classList.add('hidden');toast('已替换原选区');
 }
 function recover(kind){
-  if(kind==='stale'){copyResult();return}
+  if(kind==='unwritten'){copyResult();return}
   if(kind==='cancelled'){run();return}
   if(kind==='unreadable'){openApp('processing');return}
   if(kind==='permission'){toast('正式应用会打开「隐私与安全性 › 辅助功能」');return}

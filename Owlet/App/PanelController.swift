@@ -11,6 +11,48 @@ final class PanelController {
         case unreadable
         case missingConfig
         case failure(String)
+        /// Direct replace refused because the selection changed; the result stays copyable.
+        case stale
+        case cancelled
+
+        var message: String {
+            switch self {
+            case .translating: ""
+            case .permission: "需要选区读取权限"
+            case .unreadable: "未能读取到文字"
+            case .missingConfig: "模型服务未配置"
+            case .failure(let message):
+                if message == ModelError.format.message {
+                    "返回格式错误，请检查提示词"
+                } else if Self.isConnection(message) {
+                    "连接失败，请检查模型服务"
+                } else {
+                    message
+                }
+            case .stale: "原选区已变化，未替换"
+            case .cancelled: "已取消处理"
+            }
+        }
+
+        /// Label of the single recovery entry shown beside the message.
+        var actionTitle: String {
+            switch self {
+            case .translating: ""
+            case .permission: "权限设置"
+            case .unreadable: "手动输入"
+            case .missingConfig: "配置服务"
+            case .failure(let message): message == ModelError.format.message ? "提示词设置" : "服务设置"
+            case .stale: "复制结果"
+            case .cancelled: "重新处理"
+            }
+        }
+
+        /// Network, auth and HTTP failures read as a connection problem; `State.failure` keeps only the text.
+        private static func isConnection(_ message: String) -> Bool {
+            message == ModelError.unauthorized.message
+                || message.hasPrefix(ModelError.network("").message)
+                || message.hasPrefix("Service returned HTTP")
+        }
     }
 
     private(set) var expanded = false
@@ -68,9 +110,11 @@ final class PanelController {
             model.input = selection.text
             translate()
         case .failure(.permission):
-            if expanded { model.fail("需要辅助功能权限以读取选区。") } else { notice = .permission }
+            if expanded { model.fail(Notice.permission.message) }
+            notice = .permission
         case .failure(.unreadable), .failure(.secure):
-            if expanded { model.fail("无法读取选中文字。") } else { notice = .unreadable }
+            if expanded { model.fail(Notice.unreadable.message) }
+            notice = .unreadable
         }
         show()
     }
@@ -81,6 +125,7 @@ final class PanelController {
             ?? SettingsStore.defaultTargetLanguage
         requestID += 1
         let id = requestID
+        if expanded { notice = nil }
         let task = model.translate(to: language)
         // Auto write-back is one-shot: only the first request after a replace trigger, and only with a selection.
         let auto = autoReplace && selection != nil
@@ -93,7 +138,7 @@ final class PanelController {
                     return
                 }
                 replace(with: text)
-                if selection != nil { expanded = true }
+                if selection != nil, !expanded { notice = .stale }
             }
         }
         guard !expanded else { return }
@@ -111,6 +156,28 @@ final class PanelController {
             case .failure(let message): notice = .failure(message)
             default: break
             }
+        }
+    }
+
+    /// Stops the in-flight request without closing; its late result is ignored and never written.
+    /// Before expansion, reprocessing keeps the stopped request's write-back intent.
+    func stop() {
+        requestID += 1
+        if !expanded { autoReplace = replacing }
+        model.cancel()
+        notice = .cancelled
+    }
+
+    /// Status shown inside the expanded content, derived from the latest request outcome.
+    var inlineNotice: Notice? {
+        switch model.state {
+        case .failure(let message):
+            if notice == .permission || notice == .unreadable { return notice }
+            return .failure(message)
+        case .missingConfig: return .missingConfig
+        case .success: return replaceMessage == nil ? nil : .stale
+        case .idle: return notice == .cancelled ? .cancelled : nil
+        case .loading: return nil
         }
     }
 
@@ -202,9 +269,10 @@ enum RoseGlass {
     static let hairline = Color(red: 0.412, green: 0.379, blue: 0.392).opacity(0.12)
     /// oklch(94% .005 350 / .2)
     static let footer = Color(red: 0.933, green: 0.917, blue: 0.923).opacity(0.2)
-    /// oklch(96% .025 45) / oklch(43% .1 40)
+    /// oklch(96% .025 45)
     static let errorFill = Color(red: 1, green: 0.93, blue: 0.895)
-    static let errorInk = Color(red: 0.487, green: 0.226, blue: 0.131)
+    /// oklch(94% .012 350 / .6)
+    static let neutralFill = Color(red: 0.949, green: 0.91, blue: 0.926).opacity(0.6)
     /// oklch(62% .008 265 / .17)
     static let skeleton = Color(red: 0.55, green: 0.56, blue: 0.58).opacity(0.17)
     static let compactRadius: CGFloat = 16
@@ -243,8 +311,10 @@ struct PanelView: View {
         ExpandedPanel(
             model: controller.model,
             replace: replaceAction,
-            replaceMessage: controller.replaceMessage,
+            notice: controller.inlineNotice,
+            recover: recover,
             retry: controller.translate,
+            cancel: controller.stop,
             openSettings: settings)
     }
 
@@ -260,22 +330,38 @@ struct PanelView: View {
             ProcessingStrip(
                 summary: controller.model.input,
                 status: controller.replacing ? "翻译并替换…" : "\(controller.model.operation.title)中…",
-                stop: controller.close)
-        case .permission:
-            NoticeStrip(message: "需要辅助功能权限以读取选区。") {
-                InlineAction("权限设置") {
-                    if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
+                stop: controller.stop)
+        case let notice?:
+            NoticeStrip(message: notice.message) {
+                InlineAction(notice.actionTitle) { recover(notice) }
+                if case .failure = notice {
+                    Button("重试", systemImage: "arrow.clockwise") { controller.translate() }
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(RoseGlass.muted)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .help("重试")
                 }
             }
-        case .unreadable:
-            NoticeStrip(message: "无法读取选中文字。") { InlineAction("手动输入", action: manualInput) }
-        case .missingConfig:
-            NoticeStrip(message: "模型服务未配置。") { InlineAction("服务配置", action: settings) }
-        case .failure(let message):
-            NoticeStrip(message: message) {
-                InlineAction("服务设置", action: settings)
-                InlineAction("重试") { controller.translate() }
-            }
+        }
+    }
+
+    /// Runs the recovery entry of a compact or in-content notice.
+    private func recover(_ notice: PanelController.Notice) {
+        switch notice {
+        case .permission:
+            if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
+        case .unreadable: manualInput()
+        case .missingConfig, .failure: settings()
+        case .stale:
+            guard case .success(let text) = controller.model.state else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        case .cancelled: controller.translate()
+        case .translating: break
         }
     }
 
@@ -330,7 +416,7 @@ struct ProcessingStrip: View {
     }
 }
 
-/// Compact notice bar used before the first result: message plus inline recovery actions.
+/// Compact notice bar used before the first result: message left, recovery entry right.
 struct NoticeStrip<Actions: View>: View {
     let message: String
     @ViewBuilder let actions: Actions
@@ -342,7 +428,7 @@ struct NoticeStrip<Actions: View>: View {
                 .foregroundStyle(RoseGlass.ink)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            actions
+            HStack(spacing: 6) { actions }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)

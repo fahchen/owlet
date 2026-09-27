@@ -89,17 +89,42 @@ struct PanelControllerTests {
         panel.close()
     }
 
-    /// Changed or read-only selection: write is refused, result kept expanded for copying.
+    /// Changed or read-only selection: write is refused, compact stale notice keeps the result copyable.
     @Test(.disabled("Hangs in app-hosted test run once the panel expands; needs investigation"))
     func refusedWriteKeepsResult() async {
         let (panel, writes) = makePanel(writable: false)
         panel.trigger(replace: true)
         await settle()
         #expect(writes.texts == ["T:Hello"])
-        #expect(panel.expanded)
+        #expect(!panel.expanded)
+        #expect(panel.notice == .stale)
         #expect(panel.replaceMessage != nil)
         #expect(panel.model.state == .success("T:Hello"))
         panel.close()
+    }
+
+    @Test func stopShowsCancelledAndDoesNotWrite() async {
+        let gate = Gate()
+        let (panel, writes) = makePanel(gate: gate)
+        panel.trigger(replace: true)
+        await settle()
+        panel.stop()
+        #expect(panel.notice == .cancelled)
+        #expect(panel.inlineNotice == .cancelled)
+        gate.release()
+        await settle()
+        #expect(writes.texts.isEmpty)
+        #expect(panel.notice == .cancelled)
+        panel.close()
+    }
+
+    @Test func failureNoticeCopy() {
+        typealias Notice = PanelController.Notice
+        #expect(Notice.failure(ModelError.format.message).actionTitle == "提示词设置")
+        #expect(Notice.failure(ModelError.unauthorized.message).message == "连接失败，请检查模型服务")
+        #expect(Notice.failure(ModelError.http(500).message).message == "连接失败，请检查模型服务")
+        #expect(Notice.failure(ModelError.network("x").message).actionTitle == "服务设置")
+        #expect(Notice.failure(ModelError.refused.message).message == ModelError.refused.message)
     }
 
     @Test func noSelectionDoesNotWrite() async {

@@ -6,8 +6,10 @@ struct ExpandedPanel: View {
     @Bindable var model: TranslationModel
     /// Writes the result back to the original selection; nil when there is no source.
     let replace: ((String) -> Void)?
-    let replaceMessage: String?
+    let notice: PanelController.Notice?
+    let recover: (PanelController.Notice) -> Void
     let retry: () -> Void
+    let cancel: () -> Void
     let openSettings: () -> Void
 
     var body: some View {
@@ -18,7 +20,7 @@ struct ExpandedPanel: View {
                 openSettings: openSettings)
             RoseGlass.hairline.frame(height: 1)
             ScrollView {
-                PanelBody(model: model, replaceMessage: replaceMessage, openSettings: openSettings)
+                PanelBody(model: model, notice: notice, recover: recover)
             }
             .scrollBounceBehavior(.basedOnSize)
             .frame(maxHeight: 440)
@@ -28,7 +30,7 @@ struct ExpandedPanel: View {
                 operation: model.operation,
                 replace: replace,
                 retry: canRetry ? retry : nil,
-                cancel: model.cancel)
+                cancel: cancel)
         }
         .frame(width: 560)
     }
@@ -98,8 +100,8 @@ private struct ToolButton: View {
 /// Source and result sections; the source stays editable so a retry can use revised text.
 private struct PanelBody: View {
     @Bindable var model: TranslationModel
-    let replaceMessage: String?
-    let openSettings: () -> Void
+    let notice: PanelController.Notice?
+    let recover: (PanelController.Notice) -> Void
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -172,19 +174,14 @@ private struct PanelBody: View {
     }
 
     @ViewBuilder private var status: some View {
-        switch model.state {
-        case .failure(let message):
-            StatusNote {
-                Text(message)
-                InlineAction("服务设置", action: openSettings)
+        if let notice {
+            StatusNote(neutral: notice == .cancelled) {
+                Text(notice.message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(RoseGlass.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                InlineAction(notice.actionTitle) { recover(notice) }
             }
-        case .missingConfig:
-            StatusNote {
-                Text("模型服务未配置。")
-                InlineAction("服务配置", action: openSettings)
-            }
-        default:
-            if let replaceMessage { StatusNote { Text(replaceMessage) } }
         }
     }
 
@@ -217,20 +214,22 @@ private struct LabelRow<Leading: View, Trailing: View>: View {
     }
 }
 
-/// Warm-red inline status for errors and refused write-backs.
+/// In-content status: message left, recovery entry right; warm red for errors, neutral when cancelled.
 private struct StatusNote<Content: View>: View {
+    var neutral = false
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 8) { content }
-            .font(.system(size: 11))
-            .foregroundStyle(RoseGlass.errorInk)
-            .padding(.horizontal, 10)
+        HStack(spacing: 12) { content }
+            .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoseGlass.errorFill, in: .rect(cornerRadius: 8, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+            .background(
+                neutral ? RoseGlass.neutralFill : RoseGlass.errorFill,
+                in: .rect(cornerRadius: 8, style: .continuous)
+            )
             .padding(.top, 10)
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
     }
 }
 

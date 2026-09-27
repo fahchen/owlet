@@ -2,7 +2,10 @@
 
 Source: `index.html`. One PNG per state.
 
-This board covers only features that are already implemented in the app. Removed states and the features still to come are listed in [../docs/unimplemented-features.md](../docs/unimplemented-features.md).
+This board covers the screens the app has shipped and, in separate bands, proposal screens for features that are not implemented yet.
+Proposal frames carry a 未实现 badge and their bands are titled 提案（未实现）.
+
+The features still without a mockup, and the mapping from each proposal to its task, are listed in [../docs/unimplemented-features.md](../docs/unimplemented-features.md).
 
 Screenshot filenames are defined in the fourth field of each `states` entry in `index.html`.
 
@@ -54,3 +57,18 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [result-cancelled.png](screenshots/result-cancelled.png) | 翻译 · 结果区已取消 | 取消后结果区隐藏，行内提示与底部都回到重新处理。 |
 | [menubar.png](screenshots/menubar.png) | 菜单栏 · 常驻 | 点击菜单栏图标展开菜单，不直接开窗。 |
 | [menubar-menu.png](screenshots/menubar-menu.png) | 菜单栏 · 展开菜单 | 菜单：打开 Owlet、三个快捷键状态、设置…（⌘,）与退出。 |
+| [book-list.png](screenshots/book-list.png) | 生词本 · 列表 | 工具栏搜索与语言筛选，内容区按语言列出收藏的表达与释义。 |
+| [book-detail.png](screenshots/book-detail.png) | 生词本 · 详情 | 详情可编辑表达与中文释义，并保留原句语境。 |
+| [book-empty.png](screenshots/book-empty.png) | 生词本 · 空状态 | 没有收藏时给出说明与“开始翻译”入口，不伪造条目。 |
+| [no-results.png](screenshots/no-results.png) | 生词本 · 无搜索结果 | 搜索无匹配时给出“清除筛选”，保留原有收藏。 |
+| [history-list.png](screenshots/history-list.png) | 历史 · 列表 | 工具栏搜索与类型筛选，列出翻译与润色的原文与结果。 |
+| [history-detail.png](screenshots/history-detail.png) | 历史 · 详情 | 详情展示原文与结果，可复制，也可从历史收藏。 |
+| [history-empty.png](screenshots/history-empty.png) | 历史 · 空状态 | 没有记录时给出说明与“开始翻译”入口。 |
+| [learning.png](screenshots/learning.png) | 学习 · 展开 | 展开结果内的学习表达区块：勾选推荐后主动入库。 |
+| [learning-loading.png](screenshots/learning-loading.png) | 学习 · 整理中 | 学习请求独立于主结果，整理中不阻塞复制与替换。 |
+| [learning-error.png](screenshots/learning-error.png) | 学习 · 生成失败 | 生成失败只重试学习内容，不重新翻译。 |
+| [learning-empty.png](screenshots/learning-empty.png) | 学习 · 无推荐 | 没有推荐时不强凑数量，保留手动收藏。 |
+| [saved.png](screenshots/saved.png) | 收藏 · 已入库 | 收藏后就地反馈并保留入口，不跳转打断工作。 |
+| [aligned.png](screenshots/aligned.png) | 翻译 · 逐句对照 | 原文与译文按语义句子配对，换行不改变对应关系。 |
+| [settings-prompts.png](screenshots/settings-prompts.png) | 设置 · Prompt | Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。 |
+| [workspace-narrow.png](screenshots/workspace-narrow.png) | 文本处理 · 窄窗口 | 内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。 |

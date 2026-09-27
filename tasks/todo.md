@@ -185,7 +185,7 @@
 
 - [ ] 完成
 
-**缺口：**未实现——缺少 `VocabularyEntry.swift`、`VocabularyStore.swift`、`VocabularyView.swift`、`CollectionAction.swift`。
+**缺口：**未实现——缺少 `VocabularyEntry.swift`、`VocabularyStore.swift`、`VocabularyView.swift`、`CollectionAction.swift`。列表、详情与空状态的提案画面见 `design/screenshots/book-list.png`、`book-detail.png`、`book-empty.png`（标注未实现）。
 
 **说明：**无论学习是否展开，都能从当前结果主动收藏内容。从历史收藏见 T17。
 
@@ -230,7 +230,7 @@
 
 - [ ] 完成
 
-**缺口：**未实现——缺少 `LearningContent.swift`、`LearningView.swift` 与学习内容的请求、勾选收藏。
+**缺口：**未实现——缺少 `LearningContent.swift`、`LearningView.swift` 与学习内容的请求、勾选收藏。展开、整理中、生成失败、无推荐与已入库的提案画面见 `design/screenshots/learning.png` 等（标注未实现）。
 
 **说明：**用户点击“生成”后单独请求学习表达，并接入收藏流程。自动请求开关见 T13。
 
@@ -286,7 +286,7 @@
 
 - [ ] 完成
 
-**缺口：**未实现——缺少 Prompt 的查看、编辑、恢复默认与 `PromptSettingsView.swift`（`DefaultPrompts.swift` 仅有内置默认值）。
+**缺口：**未实现——缺少 Prompt 的查看、编辑、恢复默认与 `PromptSettingsView.swift`（`DefaultPrompts.swift` 仅有内置默认值）。Prompt 分组的提案画面见 `design/screenshots/settings-prompts.png`（标注未实现）。
 
 **说明：**翻译、润色 Prompt 分别可查看、编辑与恢复默认。
 
@@ -331,7 +331,7 @@
 
 - [ ] 完成
 
-**缺口：**未实现——缺少“逐句对照”显示方式与显示方式设置；`TranslationResult.segments` 已提供配对数据，但 `TranslationView.swift` 只输出拼接后的译文。
+**缺口：**未实现——缺少“逐句对照”显示方式与显示方式设置；`TranslationResult.segments` 已提供配对数据，但 `TranslationView.swift` 只输出拼接后的译文。逐句对照的提案画面见 `design/screenshots/aligned.png`（标注未实现）。
 
 **说明：**落实 `translation.feature` 中“原文／译文分区”与“逐句对照”两种显示。
 
@@ -362,7 +362,7 @@
 
 - [ ] 完成
 
-**缺口：**未实现——缺少 `HistoryRecord.swift`、`HistoryStore.swift`、`HistoryView.swift`。
+**缺口：**未实现——缺少 `HistoryRecord.swift`、`HistoryStore.swift`、`HistoryView.swift`。列表、详情与空状态的提案画面见 `design/screenshots/history-list.png`、`history-detail.png`、`history-empty.png`（标注未实现）。
 
 **说明：**让完成的翻译和润色重启后仍可查看。
 
@@ -430,7 +430,7 @@
 
 不改产品行为，只把界面换成原生组件。组件对照、令牌退役表、文案规则、例外与验收清单见 [docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。
 
-说明：本里程碑尚未开始，T18–T25 均未完成。当前实现已采用部分原生组件：主窗口为 `NavigationSplitView`（`OwletApp.swift` 的 `MainView`，侧边栏用 `List(selection:)` + `Section`，对应 T20 的一部分）；文本处理工具栏使用分段 `Picker`（翻译｜润色）与目标语言弹出式菜单（对应 T21 的一部分）；浮窗、设置与快捷键按钮使用 `.glass`／`.glassProminent`（`PanelController.swift`、`ExpandedPanel.swift`、`ShortcutSettingsView.swift`、`ServiceSettingsView.swift`，对应 T18 的一部分）；设置与快捷键页使用 `.formStyle(.grouped)`；文本处理页与设置页使用 `.safeAreaBar` 页脚。仍未完成的主要子项：T18 的内容区 `.bordered`／`.borderedProminent` 划分与外观验收；T19 的独立 Settings 窗口与分栏；T20 的 `.badge` 计数，以及确认工具栏自带的侧边栏收起／展开按钮可用；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，未添加；T21 的跨整窗工具栏与删除底部动作栏；T22 的 720pt 响应式双栏；T23 的列表、搜索与 `ContentUnavailableView`；T24 的呼吸边框与动作行；T25 的七组菜单与文案收口。
+说明：本里程碑尚未开始，T18–T25 均未完成。当前实现已采用部分原生组件：主窗口为 `NavigationSplitView`（`OwletApp.swift` 的 `MainView`，侧边栏用 `List(selection:)` + `Section`，对应 T20 的一部分）；文本处理工具栏使用分段 `Picker`（翻译｜润色）与目标语言弹出式菜单（对应 T21 的一部分）；浮窗、设置与快捷键按钮使用 `.glass`／`.glassProminent`（`PanelController.swift`、`ExpandedPanel.swift`、`ShortcutSettingsView.swift`、`ServiceSettingsView.swift`，对应 T18 的一部分）；设置与快捷键页使用 `.formStyle(.grouped)`；文本处理页与设置页使用 `.safeAreaBar` 页脚。仍未完成的主要子项：T18 的内容区 `.bordered`／`.borderedProminent` 划分与外观验收；T19 的独立 Settings 窗口与分栏；T20 的 `.badge` 计数，以及确认工具栏自带的侧边栏收起／展开按钮可用；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，未添加；T21 的跨整窗工具栏与删除底部动作栏；T22 的 720pt 响应式双栏；T23 的列表、搜索与 `ContentUnavailableView`；T24 的呼吸边框与动作行；T25 的七组菜单与文案收口。T12、T14、T22、T23 的界面现以提案画面记在 `design/index.html`（画面上带“未实现”徽标，总览里各自成区），仅供实现参考，不代表已经落地。
 
 ## T18：退役自定义令牌与按钮样式
 
@@ -527,7 +527,7 @@
 
 - [ ] 完成
 
-**缺口：**未开始——`TranslationView` 仍为单栏 `ScrollView`，没有 720pt 阈值下的双栏并排与发丝分隔。
+**缺口：**未开始——`TranslationView` 仍为单栏 `ScrollView`，没有 720pt 阈值下的双栏并排与发丝分隔。窄窗口下的堆叠分支已有提案画面 `design/screenshots/workspace-narrow.png`（标注未实现），宽窗口并排尚未出图。
 
 **说明：**内容区足够宽时原文与译文并排，不足时上下堆叠。
 
@@ -550,7 +550,7 @@
 
 - [ ] 完成
 
-**缺口：**未开始——尚无生词本／历史列表可迁移，缺少工具栏搜索、`ContentUnavailableView` 空状态、悬停删除与列表→详情导航层级。
+**缺口：**未开始——尚无生词本／历史列表可迁移，缺少工具栏搜索、`ContentUnavailableView` 空状态、悬停删除与列表→详情导航层级。列表、详情、空状态与无匹配的提案画面见 `design/screenshots/book-list.png`、`history-list.png` 等（标注未实现）。
 
 **说明：**生词本与历史换成系统 List、工具栏搜索框与系统空状态。
 
@@ -574,7 +574,7 @@
 
 - [ ] 完成
 
-**缺口：**呼吸边框未实现（整圈呼吸仍是待做设计，见未实现清单）；`收藏选中内容` 未实现。已完成的部分：动作行已存在并用 `GlassEffectContainer` + `.glass`／`.glassProminent`；窗口 `hasShadow = true`，投影由按玻璃圆角遮罩的容器决定形状（不是自绘边框或自绘阴影）；面板打开时 `makeFirstResponder(nil)`，没有控件被默认聚焦。
+**缺口：**呼吸边框未实现（整圈呼吸仍是待做设计，未出图，见未实现清单）；`收藏选中内容` 未实现，提案画面为 `design/screenshots/learning.png` 与 `design/screenshots/saved.png`（标注未实现）。已完成的部分：动作行已存在并用 `GlassEffectContainer` + `.glass`／`.glassProminent`；窗口 `hasShadow = true`，投影由按玻璃圆角遮罩的容器决定形状（不是自绘边框或自绘阴影）；面板打开时 `makeFirstResponder(nil)`，没有控件被默认聚焦。
 
 **说明：**处理中用整圈边框呼吸，动作行只放动作。
 

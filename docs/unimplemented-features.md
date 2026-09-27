@@ -1,29 +1,29 @@
 # Owlet · 未实现功能清单
 
-状态：`design/index.html` 已收敛为只覆盖 Swift 端已实现的功能。
+状态：`design/index.html` 有 50 个状态：35 个对应 Swift 端已实现的功能，15 个是尚未实现功能的提案画面（画面上带“未实现”徽标，总览里各自成区）。
 对象：`spec/product.md` 中已定义、但 `Owlet/` 尚未落地的功能。
-目的：原型中被移除的设计状态不再有界面承载，逐条记录在此，避免产品定义随原型一起丢失。
+目的：为每项未实现功能保留一张提案画面，并把仍无画面的部分逐条记录在此，避免产品定义随原型一起丢失。
 
-首版实现按 [tasks/todo.md](../tasks/todo.md) 的里程碑推进。表中"任务"一列给出将来实现该功能的编号；标注"首版不做"的条目见 `spec/product.md › 首版不做`。设计状态的原始对照见 [docs/liquid-glass-components.md](liquid-glass-components.md) 第 4 节的逐屏表。
+首版实现按 [tasks/todo.md](../tasks/todo.md) 的里程碑推进。表中“任务”一列给出将来实现该功能的编号；标注“首版不做”的条目见 `spec/product.md › 首版不做`。提案画面的组件对照见 [docs/liquid-glass-components.md](liquid-glass-components.md) 第 4 节的逐屏表。
 
 ## 未实现功能
 
-| 功能 | `spec/product.md` 章节 | 已移除的设计状态 | 任务 |
+| 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 生词本：词汇／短语／整句收藏、列表、详情、搜索、语言筛选、编辑、删除、导出 | 个人生词本（收藏行为见 学习内容与收藏） | `book-list`、`book-detail`、`book-empty`、`no-results` | T08、T09、T11 |
-| 历史记录：列表、详情、搜索、按翻译／润色筛选、删除单条、清空全部、从历史收藏 | 历史记录 | `history-list`、`history-detail`、`history-empty` | T15、T16、T17 |
-| 学习表达：展开、整理中、生成失败、无推荐、勾选入库、自动请求开关 | 学习内容与收藏 | `learning`、`learning-loading`、`learning-error`、`learning-empty`、`saved` | T10、T13 |
-| 收藏选中内容：手选原文／结果片段收藏 | 学习内容与收藏 | —（无独立状态；就地反馈并入学习区块的 `saved`） | T08 |
-| 翻译显示方式 · 逐句对照：原文／译文按语义配对显示 | 翻译 | `aligned` | T14 |
-| System Prompt 查看／编辑／保存／恢复默认 | 模型与数据设置 | `settings-prompts` | T12 |
-| 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | `settings-shortcuts`（`settings-prompts` 同时移除） | T19 |
-| 直接替换的完成确认界面（写回成功后直接关闭） | 翻译并直接替换 | `success` | T06 |
-| 内容区响应式的原文／译文两栏并排（实现为单列 `VStack`） | 两种界面形态（布局细节见 `spec/DESIGN.md › 布局约束`） | `workspace-narrow` | T22 |
-| 处理中的整圈边框呼吸（实现只用 `ProgressView`） | 两种界面形态 | —（处理中状态保留，未单列） | T24 |
+| 生词本：词汇／短语／整句收藏、列表、详情、搜索、语言筛选、编辑、删除、导出 | 个人生词本（收藏行为见 学习内容与收藏） | [book-list](../design/screenshots/book-list.png)、[book-detail](../design/screenshots/book-detail.png)、[book-empty](../design/screenshots/book-empty.png)、[no-results](../design/screenshots/no-results.png) | T08、T09、T11 |
+| 历史记录：列表、详情、搜索、按翻译／润色筛选、删除单条、清空全部、从历史收藏 | 历史记录 | [history-list](../design/screenshots/history-list.png)、[history-detail](../design/screenshots/history-detail.png)、[history-empty](../design/screenshots/history-empty.png) | T15、T16、T17 |
+| 学习表达：展开、整理中、生成失败、无推荐、勾选入库、自动请求开关 | 学习内容与收藏 | [learning](../design/screenshots/learning.png)、[learning-loading](../design/screenshots/learning-loading.png)、[learning-error](../design/screenshots/learning-error.png)、[learning-empty](../design/screenshots/learning-empty.png)、[saved](../design/screenshots/saved.png) | T10、T13 |
+| 收藏选中内容：手选原文／结果片段收藏 | 学习内容与收藏 | —（无独立画面；就地反馈并入学习区块的 [saved](../design/screenshots/saved.png)） | T08 |
+| 翻译显示方式 · 逐句对照：原文／译文按语义配对显示 | 翻译 | [aligned](../design/screenshots/aligned.png) | T14 |
+| System Prompt 查看／编辑／保存／恢复默认 | 模型与数据设置 | [settings-prompts](../design/screenshots/settings-prompts.png) | T12 |
+| 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
+| 直接替换的完成确认界面（写回成功后直接关闭） | 翻译并直接替换 | —（仍无画面） | T06 |
+| 内容区响应式的原文／译文两栏并排（实现为单列 `VStack`） | 两种界面形态（布局细节见 `spec/DESIGN.md › 布局约束`） | [workspace-narrow](../design/screenshots/workspace-narrow.png)（窄窗口下的堆叠分支；宽窗口并排尚未出图） | T22 |
+| 处理中的整圈边框呼吸（实现只用 `ProgressView`） | 两种界面形态 | —（仍无画面） | T24 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
-| 「提示词设置」恢复入口（返回格式错误时的按钮落不到 Prompt 编辑） | 定义边界 | `direct-format-error` | T12 |
+| 「提示词设置」恢复入口（返回格式错误时的按钮落不到 Prompt 编辑） | 定义边界 | —（仍无画面） | T12 |
 
-其余被移除、但不对应任何未实现功能的状态：`empty` 是无结果的纯输入态，实现已覆盖；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-cancelled` 是"翻译并直接替换"的紧凑提示，实现中由 `PanelController.Notice` 的 `unwritten`／`permission`／`missingConfig`／`failure`／`cancelled` 覆盖。只有 `direct-format-error` 因缺少可用的恢复入口留在上表。
+其余未出图的状态：`empty` 是无结果的纯输入态，实现已覆盖；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的 `unwritten`／`permission`／`missingConfig`／`failure`／`cancelled` 覆盖；`success` 是“写回完成确认”，产品定义要求写回成功后直接关闭；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载。`direct-format-error` 仍因缺少可用的恢复入口留在上表，但没有出图。上表新增的 15 张提案画面均标注未实现，不改变实现现状。
 
 - **主窗口的错误提示是英文原文。** `TranslationView` 对 `.failure` 直接渲染 `ModelError.message`，而该文案是英文（如 `Authentication failed. Check the API key.`、`Network error: …`）；浮窗侧则把这些映射成中文。证据：`Owlet/LLM/ModelClient.swift` 的 `ModelError.message`、`Owlet/Processing/TranslationView.swift` 的 `status`。设计图的 `workspace-error` 因此画的是英文文案。
 - **设置里模型列表失败也显示原始错误。** `ServiceSettingsView.modelField` 的 `.failed` 分支渲染 `Label(message, …)`，`message` 同样来自英文的 `ModelError` 或 `localizedDescription`。证据：`Owlet/Settings/ServiceSettingsView.swift`。

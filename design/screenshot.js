@@ -48,7 +48,9 @@ for (const [id, name, description, filename] of scenarios) {
 await fs.writeFile(path.join(directory, 'README.md'), [
   '# Design screenshots', '',
   'Source: `index.html`. One PNG per state.', '',
-  'This board covers only features that are already implemented in the app. Removed states and the features still to come are listed in [../docs/unimplemented-features.md](../docs/unimplemented-features.md).', '',
+  'This board covers the screens the app has shipped and, in separate bands, proposal screens for features that are not implemented yet.',
+  'Proposal frames carry a 未实现 badge and their bands are titled 提案（未实现）.', '',
+  'The features still without a mockup, and the mapping from each proposal to its task, are listed in [../docs/unimplemented-features.md](../docs/unimplemented-features.md).', '',
   'Screenshot filenames are defined in the fourth field of each `states` entry in `index.html`.', '',
   'Regenerate from the repository root with Ego Lite running:', '',
   '```sh', 'node design/screenshot.mjs', '```', '',

@@ -55,3 +55,21 @@ enum SettingsStore {
         ]
     }
 }
+
+extension SettingsStore {
+    static let translateShortcutKey = "shortcut.translate"
+
+    static func shortcut(forKey key: String, in defaults: UserDefaults = .standard) -> Shortcut? {
+        defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }
+    }
+
+    static func setShortcut(
+        _ shortcut: Shortcut?, forKey key: String, in defaults: UserDefaults = .standard
+    ) {
+        if let shortcut, let data = try? JSONEncoder().encode(shortcut) {
+            defaults.set(data, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
+    }
+}

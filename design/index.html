@@ -90,8 +90,9 @@ function render(){const frame=$('#window'),wasProcessing=frame.classList.contain
 function directErrorHTML(){
  const messages={'selection-error':'未能读取到文字',permission:'需要选区读取权限',unconfigured:'请先配置模型服务',error:'连接失败，未替换', 'format-error':'返回格式错误，未替换',stale:'原选区已变化，未替换',cancelled:'已取消替换'};
  const settings=['permission','unconfigured','format-error'].includes(screen),copy=screen==='stale'&&!!result;
- const action=settings?"navigate('settings')":copy?'copyText(result)':screen==='selection-error'?"navigate('direct')":'run(true)';
- return `<div class="processing-strip" role="alert"><span aria-hidden="true">!</span><div class="processing-copy"><p>${messages[screen]}</p></div><button class="secondary" onclick="${action}">${settings?'设置':copy?'复制':'重试'}</button><button class="pending-cancel" aria-label="关闭" onclick="closePalette()">×</button></div>`;
+ const action=screen==='permission'?"toast('正式应用将打开 macOS 辅助功能设置')":settings?"navigate('settings')":'copyText(result)';
+ const label=screen==='permission'?'授予权限':screen==='unconfigured'?'配置服务':settings?'检查设置':'复制译文';
+ return `<div class="processing-strip" role="alert"><div class="processing-copy"><p>${messages[screen]}</p></div>${settings||copy?`<button class="inline-action" onclick="${action}">${label}</button>`:''}</div>`;
 }
 function revealResult(before){
  if(buildingBoard||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -146,10 +147,10 @@ const states=[
  ['learning-error','学习 · 生成失败','局部重试，不要求重新翻译。'],
  ['learning-empty','学习 · 无推荐','不强凑推荐，保留手动收藏。'],
  ['saved','收藏 · 已入库','收藏反馈就地呈现，不跳转打断工作。'],
- ['direct-selection-error','直接替换 · 读取失败','紧凑条内重试或关闭。'],
+ ['direct-selection-error','直接替换 · 读取失败','紧凑条提示；Esc 关闭并取消。'],
  ['direct-permission','直接替换 · 权限未授权','紧凑条内进入设置。'],
  ['direct-unconfigured','直接替换 · 未配置','紧凑条内进入设置。'],
- ['direct-error','直接替换 · 请求失败','紧凑条内重试。'],
+ ['direct-error','直接替换 · 请求失败','紧凑条提示；Esc 关闭并取消。'],
  ['direct-format-error','直接替换 · 格式错误','不写回原文。'],
  ['direct-cancelled','直接替换 · 已取消','紧凑条内展示取消。'],
  ['direct-loading','直接替换 · 处理中','独立快捷键授权本次写回，完成前可取消。'],
@@ -189,13 +190,13 @@ function preview(id){keepExpanded=false;const previewId=id;const directFailure=i
  $('#sourceDrawer').classList.add('hidden');$('#window').classList.remove('hidden');$('#statePicker').value=id;const i=states.findIndex(x=>x[0]===id);$('#stateCount').textContent=(i+1)+' / '+states.length;if(view==='shortcuts')shortcutDrafts=structuredClone(activeShortcuts());if(view==='settings'){promptDrafts={translate:prefs.translatePrompt||defaultPrompts.translate,polish:prefs.polishPrompt||defaultPrompts.polish};shortcutDrafts=structuredClone(activeShortcuts())}if(id==='book-detail')detail=book[0]||{text:'take a step back',meaning:'退一步重新审视。',lang:'英语',contexts:[samples.en.text]};if(id==='history-detail')detail=history[0]||{source:samples.en.text,result:samples.en.zh,lang:'英语',type:'translate'};render();if(id==='settings-prompts')$('#body').scrollTop=$('.prompt-settings').offsetTop-$('#body').offsetTop;if(id==='menubar')closePalette();$('#statePicker').value=previewId;
 }
 // Runnable in the browser console: check all deterministic previews without changing stored data.
-window.checkDesignStates=()=>{const previousLayout=prefs.translationLayout;prefs.translationLayout='aligned';const checks=[];try{for(const [id] of states){preview(id);if(id!=='menubar'){const frame=$('#window'),footer=frame.querySelector('.footer')||frame.querySelector('.pending-cancel');if(!footer)throw Error(id+': missing actions');if(!['shortcuts','workspace','book-empty','history-empty','no-results','book-list','book-detail','history-list','history-detail','settings','settings-prompts','settings-shortcuts'].includes(id)&&!frame.classList.contains('floating'))throw Error(id+': expected toolbar');if(footer.getBoundingClientRect().bottom>frame.getBoundingClientRect().bottom+1)throw Error(id+': clipped actions')}checks.push(id)}preview('long');if($('#main').querySelectorAll('.sentence-pair').length!==4)throw Error('long: expected 4 aligned pairs');if([...$('#main').querySelectorAll('.sentence-target')].map(x=>x.textContent).join(' ')!==result)throw Error('translation payload differs from aligned preview');return checks}finally{prefs.translationLayout=previousLayout;preview('result')}};
+window.checkDesignStates=()=>{const previousLayout=prefs.translationLayout;prefs.translationLayout='aligned';const checks=[];try{for(const [id] of states){preview(id);if(id!=='menubar'){const frame=$('#window'),footer=frame.querySelector('.footer')||frame.querySelector('.processing-strip');if(!footer)throw Error(id+': missing actions');if(!['shortcuts','workspace','book-empty','history-empty','no-results','book-list','book-detail','history-list','history-detail','settings','settings-prompts','settings-shortcuts'].includes(id)&&!frame.classList.contains('floating'))throw Error(id+': expected toolbar');if(footer.getBoundingClientRect().bottom>frame.getBoundingClientRect().bottom+1)throw Error(id+': clipped actions')}checks.push(id)}preview('long');if($('#main').querySelectorAll('.sentence-pair').length!==4)throw Error('long: expected 4 aligned pairs');if([...$('#main').querySelectorAll('.sentence-target')].map(x=>x.textContent).join(' ')!==result)throw Error('translation payload differs from aligned preview');return checks}finally{prefs.translationLayout=previousLayout;preview('result')}};
 // Each lane shows concrete interfaces, not boxes describing interfaces.
 const flows=[
  {title:'01  翻译',nodes:['empty','loading','result','menubar'],edges:[[0,1,'提交文本'],[1,2,'JSON 有效'],[2,3,'Esc / 完成']]},
  {title:'02  润色',nodes:['workspace','polish-loading','polish','diff'],edges:[[0,1,'选择润色'],[1,2,'完成'],[2,3,'查看对照']]},
  {title:'03  直接替换',nodes:['direct-loading','success','stale','direct-cancelled'],edges:[[0,1,'原选区有效'],[0,2,'选区变化',true],[0,3,'停止',true]]},
- {title:'03a  直接替换 · 读取与配置',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-loading'],edges:[[0,3,'重新读取'],[1,3,'授权后重试'],[2,3,'配置后重试']]},
+ {title:'03a  直接替换 · 读取与配置',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-loading'],edges:[[0,3,'快捷键重新触发'],[1,3,'授权后重试'],[2,3,'配置后重试']]},
  {title:'03b  直接替换 · 请求异常',nodes:['direct-loading','direct-error','direct-format-error','direct-cancelled'],edges:[[0,1,'连接失败',true],[0,2,'JSON 无效',true],[0,3,'停止',true]]},
  {title:'04  学习与收藏',nodes:['result','learning-loading','learning','saved'],edges:[[0,1,'开启 / 展开'],[1,2,'返回条目'],[2,3,'勾选收藏']]},
  {title:'05  学习分支',nodes:['learning-loading','learning-empty','learning-error','learning'],edges:[[0,1,'无推荐'],[0,2,'生成失败',true],[2,3,'重试成功']]},

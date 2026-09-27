@@ -13,11 +13,13 @@ node design/screenshot.mjs
 Captures use default demo data, a 1440 x 1000 viewport, and native window bounds with 24px padding.
 Scrollable content retains its designed viewport; the Prompt state opens its corresponding settings section.
 
+组件样式均为 macOS 26 原生控件的外观；每个组件到原生组件的对照见 [../docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。
+
 | State / screenshot | Name | Notes |
 | --- | --- | --- |
 | [result.png](screenshots/result.png) | 翻译 · 结果 | 每句原文下方紧跟对应译文，复制和替换仅使用译文。 |
 | [empty.png](screenshots/empty.png) | 输入 · 无选区 | 没有选区时直接粘贴；空文本不能提交。 |
-| [loading.png](screenshots/loading.png) | 翻译 · 处理中 | 紧凑条仅展示选中文字摘要、加载指示和取消入口。 |
+| [loading.png](screenshots/loading.png) | 翻译 · 处理中 | 紧凑条仅展示选中文字摘要、整圈边框呼吸与状态；不显示终止按钮，Esc 取消。 |
 | [polish-loading.png](screenshots/polish-loading.png) | 润色 · 处理中 | 复用紧凑处理条，完成后平滑展开结果。 |
 | [long.png](screenshots/long.png) | 翻译 · 长文本 | 句子成组滚动，自然换行不影响中英对应关系。 |
 | [polish.png](screenshots/polish.png) | 润色 · 结果 | 同一个工具栏，保持原语言与原意。 |
@@ -32,7 +34,7 @@ Scrollable content retains its designed viewport; the Prompt state opens its cor
 | [direct-error.png](screenshots/direct-error.png) | 直接替换 · 请求失败 | 紧凑条提示；Esc 关闭并取消。 |
 | [direct-format-error.png](screenshots/direct-format-error.png) | 直接替换 · 格式错误 | 不写回原文。 |
 | [direct-cancelled.png](screenshots/direct-cancelled.png) | 直接替换 · 已取消 | 紧凑条内展示取消。 |
-| [direct-loading.png](screenshots/direct-loading.png) | 直接替换 · 处理中 | 独立快捷键授权本次写回，完成前可取消。 |
+| [direct-loading.png](screenshots/direct-loading.png) | 直接替换 · 处理中 | 独立快捷键授权本次写回；整圈边框呼吸，Esc 取消本次写回。 |
 | [success.png](screenshots/success.png) | 直接替换 · 完成 | 确认写回成功，按 Esc 或完成返回工作。 |
 | [stale.png](screenshots/stale.png) | 直接替换 · 选区失效 | 停止写回，只提供复制；原文不受影响。 |
 | [error.png](screenshots/error.png) | 请求 · 失败 | 解释失败并提供重试，不把旧结果当成本次结果。 |
@@ -54,4 +56,6 @@ Scrollable content retains its designed viewport; the Prompt state opens its cor
 | [no-results.png](screenshots/no-results.png) | 生词本 · 无搜索结果 | 允许清除筛选，保留原有收藏。 |
 | [shortcuts.png](screenshots/shortcuts.png) | 应用 · 快捷键 | 查看常用操作快捷键与作用范围。 |
 | [workspace.png](screenshots/workspace.png) | 应用 · 文本处理 | 同一页面选择翻译或润色，结果可复制，不包含选区替换。 |
+| [workspace-collapsed.png](screenshots/workspace-collapsed.png) | 应用 · 文本处理（侧栏收起） | 工具栏跨整窗，侧栏可收起；同一页选择翻译或润色。 |
+| [workspace-narrow.png](screenshots/workspace-narrow.png) | 应用 · 文本处理（窄窗口） | 内容区不足 720px 时，原文与译文从并排改为上下堆叠。 |
 | [menubar.png](screenshots/menubar.png) | 菜单栏 · 常驻 | 点击菜单栏图标打开主界面；快捷键唤起浮动工具栏。 |

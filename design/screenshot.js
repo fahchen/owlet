@@ -54,6 +54,7 @@ await fs.writeFile(path.join(directory, 'README.md'), [
   '```sh', 'node design/screenshot.mjs', '```', '',
   'Captures use default demo data, a 1440 x 1000 viewport, and native window bounds with 24px padding.',
   'Scrollable content retains its designed viewport; the Prompt state opens its corresponding settings section.', '',
+  '组件样式均为 macOS 26 原生控件的外观；每个组件到原生组件的对照见 [../docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。', '',
   '| State / screenshot | Name | Notes |', '| --- | --- | --- |', ...rows, '',
 ].join('\n'));
 await task.finish({ keep: [] });

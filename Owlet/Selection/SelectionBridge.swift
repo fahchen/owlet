@@ -13,6 +13,16 @@ struct Selection {
     let text: String
     let element: AXUIElement
     let app: NSRunningApplication?
+    let source: Source
+}
+
+/// Comparable facts about where a selection lives, re-checked before writing back.
+struct Source: Equatable {
+    let pid: pid_t?
+    let document: String?
+    let text: String?
+    let location: Int?
+    let length: Int?
 }
 
 /// Reads the selection of the focused element through the Accessibility API.
@@ -27,11 +37,44 @@ enum SelectionBridge {
         let text = element.flatMap { string($0, kAXSelectedTextAttribute) }
         return classify(trusted: trusted, subrole: subrole, text: text).flatMap { text in
             guard let element else { return .failure(.unreadable) }
+            let app = NSWorkspace.shared.frontmostApplication
             return .success(
                 Selection(
-                    text: text, element: element,
-                    app: NSWorkspace.shared.frontmostApplication))
+                    text: text, element: element, app: app,
+                    source: source(element, pid: app?.processIdentifier)))
         }
+    }
+
+    /// Writes `text` over the original selection only if its element, document, text and range
+    /// are unchanged. Returns false without writing otherwise.
+    static func replace(_ selection: Selection, with text: String) -> Bool {
+        guard AXIsProcessTrusted(), let element = focusedElement() else { return false }
+        let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard
+            canReplace(
+                original: selection.source, current: source(element, pid: pid),
+                sameElement: CFEqual(element, selection.element))
+        else { return false }
+        return AXUIElementSetAttributeValue(
+            element, kAXSelectedTextAttribute as CFString, text as CFString) == .success
+    }
+
+    static func canReplace(original: Source, current: Source, sameElement: Bool) -> Bool {
+        sameElement && original.text != nil && original.location != nil && original == current
+    }
+
+    private static func source(_ element: AXUIElement, pid: pid_t?) -> Source {
+        var range = CFRange()
+        var value: AnyObject?
+        let hasRange =
+            AXUIElementCopyAttributeValue(
+                element, kAXSelectedTextRangeAttribute as CFString, &value) == .success
+            && value.map { AXValueGetValue(unsafeDowncast($0, to: AXValue.self), .cfRange, &range) }
+                == true
+        return Source(
+            pid: pid, document: string(element, kAXDocumentAttribute),
+            text: string(element, kAXSelectedTextAttribute),
+            location: hasRange ? range.location : nil, length: hasRange ? range.length : nil)
     }
 
     static func classify(trusted: Bool, subrole: String?, text: String?)

@@ -16,6 +16,8 @@ final class PanelController {
     private(set) var expanded = false
     private(set) var notice: Notice?
     private(set) var selection: Selection?
+    /// Shown in the expanded view when a write-back was refused.
+    private(set) var replaceMessage: String?
     let model: TranslationModel
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
@@ -30,6 +32,8 @@ final class PanelController {
     func trigger() {
         let result = SelectionBridge.read()
         model.cancel()
+        selection = nil
+        replaceMessage = nil
         switch result {
         case .success(let selection):
             self.selection = selection
@@ -64,6 +68,17 @@ final class PanelController {
             default: break
             }
         }
+    }
+
+    /// Writes `text` back once; the source is consumed on success so it is never reused.
+    func replace(with text: String) {
+        guard let selection, SelectionBridge.replace(selection, with: text) else {
+            replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
+            return
+        }
+        self.selection = nil
+        replaceMessage = nil
+        close()
     }
 
     func close() {
@@ -113,10 +128,19 @@ private struct PanelView: View {
 
     var body: some View {
         if controller.expanded {
-            TranslationView(model: controller.model, openSettings: controller.openSettings)
+            TranslationView(
+                model: controller.model, openSettings: controller.openSettings,
+                replace: replaceAction,
+                replaceMessage: controller.replaceMessage)
         } else {
             compact.padding().frame(minWidth: 260)
         }
+    }
+
+    private var replaceAction: ((String) -> Void)? {
+        guard controller.selection != nil else { return nil }
+        let controller = controller
+        return { controller.replace(with: $0) }
     }
 
     @ViewBuilder private var compact: some View {

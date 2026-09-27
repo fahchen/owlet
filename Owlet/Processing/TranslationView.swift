@@ -77,6 +77,9 @@ struct TranslationView: View {
     @Bindable var model: TranslationModel
     /// Used where `SettingsLink` has no scene, e.g. the floating panel.
     var openSettings: (() -> Void)?
+    /// Writes the result back to the original selection; nil when there is no source.
+    var replace: ((String) -> Void)?
+    var replaceMessage: String?
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
@@ -116,10 +119,14 @@ struct TranslationView: View {
         case .success(let text):
             VStack(alignment: .leading) {
                 Text(text).textSelection(.enabled)
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
+                HStack {
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                    }
+                    if let replace { Button("Replace") { replace(text) } }
                 }
+                if let replaceMessage { Text(replaceMessage).foregroundStyle(.red) }
             }
         case .failure(let message):
             HStack {

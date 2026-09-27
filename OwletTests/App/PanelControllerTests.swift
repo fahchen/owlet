@@ -289,6 +289,39 @@ struct PanelControllerTests {
         #expect(panel.model.state == .idle)
     }
 
+    /// The panel is the glass and nothing else: no hand-set corner radius, and no window shadow
+    /// whose square frame-shape would draw a rectangular edge around the rounded glass.
+    @Test func usesTheSystemGlassShapeOnly() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        let glass = try #require(window.contentView as? NSGlassEffectView)
+        #expect(glass.cornerRadius == NSGlassEffectView().cornerRadius)
+        #expect(glass.style == NSGlassEffectView().style)
+        #expect(!window.hasShadow)
+        panel.close()
+    }
+
+    /// Becoming key hands the responder to SwiftUI's key view proxy, which focuses the first
+    /// control; the panel takes it back, so it opens with nothing focused, and Tab still reaches
+    /// the controls afterwards.
+    @Test func opensWithNothingFocusedButTabStillReachesTheControls() async throws {
+        let (panel, _) = makePanel(realWindow: true)
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.trigger()
+        let window = try #require(panel.panel)
+        #expect(window.firstResponder === window)
+        let tab = try #require(
+            NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: "\t",
+                charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48))
+        window.keyDown(with: tab)
+        #expect(window.firstResponder !== window)
+        panel.close()
+    }
+
     /// Fixed mode: a user move of the glass-backed panel saves its top-center; self-placement does not.
     @Test func dragSavesFixedAnchor() async throws {
         let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!

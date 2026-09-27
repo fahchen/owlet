@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import Synchronization
 import Testing
 
 @testable import Owlet
@@ -26,7 +27,7 @@ struct PanelControllerTests {
     }
 
     func makePanel(
-        gate: Gate? = nil, outcome: ReplaceOutcome = .written,
+        gate: Gate? = nil, outcome: ReplaceOutcome = .pasted,
         defaults: UserDefaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!,
         realWindow: Bool = false
     ) -> (PanelController, Box) {
@@ -111,7 +112,7 @@ struct PanelControllerTests {
         #expect(writes.texts == ["T:Hello"])
         #expect(!panel.expanded)
         #expect(panel.notice == .unwritten)
-        #expect(panel.writebackRefused)
+        #expect(panel.writebackRefusal == .unwritten)
         #expect(panel.model.state == .success("T:Hello"))
         panel.close()
     }
@@ -200,7 +201,7 @@ struct PanelControllerTests {
         for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
-        #expect(!panel.writebackRefused)
+        #expect(panel.writebackRefusal == nil)
         #expect(panel.panel?.isVisible != true)
     }
 
@@ -241,11 +242,10 @@ struct PanelControllerTests {
         #expect(panel.notice == nil)
     }
 
-    /// Dismissed while the write-back is in flight: the write still happens exactly once and
-    /// `onClose` runs once. Driven through the controller, so no real window is involved and the
-    /// assertion cannot race the window server.
-    @Test func dismissDuringWriteBackWritesOnce() async throws {
-        let (panel, writes) = makePanel()
+    /// The write-back takes the keyboard away from the panel first — a synthetic ⌘V follows the
+    /// keyboard — without dismissing it, and the write itself still happens exactly once.
+    @Test func writeBackReleasesTheKeyboardWithoutDismissing() async throws {
+        let (panel, writes) = makePanel(realWindow: true)
         panel.trigger(replace: true)
         let window = try #require(panel.panel)
         var closes = 0
@@ -254,16 +254,40 @@ struct PanelControllerTests {
             closes += 1
             onClose()
         }
+        let offKeyboardDuringWrite = Mutex(false)
         panel.write = { [weak panel] _, text in
             writes.texts.append(text)
-            panel?.close()
-            return .written
+            offKeyboardDuringWrite.withLock { $0 = panel?.panel?.isVisible == false }
+            return .pasted
         }
         for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
+        #expect(offKeyboardDuringWrite.withLock { $0 })
         #expect(panel.selection == nil)
-        #expect(!window.isVisible)
         #expect(closes == 1)
+    }
+
+    /// A write-back that never landed comes back with the result still in hand, so the failure is
+    /// visible instead of the panel closing as if it had worked.
+    @Test func refusedWriteBackKeepsTheResult() async {
+        let (panel, _) = makePanel(outcome: .refused)
+        panel.trigger(replace: true)
+        for _ in 0..<40 where panel.writebackRefusal == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(panel.writebackRefusal == .unwritten)
+        #expect(panel.selection != nil)
+    }
+
+    /// A read-only selection is reported as such rather than as a generic failure.
+    @Test func readOnlySelectionIsReportedAsUnwritable() async {
+        let (panel, _) = makePanel(outcome: .unwritable)
+        panel.trigger(replace: true)
+        for _ in 0..<40 where panel.writebackRefusal == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(panel.writebackRefusal == .unwritable)
+        #expect(panel.selection != nil)
     }
 
     /// `close()` re-entered from `onClose`, or via `resignKey` while closing, runs `onClose` once.

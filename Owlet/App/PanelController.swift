@@ -11,8 +11,10 @@ final class PanelController {
         case unreadable
         case missingConfig
         case failure(String)
-        /// Direct replace refused because the selection changed; the result stays copyable.
+        /// The result could not be written back; the result stays copyable.
         case unwritten
+        /// The selection cannot hold text, so the result was never typed anywhere.
+        case unwritable
         case cancelled
 
         var message: String {
@@ -30,6 +32,7 @@ final class PanelController {
                     message
                 }
             case .unwritten: "未能写回原应用"
+            case .unwritable: "原选区不可编辑"
             case .cancelled: "已取消处理"
             }
         }
@@ -43,6 +46,7 @@ final class PanelController {
             case .missingConfig: "配置服务"
             case .failure(let message): message == ModelError.format.message ? "提示词设置" : "服务设置"
             case .unwritten: "复制结果"
+            case .unwritable: "复制结果"
             case .cancelled: "重新处理"
             }
         }
@@ -58,8 +62,9 @@ final class PanelController {
     private(set) var expanded = false
     private(set) var notice: Notice?
     private(set) var selection: Selection?
-    /// A finished result could not be written back, so the expanded view offers to copy it instead.
-    private(set) var writebackRefused = false
+    /// Why a finished result was not written back, if it was not; the expanded view then offers to
+    /// copy it instead of pretending the other app took it.
+    private(set) var writebackRefusal: Notice?
     /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
@@ -126,7 +131,7 @@ final class PanelController {
         model.operation = operation
         autoReplace = replace
         selection = nil
-        writebackRefused = false
+        writebackRefusal = nil
         switch result {
         case .success(let selection):
             self.selection = selection
@@ -161,8 +166,8 @@ final class PanelController {
                 guard id == requestID, case .success(let text) = model.state else {
                     return
                 }
-                await performReplace(text)
-                if selection != nil, !expanded { notice = .unwritten }
+                let outcome = await performReplace(text)
+                if !expanded, let refusal = Self.refusal(outcome) { notice = refusal }
             }
         }
         guard !expanded else { return }
@@ -199,7 +204,7 @@ final class PanelController {
             if notice == .permission || notice == .unreadable { return notice }
             return .failure(message)
         case .missingConfig: return .missingConfig
-        case .success: return writebackRefused ? .unwritten : nil
+        case .success: return writebackRefusal
         case .idle: return notice == .cancelled ? .cancelled : nil
         case .loading: return nil
         }
@@ -212,20 +217,38 @@ final class PanelController {
 
     /// A direct accessibility write and a paste both land asynchronously, so the outcome decides
     /// what the user sees rather than the call itself.
-    private func performReplace(_ text: String) async {
+    @discardableResult
+    private func performReplace(_ text: String) async -> ReplaceOutcome {
         guard let selection else {
-            writebackRefused = true
-            return
+            writebackRefusal = .unwritten
+            return .refused
         }
+        // The panel owns the keyboard while it is up and a synthetic ⌘V follows the keyboard, so the
+        // panel steps aside first; it comes back if the text never changed, because a miss is exactly
+        // when the user needs the result to copy.
+        let wasVisible = panel?.isVisible == true
+        panel?.suspendsDismissal = true
+        panel?.releaseKeyboard()
         let outcome = await write(selection, text)
-        guard outcome != .refused else {
-            writebackRefused = true
-            return
+        panel?.suspendsDismissal = false
+        guard let refusal = Self.refusal(outcome) else {
+            self.selection = nil
+            writebackRefusal = nil
+            close()
+            return outcome
         }
-        self.selection = nil
-        writebackRefused = false
-        // Write-back can resign key and close the panel already; closing again would rerun onClose.
-        if panel?.isVisible == true { close() }
+        writebackRefusal = refusal
+        if wasVisible { show() }
+        return outcome
+    }
+
+    /// The notice for a write-back that did not happen, or nil when the other app took the result.
+    private static func refusal(_ outcome: ReplaceOutcome) -> Notice? {
+        switch outcome {
+        case .pasted: nil
+        case .refused: .unwritten
+        case .unwritable: .unwritable
+        }
     }
 
     func close() {
@@ -309,6 +332,9 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// User drag ended at this top-center point; the panel then stays anchored there.
     var onDrag: (NSPoint) -> Void = { _ in }
     var onCommand: (Command) -> Void = { _ in }
+    /// While a write-back is in flight the panel lets go of the keyboard without dismissing itself:
+    /// the keystroke has to reach the app underneath, and the panel has to survive to report a miss.
+    var suspendsDismissal = false
     private var anchor = PanelPlacement.Anchor.topCenter(nil)
     /// Set while the panel moves itself, so only user drags reach `onDrag`.
     private var placing = false
@@ -354,6 +380,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         if keys == nil { keys = watchKeys() }
     }
 
+    /// Hands the keyboard to whatever is underneath without dismissing the panel: a synthetic ⌘V
+    /// follows the keyboard, so the panel cannot still own it when the keystroke goes out.
+    func releaseKeyboard() {
+        orderOut(nil)
+    }
+
     /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.
     /// Return and keypad Enter both count, so a full keyboard reaches replace either way.
     static func command(for event: NSEvent) -> Command? {
@@ -387,7 +419,7 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     override func cancelOperation(_ sender: Any?) { close() }
     override func resignKey() {
         super.resignKey()
-        if isVisible { close() }
+        if isVisible, !suspendsDismissal { close() }
     }
     override func close() {
         guard !closing else { return }
@@ -483,7 +515,7 @@ struct PanelView: View {
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
         case .unreadable: manualInput()
         case .missingConfig, .failure: settings()
-        case .unwritten:
+        case .unwritten, .unwritable:
             guard case .success(let text) = controller.model.state else { return }
             Clipboard.copy(text)
         case .cancelled: controller.translate()

@@ -228,67 +228,177 @@ struct SelectionBridgeTests {
         #expect(fake.text == "user text")
     }
 
-    @Test @MainActor func directWriteIsUsedWhenTheElementAcceptsIt() async {
-        let pasted = Mutex(false)
-        let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
-            with: "你好",
-            seams: seams(write: { _, _ in true }, press: { pasted.withLock { $0 = true } }))
-        #expect(outcome == .written)
-        #expect(pasted.withLock { $0 } == false)
+    /// The selection the write-back tests replace, held in a fake element the seams never message.
+    var selection: Selection {
+        Selection(
+            text: "Hello", element: field, app: .current,
+            range: SelectedRange(location: 0, length: 5))
     }
 
-    /// A page or PDF selection refuses a direct write, so the result goes through the pasteboard.
-    @Test @MainActor func pasteIsUsedWhenTheDirectWriteFails() async {
-        let pasted = Mutex(false)
+    /// The replacement is a paste, and the user's own pasteboard comes back afterwards.
+    @Test @MainActor func pasteReplacesTheSelectionAndRestoresTheClipboard() async {
+        let pressed = Mutex(false)
         let fake = FakePasteboard("user text")
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
-            with: "你好",
+            selection, with: "你好",
             seams: seams(
-                write: { _, _ in false },
-                press: { pasted.withLock { $0 = true } },
-                pasteboard: fake.seam()))
+                press: { pressed.withLock { $0 = true } },
+                pasteboard: fake.seam(),
+                value: { _ in pressed.withLock { $0 } ? "你好" : "Hello" }))
         #expect(outcome == .pasted)
-        #expect(pasted.withLock { $0 })
+        #expect(pressed.withLock { $0 })
         #expect(fake.text == "user text")
+    }
+
+    /// A paste the app ignores must not be reported as a replacement: the failure used to be silent.
+    @Test @MainActor func pasteThatTheAppIgnoresIsRefused() async {
+        let pressed = Mutex(false)
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好",
+            seams: seams(
+                press: { pressed.withLock { $0 = true } },
+                value: { _ in "Hello" }))
+        #expect(outcome == .refused)
+        #expect(pressed.withLock { $0 })
+    }
+
+    /// An element that never reports its text cannot be checked, and that is not evidence of
+    /// failure: the paste went to wherever the app really has focus, not to this captured element.
+    @Test @MainActor func unreadableElementIsNotEvidenceOfFailure() async {
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好", seams: seams(press: {}, value: { _ in nil }))
+        #expect(outcome == .pasted)
+    }
+
+    /// The keystroke must go out after the app has been asked to come forward, never before it.
+    @Test @MainActor func theAppComesForwardBeforeTheKeyIsPressed() async {
+        let order = Mutex([String]())
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好",
+            seams: seams(
+                activate: { _ in
+                    order.withLock { $0.append("activate") }
+                    return true
+                },
+                press: { order.withLock { $0.append("press") } },
+                value: { _ in order.withLock { $0.contains("press") } ? "你好" : "Hello" }))
+        #expect(outcome == .pasted)
+        #expect(order.withLock { $0 } == ["activate", "press"])
+    }
+
+    /// Being frontmost is not proof that an app owns the keyboard: a non-activating panel holds it
+    /// while it is up, so the app is asked to come forward even when it already looks frontmost.
+    @Test @MainActor func comingForwardIsAlwaysAskedFor() async {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let asked = Mutex(false)
+        let app = NSRunningApplication.current
+        let came = await SelectionBridge.bringForward(
+            app, frontmost: { pid },
+            activate: { _ in
+                asked.withLock { $0 = true }; return true
+            })
+        #expect(came)
+        #expect(asked.withLock { $0 })
+    }
+
+    /// A selection that provably cannot hold text is never typed into: the keystroke would land
+    /// somewhere the user did not choose, such as a terminal prompt.
+    @Test @MainActor func readOnlySelectionIsNeverTypedInto() async {
+        let pressed = Mutex(false)
+        let fake = FakePasteboard("user text")
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好",
+            seams: seams(
+                press: { pressed.withLock { $0 = true } },
+                pasteboard: fake.seam(),
+                editable: { _ in false }))
+        #expect(outcome == .unwritable)
+        #expect(pressed.withLock { $0 } == false)
+        #expect(fake.text == "user text")
+    }
+
+    /// An app that reports no role is not evidence that the field is read-only, so the paste still
+    /// goes out.
+    @Test @MainActor func unknownRoleStillPastes() async {
+        let pressed = Mutex(false)
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好",
+            seams: seams(
+                press: { pressed.withLock { $0 = true } },
+                editable: { _ in nil },
+                value: { _ in pressed.withLock { $0 } ? "你好" : "Hello" }))
+        #expect(outcome == .pasted)
+    }
+
+    /// Replacing text with itself needs no keystroke and cannot be observed, so it counts as done
+    /// rather than being reported as a failure to write.
+    @Test @MainActor func replacingWithTheSameTextCountsAsPasted() async {
+        let pressed = Mutex(false)
+        let outcome = await SelectionBridge.replace(
+            selection, with: "Hello",
+            seams: seams(press: { pressed.withLock { $0 = true } }, value: { _ in "Hello" }))
+        #expect(outcome == .pasted)
+        #expect(pressed.withLock { $0 } == false)
+    }
+
+    /// Only a role that holds editable text can take a paste. Page text and PDFs are refused before
+    /// any keystroke, because the keystroke would land wherever the app really has focus.
+    @Test func onlyEditableTextRolesTakeAPaste() {
+        #expect(SelectionBridge.isEditable(role: kAXTextFieldRole) == true)
+        #expect(SelectionBridge.isEditable(role: kAXTextAreaRole) == true)
+        #expect(SelectionBridge.isEditable(role: kAXComboBoxRole) == true)
+        #expect(SelectionBridge.isEditable(role: kAXStaticTextRole) == false)
+        #expect(SelectionBridge.isEditable(role: "AXWebArea") == false)
+        #expect(SelectionBridge.isEditable(role: "AXImage") == false)
+        #expect(SelectionBridge.isEditable(role: nil) == nil)
     }
 
     /// The paste never runs when the app will not come forward, and the pasteboard still returns.
     @Test @MainActor func pasteRefusesWithoutFrontingTheApp() async {
-        let pasted = Mutex(false)
+        let pressed = Mutex(false)
         let fake = FakePasteboard("user text")
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
-            with: "你好",
+            selection, with: "你好",
             seams: seams(
-                write: { _, _ in false },
                 activate: { _ in false },
-                press: { pasted.withLock { $0 = true } },
+                press: { pressed.withLock { $0 = true } },
                 pasteboard: fake.seam()))
         #expect(outcome == .refused)
-        #expect(pasted.withLock { $0 } == false)
+        #expect(pressed.withLock { $0 } == false)
         #expect(fake.text == "user text")
     }
 
     @Test @MainActor func replaceRefusesWithoutAccessibilityPermission() async {
         let outcome = await SelectionBridge.replace(
-            Selection(text: "Hello", element: field, app: .current, range: SelectedRange(location: 0, length: 5)),
-            with: "你好",
-            seams: SelectionBridge.WritebackSeams(trusted: { false }))
+            selection, with: "你好", seams: SelectionBridge.WritebackSeams(trusted: { false }))
         #expect(outcome == .refused)
+    }
+
+    /// Command has to go down before the key and up after it, so an app that watches real modifier
+    /// state sees a press it can act on.
+    @Test func commandPressBracketsTheKey() {
+        let steps = SelectionBridge.commandSequence(for: SelectionBridge.vKey)
+        #expect(
+            steps.map(\.code) == [
+                SelectionBridge.leftCommandKey, SelectionBridge.vKey, SelectionBridge.vKey,
+                SelectionBridge.leftCommandKey,
+            ])
+        #expect(steps.map(\.isDown) == [true, true, false, false])
+        #expect(steps.first?.flags.contains(.maskCommand) == true)
+        #expect(steps.last?.flags.contains(.maskCommand) == false)
     }
 
     /// Builds write-back seams that never touch accessibility, the pasteboard or real key events.
     @MainActor func seams(
-        write: @escaping @MainActor (AXUIElement, String) -> Bool,
         activate: @escaping @MainActor (NSRunningApplication) async -> Bool = { _ in true },
         press: @escaping SelectionBridge.PasteSelection,
-        pasteboard: SelectionBridge.Pasteboard = .system
+        pasteboard: SelectionBridge.Pasteboard = .system,
+        editable: @escaping @MainActor (AXUIElement) -> Bool? = { _ in true },
+        value: @escaping @MainActor (AXUIElement) -> String? = { _ in "Hello" }
     ) -> SelectionBridge.WritebackSeams {
         SelectionBridge.WritebackSeams(
-            trusted: { true }, write: write, activate: activate, press: press, pasteboard: pasteboard,
-            settle: .zero)
+            trusted: { true }, editable: editable, value: value,
+            activate: activate, press: press, pasteboard: pasteboard, handover: .zero, settle: .zero)
     }
 
     /// In-memory pasteboard so the fallback tests never touch the real pasteboard.

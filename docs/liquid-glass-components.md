@@ -102,7 +102,7 @@
 | `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
 | `result`、`polish`、`long`、`result-loading` | `Owlet/App/ExpandedPanel.swift`（PanelHeader／PanelBody／PanelFooter）· `Owlet/App/PanelController.swift`（展开时机） |
 | `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/ExpandedPanel.swift`（StatusNote）· `Owlet/App/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
-| `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefused` → `inlineNotice` 返回 `.unwritten`）· `Owlet/App/ExpandedPanel.swift` |
+| `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefusal` → `inlineNotice` 返回 `.unwritten`／`.unwritable`）· `Owlet/App/ExpandedPanel.swift` |
 | `menubar`、`menubar-menu` | `Owlet/App/OwletApp.swift`（MenuBarExtra、MenuContent、MenuBarLabel） |
 
 ## 5. 设计令牌退役表

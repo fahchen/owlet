@@ -44,12 +44,12 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [permission.png](screenshots/permission.png) | 权限 · 未授权 | 未授权时不发起请求，入口指向权限设置。 |
 | [unconfigured.png](screenshots/unconfigured.png) | 服务 · 未配置 | 缺少服务配置时提示并指向设置。 |
 | [selection-error.png](screenshots/selection-error.png) | 选区 · 读取失败 | 读取不到文字时不发起请求，可改用手动输入。 |
-| [unwritten.png](screenshots/unwritten.png) | 直接替换 · 未能写回 | 未能写回原应用时就地提示，并可复制结果。 |
+| [unwritten.png](screenshots/unwritten.png) | 直接替换 · 未能写回 | 未能写回原应用时就地提示，并可复制结果；同一布局也用于「原选区不可编辑」。 |
 | [result.png](screenshots/result.png) | 翻译 · 结果 | 展开面板：头部操作选择、原文、译文与底部复制替换。 |
 | [polish.png](screenshots/polish.png) | 润色 · 结果 | 同一面板，标签改为润色结果与保留原意。 |
 | [long.png](screenshots/long.png) | 翻译 · 长文本 | 结果滚动，复制与替换固定在底部。 |
 | [result-loading.png](screenshots/result-loading.png) | 翻译 · 结果区处理中 | 已展开时重新处理保持展开，在结果区显示加载。 |
-| [result-unwritten.png](screenshots/result-unwritten.png) | 翻译 · 未能写回 | 结果仍保留，就地说明未能写回并可复制。 |
+| [result-unwritten.png](screenshots/result-unwritten.png) | 翻译 · 未能写回 | 结果仍保留，就地说明未能写回并可复制；同一布局也用于「原选区不可编辑」。 |
 | [result-notice.png](screenshots/result-notice.png) | 翻译 · 结果区失败 | 展开态失败不收起面板：结果区隐藏，行内提示加底部重试。 |
 | [result-cancelled.png](screenshots/result-cancelled.png) | 翻译 · 结果区已取消 | 取消后结果区隐藏，行内提示与底部都回到重新处理。 |
 | [menubar.png](screenshots/menubar.png) | 菜单栏 · 常驻 | 点击菜单栏图标展开菜单，不直接开窗。 |

@@ -259,6 +259,8 @@ const NOTICES={
   format:{message:'返回格式错误，请检查提示词',action:'提示词设置'},
   connection:{message:'连接失败，请检查模型服务',action:'服务设置'},
   unwritten:{message:'未能写回原应用',action:'复制结果'},
+  // 同一布局的文案变体：选区可证明不能容纳文字，一个键都不发。
+  unwritable:{message:'原选区不可编辑',action:'复制结果'},
   cancelled:{message:'已取消处理',action:'重新处理'}
 };
 
@@ -289,12 +291,12 @@ const states=[
  ['permission','权限 · 未授权','未授权时不发起请求，入口指向权限设置。','permission.png'],
  ['unconfigured','服务 · 未配置','缺少服务配置时提示并指向设置。','unconfigured.png'],
  ['selection-error','选区 · 读取失败','读取不到文字时不发起请求，可改用手动输入。','selection-error.png'],
- ['unwritten','直接替换 · 未能写回','未能写回原应用时就地提示，并可复制结果。','unwritten.png'],
+ ['unwritten','直接替换 · 未能写回','未能写回原应用时就地提示，并可复制结果；同一布局也用于「原选区不可编辑」。','unwritten.png'],
  ['result','翻译 · 结果','展开面板：头部操作选择、原文、译文与底部复制替换。','result.png'],
  ['polish','润色 · 结果','同一面板，标签改为润色结果与保留原意。','polish.png'],
  ['long','翻译 · 长文本','结果滚动，复制与替换固定在底部。','long.png'],
  ['result-loading','翻译 · 结果区处理中','已展开时重新处理保持展开，在结果区显示加载。','result-loading.png'],
- ['result-unwritten','翻译 · 未能写回','结果仍保留，就地说明未能写回并可复制。','result-unwritten.png'],
+ ['result-unwritten','翻译 · 未能写回','结果仍保留，就地说明未能写回并可复制；同一布局也用于「原选区不可编辑」。','result-unwritten.png'],
  ['result-notice','翻译 · 结果区失败','展开态失败不收起面板：结果区隐藏，行内提示加底部重试。','result-notice.png'],
  ['result-cancelled','翻译 · 结果区已取消','取消后结果区隐藏，行内提示与底部都回到重新处理。','result-cancelled.png'],
  ['menubar','菜单栏 · 常驻','点击菜单栏图标展开菜单，不直接开窗。','menubar.png'],

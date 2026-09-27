@@ -28,7 +28,15 @@
 8. 选区范围（`SelectedRange`）只在放置浮窗需要跟随选区时读取：解码 `kAXSelectedTextRangeAttribute`，经 CF 类型与 AXValue 类型检查。范围缺失只影响放置位置，不影响翻译。
 9. 回到主线程，确认操作未过期、未取消且前台应用仍为原 PID，才接收结果。成功时先保存 `Selection`、导入输入，再显示浮窗并启动对应模型请求。
 
-读取文字成功不等于写回成功。写回不再比较捕获时的文本与选区范围：先按捕获到的元素直接尝试辅助功能写入（快，且不碰剪贴板），元素拒绝这一写入时改走粘贴——把结果放进剪贴板、把所属应用前置、合成 ⌘V，停留 350ms 让目标应用读完剪贴板后放回用户原来的内容。仅在无辅助功能权限、所属应用已退出或无法前置时拒绝，此时结果仍可复制。
+读取文字成功不等于写回成功。写回不比较捕获时的文本与选区范围，而且**只**走粘贴：辅助功能写入会在这类应用上"报告成功但什么也没改"（面板取走焦点后元素常已失效），所以那条路径已经删掉。次序是固定的：
+
+1. 用元素的 `AXRole` 判断选区是否落在可编辑文本上（`AXTextField`／`AXTextArea`／`AXComboBox`）。明确不是这几种时返回 `.unwritable`，一个键都不发——把译文敲进终端提示符或只读网页都不是用户要的结果；应用不上报 role 时按可编辑处理，因为"问不出来"不等于"不能编辑"。
+2. 面板先 `orderOut` 让出键盘。面板在显示时持有键盘，而合成按键跟随键盘，所以它必须先退场；写回失败时再回到屏幕上，因为那时用户正需要复制结果。
+3. 把结果放进剪贴板，前置所属应用，停留 150ms 让键盘交出去。
+4. 在 HID 层合成一次完整的 ⌘ 按下、V 按下、V 抬起、⌘ 抬起。
+5. 停留 300ms 让目标应用读完剪贴板（之后才放回用户原来的内容），再在 600ms 内轮询该元素的 `AXValue`：与粘贴前不同就算 `.pasted`；元素不上报文本时同样算 `.pasted`（粘贴发送到了应用真正的焦点处，读不到不是失败的证据）；文本确实没变才算 `.refused`。结果与原文相同时直接算 `.pasted`——把一段文字替换成它自己无从观察，也不需要改动。
+
+只有在无辅助功能权限、所属应用已退出、无法前置、选区明确不可编辑或文本确实没变时才算未写回，此时面板留在屏幕上并给出"复制结果"。
 
 ## 响应时间与并发
 
@@ -76,7 +84,11 @@
 - [x] 文本只读取一次，选区范围经类型检查后解码（`textIsReadOnceAndTheRangeIsDecoded`）。
 - [x] 选区在聚焦元素、祖先、子树与网页文本标记范围里都能找到，空白选区不当作选区（`searchFindsSelectionOnAnAncestor`、`searchFindsSelectionInADescendant`、`searchReadsSelectionThroughAWebKitMarkerRange`、`searchSkipsBlankSelections`、`searchWithoutAnySelectionIsNil`）。
 - [x] 复制回退只在搜索落空时运行，密码字段永不触发，剪贴板被放回（`copyFallbackReadsWhenTheSearchFindsNothing`、`copyFallbackIsSkippedForASecureField`、`copyFallbackIsSkippedWhenTheSearchSucceeds`、`copyFallbackRestoresThePreviousPasteboard`、`copyFallbackWithoutANewCopyIsNil`）。
-- [x] 写回先直写、后粘贴，无权限或无法前置时拒绝（`directWriteIsUsedWhenTheElementAcceptsIt`、`pasteIsUsedWhenTheDirectWriteFails`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
+- [x] 写回只走粘贴，只读选区一个键都不发，无权限或无法前置时拒绝（`pasteReplacesTheSelectionAndRestoresTheClipboard`、`readOnlySelectionIsNeverTypedInto`、`onlyEditableTextRolesTakeAPaste`、`unknownRoleStillPastes`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
+- [x] 文本确实没变时如实返回失败，读不到文本与替换成同一段文字都不误判为失败（`pasteThatTheAppIgnoresIsRefused`、`unreadableElementIsNotEvidenceOfFailure`、`replacingWithTheSameTextCountsAsPasted`）。
+- [x] 按键在所属应用前置之后才发出，且即使应用已经是前台也仍然请求前置（`theAppComesForwardBeforeTheKeyIsPressed`、`comingForwardIsAlwaysAskedFor`）。
+- [x] 写回先把键盘让出去但不关闭面板，失败时把结果留在屏幕内（`writeBackReleasesTheKeyboardWithoutDismissing`、`refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable`）。
+- [x] 合成按键是完整的 ⌘ 包夹序列，而不是只带 flags 的一个按键（`commandPressBracketsTheKey`）。
 - [x] 超时只先给出提示：迟到但有效的读取仍会生效，关闭后到达的读取被丢弃（`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`、`lateReadAfterCloseIsIgnored`）。
 - [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。
 - [x] 缺失、错误类型、空白选区安全失败，保留空白与 Unicode（`wrongTypesFailSafely`、`blankOrMissingIsUnreadable`、`missingFocusedElementIsUnreadable`）。

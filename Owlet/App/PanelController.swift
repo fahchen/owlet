@@ -357,34 +357,60 @@ final class PanelController {
     }
 }
 
-/// The processing edge highlight: one accent colour, no gradient, held at a steady visible level
-/// when Reduce Motion asks the panel not to animate.
+/// The processing edge highlight: an accent ring whose bright sheen sweeps around the panel while
+/// it breathes, with a soft inner glow. Reduce Motion holds it still at one visible level.
 enum ProcessingEdge {
     static let brightOpacity: Float = 1
-    static let dimOpacity: Float = 0.3
+    static let dimOpacity: Float = 0.45
     /// Reduce Motion keeps a single visible level instead of pulsing.
-    static let steadyOpacity: Float = 0.65
-    static let duration: CFTimeInterval = 1.1
-    static let lineWidth: CGFloat = 1.5
+    static let steadyOpacity: Float = 0.75
+    static let duration: CFTimeInterval = 1.6
+    /// One full turn of the sheen around the panel.
+    static let sweepDuration: CFTimeInterval = 2.4
+    static let lineWidth: CGFloat = 2
+    /// Blur of the glow; the panel's rounded mask keeps only its inner half.
+    static let glowRadius: CGFloat = 6
 
     /// The edge's opacity; a steady value whenever Reduce Motion is on.
     static func opacity(reduceMotion: Bool, bright: Bool) -> Float {
         reduceMotion ? steadyOpacity : (bright ? brightOpacity : dimOpacity)
     }
+
+    /// Light accent at rest, near-white at the sheen, so the ring stays bright in the app's one colour.
+    static func colors(accent: NSColor) -> [CGColor] {
+        let sheen = accent.blended(withFraction: 0.8, of: .white) ?? accent
+        let base = accent.blended(withFraction: 0.3, of: .white) ?? accent
+        return [base, accent, sheen, accent, base].map(\.cgColor)
+    }
 }
 
 /// Window content container masked to the glass corner radius that also hosts the processing edge,
-/// so the breathing mark rides the exact panel edge without becoming another view or shadow.
+/// so the mark rides the exact panel edge without becoming another view.
 final class PanelSurface: NSView {
-    let edge = CAShapeLayer()
+    /// Breathes and glows; holds the ring.
+    let edge = CALayer()
+    /// Conic accent sweep, clipped to the ring and rotated while processing.
+    let sheen = CAGradientLayer()
+    private let ring = CALayer()
+    private let stroke = CAShapeLayer()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        edge.fillColor = nil
-        edge.lineWidth = ProcessingEdge.lineWidth
         edge.opacity = 0
         edge.zPosition = 1
+        edge.shadowOffset = .zero
+        edge.shadowRadius = ProcessingEdge.glowRadius
+        edge.shadowOpacity = 0.9
+        stroke.fillColor = nil
+        stroke.strokeColor = NSColor.black.cgColor
+        stroke.lineWidth = ProcessingEdge.lineWidth
+        sheen.type = .conic
+        sheen.startPoint = CGPoint(x: 0.5, y: 0.5)
+        sheen.endPoint = CGPoint(x: 0.5, y: 0)
+        ring.mask = stroke
+        ring.addSublayer(sheen)
+        edge.addSublayer(ring)
         layer?.addSublayer(edge)
     }
 
@@ -392,13 +418,26 @@ final class PanelSurface: NSView {
 
     override func layout() {
         super.layout()
-        edge.strokeColor = NSColor.controlAccentColor.cgColor
+        // A dynamic system colour cannot be blended; resolve it to plain sRGB first.
+        let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .controlAccentColor
+        sheen.colors = ProcessingEdge.colors(accent: accent)
+        edge.shadowColor = (accent.blended(withFraction: 0.4, of: .white) ?? accent).cgColor
         edge.frame = bounds
+        ring.frame = bounds
+        stroke.frame = bounds
+        // A square wide enough to cover the ring at every angle of its turn.
+        let side = hypot(bounds.width, bounds.height)
+        sheen.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        sheen.position = CGPoint(x: bounds.midX, y: bounds.midY)
         let radius = layer?.cornerRadius ?? 0
-        let inset = edge.lineWidth / 2
-        edge.path = CGPath(
+        let inset = stroke.lineWidth / 2
+        let path = CGPath(
             roundedRect: bounds.insetBy(dx: inset, dy: inset), cornerWidth: radius,
             cornerHeight: radius, transform: nil)
+        stroke.path = path
+        // An explicit shadow path keeps the glow from being re-rendered every frame of the sweep.
+        edge.shadowPath = path.copy(
+            strokingWithWidth: stroke.lineWidth, lineCap: .butt, lineJoin: .round, miterLimit: 0)
     }
 }
 
@@ -429,6 +468,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     }
     /// Key of the breathing animation, so a test can tell it is running and remove it cleanly.
     static let breatheKey = "processingEdge"
+    /// Key of the sheen's turn around the panel.
+    static let sweepKey = "processingSweep"
     private var anchor = PanelPlacement.Anchor.topCenter(nil)
     /// Set while the panel moves itself, so only user drags reach `onDrag`.
     private var placing = false
@@ -495,11 +536,13 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         stopWatchingMouse()
     }
 
-    /// Runs or stops the processing edge: one colour, no gradient, and a steady mark under Reduce
+    /// Runs or stops the processing edge: a breathing, sweeping accent ring, and a steady mark under Reduce
     /// Motion so the state never depends on the animation alone.
     func setProcessing(_ active: Bool) {
-        guard let edge = (contentView as? PanelSurface)?.edge else { return }
+        guard let surface = contentView as? PanelSurface else { return }
+        let edge = surface.edge
         edge.removeAnimation(forKey: Self.breatheKey)
+        surface.sheen.removeAnimation(forKey: Self.sweepKey)
         guard active else {
             edge.opacity = 0
             return
@@ -515,6 +558,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         breathe.repeatCount = .infinity
         breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         edge.add(breathe, forKey: Self.breatheKey)
+        let sweep = CABasicAnimation(keyPath: "transform.rotation.z")
+        sweep.fromValue = 0
+        sweep.toValue = -2 * CGFloat.pi
+        sweep.duration = ProcessingEdge.sweepDuration
+        sweep.repeatCount = .infinity
+        surface.sheen.add(sweep, forKey: Self.sweepKey)
     }
 
     /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.
@@ -596,8 +645,6 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         let screen = anchor.reference.flatMap { point in
             NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
         }
-        placing = true
-        defer { placing = false }
         guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
             // No screen to place on: keep the current top-center so the panel still expands downward.
             let top = NSPoint(x: frame.midX, y: frame.maxY)
@@ -616,14 +663,20 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// The panel grows taller when the compact strip becomes the expanded panel, so the window is
     /// resized over an ease rather than snapped; Reduce Motion takes the direct path.
     private func grow(to rect: NSRect) {
+        // The animation's own frames move the window, so placement stays flagged for its whole
+        // duration; otherwise a mid-animation frame is mistaken for a drag and saved as the anchor.
+        placing = true
         guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
             setFrame(rect, display: true)
+            placing = false
             return
         }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.22
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             animator().setFrame(rect, display: true)
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated { self?.placing = false }
         }
     }
 }

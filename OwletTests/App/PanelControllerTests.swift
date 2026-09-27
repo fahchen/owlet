@@ -437,6 +437,9 @@ struct PanelControllerTests {
         let window = try #require(panel.panel)
         #expect(window.contentView?.subviews.first is NSGlassEffectView)
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
+        // The panel's own resize is eased and places the window itself while it runs, so the move
+        // waits for it to settle — otherwise the gesture below is (correctly) ignored as placement.
+        try? await Task.sleep(for: .milliseconds(300))
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == NSPoint(x: window.frame.midX, y: window.frame.maxY))
@@ -477,21 +480,18 @@ struct PanelControllerTests {
         gate.release()
     }
 
-    /// The edge is a single-colour stroke with no gradient, fill or shadow of its own.
-    @Test func processingEdgeIsASingleColourWithoutGradientOrShadow() async throws {
+    /// The edge is an accent ring: a conic sweep clipped to the panel outline, glowing inward.
+    @Test func processingEdgeIsAnAccentRingThatGlows() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
         panel.trigger()
         let window = try #require(panel.panel)
         let surface = try #require(window.contentView as? PanelSurface)
         surface.layout()
-        #expect(surface.edge.fillColor == nil)
-        #expect(surface.edge.strokeColor != nil)
-        #expect(surface.edge.lineWidth == ProcessingEdge.lineWidth)
-        #expect(surface.edge.shadowOpacity == 0)
-        let layers = try #require(surface.layer?.sublayers)
-        #expect(!layers.contains { $0 is CAGradientLayer })
-        #expect(surface.edge.path != nil)
+        #expect(surface.sheen.type == .conic)
+        #expect(surface.sheen.colors?.count == 5)
+        #expect(surface.edge.shadowOpacity > 0)
+        #expect(surface.edge.shadowPath != nil)
         panel.close()
     }
 
@@ -506,10 +506,12 @@ struct PanelControllerTests {
         window.prefersReducedMotion = { false }
         window.setProcessing(true)
         #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) != nil)
+        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) != nil)
         #expect(surface.edge.opacity == ProcessingEdge.brightOpacity)
         #expect(window.frame == frame)
         window.setProcessing(false)
         #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
+        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) == nil)
         #expect(surface.edge.opacity == 0)
         panel.close()
     }
@@ -524,6 +526,7 @@ struct PanelControllerTests {
         window.prefersReducedMotion = { true }
         window.setProcessing(true)
         #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
+        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) == nil)
         #expect(surface.edge.opacity == ProcessingEdge.steadyOpacity)
         #expect(surface.edge.opacity > 0)
         panel.close()

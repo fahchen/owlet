@@ -20,6 +20,8 @@ struct ExpandedPanel: View {
     let openSettings: () -> Void
     /// One learning section per panel session, so 收起／展开 reuses what was already generated.
     @State private var learning = LearningModel()
+    @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
+        SettingsStore.defaultTargetLanguage
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,6 +50,12 @@ struct ExpandedPanel: View {
                 done: done)
         }
         .frame(width: PanelMetrics.width)
+        // A new target language runs the same text again at once, like switching the operation;
+        // a language already produced for this text comes from the model's cache.
+        .onChange(of: targetLanguage) { _, _ in
+            learning.reset()
+            if canRetry { retry() }
+        }
     }
 
     private var canRetry: Bool {
@@ -266,6 +274,8 @@ private struct PanelBody: View {
         .buttonStyle(.borderless)
         .fixedSize()
         .font(.system(size: 11))
+        // Changing it mid-request would label the running result with a language it was not made for.
+        .disabled(model.state == .loading)
     }
 }
 

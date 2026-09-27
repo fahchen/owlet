@@ -183,6 +183,11 @@ struct TranslationView: View {
             learning.reset()
             if model.hasBeenSent { model.translate(to: targetLanguage) }
         }
+        // A new target language runs the same text again, served from cache when already produced.
+        .onChange(of: targetLanguage) { _, _ in
+            learning.reset()
+            if model.hasBeenSent { model.translate(to: targetLanguage) }
+        }
         // The source text changed, so the old result and its learning items no longer apply.
         .onChange(of: model.input) { _, _ in learning.reset() }
         .toolbar {

@@ -83,7 +83,9 @@ private struct MainView: View {
             case .vocabulary:
                 VocabularyView(collection: collection, openProcessing: { page = .processing })
             case .history:
-                HistoryView(store: HistoryStore.shared, openProcessing: { page = .processing })
+                HistoryView(
+                    store: HistoryStore.shared, collection: collection,
+                    openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             case .settings: ServiceSettingsView(promptFocus: $promptFocus)
             }

@@ -51,6 +51,10 @@ enum SelectionBridge {
         worker.submit {
             let appElement = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(appElement, messagingTimeout)
+            // Electron builds its AX tree only on request; unsupported apps just return an
+            // error, which is ignored. The tree may not be ready yet: no wait, user retriggers.
+            AXUIElementSetAttributeValue(
+                appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue)
             let bounded: Reader = { element, attribute in
                 ContinuousClock.now < deadline ? copy(element, attribute) : nil
             }

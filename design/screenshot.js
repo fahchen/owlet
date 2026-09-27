@@ -25,7 +25,6 @@ assert.equal(new Set(scenarios.map(([id]) => id)).size, scenarios.length);
 const rows = [];
 for (const [id, name, description, filename] of scenarios) {
   const clip = await page.evaluate(async (id) => {
-    prefs.translationLayout = ['aligned', 'long'].includes(id) ? 'aligned' : 'separate';
     openExperience(id);
     document.getAnimations().forEach(animation => animation.cancel());
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -48,12 +47,13 @@ for (const [id, name, description, filename] of scenarios) {
 }
 await fs.writeFile(path.join(directory, 'README.md'), [
   '# Design screenshots', '',
-  'Source: `index.html`. One PNG per state; repeated flow-board states are captured once.', '',
+  'Source: `index.html`. One PNG per state.', '',
+  'This board covers only features that are already implemented in the app. Removed states and the features still to come are listed in [../docs/unimplemented-features.md](../docs/unimplemented-features.md).', '',
   'Screenshot filenames are defined in the fourth field of each `states` entry in `index.html`.', '',
   'Regenerate from the repository root with Ego Lite running:', '',
   '```sh', 'node design/screenshot.mjs', '```', '',
   'Captures use default demo data, a 1440 x 1000 viewport, and native window bounds with 24px padding.',
-  'Scrollable content retains its designed viewport; the Prompt state opens its corresponding settings section.', '',
+  'Scrollable content retains its designed viewport; source text is the built-in English sample.', '',
   '组件样式均为 macOS 26 原生控件的外观；每个组件到原生组件的对照见 [../docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。', '',
   '| State / screenshot | Name | Notes |', '| --- | --- | --- |', ...rows, '',
 ].join('\n'));

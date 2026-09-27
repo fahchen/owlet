@@ -7,8 +7,12 @@ struct ShortcutSettingsView: View {
 
     var body: some View {
         Form {
-            LabeledContent("翻译") {
-                ShortcutRecorder(shortcut: controller.translate) { controller.setTranslate($0) }
+            ForEach(ShortcutAction.allCases, id: \.self) { action in
+                LabeledContent(action.title) {
+                    ShortcutRecorder(shortcut: controller.shortcuts[action]) {
+                        controller.set($0, for: action)
+                    }
+                }
             }
             if let error = controller.registrationError {
                 Text(error).foregroundStyle(.red)

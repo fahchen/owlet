@@ -62,7 +62,7 @@ private struct MenuBarLabel: View {
     var body: some View {
         Image(systemName: "character.bubble")
             .onAppear {
-                shortcuts.onTranslate = { panel.trigger() }
+                shortcuts.onAction = { panel.trigger(replace: $0 == .translateReplace) }
                 panel.openSettings = {
                     NSApp.activate()
                     openSettings()
@@ -86,13 +86,15 @@ private struct MenuContent: View {
             NSApp.activate()
             openWindow(id: "main")
         }
-        if let shortcut = shortcuts.translate {
-            Text("翻译：\(shortcut.displayString)")
-        } else {
-            Button("翻译快捷键未设置，前往快捷键页…") {
-                page = .shortcuts
-                NSApp.activate()
-                openWindow(id: "main")
+        ForEach(ShortcutAction.allCases, id: \.self) { action in
+            if let shortcut = shortcuts.shortcuts[action] {
+                Text("\(action.title)：\(shortcut.displayString)")
+            } else {
+                Button("\(action.title)快捷键未设置，前往快捷键页…") {
+                    page = .shortcuts
+                    NSApp.activate()
+                    openWindow(id: "main")
+                }
             }
         }
         SettingsLink { Text("Settings…") }

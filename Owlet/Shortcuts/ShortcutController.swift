@@ -37,59 +37,97 @@ struct Shortcut: Codable, Equatable, Sendable {
     }
 }
 
-/// Registers the translation global shortcut via Carbon hot keys.
+/// Global shortcut actions; the raw value doubles as the Carbon hot key id.
+enum ShortcutAction: UInt32, CaseIterable, Sendable {
+    case translate = 1
+    case translateReplace = 2
+
+    var title: String {
+        switch self {
+        case .translate: "翻译"
+        case .translateReplace: "翻译并替换"
+        }
+    }
+
+    var defaultsKey: String {
+        switch self {
+        case .translate: SettingsStore.translateShortcutKey
+        case .translateReplace: SettingsStore.translateReplaceShortcutKey
+        }
+    }
+}
+
+/// Registers the global shortcuts via Carbon hot keys.
 @MainActor @Observable
 final class ShortcutController {
-    private(set) var translate: Shortcut?
+    private(set) var shortcuts: [ShortcutAction: Shortcut] = [:]
     private(set) var registrationError: String?
-    var onTranslate: () -> Void = {}
+    var onAction: (ShortcutAction) -> Void = { _ in }
+
+    var translate: Shortcut? { shortcuts[.translate] }
 
     private let defaults: UserDefaults
-    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyRefs: [EventHotKeyRef] = []
     private static weak var active: ShortcutController?
     private static var handlerInstalled = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        translate = SettingsStore.shortcut(forKey: SettingsStore.translateShortcutKey, in: defaults)
+        for action in ShortcutAction.allCases {
+            shortcuts[action] = SettingsStore.shortcut(forKey: action.defaultsKey, in: defaults)
+        }
     }
 
-    /// Registers the persisted shortcut; call once at launch.
+    /// Registers the persisted shortcuts; call once at launch.
     func start() {
         Self.active = self
         installHandler()
         register()
     }
 
-    /// Saves (or clears with nil) and re-registers. On failure the shortcut is not saved.
-    func setTranslate(_ shortcut: Shortcut?) {
-        let previous = translate
-        translate = shortcut
+    /// Saves (or clears with nil) and re-registers. On conflict or failure nothing is saved.
+    func set(_ shortcut: Shortcut?, for action: ShortcutAction) {
+        if let shortcut, let other = conflict(shortcut, for: action) {
+            registrationError = "该组合已用于“\(other.title)”，请换一个。"
+            return
+        }
+        let previous = shortcuts[action]
+        shortcuts[action] = shortcut
         guard register() || shortcut == nil else {
-            translate = previous
+            shortcuts[action] = previous
             register()
             registrationError = "该组合已被系统或其他应用占用，请换一个。"
             return
         }
-        SettingsStore.setShortcut(shortcut, forKey: SettingsStore.translateShortcutKey, in: defaults)
+        SettingsStore.setShortcut(shortcut, forKey: action.defaultsKey, in: defaults)
+    }
+
+    func conflict(_ shortcut: Shortcut, for action: ShortcutAction) -> ShortcutAction? {
+        shortcuts.first {
+            $0.key != action && $0.value.keyCode == shortcut.keyCode
+                && $0.value.modifiers == shortcut.modifiers
+        }?.key
     }
 
     @discardableResult
     private func register() -> Bool {
         registrationError = nil
-        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
-        hotKeyRef = nil
-        guard let translate else { return true }
-        var ref: EventHotKeyRef?
-        let id = EventHotKeyID(signature: OSType(0x4F57_4C54), id: 1)
-        let status = RegisterEventHotKey(
-            translate.keyCode, translate.modifiers, id, GetApplicationEventTarget(), 0, &ref)
-        guard status == noErr, let ref else {
-            registrationError = "快捷键注册失败（\(status)）。"
-            return false
+        hotKeyRefs.forEach { UnregisterEventHotKey($0) }
+        hotKeyRefs = []
+        var ok = true
+        for (action, shortcut) in shortcuts {
+            var ref: EventHotKeyRef?
+            let id = EventHotKeyID(signature: OSType(0x4F57_4C54), id: action.rawValue)
+            let status = RegisterEventHotKey(
+                shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
+            guard status == noErr, let ref else {
+                registrationError = "快捷键注册失败（\(status)）。"
+                ok = false
+                continue
+            }
+            hotKeyRefs.append(ref)
         }
-        hotKeyRef = ref
-        return true
+        return ok
     }
 
     private func installHandler() {
@@ -99,8 +137,13 @@ final class ShortcutController {
             eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, _, _ in
-                MainActor.assumeIsolated { ShortcutController.active?.onTranslate() }
+            { _, event, _ in
+                var id = EventHotKeyID()
+                GetEventParameter(
+                    event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                    nil, MemoryLayout<EventHotKeyID>.size, nil, &id)
+                guard let action = ShortcutAction(rawValue: id.id) else { return noErr }
+                MainActor.assumeIsolated { ShortcutController.active?.onAction(action) }
                 return noErr
             }, 1, &spec, nil, nil)
     }

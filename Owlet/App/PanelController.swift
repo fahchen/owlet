@@ -18,20 +18,27 @@ final class PanelController {
     private(set) var selection: Selection?
     /// Shown in the expanded view when a write-back was refused.
     private(set) var replaceMessage: String?
+    /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
+    private(set) var autoReplace = false
     let model: TranslationModel
+    var read: () -> Result<Selection, SelectionError> = SelectionBridge.read
+    var write: (Selection, String) -> Bool = SelectionBridge.replace
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
 
     private var panel: FloatingPanel?
+    /// Guards against a superseded request acting on a newer result.
+    private var requestID = 0
 
     init(model: TranslationModel) {
         self.model = model
     }
 
     /// Captures source and selection before showing anything, then translates.
-    func trigger() {
-        let result = SelectionBridge.read()
+    func trigger(replace: Bool = false) {
+        let result = read()
         model.cancel()
+        autoReplace = replace
         selection = nil
         replaceMessage = nil
         switch result {
@@ -51,7 +58,19 @@ final class PanelController {
         let language =
             UserDefaults.standard.string(forKey: SettingsStore.targetLanguageKey)
             ?? SettingsStore.defaultTargetLanguage
+        requestID += 1
+        let id = requestID
         let task = model.translate(to: language)
+        if autoReplace, let task {
+            Task {
+                await task.value
+                guard id == requestID, autoReplace, case .success(let text) = model.state else {
+                    return
+                }
+                replace(with: text)
+                if selection != nil { expanded = true }
+            }
+        }
         guard !expanded else { return }
         switch model.state {
         case .missingConfig: notice = .missingConfig
@@ -63,7 +82,7 @@ final class PanelController {
             await task.value
             guard !expanded, notice == .translating else { return }
             switch model.state {
-            case .success: expanded = true
+            case .success: if !autoReplace { expanded = true }
             case .failure(let message): notice = .failure(message)
             default: break
             }
@@ -72,7 +91,7 @@ final class PanelController {
 
     /// Writes `text` back once; the source is consumed on success so it is never reused.
     func replace(with text: String) {
-        guard let selection, SelectionBridge.replace(selection, with: text) else {
+        guard let selection, write(selection, text) else {
             replaceMessage = "原选区已变化或无法确认，未替换。可复制结果。"
             return
         }
@@ -105,6 +124,7 @@ final class PanelController {
         host.sizingOptions = .preferredContentSize
         panel.contentViewController = host
         panel.onClose = { [weak self] in
+            self?.requestID += 1
             self?.model.cancel()
             self?.notice = nil
             self?.expanded = false

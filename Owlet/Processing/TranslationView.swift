@@ -86,6 +86,9 @@ struct TranslationView: View {
     @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
         SettingsStore.defaultTargetLanguage
 
+    /// Prototype rose accent (oklch(0.55 0.16 5) approximated in sRGB).
+    static let accent = Color(red: 0.72, green: 0.24, blue: 0.42)
+
     static let languages = [
         ("zh-Hans", "简体中文"), ("zh-Hant", "繁體中文"), ("en", "English"), ("ja", "日本語"),
     ]
@@ -105,7 +108,8 @@ struct TranslationView: View {
             Spacer(minLength: 0)
         }
         .padding()
-        .frame(minWidth: 480, minHeight: 360)
+        .frame(minWidth: 560, minHeight: 360)
+        .tint(Self.accent)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Image("OwletMark")
@@ -134,26 +138,33 @@ struct TranslationView: View {
         case .idle, .loading:
             EmptyView()
         case .success(let text):
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Result").font(.caption).foregroundStyle(.secondary)
                 Text(text).textSelection(.enabled)
+                Divider()
                 HStack {
-                    Button("Copy") {
+                    Spacer()
+                    Button("Copy", systemImage: "doc.on.doc") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                     }
-                    if let replace { Button("Replace") { replace(text) } }
+                    if let replace {
+                        Button("Replace") { replace(text) }
+                            .buttonStyle(.glassProminent)
+                    }
                 }
                 if let replaceMessage { Text(replaceMessage).foregroundStyle(.red) }
             }
         case .failure(let message):
             HStack {
-                Text(message).foregroundStyle(.red)
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
                 Button("Retry") { model.translate(to: targetLanguage) }
                 settingsButton
             }
         case .missingConfig:
             HStack {
-                Text("Service is not configured: Base URL, model and API key are required.")
+                Label("Service is not configured: Base URL, model and API key are required.", systemImage: "gearshape")
                 settingsButton
             }
         }

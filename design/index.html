@@ -531,9 +531,11 @@ function sample(k){which=k;external=inputText();render()}
 // ---------- 应用窗口 ----------
 function sidebarHTML(){
   const row=(p,label,glyph,count)=>`<button class="nav ${appPage===p?'active':''}" aria-current="${appPage===p?'page':'false'}" onclick="openApp('${p}')">${icon(glyph)}<span>${label}</span>${count?`<span class="count">${count}</span>`:''}</button>`;
-  // 生词本与历史是提案页面：只在提案状态里出现，已实现状态的侧栏保持原样。
-  const library=cfg().proposal?`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`:'';
-  return `<p class="section-label">随手处理</p><nav class="navgroup" aria-label="文本操作">${row('processing','文本处理','translate')}</nav>${library}<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}${row('settings','设置','gear')}</nav>`;
+  // 所有画面共用目标侧边栏，包括尚未实现的生词本与历史记录：设计图描述要去的地方，实现进度由
+  // 徽标和文档说明，而不是靠画一张不完整的侧栏来表达。
+  return `<p class="section-label">随手处理</p><nav class="navgroup" aria-label="文本操作">${row('processing','文本处理','translate')}</nav>`
+   +`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`
+   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}${row('settings','设置','gear')}</nav>`;
 }
 function appbarHTML(){
   const titles={processing:'文本处理',shortcuts:'快捷键',settings:'设置',book:'生词本',history:'历史记录'};

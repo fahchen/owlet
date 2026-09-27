@@ -49,6 +49,25 @@ final class VocabularyStore {
         return try context.fetch(descriptor).first
     }
 
+    /// Saves the edited expression and meaning, rejecting a rename that would collide with another
+    /// entry of the same language, since language plus trimmed expression stays the identity.
+    func update(_ entry: VocabularyEntry, expression: String, meaning: String) throws {
+        let trimmed = expression.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw VocabularyError.emptyExpression }
+        if let clash = try self.entry(language: entry.language, expression: trimmed), clash !== entry {
+            throw VocabularyError.duplicateExpression
+        }
+        entry.expression = trimmed
+        entry.meaning = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+        try context.save()
+    }
+
+    /// Removes an entry; the cascade takes its contexts with it, so no orphan sentence survives.
+    func delete(_ entry: VocabularyEntry) throws {
+        context.delete(entry)
+        try context.save()
+    }
+
     func save() throws {
         try context.save()
     }
@@ -68,10 +87,32 @@ final class VocabularyStore {
 
 enum VocabularyError: LocalizedError {
     case emptyExpression
+    case duplicateExpression
 
     var errorDescription: String? {
         switch self {
         case .emptyExpression: "没有可收藏的内容"
+        case .duplicateExpression: "同语言下已存在相同的表达"
         }
+    }
+}
+
+/// The notebook's search and language filter; one rule shared by the list view and the tests.
+enum VocabularyFilter {
+    /// Keeps entries matching the search text against expression or meaning and, when set, one language.
+    static func apply(_ entries: [VocabularyEntry], search: String, language: String?) -> [VocabularyEntry] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        return entries.filter { entry in
+            (language == nil || entry.language == language)
+                && (query.isEmpty
+                    || entry.expression.localizedStandardContains(query)
+                    || entry.meaning.localizedStandardContains(query))
+        }
+    }
+
+    /// The distinct languages the notebook holds, so the filter menu never offers an empty choice.
+    static func languages(in entries: [VocabularyEntry]) -> [String] {
+        var seen = Set<String>()
+        return entries.compactMap { seen.insert($0.language).inserted ? $0.language : nil }.sorted()
     }
 }

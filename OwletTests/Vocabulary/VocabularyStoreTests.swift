@@ -86,6 +86,115 @@ struct VocabularyStoreTests {
         #expect(context.polishBefore == "This are bad.")
         #expect(context.polishAfter == "This is bad.")
     }
+
+    @Test func editingTheMeaningAndExpressionPersists() throws {
+        let store = try makeStore()
+        let entry = try store.collect(draft("follow up"))
+        try store.update(entry, expression: " follow-up ", meaning: " 跟进，后续联系。 ")
+        #expect(entry.expression == "follow-up")
+        let fresh = ModelContext(store.container)
+        let reloaded = try #require(try fresh.fetch(FetchDescriptor<VocabularyEntry>()).first)
+        #expect(reloaded.expression == "follow-up")
+        #expect(reloaded.meaning == "跟进，后续联系。")
+        #expect(reloaded.contexts.count == 1)
+    }
+
+    @Test func editingRefusesABlankExpressionAndACollision() throws {
+        let store = try makeStore()
+        let first = try store.collect(draft("follow up"))
+        let second = try store.collect(draft("check in"))
+        #expect(throws: VocabularyError.self) {
+            try store.update(second, expression: "   ", meaning: "")
+        }
+        #expect(throws: VocabularyError.self) {
+            try store.update(second, expression: "follow up", meaning: "")
+        }
+        #expect(second.expression == "check in")
+        #expect(first.expression == "follow up")
+    }
+
+    @Test func deletingAnEntryPersists() throws {
+        let store = try makeStore()
+        let entry = try store.collect(draft("follow up"))
+        try store.delete(entry)
+        #expect(try store.entries().isEmpty)
+        let fresh = ModelContext(store.container)
+        #expect(try fresh.fetch(FetchDescriptor<VocabularyEntry>()).isEmpty)
+        #expect(try fresh.fetch(FetchDescriptor<VocabularyContext>()).isEmpty)
+    }
+}
+
+@MainActor
+struct VocabularyFilterTests {
+    func makeStore() throws -> VocabularyStore {
+        let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return VocabularyStore(container: try ModelContainer(for: schema, configurations: [config]))
+    }
+
+    /// English and Japanese entries whose meanings are set through the edit path.
+    func notebook() throws -> VocabularyStore {
+        let store = try makeStore()
+        let step = try store.collect(
+            VocabularyDraft(
+                expression: "take a step back", language: "en", context: "Let's take a step back.",
+                polishBefore: nil, polishAfter: nil))
+        try store.update(step, expression: step.expression, meaning: "退一步，从新的角度重新审视。")
+        let letter = try store.collect(
+            VocabularyDraft(
+                expression: "手紙", language: "ja", context: "手紙を書きます。",
+                polishBefore: nil, polishAfter: nil))
+        try store.update(letter, expression: letter.expression, meaning: "信。")
+        return store
+    }
+
+    @Test func searchMatchesTheExpressionAndTheMeaning() throws {
+        let store = try notebook()
+        let entries = try store.entries()
+        // The container owns the model objects, so it has to outlive every assertion that reads them.
+        withExtendedLifetime(store) {
+            #expect(VocabularyFilter.apply(entries, search: "step", language: nil).count == 1)
+            #expect(VocabularyFilter.apply(entries, search: "STEP", language: nil).count == 1)
+            #expect(VocabularyFilter.apply(entries, search: "新的角度", language: nil).count == 1)
+        }
+    }
+
+    @Test func languageFilterKeepsOneLanguage() throws {
+        let store = try notebook()
+        let entries = try store.entries()
+        withExtendedLifetime(store) {
+            let japanese = VocabularyFilter.apply(entries, search: "", language: "ja")
+            #expect(japanese.count == 1)
+            #expect(japanese.first?.expression == "手紙")
+        }
+    }
+
+    @Test func searchAndLanguageFilterCombine() throws {
+        let store = try notebook()
+        let entries = try store.entries()
+        withExtendedLifetime(store) {
+            #expect(VocabularyFilter.apply(entries, search: "手紙", language: "en").isEmpty)
+            #expect(VocabularyFilter.apply(entries, search: "手紙", language: "ja").count == 1)
+        }
+    }
+
+    @Test func noMatchIsEmptyAndClearingTheFilterRestoresEveryEntry() throws {
+        let store = try notebook()
+        let entries = try store.entries()
+        withExtendedLifetime(store) {
+            #expect(VocabularyFilter.apply(entries, search: "no-match-example", language: nil).isEmpty)
+            #expect(VocabularyFilter.apply(entries, search: "", language: nil).count == entries.count)
+        }
+    }
+
+    @Test func languagesListsEachTagOnce() throws {
+        let store = try notebook()
+        _ = try store.collect(
+            VocabularyDraft(
+                expression: "follow up", language: "en", context: "I will follow up.",
+                polishBefore: nil, polishAfter: nil))
+        #expect(VocabularyFilter.languages(in: try store.entries()) == ["en", "ja"])
+    }
 }
 
 @MainActor

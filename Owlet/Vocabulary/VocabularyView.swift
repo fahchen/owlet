@@ -1,36 +1,131 @@
 import SwiftData
 import SwiftUI
 
-/// Sidebar 生词本 page: the collected expressions, their detail, and the empty state.
+/// Sidebar 生词本 page: search, language filter and export over one list, plus the detail editor.
 struct VocabularyView: View {
     let collection: CollectionAction
     let openProcessing: () -> Void
     @Query(sort: \VocabularyEntry.createdAt, order: .reverse) private var entries: [VocabularyEntry]
+    @State private var search = ""
+    /// Empty means 全部语言; the picker's tags are plain strings so no optional tag is needed.
+    @State private var language = ""
+    @State private var exporter = NotebookExporter()
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
-            Group {
-                if entries.isEmpty {
-                    ContentUnavailableView {
-                        Label("暂无收藏", systemImage: "book")
-                    } description: {
-                        Text("收藏的词汇、短语和整句会出现在这里。")
-                    } actions: {
-                        Button("开始翻译", action: openProcessing).buttonStyle(.glass)
+            content
+                .navigationTitle("生词本")
+                .searchable(text: $search, prompt: "搜索表达或释义")
+                .navigationDestination(for: VocabularyEntry.self) { entry in
+                    VocabularyDetailView(entry: entry, collection: collection)
+                }
+                .toolbar { toolbar }
+                .alert(
+                    "操作失败",
+                    isPresented: Binding(
+                        get: { errorMessage != nil },
+                        set: { if !$0 { errorMessage = nil } })
+                ) {
+                    Button("好", role: .cancel) {}
+                } message: {
+                    Text(errorMessage ?? "")
+                }
+                .alert(
+                    "导出失败",
+                    isPresented: Binding(
+                        get: { if case .failed = exporter.status { true } else { false } },
+                        set: { if !$0 { exporter.reset() } })
+                ) {
+                    Button("好", role: .cancel) {}
+                } message: {
+                    if case .failed(let message) = exporter.status { Text(message) }
+                }
+        }
+    }
+
+    private var filtered: [VocabularyEntry] {
+        VocabularyFilter.apply(entries, search: search, language: language.isEmpty ? nil : language)
+    }
+
+    @ViewBuilder private var content: some View {
+        if entries.isEmpty {
+            ContentUnavailableView {
+                Label("暂无收藏", systemImage: "bookmark")
+            } description: {
+                Text("收藏的词汇、短语和整句会出现在这里。")
+            } actions: {
+                Button("开始翻译", action: openProcessing).buttonStyle(.glass)
+            }
+        } else if filtered.isEmpty {
+            ContentUnavailableView {
+                Label("无匹配结果", systemImage: "bookmark")
+            } description: {
+                Text("没有表达符合当前的搜索和筛选条件。")
+            } actions: {
+                Button("清除筛选") {
+                    search = ""
+                    language = ""
+                }
+                .buttonStyle(.glass)
+            }
+        } else {
+            List {
+                Section("所有表达 · \(filtered.count)") {
+                    ForEach(filtered) { entry in
+                        row(entry)
                     }
-                } else {
-                    List(entries) { entry in
-                        NavigationLink(value: entry) {
-                            VocabularyRow(entry: entry)
-                        }
-                    }
-                    .listStyle(.inset)
                 }
             }
-            .navigationTitle("生词本")
-            .navigationDestination(for: VocabularyEntry.self) { entry in
-                VocabularyDetailView(entry: entry, collection: collection)
+            .listStyle(.inset)
+        }
+    }
+
+    private func row(_ entry: VocabularyEntry) -> some View {
+        HStack(spacing: 8) {
+            NavigationLink(value: entry) {
+                VocabularyRow(entry: entry)
             }
+            Button {
+                delete(entry)
+            } label: {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("删除")
+            .accessibilityLabel("删除 \(entry.expression)")
+        }
+    }
+
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Picker("筛选语言", selection: $language) {
+                Text("全部语言").tag("")
+                ForEach(VocabularyFilter.languages(in: entries), id: \.self) { tag in
+                    Text(LanguageDisplay.name(tag)).tag(tag)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                exporter.export(entries)
+            } label: {
+                Label("导出…", systemImage: "square.and.arrow.up")
+            }
+            .disabled(entries.isEmpty)
+        }
+    }
+
+    private func delete(_ entry: VocabularyEntry) {
+        do {
+            try collection.store.delete(entry)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -62,9 +157,21 @@ private struct VocabularyRow: View {
     }
 }
 
+/// Detail page from `design/screenshots/book-detail.png`: the expression and its Chinese meaning
+/// are editable and saved together, while the collected sentences stay read-only history.
 private struct VocabularyDetailView: View {
     let entry: VocabularyEntry
     let collection: CollectionAction
+    @State private var expression: String
+    @State private var meaning: String
+    @State private var errorMessage: String?
+
+    init(entry: VocabularyEntry, collection: CollectionAction) {
+        self.entry = entry
+        self.collection = collection
+        _expression = State(initialValue: entry.expression)
+        _meaning = State(initialValue: entry.meaning)
+    }
 
     var body: some View {
         ScrollView {
@@ -81,7 +188,12 @@ private struct VocabularyDetailView: View {
                     .font(.system(size: 26, weight: .semibold))
                     .textSelection(.enabled)
                     .padding(.bottom, 22)
-                meaningSection.padding(.bottom, 24)
+                editor.padding(.bottom, 24)
+                if entry.meaning.isEmpty {
+                    MeaningAction(entry: entry, collection: collection)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.bottom, 24)
+                }
                 Text("原句语境")
                     .font(.system(size: 13, weight: .semibold))
                     .padding(.bottom, 10)
@@ -94,6 +206,10 @@ private struct VocabularyDetailView: View {
             .padding(.vertical, 28)
         }
         .navigationTitle("生词本 / 详情")
+        .onChange(of: entry.meaning) { _, new in
+            // The 补充中文释义 request writes straight to the model, so the field follows it.
+            meaning = new
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -103,30 +219,66 @@ private struct VocabularyDetailView: View {
                 }
                 .buttonStyle(.glass)
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button("保存", action: save)
+                    .buttonStyle(.glassProminent)
+                    .disabled(!isDirty)
+            }
+        }
+        .alert(
+            "保存失败",
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
-    private var meaningSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("中文释义")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            if entry.meaning.isEmpty {
-                HStack(spacing: 12) {
-                    Text("尚无中文释义").foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    MeaningAction(entry: entry, collection: collection)
-                }
-            } else {
-                Text(entry.meaning)
-                    .font(.system(size: 15))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+    private var isDirty: Bool {
+        expression.trimmingCharacters(in: .whitespacesAndNewlines) != entry.expression
+            || meaning.trimmingCharacters(in: .whitespacesAndNewlines) != entry.meaning
+    }
+
+    private var editor: some View {
+        VStack(spacing: 0) {
+            field("表达") {
+                TextField("表达", text: $expression)
+            }
+            Divider()
+            field("中文释义") {
+                TextField("中文释义", text: $meaning, axis: .vertical)
+                    .lineLimit(2...4)
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func field(_ label: String, @ViewBuilder content: () -> some View) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .frame(width: 56, alignment: .leading)
+            content()
+                .textFieldStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func save() {
+        do {
+            try collection.store.update(entry, expression: expression, meaning: meaning)
+            expression = entry.expression
+            meaning = entry.meaning
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

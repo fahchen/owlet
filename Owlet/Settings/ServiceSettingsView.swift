@@ -16,22 +16,27 @@ struct ServiceSettingsView: View {
 
     var body: some View {
         Form {
-            Picker("Provider", selection: $provider) {
-                ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
-            }
-            TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
-            modelField
-            SecureField("API Key", text: $apiKey)
-            HStack {
-                Button("Save API Key") {
-                    saved = SettingsStore.setAPIKey(apiKey, for: provider)
-                    if saved { loadModels() }
+            Section("Service") {
+                Picker("Provider", selection: $provider) {
+                    ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                if saved { Text("Saved").foregroundStyle(.secondary) }
+                TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
+                modelField
+                SecureField("API Key", text: $apiKey)
+                HStack {
+                    Spacer()
+                    if saved { Text("Saved").foregroundStyle(.secondary) }
+                    Button("Save API Key") {
+                        saved = SettingsStore.setAPIKey(apiKey, for: provider)
+                        if saved { loadModels() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
         }
-        .padding()
-        .frame(width: 420)
+        .formStyle(.grouped)
+        .tint(TranslationView.accent)
+        .frame(width: 560)
         .onAppear {
             apiKey = SettingsStore.apiKey(for: provider) ?? ""
             loadModels()

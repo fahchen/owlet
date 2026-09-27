@@ -215,8 +215,8 @@ final class PanelController {
         Task { [weak self] in await self?.performReplace(text) }
     }
 
-    /// A direct accessibility write and a paste both land asynchronously, so the outcome decides
-    /// what the user sees rather than the call itself.
+    /// A paste lands asynchronously — the app takes the keystroke and applies it later — so the
+    /// outcome decides what the user sees rather than the call itself.
     @discardableResult
     private func performReplace(_ text: String) async -> ReplaceOutcome {
         guard let selection else {

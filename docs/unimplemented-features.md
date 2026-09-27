@@ -31,7 +31,7 @@
 
 - **玫瑰品牌色没有接到应用强调色。** 工程里没有 `AccentColor` 资源，也没有任何 `.tint()`；`ASSETCATALOG_COMPILER_APPICON_NAME: OwletIcon` 与目录中的 `AppIcon.appiconset` 名称还不一致。因此 `.glassProminent` 按钮、侧栏选中与工具栏强调都跟随系统强调色（默认蓝色），不是设计图里的玫瑰色。证据：`ls Owlet/Assets.xcassets`、`project.yml`、`grep -rn "tint(\|AccentColor" Owlet/` 无命中。
 - **面板与菜单栏的 Owlet 标记在浅色玻璃上不可见。** `Image("OwletMark")` 用的是近白的 `mark-18.png`（中心像素约 252,255,255，四角透明），资源又是 `template-rendering-intent: original`，所以 `ExpandedPanel` 与 `OwletApp` 上的 `.foregroundStyle(.secondary)` 不生效，标记基本看不到。证据：`Owlet/Assets.xcassets/OwletMark.imageset/Contents.json`、`Owlet/App/ExpandedPanel.swift`、`Owlet/App/OwletApp.swift`。设计图按此如实画出，未美化。
-- **按钮上的快捷键只存在于悬停提示。** `⌘↩` 之类的组合只写在 `.help()` 里，菜单栏也没有为每个工具栏项提供命令与快捷键（菜单栏只有打开主界面、三个快捷键状态、`设置… (⌘,)` 与退出）。设计图为了可读仍在按钮里画出快捷键，属于 §2.2 未采纳的建议。
+- **菜单栏没有为每个工具栏项提供命令与快捷键。** 菜单栏只有打开主界面、三个快捷键状态、`设置… (⌘,)` 与退出。面板自己的三个键（`⌘↩`、`⌘⇧C`、`Esc`）不受此影响：它们画在按钮上、由 `FloatingPanel` 的按键监听执行，并列在快捷键页的「面板内」分组。
 - **同一布局下的其它错误文案没有单独出图。** 紧凑条与面板行内提示复用同一个组件：`ModelError` 的 `emptyResponse`／`truncated`／`refused`（`The service returned an empty response.`、`The result was too long and got truncated.`、`The service refused to process this text.`）与快捷键注册失败的 `该组合已被系统或其他应用占用，请换一个。`、`快捷键注册失败（…）。` 都只是文案不同。设计图各取一个代表状态（`format-error`、`result-notice`、`shortcuts-conflict`）。
 - **已展开且原文为空时，头部没有重新处理、动作行没有主操作。** `canRetry` 要求原文非空，因此该组合下 `PanelHeader` 不显示刷新按钮、`PanelFooter` 的默认分支也不渲染按钮。这条路径没有可演示的入口，设计图未出图。证据：`Owlet/App/ExpandedPanel.swift` 的 `canRetry`。
 

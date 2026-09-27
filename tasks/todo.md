@@ -106,18 +106,19 @@
 
 - [x] 完成
 
-**缺口：**`PanelControllerTests.refusedWriteKeepsResult` 因应用宿主测试挂起而 disabled，写回拒绝的浮窗行为仅由 `SelectionBridgeTests.replaceRefusesWithoutAccessibilityPermission` 与 `SelectionBridgeTests.pasteRefusesWithoutFrontingTheApp` 覆盖。
+**缺口：**无。拒绝路径由 `SelectionBridgeTests` 的写回用例与 `PanelControllerTests.refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable` 覆盖。
 
 **说明：**让当前结果可由用户主动写回原选区。
 
 **验收条件：**
 - [x] 复制始终可用；替换只在用户主动触发后执行。
-- [x] 替换前重新确认来源元素、文档、原文与选区；无法确认或内容已改时拒绝写入，保留展开界面与结果，在内容区提示并提供复制入口。
+- [x] 不再比对来源元素、文档、原文与选区（应用在面板取得焦点后会重建辅助功能树，比对必然失败）；改为粘贴后用元素文本确认是否落盘，未落盘就不关闭面板，在内容区提示并提供复制入口。
 - [x] 一次替换成功后不重复写回；新操作不复用旧操作的来源。
 
 **验证：**
-- [x] `mise run test`：来源不匹配、文档变化与重复触发。
-- [ ] 手测有效替换、切换应用和编辑原文后的拒绝路径。
+- [x] `mise run test`：只读选区不发送按键、粘贴前后文本对比、不可编辑 role、无权限与无法前置、重复触发只消费一次来源（`readOnlySelectionIsNeverTypedInto`、`pasteReplacesTheSelectionAndRestoresTheClipboard`、`pasteThatTheAppIgnoresIsRefused`、`onlyEditableTextRolesTakeAPaste`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
+- [x] 手测有效替换（2026-09-27：Safari 输入框内替换成功）。
+- [ ] 手测切换应用与编辑原文后的拒绝路径。
 
 **依赖：**T04
 
@@ -129,17 +130,17 @@
 
 - [x] 完成
 
-**缺口：**`PanelControllerTests.successWritesOnce`、`newRequestSupersedesOld` 与 `plainTranslateDoesNotWrite` 因同一原因（面板展开后应用宿主测试挂起）disabled，完整快捷流程仍为手测；四个 disabled 测试见 `PanelControllerTests.swift`。
+**缺口：**无。原先 disabled 的 `successWritesOnce`、`newRequestSupersedesOld`、`plainTranslateDoesNotWrite` 已重新启用并通过——挂起的根因是面板测试抢真实窗口的 key，而 `PanelController` 又从 `UserDefaults.standard` 读目标语言，两处都已修好；`refusedWriteKeepsResult` 由同义的 `refusedWriteBackKeepsTheResult` 取代后删除。
 
 **说明：**复用翻译与安全写回，提供无需再次点击替换的独立快捷操作。
 
 **验收条件：**
-- [x] 快捷键页加入该动作并检查与已有动作冲突；已录制快捷键按当前目标语言翻译有效选区；完成后校验来源并直接替换一次，无二次确认。
+- [x] 快捷键页加入该动作并检查与已有动作冲突；已录制快捷键按当前目标语言翻译有效选区；完成后直接替换一次，无二次确认。验证见 `pasteReplacesTheSelectionAndRestoresTheClipboard`。
 - [x] 无有效选区时仅显示紧凑提示及手动输入入口，不自动写回；失败、取消、过期响应及写回被拒均不写回，已有译文可复制。
 - [x] 错误沿用 T04 规则：未展开时紧凑提示，已展开时在内容区呈现；恢复操作不绕过写回校验。
 
 **验证：**
-- [x] `mise run test`：成功仅写回一次、取消后迟到响应、新请求覆盖、无选区不写回、直写失败改用粘贴、无权限与无法前置应用时拒绝。
+- [x] `mise run test`：成功仅写回一次、取消后迟到响应、新请求覆盖、无选区不写回、只读选区一个键都不发、无权限与无法前置应用时拒绝。
 - [ ] 手测完整快捷流程。
 
 **依赖：**T05
@@ -573,16 +574,16 @@
 
 - [ ] 完成
 
-**缺口：**未开始——`FloatingPanel` 已用 `NSGlassEffectView`，但没有呼吸边框；动作行（`收藏选中内容`、`⌘↩` 提示收口）也尚未按该任务实现。
+**缺口：**呼吸边框未实现（整圈呼吸仍是待做设计，见未实现清单）；`收藏选中内容` 未实现。已完成的部分：动作行已存在并用 `GlassEffectContainer` + `.glass`／`.glassProminent`；窗口 `hasShadow = true`，投影由按玻璃圆角遮罩的容器决定形状（不是自绘边框或自绘阴影）；面板打开时 `makeFirstResponder(nil)`，没有控件被默认聚焦。
 
 **说明：**处理中用整圈边框呼吸，动作行只放动作。
 
 **验收条件：**
 - [ ] 呼吸只作用于面板边缘，单色、无渐变、不新增自绘边框与阴影；紧凑态与展开态共用；面板尺寸与位置不变。
 - [ ] `Reduce Motion` 下呼吸静止为稳定状态，不丢失标记；状态文字始终存在，动效不是唯一载体。
-- [ ] 紧凑条不显示终止按钮；Esc 关闭并取消本次操作。
+- [~] 紧凑条不显示终止按钮 —— **与实现不符**：紧凑条保留「停止」按钮，Esc 在处理中取消、否则关闭。
 - [ ] 动作行 leading 端是 `收藏选中内容`（无结果时不显示），trailing 端是 `复制` 与唯一的 prominent 动作；动作行内不出现提示文案。
-- [ ] `⌘↩` / `Esc` 等快捷键不再画在按钮上，改由菜单栏与悬停提示承担。
+- [~] `⌘↩` / `Esc` 等快捷键不再画在按钮上 —— **已被推翻**：用户要求按钮上直接显示（`替换 ⌘↩`、`复制 ⌘⇧C`），并且这三个键现在列在快捷键页的「面板内」分组里。这条属于 `spec/DESIGN.md` 的三条提案之一，见 [未实现功能清单](../docs/unimplemented-features.md)。
 
 **验证：**
 - [ ] 处理中／失败／取消／成功／未能写回五态截图。

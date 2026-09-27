@@ -281,7 +281,7 @@ const states=[
  ['settings-openai','设置 · 自定义服务商','OpenAI Compatible 默认项：Base URL 与模型名称是自由填写，显示占位文案。','settings-openai.png'],
  ['settings-saved','设置 · 已保存','保存后在页脚左侧确认，模型列表随保存重新读取。','settings-saved.png'],
  ['settings-models','设置 · 模型列表失败','DeepSeek 取模型列表失败时就地提示原始错误并给重试。','settings-models.png'],
- ['settings-models-loading','设置 · 模型列表读取中','读取模型列表时在名称行尾显示小号指示器。','settings-models-loading.png'],
+ ['settings-models-loading','设置 · 模型列表读取中','名称行不换控件，读取状态在页脚给出。','settings-models-loading.png'],
  ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
  ['polish-loading','润色 · 处理中','复用同一条紧凑条，只改状态文字。','polish-loading.png'],
  ['direct-loading','直接替换 · 处理中','独立快捷键授权本次写回，状态文字标明。','direct-loading.png'],
@@ -408,9 +408,9 @@ function shortcutsHTML(){
 function settingsHTML(){
   const failed=cfg().models==='failed',openai=cfg().provider==='openai';
   const loading=cfg().models==='loading';
-  const modelRow=failed
-    ?`<div class="formrow"><label>模型名称</label><span class="field"><input value="deepseek-chat" aria-label="模型名称"></span></div><div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`
-    :`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':loading?'<input value="deepseek-chat" aria-label="模型名称"><span class="spin" aria-hidden="true"></span>':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`;
+  // 模型名称这一行不随读取状态换控件：DeepSeek 始终是弹出式按钮，只有选项会变；读取反馈在页脚。
+  const modelRow=`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`
+    +(failed?`<div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`:'');
   return `<div class="body" id="body"><div class="form">`
    +`<div class="form-section"><p class="group-title">模型服务</p>`
    +`<div class="formrow"><label>服务商</label><span class="field"><select class="popup" aria-label="服务商" style="height:auto;padding:7px 26px 7px 9px"><option ${openai?'selected':''}>OpenAI Compatible</option><option ${openai?'':'selected'}>DeepSeek</option></select></span></div>`
@@ -419,7 +419,7 @@ function settingsHTML(){
    +modelRow
    +`</div>`
    +`<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`
-   +`</div></div><footer class="footer">${saved?`<span class="saved">${icon('check')}已保存</span>`:''}<div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
+   +`</div></div><footer class="footer"><span class="saved">${saved?`${icon('check')}已保存`:''}${loading?'<span class="spin" aria-hidden="true"></span>':''}</span><div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
 }
 function appHTML(){
   if(appPage==='shortcuts')return shortcutsHTML();

@@ -24,6 +24,7 @@ struct ServiceSettingsView: View {
                 TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
                 SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
                 modelField
+                modelStatus
             }
             Section("浮窗") {
                 Picker("浮窗位置", selection: $panelPosition) {
@@ -35,6 +36,8 @@ struct ServiceSettingsView: View {
         .safeAreaBar(edge: .bottom) {
             PageFooter {
                 if saved { Label("已保存", systemImage: "checkmark") }
+                // Feedback for the list read sits by the action that started it, not in the row.
+                if models == .loading { ProgressView().controlSize(.small) }
             } trailing: {
                 Button("保存设置") {
                     saved = SettingsStore.setAPIKey(apiKey, for: provider)
@@ -57,19 +60,30 @@ struct ServiceSettingsView: View {
     }
 
     @ViewBuilder private var modelField: some View {
-        switch models {
-        case .loaded(let ids):
-            // Keep a saved model selectable even if the list no longer offers it.
+        if provider == .deepSeek {
+            // The row keeps the same control whatever the list is doing: a save reloads the options
+            // underneath a picker that stays put, instead of turning the name into a loading field.
             Picker("模型名称", selection: $model) {
-                ForEach(ids.contains(model) ? ids : [model] + ids, id: \.self) { Text($0).tag($0) }
+                ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
             }
-        case .loading:
-            HStack {
-                modelText
-                ProgressView().controlSize(.small)
-            }
-        case .failed(let message):
+        } else {
             modelText
+        }
+    }
+
+    private var modelOptions: [String] { Self.modelOptions(for: models, model: model) }
+
+    /// What the picker offers: the last list that loaded, plus the saved model so a name the list
+    /// no longer offers stays selectable. Before the first list arrives that is just the saved name.
+    static func modelOptions(for models: Models, model: String) -> [String] {
+        guard case .loaded(let ids) = models else { return model.isEmpty ? [] : [model] }
+        return model.isEmpty || ids.contains(model) ? ids : [model] + ids
+    }
+
+    /// The failure sits under the control rather than replacing it, so a bad key never changes what
+    /// the model row is.
+    @ViewBuilder private var modelStatus: some View {
+        if case .failed(let message) = models {
             HStack(spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.secondary)
@@ -78,8 +92,6 @@ struct ServiceSettingsView: View {
                     Button("重试") { loadModels() }.buttonStyle(.glass)
                 }
             }
-        case .idle:
-            modelText
         }
     }
 

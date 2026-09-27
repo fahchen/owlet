@@ -81,7 +81,7 @@
 | --- | --- |
 | `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 弹出式按钮 `简体中文` · 分段控件 `翻译｜润色` · `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote` · 底部操作栏 `复制` / `翻译文本`；收起态与展开态共用同一套工具栏 |
 | `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
-| `settings.png` / `settings-openai.png` / `settings-saved.png` / `settings-models.png` / `settings-models-loading.png` | inset grouped `Form` · 弹出式按钮／输入框／`SecureField` · 分组容器 · 底部 prominent `保存设置` · 模型列表失败时就地提示与 `重试` |
+| `settings.png` / `settings-openai.png` / `settings-saved.png` / `settings-models.png` / `settings-models-loading.png` | inset grouped `Form` · 弹出式按钮／输入框／`SecureField` · 分组容器 · 底部 prominent `保存设置` · 模型列表失败时就地提示与 `重试`（在名称行下方，不替换控件）· 读取中只在页脚给出指示 |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
 | `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
 | `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；`MenuBarExtra` 菜单（非 popover） |

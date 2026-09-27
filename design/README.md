@@ -34,7 +34,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [settings-openai.png](screenshots/settings-openai.png) | 设置 · 自定义服务商 | OpenAI Compatible 默认项：Base URL 与模型名称是自由填写，显示占位文案。 |
 | [settings-saved.png](screenshots/settings-saved.png) | 设置 · 已保存 | 保存后在页脚左侧确认，模型列表随保存重新读取。 |
 | [settings-models.png](screenshots/settings-models.png) | 设置 · 模型列表失败 | DeepSeek 取模型列表失败时就地提示原始错误并给重试。 |
-| [settings-models-loading.png](screenshots/settings-models-loading.png) | 设置 · 模型列表读取中 | 读取模型列表时在名称行尾显示小号指示器。 |
+| [settings-models-loading.png](screenshots/settings-models-loading.png) | 设置 · 模型列表读取中 | 名称行不换控件，读取状态在页脚给出。 |
 | [loading.png](screenshots/loading.png) | 翻译 · 处理中 | 紧凑条：选中文字摘要、加载指示、停止按钮。 |
 | [polish-loading.png](screenshots/polish-loading.png) | 润色 · 处理中 | 复用同一条紧凑条，只改状态文字。 |
 | [direct-loading.png](screenshots/direct-loading.png) | 直接替换 · 处理中 | 独立快捷键授权本次写回，状态文字标明。 |

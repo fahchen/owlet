@@ -478,7 +478,6 @@ const config={
   empty:{surface:'panel',view:'translate',phase:'idle',empty:true},
   menubar:{surface:'menubar',view:'translate',phase:'success'},
   'menubar-menu':{surface:'menubar',view:'translate',phase:'success',menubarMenu:true},
-  // proposal:true 的画面在应用里尚未实现；侧栏显示提案页面，画面上带“未实现”徽标。
   'book-list':{surface:'app',page:'book'},
   'book-detail':{surface:'app',page:'book',detail:'book'},
   'book-empty':{surface:'app',page:'book',empty:'book'},
@@ -491,15 +490,15 @@ const config={
   'learning-error':{surface:'panel',view:'translate',phase:'success',learning:'error'},
   'learning-empty':{surface:'panel',view:'translate',phase:'success',learning:'empty'},
   'saved':{surface:'panel',view:'translate',phase:'success',learning:'saved'},
-  aligned:{surface:'panel',view:'translate',phase:'success',aligned:true,proposal:true},
+  'aligned':{surface:'panel',view:'translate',phase:'success',aligned:true},
   'settings-prompts':{surface:'app',page:'settings',prompts:true},
-  'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true,proposal:true},
+  'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true},
   // 提案：写回成功后的确认屏，应用尚未实现。
   'success':{surface:'panel',view:'direct',phase:'success',success:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
- {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-error','workspace-unconfigured','workspace-collapsed','workspace-learning']},
+ {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-narrow','workspace-error','workspace-unconfigured','workspace-collapsed','workspace-learning']},
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
@@ -508,11 +507,9 @@ const panels=[
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
  {title:'浮动面板 · 学习表达区块',note:'展开结果内的独立区块：生成不阻塞复制与替换，默认手动触发；勾选后入库，动作行不再另放收藏按钮。',nodes:['learning','learning-loading','learning-error','learning-empty','saved']},
- {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区；原文被清空时头部不显示重新处理，动作行也没有按钮。',nodes:['result','polish','long','result-loading','result-unwritten','result-notice','result-cancelled','success','empty']},
+ {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区；原文被清空时头部不显示重新处理，动作行也没有按钮。',nodes:['result','polish','long','aligned','result-loading','result-unwritten','result-notice','result-cancelled','success','empty']},
  {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']},
  // 提案分区：与已实现的状态分开，标题与分区说明都标示未实现。
- {title:'提案（未实现） · 浮动面板 · 展开',note:'未实现：这张画面是提案，应用里还没有逐句对照。原文与译文按语义句子配对，换行不改变对应关系；复制与替换仍只输出译文。实现任务见 T14。',nodes:['aligned']},
- {title:'提案（未实现） · 应用窗口 · 文本处理',note:'未实现：这张画面是提案，应用的文本处理页始终单列堆叠。提案以 720pt 为阈值：内容区足够宽时原文与译文并排，不足时上下堆叠；这里画的是窄窗口下的堆叠分支。实现任务见 T22。',nodes:['workspace-narrow']}
 ];
 
 let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false;

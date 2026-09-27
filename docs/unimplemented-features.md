@@ -10,10 +10,7 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 翻译显示方式 · 逐句对照：原文／译文按语义配对显示 | 翻译 | [aligned](../design/screenshots/aligned.png) | T14 |
 | 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
-| 内容区响应式的原文／译文两栏并排（实现为单列 `VStack`） | 两种界面形态（布局细节见 `spec/DESIGN.md › 布局约束`） | [workspace-narrow](../design/screenshots/workspace-narrow.png)（窄窗口下的堆叠分支；宽窗口并排尚未出图） | T22 |
-| 处理中的整圈边框呼吸（实现只用 `ProgressView`） | 两种界面形态 | —（仍无画面） | T24 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 | 「提示词设置」恢复入口（返回格式错误时的按钮落不到 Prompt 编辑） | 定义边界 | [format-error](../design/screenshots/format-error.png)、[direct-format-error](../design/screenshots/direct-format-error.png)（展示当前按钮；落点仍是服务设置） | T12 |
 

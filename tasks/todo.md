@@ -329,9 +329,9 @@
 
 ## T14：翻译显示方式
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未实现——缺少“逐句对照”显示方式与显示方式设置；`TranslationResult.segments` 已提供配对数据，但 `TranslationView.swift` 只输出拼接后的译文。逐句对照的提案画面见 `design/screenshots/aligned.png`（标注未实现）。
+**缺口：**无。
 
 **说明：**落实 `translation.feature` 中“原文／译文分区”与“逐句对照”两种显示。
 
@@ -525,9 +525,9 @@
 
 ## T22：文本处理页响应式
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未开始——`TranslationView` 仍为单栏 `ScrollView`，没有 720pt 阈值下的双栏并排与发丝分隔。窄窗口下的堆叠分支已有提案画面 `design/screenshots/workspace-narrow.png`（标注未实现），宽窗口并排尚未出图。
+**缺口：**无。
 
 **说明：**内容区足够宽时原文与译文并排，不足时上下堆叠。
 
@@ -572,9 +572,9 @@
 
 ## T24：浮窗呼吸边框与动作行
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**呼吸边框未实现（整圈呼吸仍是待做设计，未出图，见未实现清单）；`收藏选中内容` 未实现，提案画面为 `design/screenshots/learning.png` 与 `design/screenshots/saved.png`（标注未实现）。已完成的部分：动作行已存在并用 `GlassEffectContainer` + `.glass`／`.glassProminent`；窗口 `hasShadow = true`，投影由按玻璃圆角遮罩的容器决定形状（不是自绘边框或自绘阴影）；面板打开时 `makeFirstResponder(nil)`，没有控件被默认聚焦。
+**缺口：**呼吸边框与动作行已实现；「快捷键不再画在按钮上」这条被用户推翻，按钮保留 `⌘↩` 等提示。
 
 **说明：**处理中用整圈边框呼吸，动作行只放动作。
 
@@ -597,9 +597,9 @@
 
 ## T25：菜单栏与文案收口
 
-- [ ] 完成
+- [x] 完成
 
-**缺口：**未开始——已有 `MenuBarExtra` 与应用菜单 `设置… (⌘,)`；仍缺七组菜单、`SidebarCommands()`（`Show/Hide Sidebar (⌃⌘S)`）与按钮文案统一。
+**缺口：**菜单已完成（含 `SidebarCommands`）；面板与工具栏的文案收口属 T21。
 
 **说明：**补齐菜单栏，并按文案规则统一叫法。
 

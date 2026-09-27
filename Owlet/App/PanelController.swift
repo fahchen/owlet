@@ -73,6 +73,8 @@ final class PanelController {
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
     var openSettings: () -> Void = {}
+    /// Opens the settings page on the prompt editor for the operation whose result failed to parse.
+    var openPromptSettings: (Operation) -> Void = { _ in }
     var openManualInput: () -> Void = {}
     var openNotebook: () -> Void = {}
     /// The notebook collect action; nil when the panel is built without one, which the tests do.
@@ -198,6 +200,15 @@ final class PanelController {
         if !expanded { autoReplace = replacing }
         model.cancel()
         notice = .cancelled
+    }
+
+    /// The operation whose prompt editor a format-error recovery opens; nil for every other notice,
+    /// so the panel view can route 提示词设置 to the editor that actually failed.
+    func promptSettingsOperation(for notice: Notice) -> Operation? {
+        guard case .failure(let message) = notice, message == ModelError.format.message else {
+            return nil
+        }
+        return model.operation
     }
 
     /// Status shown inside the expanded content, derived from the latest request outcome.
@@ -529,6 +540,10 @@ struct PanelView: View {
 
     /// Runs the recovery entry of a compact or in-content notice.
     private func recover(_ notice: PanelController.Notice) {
+        if let operation = controller.promptSettingsOperation(for: notice) {
+            promptSettings(operation)
+            return
+        }
         switch notice {
         case .permission:
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
@@ -550,6 +565,11 @@ struct PanelView: View {
     private func settings() {
         controller.close()
         controller.openSettings()
+    }
+
+    private func promptSettings(_ operation: Operation) {
+        controller.close()
+        controller.openPromptSettings(operation)
     }
 }
 

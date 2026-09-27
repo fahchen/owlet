@@ -13,11 +13,16 @@ struct OwletApp: App {
     @State private var panel = PanelController(
         model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
     @State private var page: MainView.Page = .processing
+    /// One-shot focus request for the prompt editor the panel's format error points at.
+    @State private var promptFocus: Operation?
 
     var body: some Scene {
         Window("Owlet", id: "main") {
-            MainView(translation: translation, shortcuts: shortcuts, page: $page, collection: collection)
-                .modelContainer(collection.store.container)
+            MainView(
+                translation: translation, shortcuts: shortcuts, page: $page,
+                collection: collection, promptFocus: $promptFocus
+            )
+            .modelContainer(collection.store.container)
         }
         .defaultSize(width: 1080, height: 690)
         .commands {
@@ -26,7 +31,9 @@ struct OwletApp: App {
         MenuBarExtra {
             MenuContent(shortcuts: shortcuts, page: $page)
         } label: {
-            MenuBarLabel(shortcuts: shortcuts, panel: panel, page: $page, collection: collection)
+            MenuBarLabel(
+                shortcuts: shortcuts, panel: panel, page: $page,
+                collection: collection, promptFocus: $promptFocus)
         }
     }
 }
@@ -40,6 +47,7 @@ private struct MainView: View {
     let shortcuts: ShortcutController
     @Binding var page: Page
     let collection: CollectionAction
+    @Binding var promptFocus: Operation?
 
     var body: some View {
         NavigationSplitView {
@@ -66,7 +74,7 @@ private struct MainView: View {
             case .vocabulary:
                 VocabularyView(collection: collection, openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
-            case .settings: ServiceSettingsView()
+            case .settings: ServiceSettingsView(promptFocus: $promptFocus)
             }
         }
         .frame(minWidth: 760, minHeight: 500)
@@ -105,6 +113,7 @@ private struct MenuBarLabel: View {
     let panel: PanelController
     @Binding var page: MainView.Page
     let collection: CollectionAction
+    @Binding var promptFocus: Operation?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -126,6 +135,12 @@ private struct MenuBarLabel: View {
                 panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
+                // The format error's 提示词设置 entry lands on the failing operation's editor, not on
+                // the service fields it used to open.
+                panel.openPromptSettings = { operation in
+                    promptFocus = operation
+                    open(.settings)
+                }
             }
     }
 }

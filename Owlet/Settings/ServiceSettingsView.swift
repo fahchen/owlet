@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ServiceSettingsView: View {
+    /// Focus request from the panel's format-error entry point; cleared by the page once applied.
+    @Binding var promptFocus: Operation?
     @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
@@ -8,6 +10,15 @@ struct ServiceSettingsView: View {
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
+    @State private var translatePrompt = ""
+    @State private var polishPrompt = ""
+    /// Operations whose saved prompt differs from the built-in default, so the badge only changes
+    /// after a successful save rather than while the draft is being edited.
+    @State private var customized: Set<Operation> = []
+    /// Operation whose draft was blank on the last save attempt, shown beside that editor.
+    @State private var invalidPrompt: Operation?
+    /// Drives the prompt editor focus from the page, so it survives the Section wrapper.
+    @FocusState private var focusedPrompt: Operation?
 
     enum Models: Equatable {
         case idle, loading
@@ -31,6 +42,12 @@ struct ServiceSettingsView: View {
                     ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
+            PromptSettingsView(
+                translateDraft: $translatePrompt,
+                polishDraft: $polishPrompt,
+                focused: $focusedPrompt,
+                customized: customized,
+                invalid: invalidPrompt)
         }
         .formStyle(.grouped)
         .safeAreaBar(edge: .bottom) {
@@ -39,18 +56,18 @@ struct ServiceSettingsView: View {
                 // Feedback for the list read sits by the action that started it, not in the row.
                 if models == .loading { ProgressView().controlSize(.small) }
             } trailing: {
-                Button("保存设置") {
-                    saved = SettingsStore.setAPIKey(apiKey, for: provider)
-                    if saved { loadModels() }
-                }
-                .buttonStyle(.glassProminent)
+                Button("保存设置", action: save)
+                    .buttonStyle(.glassProminent)
             }
         }
         .navigationTitle("设置")
         .onAppear {
             apiKey = SettingsStore.apiKey(for: provider) ?? ""
             loadModels()
+            loadPrompts()
+            applyPromptFocus()
         }
+        .onChange(of: promptFocus) { _, _ in applyPromptFocus() }
         .onChange(of: provider) { _, new in
             if let preset = new.preset { (baseURL, model) = preset }
             apiKey = SettingsStore.apiKey(for: new) ?? ""
@@ -97,6 +114,40 @@ struct ServiceSettingsView: View {
 
     private var modelText: some View {
         TextField("模型名称", text: $model, prompt: Text("填写服务商提供的模型名称"))
+    }
+
+    /// Loads the effective prompts into the drafts and remembers which ones are customised.
+    private func loadPrompts() {
+        translatePrompt = SettingsStore.prompt(for: .translate)
+        polishPrompt = SettingsStore.prompt(for: .polish)
+        customized = Self.customizedOperations()
+        invalidPrompt = nil
+    }
+
+    /// Saves service settings and both prompts; a blank prompt blocks the whole save so the settings
+    /// can never be left half applied.
+    private func save() {
+        let drafts: [Operation: String] = [.translate: translatePrompt, .polish: polishPrompt]
+        if let blank = SettingsStore.setPrompts(drafts) {
+            invalidPrompt = blank
+            saved = false
+            return
+        }
+        invalidPrompt = nil
+        customized = Self.customizedOperations()
+        saved = SettingsStore.setAPIKey(apiKey, for: provider)
+        if saved { loadModels() }
+    }
+
+    private static func customizedOperations() -> Set<Operation> {
+        Set(Operation.allCases.filter { SettingsStore.isCustomized($0) })
+    }
+
+    /// Focuses the editor the panel's format-error entry asked for, then clears the one-shot request.
+    private func applyPromptFocus() {
+        guard let operation = promptFocus else { return }
+        focusedPrompt = operation
+        promptFocus = nil
     }
 
     /// DeepSeek only: fetch the model list once a key is saved; other providers stay free-form.

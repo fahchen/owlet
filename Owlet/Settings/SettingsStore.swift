@@ -135,3 +135,59 @@ extension SettingsStore {
         defaults.set([Double(point.x), Double(point.y)], forKey: panelFixedAnchorKey)
     }
 }
+
+extension SettingsStore {
+    /// The built-in prompt an operation falls back to; a custom prompt never changes it.
+    static func defaultPrompt(for operation: Operation) -> String { operation.prompt }
+
+    static func promptKey(for operation: Operation) -> String { "prompt.\(operation.rawValue)" }
+
+    /// The effective prompt for later requests: the saved one, or the built-in default.
+    static func prompt(for operation: Operation, in defaults: UserDefaults = .standard) -> String {
+        guard let saved = defaults.string(forKey: promptKey(for: operation)),
+            !isBlank(saved)
+        else { return defaultPrompt(for: operation) }
+        return saved
+    }
+
+    /// Persists one prompt; blank text is refused so the previous value stays in force.
+    @discardableResult
+    static func setPrompt(
+        _ text: String, for operation: Operation, in defaults: UserDefaults = .standard
+    ) -> Bool {
+        guard !isBlank(text) else { return false }
+        // A prompt equal to the default is stored as "no custom prompt", so the state stays 默认 even
+        // if the built-in prompts change in a later version.
+        if text == defaultPrompt(for: operation) {
+            defaults.removeObject(forKey: promptKey(for: operation))
+        } else {
+            defaults.set(text, forKey: promptKey(for: operation))
+        }
+        return true
+    }
+
+    /// Saves every prompt together so a blank one cannot leave the settings half applied; returns
+    /// the first blank operation, or nil once all of them are stored.
+    @discardableResult
+    static func setPrompts(
+        _ prompts: [Operation: String], in defaults: UserDefaults = .standard
+    ) -> Operation? {
+        if let blank = Operation.allCases.first(where: { isBlank(prompts[$0] ?? "") }) {
+            return blank
+        }
+        for operation in Operation.allCases {
+            setPrompt(prompts[operation] ?? "", for: operation, in: defaults)
+        }
+        return nil
+    }
+
+    /// Whether the saved text differs from the built-in default, which is what the settings badge shows.
+    static func isCustomized(_ operation: Operation, in defaults: UserDefaults = .standard) -> Bool {
+        guard let saved = defaults.string(forKey: promptKey(for: operation)) else { return false }
+        return !isBlank(saved) && saved != defaultPrompt(for: operation)
+    }
+
+    private static func isBlank(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}

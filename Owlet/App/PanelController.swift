@@ -74,6 +74,9 @@ final class PanelController {
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
     var openSettings: () -> Void = {}
     var openManualInput: () -> Void = {}
+    var openNotebook: () -> Void = {}
+    /// The notebook collect action; nil when the panel is built without one, which the tests do.
+    var collection: CollectionAction?
 
     /// Internal read for tests that drive the real window (resign key, drag).
     private(set) var panel: FloatingPanel?
@@ -489,6 +492,8 @@ struct PanelView: View {
         ExpandedPanel(
             model: controller.model,
             replace: replaceAction,
+            collection: controller.collection,
+            openNotebook: controller.openNotebook,
             notice: controller.inlineNotice,
             recover: recover,
             retry: controller.translate,

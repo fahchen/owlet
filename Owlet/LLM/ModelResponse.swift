@@ -97,7 +97,74 @@ struct TranslationResult: Equatable {
         return rest.contains(where: { ["tw", "hk", "mo"].contains($0) }) ? "zh-hant" : "zh-hans"
     }
 
-    private static func isBlank(_ text: String) -> Bool {
+    static func isBlank(_ text: String) -> Bool {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+/// Validated learning response per `spec/llm/contract.md`; the same contract carries the manually
+/// requested meaning fill, which is why it lives with the other response contracts.
+struct LearningResult: Equatable {
+    struct Item: Equatable {
+        var text: String
+        var language: String
+        var kind: String
+        var meaning: String
+        var context: String
+    }
+    var items: [Item]
+
+    /// Response schema sent to the provider; the constraints OpenAI strict mode rejects are
+    /// enforced by `parse` instead.
+    static var providerSchema: [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["items"],
+            "properties": [
+                "items": [
+                    "type": "array",
+                    "items": [
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["text", "language", "kind", "meaning", "context"],
+                        "properties": [
+                            "text": ["type": "string"],
+                            "language": ["type": "string"],
+                            "kind": ["type": "string", "enum": ["word", "phrase", "sentence"]],
+                            "meaning": ["type": "string"],
+                            "context": ["type": "string"],
+                        ],
+                    ],
+                ]
+            ],
+        ]
+    }
+
+    /// Returns the item matching `expression`; an empty list or a mismatch is a format error so
+    /// the saved entry stays and the user can retry.
+    static func item(_ content: String, expression: String) throws -> Item {
+        guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            Set(object.keys) == ["items"],
+            let rawItems = object["items"] as? [Any]
+        else { throw ModelError.format }
+        let items = try rawItems.map { raw -> Item in
+            guard let dict = raw as? [String: Any],
+                Set(dict.keys) == ["text", "language", "kind", "meaning", "context"],
+                let text = dict["text"] as? String, !TranslationResult.isBlank(text),
+                let language = dict["language"] as? String, !TranslationResult.isBlank(language),
+                let kind = dict["kind"] as? String,
+                ["word", "phrase", "sentence"].contains(kind),
+                let meaning = dict["meaning"] as? String, !TranslationResult.isBlank(meaning),
+                let context = dict["context"] as? String, !TranslationResult.isBlank(context)
+            else { throw ModelError.format }
+            return Item(
+                text: text, language: language, kind: kind, meaning: meaning, context: context)
+        }
+        let wanted = TranslationResult.normalized(expression)
+        guard let match = items.first(where: { TranslationResult.normalized($0.text) == wanted })
+        else { throw ModelError.format }
+        return match
     }
 }

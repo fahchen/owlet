@@ -31,9 +31,12 @@ struct OwletApp: App {
         .defaultSize(width: 1080, height: 690)
         .commands {
             CommandGroup(replacing: .appSettings) { SettingsButton(page: $page) }
+            CommandGroup(replacing: .saveItem) { CloseWindowButton() }
+            SidebarCommands()
+            ProcessingMenu(panel: panel)
         }
         MenuBarExtra {
-            MenuContent(shortcuts: shortcuts, page: $page)
+            MenuContent(shortcuts: shortcuts, panel: panel, page: $page)
         } label: {
             MenuBarLabel(
                 shortcuts: shortcuts, panel: panel, page: $page,
@@ -120,6 +123,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// 关闭窗口 (⌘W): a single-window app with no documents has nothing to New/Open/Save, and SwiftUI
+/// only adds the system Close to a File menu it creates for a document scene, so the command is ours.
+private struct CloseWindowButton: View {
+    var body: some View {
+        Button("关闭窗口") { NSApp.keyWindow?.performClose(nil) }
+            .keyboardShortcut("w", modifiers: .command)
+    }
+}
+
+/// Runs a processing shortcut action on the panel; shared by the 处理 menu and the menu bar extra so
+/// both stay identical to the global shortcut instead of naming a second, drifting code path.
+@MainActor
+private struct ProcessingAction {
+    let panel: PanelController
+
+    func callAsFunction(_ action: ShortcutAction) {
+        switch action {
+        case .translate: panel.trigger()
+        case .translateReplace: panel.trigger(replace: true)
+        case .polish: panel.trigger(.polish)
+        }
+    }
+}
+
+/// 处理 menu exposes the same selection operations the global shortcuts already run, named once so
+/// the menu bar teaches what the app can do without inventing an action that has no code path.
+private struct ProcessingMenu: Commands {
+    let panel: PanelController
+
+    var body: some Commands {
+        let perform = ProcessingAction(panel: panel)
+        CommandMenu("处理") {
+            Button("翻译") { perform(.translate) }
+            Button("翻译并替换") { perform(.translateReplace) }
+            Button("润色") { perform(.polish) }
+        }
+    }
+}
+
 /// 设置… (⌘,) in the app menu and the menu bar menu.
 private struct SettingsButton: View {
     @Binding var page: MainView.Page
@@ -151,13 +193,8 @@ private struct MenuBarLabel: View {
             .frame(width: 18, height: 18)
             .accessibilityLabel("Owlet")
             .onAppear {
-                shortcuts.onAction = { action in
-                    switch action {
-                    case .translate: panel.trigger()
-                    case .translateReplace: panel.trigger(replace: true)
-                    case .polish: panel.trigger(.polish)
-                    }
-                }
+                let perform = ProcessingAction(panel: panel)
+                shortcuts.onAction = { perform($0) }
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
                 (NSApp.delegate as? AppDelegate)?.openMainWindow = { open.reopen() }
                 panel.openSettings = { open(.settings) }
@@ -175,26 +212,32 @@ private struct MenuBarLabel: View {
     }
 }
 
+/// The menu bar extra's menu: the same processing commands the shortcuts run, plus window, settings
+/// and quit, all kept as real commands so the menu never shows an unset-shortcut placeholder.
 private struct MenuContent: View {
     let shortcuts: ShortcutController
+    let panel: PanelController
     @Binding var page: MainView.Page
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        let open = OpenMainWindow(openWindow: openWindow, page: $page)
+        let perform = ProcessingAction(panel: panel)
         Button("打开 Owlet") {
             NSApp.activate()
             openWindow(id: "main")
         }
         ForEach(ShortcutAction.allCases, id: \.self) { action in
-            if let shortcut = shortcuts.shortcuts[action] {
-                Text("\(action.title)：\(shortcut.displayString)")
-            } else {
-                Button("\(action.title)快捷键未设置，前往快捷键页…") { open(.shortcuts) }
-            }
+            Button(title(for: action)) { perform(action) }
         }
         SettingsButton(page: $page)
         Divider()
         Button("退出 Owlet") { NSApp.terminate(nil) }
+    }
+
+    /// Shows the recorded shortcut beside the action it already runs, or just the action name when
+    /// unset, so the menu bar extra stays a set of commands instead of a hollow "not set" prompt.
+    private func title(for action: ShortcutAction) -> String {
+        guard let shortcut = shortcuts.shortcuts[action] else { return action.title }
+        return "\(action.title)：\(shortcut.displayString)"
     }
 }

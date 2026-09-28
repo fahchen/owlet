@@ -86,3 +86,6 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [settings-targets-rows.png](screenshots/settings-targets-rows.png) | 设置 · 目标语言 · 已添加映射 | 用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。 |
 | [workspace-auto.png](screenshots/workspace-auto.png) | 文本处理 · 自动目标 | 工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。 |
 | [workspace-target-pinned.png](screenshots/workspace-target-pinned.png) | 文本处理 · 手动指定目标 | 用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。 |
+| [settings-debug.png](screenshots/settings-debug.png) | 设置 · 调试开关 | 调试开关：打开后在侧边栏出现「调试」页。 |
+| [debug.png](screenshots/debug.png) | 调试 · 记录 | 最近一次模型请求：失败原因、请求体、模型原始返回与提交原文，可一键复制。 |
+| [debug-empty.png](screenshots/debug-empty.png) | 调试 · 无记录 | 还没发过请求时的空状态；记录只在内存，重启即清空。 |

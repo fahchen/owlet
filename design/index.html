@@ -221,6 +221,19 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .mapping-row .arrow{color:var(--muted);font-size:12px}
 .mapping-row .iconbtn{display:grid;place-items:center;width:26px;height:26px;padding:0;color:var(--muted);flex:none}
 .mapping-row .iconbtn:hover{color:oklch(48% .14 25);background:oklch(48% .14 25/.1)}
+/* Debug page: the captured model exchanges behind the hidden diagnostics page. */
+.debug-card{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:13px 15px;margin-bottom:14px}
+.debug-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.debug-head .name{font-size:13px;font-weight:600}
+.debug-head .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.debug-head .glass-btn{margin-left:auto}
+.debug-failure{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(48% .14 25);margin-bottom:8px}
+.debug-failure svg{width:14px;height:14px;flex:none}
+.debug-diff{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;background:oklch(95% .007 350);border-radius:8px;padding:9px 11px;margin-bottom:10px}
+.debug-block{margin-top:10px}
+.debug-block h4{font-size:11px;font-weight:600;color:var(--muted);margin:0 0 5px}
+.debug-block pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word;background:oklch(95% .007 350);border-radius:8px;padding:9px 11px;margin:0;max-height:150px;overflow:auto}
+.debug-legend{font-size:11px;line-height:1.9;color:var(--muted);margin:2px 0 14px}
 .window.window-narrow{width:760px;max-width:100%}
 .count{margin-left:auto;font-size:11px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
 .nav.active .count{color:oklch(99% .003 350/.8)}
@@ -312,6 +325,7 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 <symbol id="back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
 <symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></symbol>
 <symbol id="chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7"/></symbol>
+<symbol id="ladybug" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 1 3 3H9a3 3 0 0 1 3-3ZM6 9h12a1 1 0 0 1 1 1c0 5-3 9-7 9s-7-4-7-9a1 1 0 0 1 1-1Z"/><path d="M12 9v9M6.5 8 4 5.5M17.5 8 20 5.5M5 13H2.5M19 13h2.5M6 17l-2.5 2M18 17l2.5 2"/></symbol>
 </defs></svg>
 <div id="experience" class="stage">
 <div id="menubar" class="mac-menubar"></div>
@@ -445,7 +459,11 @@ const states=[
  ['settings-targets','设置 · 目标语言','兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。','settings-targets.png'],
  ['settings-targets-rows','设置 · 目标语言 · 已添加映射','用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。','settings-targets-rows.png'],
  ['workspace-auto','文本处理 · 自动目标','工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。','workspace-auto.png'],
- ['workspace-target-pinned','文本处理 · 手动指定目标','用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。','workspace-target-pinned.png']
+ ['workspace-target-pinned','文本处理 · 手动指定目标','用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。','workspace-target-pinned.png'],
+ // 已实现：隐藏的调试页（设置里开启）。
+ ['settings-debug','设置 · 调试开关','调试开关：打开后在侧边栏出现「调试」页。','settings-debug.png'],
+ ['debug','调试 · 记录','最近一次模型请求：失败原因、请求体、模型原始返回与提交原文，可一键复制。','debug.png'],
+ ['debug-empty','调试 · 无记录','还没发过请求时的空状态；记录只在内存，重启即清空。','debug-empty.png']
 ];
 const config={
   workspace:{surface:'app',page:'processing',phase:'result'},
@@ -515,7 +533,11 @@ const config={
   'settings-targets':{surface:'app',page:'settings',targets:'empty'},
   'settings-targets-rows':{surface:'app',page:'settings',targets:'rows'},
   'workspace-auto':{surface:'app',page:'processing',phase:'result',targetMode:'auto'},
-  'workspace-target-pinned':{surface:'app',page:'processing',phase:'result',targetMode:'pinned',pinnedTarget:'ja'}
+  'workspace-target-pinned':{surface:'app',page:'processing',phase:'result',targetMode:'pinned',pinnedTarget:'ja'},
+  // 已实现：隐藏的调试页（设置里开启）。
+  'settings-debug':{surface:'app',page:'settings',debug:true},
+  debug:{surface:'app',page:'debug'},
+  'debug-empty':{surface:'app',page:'debug',debugEmpty:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
@@ -523,7 +545,8 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。目标语言分组是兜底目标加一张由用户逐条添加的映射表。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts','settings-targets','settings-targets-rows']},
+ {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。目标语言分组是兜底目标加一张由用户逐条添加的映射表；调试分组控制隐藏的诊断页。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts','settings-targets','settings-targets-rows','settings-debug']},
+ {title:'应用窗口 · 调试',note:'隐藏页：设置里打开才出现。列出最近若干次模型请求体、原始返回与失败原因；仅在内存，不含 API Key。',nodes:['debug','debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -549,13 +572,14 @@ function sample(k){which=k;external=inputText();render()}
 function sidebarHTML(){
   const row=(p,label,glyph,count)=>`<button class="nav ${appPage===p?'active':''}" aria-current="${appPage===p?'page':'false'}" onclick="openApp('${p}')">${icon(glyph)}<span>${label}</span>${count?`<span class="count">${count}</span>`:''}</button>`;
   // 所有画面共用目标侧边栏，包括尚未实现的生词本与历史记录：设计图描述要去的地方，实现进度由
-  // 徽标和文档说明，而不是靠画一张不完整的侧栏来表达。
+  // 徽标和文档说明，而不是靠画一张不完整的侧栏来表达。调试页例外：它只在设置里打开后存在。
+  const debugRow=appPage==='debug'||cfg().debug?row('debug','调试','ladybug'):'';
   return `<p class="section-label">随手处理</p><nav class="navgroup" aria-label="文本操作">${row('processing','文本处理','translate')}</nav>`
    +`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`
-   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}${row('settings','设置','gear')}</nav>`;
+   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}${row('settings','设置','gear')}${debugRow}</nav>`;
 }
 function appbarHTML(){
-  const titles={processing:'文本处理',shortcuts:'快捷键',settings:'设置',book:'生词本',history:'历史记录'};
+  const titles={processing:'文本处理',shortcuts:'快捷键',settings:'设置',book:'生词本',history:'历史记录',debug:'调试'};
   const c=cfg();
   const collapsed=$('#window').classList.contains('narrow');
   const toggle=`<button class="tb" aria-label="${collapsed?'显示侧边栏':'隐藏侧边栏'}" title="${collapsed?'显示侧边栏':'隐藏侧边栏'}" aria-pressed="${!collapsed}" onclick="toggleSidebar()">${icon('sidebarIcon')}</button>`;
@@ -630,6 +654,10 @@ function settingsHTML(){
   const failed=cfg().models==='failed',openai=cfg().provider==='openai';
   const loading=cfg().models==='loading';
   const targetsSection=cfg().targets?targetsHTML(cfg().targets):'';
+  // 调试分组默认关闭：它只控制隐藏的诊断页，不属于产品功能。
+  const debugSection=cfg().debug?`<div class="form-section"><p class="group-title">调试</p>`
+   +`<div class="formrow"><label>显示调试页</label><span class="field"><input type="checkbox" role="switch" aria-label="显示调试页" checked></span></div>`
+   +`<p class="section-footer">在侧边栏显示「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。</p></div>`:'';
   // 模型名称这一行不随读取状态换控件：DeepSeek 始终是弹出式按钮，只有选项会变；读取反馈在页脚。
   const modelRow=`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`
     +(failed?`<div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`:'');
@@ -650,6 +678,7 @@ function settingsHTML(){
      +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
      +`<div class="formrow"><label>润色后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="润色后自动请求学习表达"></span></div></div>`:'')
    +`<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`
+   +debugSection
    +`</div></div><footer class="footer"><span class="saved">${saved?`${icon('check')}已保存`:''}${loading?'<span class="spin" aria-hidden="true"></span>':''}</span><div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
 }
 // 生词本与历史：提案页面，数据是内置示例。
@@ -680,9 +709,39 @@ function libraryHTML(kind){
   if(c.query)return emptyHTML(kind,true);
   return `<div class="body" id="body"><div class="group-title">${kind==='book'?'所有表达':'最近记录'} · ${items.length}</div>${items.map(x=>listRowHTML(kind,x)).join('')}</div>`;
 }
+// 调试页（隐藏，设置里开启）：把模型请求体、原始返回与失败原因原样列出，可一键复制。
+const DEBUG_SUBMITTED='お世話になっております。\n株式会社PeopleX　外国籍ITエンジニア紹介部門\nアクティブ・コネクターグループの梅原と申します。';
+const DEBUG_REQUEST='{\n  "messages": [\n    {"role": "system", "content": "你是专业的多语言翻译助手。…（完整契约 Prompt）"},\n    {"role": "user", "content": "お世話になっております。…"}\n  ],\n  "model": "deepseek-flash",\n  "response_format": {"type": "json_object"}\n}';
+const DEBUG_ENTRIES=[
+  {title:'翻译 · zh-Hant',time:'20:12:03',
+   failure:'返回的目标语言是 zh-Hans，与请求的 zh-Hant 不一致。',diff:'',
+   response:'{\n  "source_language": "ja",\n  "target_language": "zh-Hans",\n  "segments": [\n    {"source": "お世話になっております。\\n", "target": "您好，承蒙您平日的关照。\\n"}\n  ]\n}'},
+  {title:'翻译 · zh-Hant',time:'20:08:41',
+   failure:'返回的原文与提交的内容不一致，配对无法信任。',
+   diff:'首个差异在第 11 个字符：\n返回 …株式会社PeopleX外国籍IT…\n提交 …株式会社PeopleX　外国籍IT…',
+   response:'{\n  "source_language": "ja",\n  "target_language": "zh-Hant",\n  "segments": [\n    {"source": "株式会社PeopleX外国籍ITエンジニア紹介部門\\n", "target": "…"}\n  ]\n}'}
+];
+function debugCard(e){
+  return `<div class="debug-card"><div class="debug-head"><span class="name">${e.title}</span><span class="time">${e.time}</span><button class="glass-btn">复制</button></div>`
+   +`<p class="debug-failure">${icon('warn')}${esc(e.failure)}</p>`
+   +(e.diff?`<p class="debug-diff">${esc(e.diff)}</p>`:'')
+   +`<div class="debug-block"><h4>请求体</h4><pre>${esc(DEBUG_REQUEST)}</pre></div>`
+   +`<div class="debug-block"><h4>模型原始返回</h4><pre>${esc(e.response)}</pre></div>`
+   +`<div class="debug-block"><h4>提交原文</h4><pre>${esc(DEBUG_SUBMITTED)}</pre></div></div>`;
+}
+function debugHTML(){
+  const empty=!!cfg().debugEmpty;
+  const legend=`<div class="form-section"><p class="group-title">可能的失败原因</p><p class="debug-legend">· 返回的结构不符合约定：字段缺失、类型不对、内容为空，或 JSON 外还有文字<br>· 返回的目标语言与请求不一致（例如请求 zh-Hant，返回 zh-Hans）<br>· 返回的原文与提交的内容不一致（拼接后不等）<br>· 结果过长被截断、服务拒绝处理、网络、认证、HTTP、空内容</p></div>`;
+  const body=empty
+    ?`<p class="debug-legend">还没有记录。打开「调试」后发一次翻译或润色，这里就会显示这次请求与返回。</p>`
+    :DEBUG_ENTRIES.map(debugCard).join('');
+  return `<div class="body" id="body"><div class="form">${legend}${body}</div></div>`
+   +`<footer class="footer"><span class="saved">只保留最近 20 次，重启即清空；内容不含 API Key。</span><div class="actions"><button class="glass-btn" ${empty?'disabled':''}>复制全部</button><button class="glass-btn" ${empty?'disabled':''}>清空</button></div></footer>`;
+}
 function appHTML(){
   if(appPage==='shortcuts')return shortcutsHTML();
   if(appPage==='settings')return settingsHTML();
+  if(appPage==='debug')return debugHTML();
   if(appPage==='book')return libraryHTML('book');
   if(appPage==='history')return libraryHTML('history');
   return processingHTML();

@@ -225,6 +225,13 @@ private struct TranslationPane: View {
                 section = .result
             }
             .onChange(of: model.operation) { _, _ in section = .result }
+            // 自动请求学习表达 still means "as soon as the result lands", whether or not this pane is
+            // the one on screen; the claim inside keeps it to one request per result.
+            .onChange(of: model.state) { _, _ in
+                if let request = LearningRequest.from(model) {
+                    learning.generateIfAutoRequested(for: request)
+                }
+            }
             // A bottom *toolbar* does not exist on macOS (SwiftUI's `bottomBar` is iOS and Catalyst
             // only), so the two actions float over the content's trailing corner, the way Freeform
             // places its controls. Two separate glass icon buttons, not one merged cluster: each is its
@@ -304,6 +311,9 @@ private struct TranslationPane: View {
         GroupBox {
             TextEditor(text: $model.input)
                 .textEditorStyle(.plain)
+                // The editor brings its own background; hiding it lets the box's border and fill show,
+                // which is what makes this side read as a box.
+                .scrollContentBackground(.hidden)
                 .font(.system(size: 16))
                 .lineSpacing(7)
                 .padding(.horizontal, 6)
@@ -421,7 +431,7 @@ private struct TranslationPane: View {
     @ViewBuilder private var learningSection: some View {
         if let request = LearningRequest.from(model) {
             LearningView(
-                learning: learning, request: request, collection: collection,
+                learning: learning, reveal: .immediate, request: request, collection: collection,
                 openNotebook: openNotebook)
         }
     }

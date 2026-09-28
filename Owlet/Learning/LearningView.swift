@@ -1,9 +1,18 @@
 import SwiftUI
 
-/// The 学习表达 disclosure: silent until the user expands it, then it renders exactly one of
-/// 整理中, 生成失败, 无推荐 or the checkable recommendations.
+/// The 学习表达 section: it renders exactly one of 整理中, 生成失败, 无推荐 or the checkable
+/// recommendations. Showing it *is* asking for it — the switch that shows it (a segmented control)
+/// starts the request, so there is no 生成 button to press.
 struct LearningView: View {
+    /// How the section is revealed. The floating panel keeps a disclosure — expanding it is the
+    /// request — while the page shows the section by switching to it, and that switch is the request.
+    enum Reveal {
+        case disclosure
+        case immediate
+    }
+
     @Bindable var learning: LearningModel
+    var reveal: Reveal = .disclosure
     let request: LearningRequest
     let collection: CollectionAction
     /// Nil when the panel was built without the notebook, which the tests do.
@@ -14,14 +23,25 @@ struct LearningView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            disclosure
-            if learning.isExpanded { content }
+            if reveal == .disclosure {
+                disclosure
+                if learning.isExpanded { content }
+            } else {
+                content
+            }
         }
-        .padding(.top, 12)
+        .padding(.top, reveal == .disclosure ? 12 : 0)
+        // A revealed section is the request. `generate` only spends one per result, so hiding and
+        // revealing it again reuses what it produced.
+        .onAppear { askIfRevealed() }
+        .onChange(of: request) { _, _ in askIfRevealed() }
+    }
+
+    private func askIfRevealed() {
+        if reveal == .immediate { learning.generate(for: request) }
         // A result the user just produced is the only thing that may auto-request; the claim in the
-        // model makes a rebuilt view for an old result or a later 展开 spend nothing.
-        .onAppear { learning.generateIfAutoRequested(for: request) }
-        .onChange(of: request) { _, fresh in learning.generateIfAutoRequested(for: fresh) }
+        // model makes a rebuilt view for an old result spend nothing.
+        learning.generateIfAutoRequested(for: request)
     }
 
     private var disclosure: some View {

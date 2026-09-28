@@ -102,7 +102,8 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .page{display:flex;flex-direction:column;min-height:0;min-width:0;background:oklch(99% .003 350)}
 .body{padding:28px 32px;overflow-y:auto;flex:1;min-height:0}
 /* 翻译与润色页：两侧都可以滚动，同时可见——上下排平分高度，左右排平分宽度。 */
-.body.processing{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.body.processing{padding:0;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.actionbar{position:absolute;right:22px;bottom:12px;z-index:5;display:flex;gap:8px}
 .body.processing>.pane{flex:1 1 0;min-height:0;overflow-y:auto;padding:28px 32px}
 .body.processing>.pane+.pane{border-top:1px solid var(--line)}
 .window:not(.window-narrow) .body.processing{flex-direction:row}
@@ -634,12 +635,8 @@ function appbarTools(){
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
-  const actions=busy
-    ?`<span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="取消" title="取消">${icon('stop')}</button>`
-    :`<span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="复制结果" title="复制结果 ⌘⇧C" ${phase==='result'?'':'disabled'}>${icon('copy')}</button><button class="tb" aria-label="${currentOperation()==='polish'?'润色':'翻译'}" title="${currentOperation()==='polish'?'润色文本':'翻译文本'} ⌘↩">${icon(currentOperation()==='polish'?'spark':'translate')}</button>`;
   return (currentOperation()==='polish'?'':targetSelectHTML(busy))
-   +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`
-   +actions;
+   +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
 }
 function setOperation(v){operationOverride=v;render()}
 // 目标语言控件（提案 BDR-0003）：默认为自动，显示按映射解析出的目标；显式选择语言则持久覆盖映射，
@@ -668,7 +665,11 @@ function processingHTML(){
   // 动作搬到工具栏（HIG Toolbars）：控件一组，动作一组，全部是图标按钮。
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
   // 两侧各自滚动、平分可用高度（左右排时平分宽度），学习表达跟在结果下面。
-  return `<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div></div>`;
+  // 动作浮在内容右下角：macOS 没有底部工具栏，用贴底的动作条充当。
+  const actions=busy
+    ?`<button class="glass-btn" aria-label="取消" title="取消">${icon('stop')} 取消</button>`
+    :`<button class="glass-btn" aria-label="复制结果" title="复制结果 ⌘⇧C" ${done?'':'disabled'}>${icon('copy')} 复制</button><button class="glass-btn prominent" aria-label="${op==='polish'?'润色':'翻译'}" title="${op==='polish'?'润色文本':'翻译文本'} ⌘↩">${icon(op==='polish'?'spark':'translate')} ${op==='polish'?'润色':'翻译'}</button>`;
+  return `<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div><div class="actionbar">${actions}</div></div>`;
 }
 function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){
@@ -1038,8 +1039,8 @@ window.checkDesignStates=()=>{
       if(!frame.querySelector('.appbar .appbar-tools'))throw Error(id+': 缺少工具栏');
       if(!frame.querySelector('.body'))throw Error(id+': 缺少内容区');
       if(c.surface==='settings'&&!frame.querySelector('.settings-tabs'))throw Error(id+': 缺少标签页栏');
-      // The processing page keeps its actions in the toolbar; there is no bottom action bar.
-      if(c.page==='processing'&&!frame.querySelector('.appbar-tools .tb'))throw Error(id+': 工具栏缺少动作');
+      // The processing page floats its actions at the content's bottom-trailing corner.
+      if(c.page==='processing'&&!frame.querySelector('.actionbar'))throw Error(id+': 缺少浮起的动作条');
     }else{
       const strip=frame.querySelector('.strip'),footer=frame.querySelector('.footer');
       if(!frame.classList.contains('floating'))throw Error(id+': 应为浮动面板');

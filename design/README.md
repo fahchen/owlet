@@ -84,7 +84,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [learning-empty.png](screenshots/learning-empty.png) | 学习 · 无推荐 | 没有推荐时不强凑数量，保留手动收藏。 |
 | [saved.png](screenshots/saved.png) | 收藏 · 已入库 | 收藏后就地反馈并保留入口，不跳转打断工作。 |
 | [aligned.png](screenshots/aligned.png) | 翻译 · 逐句对照 | 原文与译文按语义句子配对，换行不改变对应关系。 |
-| [workspace-narrow.png](screenshots/workspace-narrow.png) | 文本处理 · 窄窗口 | 内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。 |
+| [workspace-narrow.png](screenshots/workspace-narrow.png) | 翻译与润色 · 窄窗口 | 内容区不足 720pt 时原文与译文上下平分高度；宽窗口时左右平分宽度。 |
 | [success.png](screenshots/success.png) | 直接替换 · 完成 | 写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。 |
 | [workspace-auto.png](screenshots/workspace-auto.png) | 文本处理 · 自动目标 | 工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。 |
 | [workspace-target-pinned.png](screenshots/workspace-target-pinned.png) | 文本处理 · 手动指定目标 | 用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。 |

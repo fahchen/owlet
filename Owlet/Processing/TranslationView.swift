@@ -182,6 +182,10 @@ struct TranslationView: View {
             // Two groups, controls then actions, as a toolbar is meant to be read: the first decides what
             // is processed, the second acts on the result. The system spreads the groups apart and moves
             // what does not fit into its own overflow menu.
+            // The controls stay in the window toolbar. macOS has no bottom *toolbar* — SwiftUI's
+            // `ToolbarItemPlacement.bottomBar` is iOS and Catalyst only — so the two actions live in the
+            // platform's bottom bar instead, trailing-aligned, which is what reads as floating over the
+            // content's corner.
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     if model.operation == .translate {
@@ -195,30 +199,40 @@ struct TranslationView: View {
                     .fixedSize()
                     .disabled(isBusy)
                 }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    if isBusy {
-                        Button(action: model.cancel) {
-                            Label("取消", systemImage: "xmark")
+            }
+            .safeAreaBar(edge: .bottom) {
+                HStack(spacing: 8) {
+                    Spacer(minLength: 0)
+                    GlassEffectContainer {
+                        HStack(spacing: 8) {
+                            if isBusy {
+                                Button(action: model.cancel) {
+                                    Label("取消", systemImage: "xmark")
+                                }
+                                .buttonStyle(.glass)
+                                .help("取消")
+                            } else {
+                                Button(action: copyResult) {
+                                    Label("复制结果", systemImage: "doc.on.doc")
+                                }
+                                .buttonStyle(.glass)
+                                .help("复制结果 ⌘⇧C")
+                                .disabled(result == nil)
+                                Button {
+                                    model.translate(to: resolvedTarget)
+                                } label: {
+                                    Label(model.operation.title, systemImage: submitSymbol)
+                                }
+                                .buttonStyle(.glassProminent)
+                                .help("\(model.operation.title)文本 ⌘↩")
+                                .disabled(
+                                    model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
                         }
-                        .labelStyle(.iconOnly)
-                        .help("取消")
-                    } else {
-                        Button(action: copyResult) {
-                            Label("复制结果", systemImage: "doc.on.doc")
-                        }
-                        .labelStyle(.iconOnly)
-                        .help("复制结果 ⌘⇧C")
-                        .disabled(result == nil)
-                        Button {
-                            model.translate(to: resolvedTarget)
-                        } label: {
-                            Label(model.operation.title, systemImage: submitSymbol)
-                        }
-                        .labelStyle(.iconOnly)
-                        .help("\(model.operation.title)文本 ⌘↩")
-                        .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
             }
     }
 

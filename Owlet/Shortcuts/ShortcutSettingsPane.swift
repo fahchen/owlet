@@ -2,8 +2,9 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// 快捷键 page body (design/screenshots/shortcuts.png): global recorders, then the panel's fixed keys.
-struct ShortcutSettingsView: View {
+/// 快捷键 pane of the settings window: the global recorders, then the panel's fixed keys. Keyboard
+/// bindings are a preference, so they belong with the other preferences rather than in the sidebar.
+struct ShortcutSettingsPane: View {
     let controller: ShortcutController
     @State private var recording: ShortcutAction?
 
@@ -52,7 +53,6 @@ struct ShortcutSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("快捷键")
     }
 
     private var panelKeyNotice: some View {

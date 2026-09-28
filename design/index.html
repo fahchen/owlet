@@ -436,9 +436,9 @@ const states=[
  ['workspace-unconfigured','文本处理 · 服务未配置','缺少服务配置时提示并指向设置。','workspace-unconfigured.png'],
  ['workspace-learning','文本处理 · 学习表达','结果下方的学习表达区块：勾选推荐后主动入库。','workspace-learning.png'],
  ['workspace-collapsed','文本处理 · 侧栏收起','NavigationSplitView 收起侧栏后页面不变。','workspace-collapsed.png'],
- ['shortcuts','快捷键 · 未设置','三个全局动作未录制；面板内固定键只读。','shortcuts.png'],
- ['shortcuts-recording','快捷键 · 录制中','录制按钮等待新组合键；Esc 取消，Delete 清除。','shortcuts-recording.png'],
- ['shortcuts-conflict','快捷键 · 组合冲突','与已录制动作冲突时提示换一个组合。','shortcuts-conflict.png'],
+ ['settings-shortcuts','设置 · 快捷键','设置窗口的快捷键页：三个全局动作未录制，面板内固定键只读。','settings-shortcuts.png'],
+ ['settings-shortcuts-recording','设置 · 快捷键 · 录制中','录制按钮等待新组合键；Esc 取消，Delete 清除。','settings-shortcuts-recording.png'],
+ ['settings-shortcuts-conflict','设置 · 快捷键 · 组合冲突','与已录制动作冲突时提示换一个组合。','settings-shortcuts-conflict.png'],
  // 已实现：独立设置窗口（T29），四个标签页 + 开关打开后的调试页。
  ['settings-general','设置 · 通用','通用页：学习开关、浮窗位置与调试开关，各自成组。','settings-general.png'],
  ['settings-language-empty','设置 · 语言','语言页：语言子集，加目标语言的兜底目标（映射表为空）。','settings-language-empty.png'],
@@ -510,9 +510,9 @@ const config={
   'workspace-unconfigured':{surface:'app',page:'processing',phase:'missingConfig'},
   'workspace-learning':{surface:'app',page:'processing',phase:'result',learning:true},
   'workspace-collapsed':{surface:'app',page:'processing',phase:'result',collapsed:true},
-  shortcuts:{surface:'app',page:'shortcuts'},
-  'shortcuts-recording':{surface:'app',page:'shortcuts',recording:'translate'},
-  'shortcuts-conflict':{surface:'app',page:'shortcuts',conflict:true},
+  'settings-shortcuts':{surface:'settings',pane:'shortcuts'},
+  'settings-shortcuts-recording':{surface:'settings',pane:'shortcuts',recording:'translate'},
+  'settings-shortcuts-conflict':{surface:'settings',pane:'shortcuts',conflict:true},
   settings:{surface:'app',page:'settings'},
   'settings-general':{surface:'settings',pane:'general'},
   'settings-language-empty':{surface:'settings',pane:'language'},
@@ -580,8 +580,7 @@ const panels=[
  {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。目标语言默认为“自动”，显示按映射解析出的目标。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-narrow','workspace-error','workspace-unconfigured','workspace-collapsed','workspace-learning','workspace-auto','workspace-target-pinned']},
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
- {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-model-prompts','settings-model-prompts-customized','settings-debug','settings-debug-open','settings-debug-empty']},
+ {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-model-prompts','settings-model-prompts-customized','settings-shortcuts','settings-shortcuts-recording','settings-shortcuts-conflict','settings-debug','settings-debug-open','settings-debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -606,12 +605,12 @@ function sample(k){which=k;external=inputText();render()}
 // ---------- 应用窗口 ----------
 function sidebarHTML(){
   const row=(p,label,glyph,count)=>`<button class="nav ${appPage===p?'active':''}" aria-current="${appPage===p?'page':'false'}" onclick="openApp('${p}')">${icon(glyph)}<span>${label}</span>${count?`<span class="count">${count}</span>`:''}</button>`;
-  return `<p class="section-label">随手处理</p><nav class="navgroup" aria-label="文本操作">${row('processing','文本处理','translate')}</nav>`
-   +`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`
-   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}</nav>`;
+  // 主页面不需要分组标题：它就是应用本身。快捷键移进了设置窗口。
+  return `<nav class="navgroup" aria-label="文本操作">${row('processing','翻译与润色','translate')}</nav>`
+   +`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`;
 }
 function appbarHTML(){
-  const titles={processing:'文本处理',shortcuts:'快捷键',settings:'设置',book:'生词本',history:'历史记录',debug:'调试'};
+  const titles={processing:'翻译与润色',settings:'设置',book:'生词本',history:'历史记录',debug:'调试'};
   const c=cfg();
   const collapsed=$('#window').classList.contains('narrow');
   const toggle=`<button class="tb" aria-label="${collapsed?'显示侧边栏':'隐藏侧边栏'}" title="${collapsed?'显示侧边栏':'隐藏侧边栏'}" aria-pressed="${!collapsed}" onclick="toggleSidebar()">${icon('sidebarIcon')}</button>`;
@@ -629,8 +628,12 @@ function appbarTools(){
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
+  const actions=busy
+    ?`<span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="取消" title="取消">${icon('stop')}</button>`
+    :`<span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="复制结果" title="复制结果 ⌘⇧C" ${phase==='result'?'':'disabled'}>${icon('copy')}</button><button class="tb" aria-label="${currentOperation()==='polish'?'润色':'翻译'}" title="${currentOperation()==='polish'?'润色文本':'翻译文本'} ⌘↩">${icon(currentOperation()==='polish'?'spark':'translate')}</button>`;
   return (currentOperation()==='polish'?'':targetSelectHTML(busy))
-   +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
+   +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`
+   +actions;
 }
 function setOperation(v){operationOverride=v;render()}
 // 目标语言控件（提案 BDR-0003）：默认为自动，显示按映射解析出的目标；显式选择语言则持久覆盖映射，
@@ -656,9 +659,9 @@ function processingHTML(){
   const notice=phase==='missingConfig'?{message:'模型服务未配置',action:'配置服务'}
     :failed?{message:cfg().message||'网络错误：连接似乎已断开。',action:'服务设置'}:null;
   const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openSettings('model')">${notice.action}</button></div>`:'';
-  const footer=`<footer class="footer"><small>${busy?'处理中':''}</small><div class="actions">${busy?`<button class="glass-btn" onclick="cancelRun()">取消</button>`:`<button class="glass-btn" ${done?'':'disabled'} onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" ${busy||cfg().empty?'disabled':''} onclick="run()">${op==='polish'?'润色文本':'翻译文本'} <kbd>⌘ ↩</kbd></button>`}</div></footer>`;
+  // 动作搬到工具栏（HIG Toolbars）：控件一组，动作一组，全部是图标按钮。
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
-  return `<div class="body" id="body">${source}${resultSection}${learning}${status}</div>${footer}`;
+  return `<div class="body" id="body">${source}${resultSection}${learning}${status}</div>`;
 }
 function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){
@@ -692,7 +695,7 @@ function targetsHTML(mode){
 // 设置窗口（T29）：独立窗口，四个标签页 + 开关打开后的调试页；每页内再用分组分节。
 const SETTINGS_TABS=[
   ['general','通用','gearshape'],['language','语言','globe'],['model','模型','cloud'],
-  ['debug','调试','ladybug'],
+  ['shortcuts','快捷键','keyboard'],['debug','调试','ladybug'],
 ];
 function settingsTabsHTML(){
   const active=cfg().pane||'general';
@@ -763,6 +766,7 @@ function settingsPaneHTML(){
   let body;
   if(pane==='language')body=`${languagesHTML()}${targetsHTML(cfg().targets||'empty')}`;
   else if(pane==='model')body=modelPaneHTML();
+  else if(pane==='shortcuts')body=shortcutsHTML();
   else if(pane==='debug')body=debugPaneHTML();
   else body=`${processingSectionHTML()}${learningHTML()}${panelPositionHTML()}${debugToggleHTML()}`;
   return `<div class="body" id="body"><div class="form">${body}</div></div>`;
@@ -817,7 +821,6 @@ function debugCard(e){
    +`<div class="formrow"><span></span><span class="field"><button class="glass-btn">复制这条记录</button></span></div></div>`;
 }
 function appHTML(){
-  if(appPage==='shortcuts')return shortcutsHTML();
   if(appPage==='settings')return settingsHTML();
   if(appPage==='book')return libraryHTML('book');
   if(appPage==='history')return libraryHTML('history');
@@ -891,7 +894,7 @@ function compactHTML(){
 }
 function panelHTML(){return `${panelHeaderHTML()}${panelBodyHTML()}${panelFooterHTML()}`}
 function toggleSidebar(){sidebarCollapsed=!sidebarCollapsed;render()}
-function openApp(page){appPage=page;state=page==='shortcuts'?'shortcuts':page==='book'?'book-list':page==='history'?'history-list':'workspace';phase=page==='processing'?'result':'success';$('#sourceDrawer').classList.add('hidden');render();syncPicker()}
+function openApp(page){appPage=page;state=page==='book'?'book-list':page==='history'?'history-list':'workspace';phase=page==='processing'?'result':'success';$('#sourceDrawer').classList.add('hidden');render();syncPicker()}
 // 设置是独立窗口：入口只决定停在哪个标签页。
 const SETTINGS_STATE={general:'settings-general',language:'settings-language-empty',model:'settings-model',prompt:'settings-prompt',debug:'settings-debug'};
 function openSettings(pane){preview(SETTINGS_STATE[pane]||'settings-general')}
@@ -1028,7 +1031,8 @@ window.checkDesignStates=()=>{
       if(!frame.querySelector('.appbar .appbar-tools'))throw Error(id+': 缺少工具栏');
       if(!frame.querySelector('.body'))throw Error(id+': 缺少内容区');
       if(c.surface==='settings'&&!frame.querySelector('.settings-tabs'))throw Error(id+': 缺少标签页栏');
-      if(c.page==='processing'&&!frame.querySelector('.footer'))throw Error(id+': 缺少底部操作栏');
+      // The processing page keeps its actions in the toolbar; there is no bottom action bar.
+      if(c.page==='processing'&&!frame.querySelector('.appbar-tools .tb'))throw Error(id+': 工具栏缺少动作');
     }else{
       const strip=frame.querySelector('.strip'),footer=frame.querySelector('.footer');
       if(!frame.classList.contains('floating'))throw Error(id+': 应为浮动面板');

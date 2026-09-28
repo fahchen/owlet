@@ -8,8 +8,8 @@
   1. **Liquid Glass 只属于功能层**——工具栏、侧边栏、浮动面板、弹出视图。内容层（正文、结果、卡片、列表行、分组容器）用系统材质，绝不叠玻璃。
   2. **能用系统组件就不用自定义**——系统组件自动获得 Liquid Glass 外观、Vibrancy、焦点环、键盘与 VoiceOver 支持，以及 Reduce Transparency / Increase Contrast / Reduce Motion 适配。
 - 窗口骨架用系统组件：`Window` scene + `NavigationSplitView`（侧栏可收起，`⌃⌘S`）、`.toolbar`、`List` 与 `MenuBarExtra`。独立 `Settings` scene 未实现（设置是主窗口的侧栏页面），`.searchable` 与 `ContentUnavailableView` 原本服务于生词本与历史，同样未落地，见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。
-- 按钮按层选样式：工具栏项用系统工具栏按钮；动作行（应用窗口底部操作栏、设置与快捷键页脚、浮动面板底部）统一用 `.glass` / `.glassProminent`，包在 `GlassEffectContainer` 中。实现中没有使用 `.bordered` / `.borderedProminent`。
-- 每屏只有一个 prominent 动作，放在 trailing 端。
+- 按钮按层选样式：工具栏项用系统工具栏按钮（翻译与润色页的复制与提交就是图标按钮，靠 `.help()` 给提示）；动作行（浮动面板底部）统一用 `.glass` / `.glassProminent`，包在 `GlassEffectContainer` 中。应用窗口不再有底部操作栏，设置窗口的页脚也随之取消。
+- 每屏只有一个主要动作，放在 trailing 端；翻译与润色页把它放在工具栏动作组的末端。
 - 使用系统强调色、系统语义色、系统字体与 SF Symbols。品牌玫瑰色只作为应用 `AccentColor` 资源，出现在强调色、prominent 动作、选中态与状态指示，不散布到各视图的 tint。
 - 不提供应用级外观开关；浅色与深色都走系统语义色。
 - `design/screenshots/` 只约束布局（元素顺序、位置、尺寸、间距）与状态，不约束组件样式。组件样式以本文与组件对照文为准。
@@ -22,7 +22,7 @@
 
 同一动作在同一产品里只用一个叫法。
 
-当前应用尚未采用这套规则：文本处理页在「原文」标签右侧画 `⌘ V 粘贴`，浮动面板动作行左端显示快捷键提示（`Esc 取消` / `快捷键未设置` / 已录制的全局快捷键 + ` 唤起`），面板底部的 `复制` / `替换` 按钮也已写上 `⌘⇧C` / `⌘↩`，应用按钮读作 `翻译文本` / `润色文本` / `保存设置`。差异与后续任务见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。
+当前应用尚未采用这套规则：翻译与润色页在「原文」标签右侧画 `⌘ V 粘贴`，浮动面板动作行左端显示快捷键提示（`Esc 取消` / `快捷键未设置` / 已录制的全局快捷键 + ` 唤起`），面板底部的 `复制` / `替换` 按钮也已写上 `⌘⇧C` / `⌘↩`，应用按钮读作 `翻译文本` / `润色文本` / `保存设置`。差异与后续任务见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。
 
 ## 布局约束（沿用）
 

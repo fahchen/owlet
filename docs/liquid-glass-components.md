@@ -25,7 +25,7 @@
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
 | 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
-| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 10 个横向分区（文本处理 12 / 生词本 4 / 历史记录 3 / 快捷键 3 / 设置 11 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
+| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 9 个横向分区（翻译与润色 12 / 生词本 4 / 历史记录 3 / 设置 14 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
 ### 2.2 建议但当前未采纳
 
@@ -76,13 +76,13 @@
 
 ## 4. 逐屏对照
 
-与 `design/index.html` 的“状态总览”同一分组：10 个分区竖向堆叠（应用窗口的文本处理、生词本、历史记录、快捷键、设置，浮动面板的紧凑条、直接替换紧凑提示、学习表达区块、展开，菜单栏）；共 66 个状态。除 `success` 保留旧画面外，每张画面都对应应用里已实现的界面。
+与 `design/index.html` 的“状态总览”同一分组：9 个分区竖向堆叠（应用窗口的翻译与润色、生词本、历史记录、设置，浮动面板的紧凑条、直接替换紧凑提示、学习表达区块、展开，菜单栏）；共 66 个状态。除 `success` 保留旧画面外，每张画面都对应应用里已实现的界面。
 
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
-| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 弹出式按钮 `简体中文` · 分段控件 `翻译｜润色` · `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote` · 底部操作栏 `复制` / `翻译文本`；收起态与展开态共用同一套工具栏 |
-| `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
-| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）|
+| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 控件组（弹出式按钮 `简体中文`、分段控件 `翻译｜润色`）· 动作组（图标按钮：`复制结果`、`翻译`／`润色`，处理中换成 `取消`）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；这一页没有底部操作栏 |
+| `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | 设置窗口的快捷键页：`Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示 |
+| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）；工具栏一页为快捷键页 |
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
 | `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试`。编辑器分组标题的行尾是 `默认` 标记，改过之后换成小方块 `恢复默认` 按钮 |
 | `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)` + 系统 `DisclosureGroup`，每次交换一行（指示器、动效与无障碍状态都由系统给出），行内是操作名、原文摘要 `.lineLimit(1)` 与时间；展开后是失败行、原文差异与三段可选中原文；没有记录时用 `ContentUnavailableView` |
@@ -107,9 +107,9 @@
 
 | 状态 | 实现位置 |
 | --- | --- |
-| `workspace`、`workspace-empty`、`workspace-input`、`workspace-loading`、`workspace-polish`、`workspace-error`、`workspace-unconfigured` | `Owlet/Processing/TranslationView.swift`（含 TranslationModel 状态机）· `Owlet/App/OwletApp.swift`（窗口与侧栏） |
+| `workspace`、`workspace-empty`、`workspace-input`、`workspace-loading`、`workspace-polish`、`workspace-error`、`workspace-unconfigured` | `Owlet/Processing/TranslationView.swift`（含 TranslationModel 状态机与工具栏动作）· `Owlet/App/OwletApp.swift`（窗口、侧栏与菜单命令） |
 | `workspace-collapsed` | `Owlet/App/OwletApp.swift`（MainView 的 NavigationSplitView 侧栏） |
-| `shortcuts`、`shortcuts-recording`、`shortcuts-conflict`（`ShortcutController.registrationError` 的冲突文案） | `Owlet/Shortcuts/ShortcutSettingsView.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
+| `settings-shortcuts`、`settings-shortcuts-recording`、`settings-shortcuts-conflict`（`ShortcutController.registrationError` 的冲突文案） | `Owlet/Shortcuts/ShortcutSettingsPane.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
 | `settings-general` | `Owlet/Settings/SettingsView.swift`（标签页）· `Owlet/Settings/GeneralSettingsPane.swift` |
 | `settings-language-empty`、`settings-language-rows` | `Owlet/Settings/LanguageSettingsPane.swift` · `Owlet/Settings/LanguageSettingsView.swift` · `Owlet/Settings/TargetMappingSettingsView.swift` · `Owlet/Settings/TargetMapping.swift` |
 | `settings-model`、`settings-model-openai`、`settings-model-failed` | `Owlet/Settings/ModelSettingsPane.swift` · `Owlet/Settings/SettingsStore.swift`（Keychain） |
@@ -180,12 +180,12 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 8. **键盘。** 每个工具栏项都有对应菜单栏命令与快捷键（`toolbars.md › Desktop (macOS)`）；焦点环可见；`Full Keyboard Access` 下可达每个控件。
 9. **深色外观。** 无硬编码颜色后，浅色与深色都要过一遍；无应用级外观开关。
 10. **菜单栏。** `Settings… (⌘,)` 在应用菜单（已实现）；`Show/Hide Sidebar (⌃⌘S)` 需要 `SidebarCommands()`，未添加；`编辑` 菜单提供 `Undo/Redo/Cut/Copy/Paste/Select All`。
-11. **适应宽度（未采纳，§2.2 #10）。** 从最小宽度到满宽连续拖动，文本处理页在 720pt 处切换并排／堆叠，无跳变、无截断、无重排抖动。
+11. **适应宽度。** 从最小宽度到满宽连续拖动，翻译与润色页在 720pt 处切换并排／堆叠，无跳变、无截断、无重排抖动。
 12. **文案（未采纳，§2.2 #7／#8／#12）。** §2.3 的三条文案规则无例外；界面里找不到快捷键字块与空心提示。
 
 `design/index.html` 控制台里有两个自动检查：
 
-- `checkDesignStates()` → 66 个状态逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（文本处理页还要有底部操作栏）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
+- `checkDesignStates()` → 66 个状态逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（翻译与润色页的工具栏必须有动作按钮，设置状态必须有标签页切换器）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
 - `checkFlowBoard()` → 66 个状态全部出现在总览上、无重复，分区数与定义一致（10 个窗口／面板）；返回 `{states, frames, panels}`。
 
 ## 9. 迁移顺序
@@ -195,7 +195,7 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 1. 删除 `RoseGlass` 与自绘按钮样式，全部换成系统语义色与系统按钮（已落地）。
 2. 主窗口改 `NavigationSplitView`（侧栏可收起）并把工具栏就位：`navigationTitle` + 弹出式按钮（左）+ 分段控件（右）（已落地）。
 3. 设置改为 `Settings` scene + 分栏，侧栏与工具栏移除入口（未采纳，T19）。
-4. 删除底部动作栏，动作迁入工具栏与内容区；文本处理页在内容区 ≥720pt 时两栏并排（均未采纳，实现保留 safe area bar 与单列 `VStack`，T22）。
+4. 删除底部动作栏，动作迁入工具栏（已实现，T32）；翻译与润色页在内容区 ≥720pt 时两栏并排（已实现，T22）。
 5. 列表换 `List` + `.searchable` + `ContentUnavailableView` + 上下文菜单（随生词本／历史一并未实现）；浮动面板的呼吸动画与 `收藏选中内容` 动作行未采纳（紧凑条与动作行已落地）。
 6. 菜单栏补全并收口文案（`⌘,` 已接，文案未收口）；辅助功能与外观终检见 §8。
 

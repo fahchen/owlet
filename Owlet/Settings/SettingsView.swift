@@ -5,7 +5,9 @@ import SwiftUI
 struct SettingsView: View {
     /// The pane to open on, kept so the window returns to the last one people used.
     @AppStorage(SettingsStore.settingsPaneKey) private var pane = SettingsPane.general.rawValue
-    /// One-shot request from the panel's contract-error entry: open the Prompt pane, focused.
+    /// The app's shortcut registry; its pane records the global bindings.
+    let shortcuts: ShortcutController
+    /// One-shot request from the panel's contract-error entry: open the 模型 pane, focused.
     @Binding var promptFocus: Operation?
     @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
 
@@ -19,6 +21,9 @@ struct SettingsView: View {
             }
             Tab("模型", systemImage: "cloud", value: SettingsPane.model.rawValue) {
                 ModelSettingsPane(promptFocus: $promptFocus)
+            }
+            Tab("快捷键", systemImage: "keyboard", value: SettingsPane.shortcuts.rawValue) {
+                ShortcutSettingsPane(controller: shortcuts)
             }
             // The diagnostics pane exists only while it is switched on, which is the point of the
             // switch: a fresh install shows four panes and nothing else.
@@ -57,5 +62,5 @@ struct SettingsView: View {
 /// The panes, in toolbar order. The raw value is what gets stored, so reordering cases never
 /// invalidates a saved choice.
 enum SettingsPane: String, CaseIterable {
-    case general, language, model, debug
+    case general, language, model, shortcuts, debug
 }

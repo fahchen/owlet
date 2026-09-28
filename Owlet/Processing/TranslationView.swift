@@ -171,8 +171,7 @@ struct TranslationView: View {
             .padding(.vertical, 28)
         }
         .scrollBounceBehavior(.basedOnSize)
-        .safeAreaBar(edge: .bottom) { footer }
-        .navigationTitle("文本处理")
+        .navigationTitle("翻译与润色")
         // Switching the operation runs the same text again at once, so the two results can be
         // compared without pressing the button a second time. Switching back is served from cache.
         .onChange(of: model.operation) { _, _ in
@@ -187,11 +186,14 @@ struct TranslationView: View {
         }
         // The source text changed, so the old result and its learning items no longer apply.
         .onChange(of: model.input) { _, _ in learning.reset() }
+        // Two groups, controls then actions, as a toolbar is meant to be read: the first decides what
+        // is processed, the second acts on the result. The system spreads the groups apart and moves
+        // what does not fit into its own overflow menu.
         .toolbar {
-            if model.operation == .translate {
-                ToolbarItem(placement: .primaryAction) { languagePicker.disabled(isBusy) }
-            }
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if model.operation == .translate {
+                    languagePicker.disabled(isBusy)
+                }
                 Picker("处理方式", selection: $model.operation) {
                     ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -199,6 +201,30 @@ struct TranslationView: View {
                 .labelsHidden()
                 .fixedSize()
                 .disabled(isBusy)
+            }
+            ToolbarItemGroup(placement: .primaryAction) {
+                if isBusy {
+                    Button(action: model.cancel) {
+                        Label("取消", systemImage: "xmark")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("取消")
+                } else {
+                    Button(action: copyResult) {
+                        Label("复制结果", systemImage: "doc.on.doc")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("复制结果 ⌘⇧C")
+                    .disabled(result == nil)
+                    Button {
+                        model.translate(to: resolvedTarget)
+                    } label: {
+                        Label(model.operation.title, systemImage: submitSymbol)
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("\(model.operation.title)文本 ⌘↩")
+                    .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
         }
     }
@@ -211,6 +237,16 @@ struct TranslationView: View {
     private var result: String? {
         if case .success(let text) = model.state { return text }
         return nil
+    }
+
+    /// The submit's glyph mirrors the operation the segmented control is on.
+    private var submitSymbol: String {
+        model.operation == .translate ? "translate" : "wand.and.sparkles"
+    }
+
+    private func copyResult() {
+        guard let result else { return }
+        Clipboard.copy(result)
     }
 
     /// Mirrors the prototype: before the first result the page is a plain input.
@@ -340,33 +376,6 @@ struct TranslationView: View {
         case .failure(let message): StatusNote(message: message, action: "服务设置", perform: openSettings)
         case .missingConfig: StatusNote(message: "模型服务未配置", action: "配置服务", perform: openSettings)
         default: EmptyView()
-        }
-    }
-
-    private var footer: some View {
-        PageFooter {
-            if isBusy { Text("处理中") }
-        } trailing: {
-            if isBusy {
-                Button("取消", action: model.cancel).buttonStyle(.glass)
-            } else {
-                Button {
-                    guard let result else { return }
-                    Clipboard.copy(result)
-                } label: {
-                    Label("复制", systemImage: "doc.on.doc")
-                }
-                .buttonStyle(.glass)
-                .keyboardShortcut("c", modifiers: [.command, .shift])
-                .disabled(result == nil)
-                Button("\(model.operation.title)文本") {
-                    model.translate(to: resolvedTarget)
-                }
-                .buttonStyle(.glassProminent)
-                .keyboardShortcut(.return, modifiers: .command)
-                .help("\(model.operation.title)文本 ⌘↩")
-                .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
         }
     }
 

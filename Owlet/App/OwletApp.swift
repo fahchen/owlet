@@ -23,7 +23,7 @@ struct OwletApp: App {
     var body: some Scene {
         Window("Owlet", id: "main") {
             MainView(
-                translation: translation, shortcuts: shortcuts, page: $page,
+                translation: translation, page: $page,
                 collection: collection, history: history, promptFocus: $promptFocus
             )
             .modelContainer(collection.store.container)
@@ -31,12 +31,17 @@ struct OwletApp: App {
         .defaultSize(width: 1080, height: 690)
         .commands {
             CommandGroup(replacing: .saveItem) { CloseWindowButton() }
+            // A toolbar item is not the only place a command may live: the toolbar can be hidden or
+            // customized away, so the page's two actions are menu commands as well, and the menu items
+            // are what own the shortcuts.
+            CommandGroup(after: .newItem) { SubmitTextButton(translation: translation) }
+            CommandGroup(after: .pasteboard) { CopyResultButton(translation: translation) }
             SidebarCommands()
         }
         // A real settings window: the scene is what puts 设置… and ⌘, in the App menu, and SwiftUI
         // manages showing it. Nothing else in the app carries a settings entry.
         Settings {
-            SettingsView(promptFocus: $promptFocus)
+            SettingsView(shortcuts: shortcuts, promptFocus: $promptFocus)
         }
         MenuBarExtra {
             MenuContent(shortcuts: shortcuts, panel: panel, page: $page)
@@ -51,10 +56,9 @@ struct OwletApp: App {
 /// Main window (design/screenshots/workspace.png): native collapsible sidebar and page detail. The
 /// settings live in their own window instead, so no page here is a settings page.
 private struct MainView: View {
-    enum Page: Hashable { case processing, vocabulary, history, shortcuts }
+    enum Page: Hashable { case processing, vocabulary, history }
 
     let translation: TranslationModel
-    let shortcuts: ShortcutController
     @Binding var page: Page
     let collection: CollectionAction
     let history: HistoryRecorder
@@ -65,15 +69,11 @@ private struct MainView: View {
         NavigationSplitView {
             // A sidebar List allows an empty selection; ignore it so a row stays highlighted.
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
-                Section("随手处理") {
-                    Label("文本处理", systemImage: "translate").tag(Page.processing)
-                }
+                // The main page needs no group title: it is what the app is for.
+                Label("翻译与润色", systemImage: "translate").tag(Page.processing)
                 Section("我的积累") {
                     Label("生词本", systemImage: "book").tag(Page.vocabulary)
                     Label("历史记录", systemImage: "clock").tag(Page.history)
-                }
-                Section {
-                    Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
                 }
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
@@ -89,7 +89,6 @@ private struct MainView: View {
                 HistoryView(
                     store: HistoryStore.shared, collection: collection,
                     openProcessing: { page = .processing })
-            case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             }
         }
         .frame(minWidth: 760, minHeight: 500)
@@ -140,6 +139,40 @@ private struct CloseWindowButton: View {
     var body: some View {
         Button("关闭窗口") { NSApp.keyWindow?.performClose(nil) }
             .keyboardShortcut("w", modifiers: .command)
+    }
+}
+
+/// 翻译文本／润色文本 (⌘↩) in the File menu: the main page's submit action, named for the operation
+/// the page is on.
+private struct SubmitTextButton: View {
+    let translation: TranslationModel
+
+    var body: some View {
+        Button("\(translation.operation.title)文本") {
+            translation.translate(to: SettingsStore.resolvedTarget(for: translation.input))
+        }
+        .keyboardShortcut(.return, modifiers: .command)
+        .disabled(translation.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+}
+
+/// 复制结果 (⌘⇧C) in the Edit menu: the result is not the selection, so it gets its own item rather
+/// than borrowing the system Copy.
+private struct CopyResultButton: View {
+    let translation: TranslationModel
+
+    var body: some View {
+        Button("复制结果") {
+            guard case .success(let text) = translation.state else { return }
+            Clipboard.copy(text)
+        }
+        .keyboardShortcut("c", modifiers: [.command, .shift])
+        .disabled(!hasResult)
+    }
+
+    private var hasResult: Bool {
+        if case .success = translation.state { return true }
+        return false
     }
 }
 

@@ -82,6 +82,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [settings-prompts.png](screenshots/settings-prompts.png) | 设置 · Prompt | Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。 |
 | [workspace-narrow.png](screenshots/workspace-narrow.png) | 文本处理 · 窄窗口 | 内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。 |
 | [success.png](screenshots/success.png) | 直接替换 · 完成 | 写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。 |
+| [settings-languages.png](screenshots/settings-languages.png) | 设置 · 语言 | 语言子集：默认简体中文、英语、日语；其余选语言的地方只用这个子集，完整系统清单只在添加时出现。 |
 | [settings-targets.png](screenshots/settings-targets.png) | 设置 · 目标语言 | 兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。 |
 | [settings-targets-rows.png](screenshots/settings-targets-rows.png) | 设置 · 目标语言 · 已添加映射 | 用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。 |
 | [workspace-auto.png](screenshots/workspace-auto.png) | 文本处理 · 自动目标 | 工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。 |

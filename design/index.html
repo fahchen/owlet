@@ -221,6 +221,8 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .mapping-row .arrow{color:var(--muted);font-size:12px}
 .mapping-row .iconbtn{display:grid;place-items:center;width:26px;height:26px;padding:0;color:var(--muted);flex:none}
 .mapping-row .iconbtn:hover{color:oklch(48% .14 25);background:oklch(48% .14 25/.1)}
+.formrow .iconbtn{display:grid;place-items:center;width:26px;height:26px;padding:0;color:var(--muted);flex:none}
+.formrow .iconbtn:hover{color:oklch(48% .14 25);background:oklch(48% .14 25/.1)}
 /* Debug page: the captured model exchanges behind the hidden diagnostics page. It is a grouped form —
    one section per exchange, disclosures for the long payloads — like the rest of settings. */
 .debug-block{padding:10px 0;border-bottom:1px solid var(--line)}
@@ -368,7 +370,7 @@ const DEFAULT_PROMPTS={
 const RESPONSE_EXAMPLE=JSON.stringify({source_language:'en',target_language:'zh-Hans',segments:[{source:'Good morning.',target:'早上好。'}]},null,2);
 const longText="Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.\n\nThe details matter, but the overall direction matters just as much. Once we agree on the priorities, we can move forward with confidence.";
 
-const LANGS=[['zh-Hans','简体中文'],['zh-Hant','繁體中文'],['en','English'],['ja','日本語']];
+const LANGS=[['zh-Hans','简体中文'],['en','English'],['ja','日本語']];
 const langName=v=>(LANGS.find(l=>l[0]===v)||LANGS[0])[1];
 const SHORTCUTS=[['翻译','translate'],['润色','polish'],['翻译并替换','translateReplace']];
 // PanelKey.all：面板打开时始终生效的固定键，实现于 Owlet/Shortcuts/PanelKey.swift。
@@ -453,6 +455,7 @@ const states=[
  // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
  ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png'],
  // 已实现：翻译目标映射（BDR-0003）。
+ ['settings-languages','设置 · 语言','语言子集：默认简体中文、英语、日语；其余选语言的地方只用这个子集，完整系统清单只在添加时出现。','settings-languages.png'],
  ['settings-targets','设置 · 目标语言','兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。','settings-targets.png'],
  ['settings-targets-rows','设置 · 目标语言 · 已添加映射','用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。','settings-targets-rows.png'],
  ['workspace-auto','文本处理 · 自动目标','工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。','workspace-auto.png'],
@@ -527,6 +530,7 @@ const config={
   // 提案：写回成功后的确认屏，应用尚未实现。
   'success':{surface:'panel',view:'direct',phase:'success',success:true},
   // 提案：翻译目标映射（BDR-0003），应用尚未实现。
+  'settings-languages':{surface:'app',page:'settings',languages:true},
   'settings-targets':{surface:'app',page:'settings',targets:'empty'},
   'settings-targets-rows':{surface:'app',page:'settings',targets:'rows'},
   'workspace-auto':{surface:'app',page:'processing',phase:'result',targetMode:'auto'},
@@ -542,7 +546,7 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。目标语言分组是兜底目标加一张由用户逐条添加的映射表；调试分组控制隐藏的诊断页。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts','settings-targets','settings-targets-rows','settings-debug']},
+ {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。语言分组维护语言子集，其余选语言的地方只用子集；目标语言分组是兜底目标加一张由用户逐条添加的映射表；调试分组控制隐藏的诊断页。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts','settings-languages','settings-targets','settings-targets-rows','settings-debug']},
  {title:'应用窗口 · 调试',note:'隐藏页：设置里打开才出现。列出最近若干次模型请求体、原始返回与失败原因；仅在内存，不含 API Key。',nodes:['debug','debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
@@ -637,6 +641,13 @@ function shortcutsHTML(){
   const panelKeys=PANEL_KEYS.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('');
   return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}<p class="section-footer" role="status">${note||'&nbsp;'}</p></div><div class="form-section"><p class="group-title">面板内</p>${panelKeys}<p class="section-footer">面板打开时这些键始终生效，且不能更改；上面三个快捷键由你录制。</p></div></div></div>`;
 }
+// 语言分组（T28）：只在这里维护子集，其余选语言的地方只用子集；完整系统清单只在「添加语言」处出现。
+function languagesHTML(){
+  const rows=LANGS.map(([v,l])=>`<div class="formrow"><label>${l}</label><span class="field"><button class="iconbtn" aria-label="移除${l}">${icon('trash')}</button></span></div>`).join('');
+  return `<div class="form-section"><p class="group-title">语言</p>${rows}`
+   +`<div class="formrow"><label>添加语言</label><span class="field"><select class="popup" aria-label="添加语言" style="height:auto;padding:7px 26px 7px 9px"><option>选择要添加的语言</option></select></span></div>`
+   +`<p class="section-footer">只有这里选中的语言会出现在目标语言、兜底目标和映射表里；至少保留一种。</p></div>`;
+}
 // 目标语言分组（提案 BDR-0003）：兜底目标独立设置，映射表由用户逐条添加，一个源语言只保留一条。
 function targetsHTML(mode){
   const options=sel=>LANGS.map(([v,l])=>`<option ${v===sel?'selected':''}>${l}</option>`).join('');
@@ -645,12 +656,13 @@ function targetsHTML(mode){
   const add=`<div class="formrow"><span></span><span class="field"><button class="glass-btn">＋ 添加映射</button></span></div>`;
   if(mode==='empty')return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}<p class="section-footer">还没有映射，所有翻译都使用兜底目标。添加映射后，目标语言按识别出的源语言决定。</p>${add}</div>`;
   const row=(src,tgt)=>`<div class="formrow mapping-row"><span class="field"><select ${popup('源语言')}>${options(src)}</select><span class="arrow" aria-hidden="true">→</span><select ${popup('目标语言')}>${options(tgt)}</select></span><button class="iconbtn" aria-label="删除映射">${icon('trash')}</button></div>`;
-  return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}${row('en','ja')}${row('zh-Hant','zh-Hans')}<p class="section-footer">一个源语言只保留一条映射，重复添加即替换。</p>${add}</div>`;
+  return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}${row('en','ja')}${row('ja','zh-Hans')}<p class="section-footer">一个源语言只保留一条映射，重复添加即替换。</p>${add}</div>`;
 }
 function settingsHTML(){
   const failed=cfg().models==='failed',openai=cfg().provider==='openai';
   const loading=cfg().models==='loading';
   const targetsSection=cfg().targets?targetsHTML(cfg().targets):'';
+  const languagesSection=cfg().languages?languagesHTML():'';
   // 调试分组默认关闭：它只控制隐藏的诊断页，不属于产品功能。
   const debugSection=cfg().debug?`<div class="form-section"><p class="group-title">调试</p>`
    +`<div class="formrow"><label>显示调试页</label><span class="field"><input type="checkbox" role="switch" aria-label="显示调试页" checked></span></div>`
@@ -670,6 +682,7 @@ function settingsHTML(){
    +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="${openai?'':'sk-example'}" placeholder="sk-…" aria-label="API Key" autocomplete="off"></span></div>`
    +modelRow
    +`</div>`
+   +languagesSection
    +targetsSection
    +(cfg().learning?`<div class="form-section"><p class="group-title">学习</p>`
      +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`

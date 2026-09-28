@@ -137,59 +137,9 @@ final class TranslationModel {
     }
 }
 
-/// Main-window 文本处理 page (design/screenshots/workspace.png): target language and
-/// Main-window 翻译与润色 page (design/screenshots/workspace.png): 翻译 and 润色 are the two panes of a
-/// tab view, so each shows the same source with its own result and the switch is one click away.
+/// Main-window 翻译与润色 page: the source and the result side by side, the operation in the window
+/// toolbar as a segmented control, and the actions floating over the content's trailing corner.
 struct TranslationView: View {
-    @Bindable var model: TranslationModel
-    let openSettings: () -> Void
-    let collection: CollectionAction
-    let openNotebook: () -> Void
-    /// The pinned target language; an empty value means 自动. Watched here because either pane's
-    /// control can change it.
-    @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
-    /// The pinned source language; watched here because either pane's control can change it.
-    @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
-
-    var body: some View {
-        TabView(selection: $model.operation) {
-            ForEach(Operation.allCases, id: \.self) { operation in
-                Tab(operation.title, systemImage: operation.symbol, value: operation) {
-                    TranslationPane(
-                        model: model, openSettings: openSettings, collection: collection,
-                        openNotebook: openNotebook)
-                }
-            }
-        }
-        // Inset, as a tab view is meant to be: a margin on every side leaves room for controls that are
-        // not part of the tab contents.
-        .padding(16)
-        .navigationTitle("翻译与润色")
-        // Switching panes runs the same text again at once, so the two results can be compared without
-        // pressing the button a second time; switching back is served from the model's cache.
-        .onChange(of: model.operation) { _, _ in
-            if model.hasBeenSent {
-                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-            }
-        }
-        // Pinning or unpinning a target runs the same text again, served from cache when already
-        // produced for that language; pinning a source can change which row the mapping picks, so it
-        // re-runs too.
-        .onChange(of: pinnedTarget) { _, _ in
-            if model.hasBeenSent {
-                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-            }
-        }
-        .onChange(of: pinnedSource) { _, _ in
-            if model.hasBeenSent {
-                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-            }
-        }
-    }
-}
-
-/// One pane: the source, the result, its 学习表达 and the floating actions for one operation.
-private struct TranslationPane: View {
     @Bindable var model: TranslationModel
     /// Shows the 设置 page for service errors.
     let openSettings: () -> Void
@@ -218,13 +168,45 @@ private struct TranslationPane: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 20)
+            .navigationTitle("翻译与润色")
+            // Switching the operation runs the same text again at once, so the two results can be
+            // compared without pressing the button a second time; switching back is served from cache.
+            .onChange(of: model.operation) { _, _ in
+                section = .result
+                if model.hasBeenSent {
+                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+                }
+            }
+            // Pinning a target or a source runs the same text again, served from cache when already
+            // produced for that language.
+            .onChange(of: pinnedTarget) { _, _ in
+                if model.hasBeenSent {
+                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+                }
+            }
+            .onChange(of: pinnedSource) { _, _ in
+                if model.hasBeenSent {
+                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+                }
+            }
+            // The operation is a toolbar control: it decides what this page does, next to the title.
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Picker("处理方式", selection: $model.operation) {
+                        ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(isBusy)
+                }
+            }
             // The source text changed, so the old result and its learning items no longer apply, and
             // the box goes back to showing the result.
             .onChange(of: model.input) { _, _ in
                 learning.reset()
                 section = .result
             }
-            .onChange(of: model.operation) { _, _ in section = .result }
             // 自动请求学习表达 still means "as soon as the result lands", whether or not this pane is
             // the one on screen; the claim inside keeps it to one request per result.
             .onChange(of: model.state) { _, _ in

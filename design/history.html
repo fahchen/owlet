@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>Owlet · 历史记录</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="experience" class="stage">
+<div id="menubar" class="mac-menubar"></div>
+<header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="unwritten">未能写回</option><option value="error">请求失败</option></select></div></header>
+<div class="state-browser"><span>状态预览</span><button aria-label="上一个状态" onclick="stepState(-1)">←</button><select id="statePicker" aria-label="界面状态" onchange="preview(this.value)"></select><button aria-label="下一个状态" onclick="stepState(1)">→</button><small id="stateCount"></small></div>
+<div class="window" id="window"><header class="appbar" id="appbar"></header><aside class="sidebar" id="sidebar"></aside><main class="page" id="main"></main></div>
+<footer class="stage-footer"><span>macOS 26</span><span><button onclick="sample('en')">英语示例</button> / <button onclick="sample('ja')">日语示例</button><button onclick="toggleSource()">查看模拟原选区 ↗</button></span></footer>
+</div>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="sourceDrawer" class="source-drawer hidden"><div style="display:flex;justify-content:space-between"><h3>工作沟通 · 模拟原选区</h3><button aria-label="关闭原选区" onclick="toggleSource()">×</button></div><textarea id="external" aria-label="模拟外部应用原选区"></textarea></div>
+<script src="shared.js"></script>
+<script>
+'use strict';
+const states=[
+ ['history-list','历史 · 列表','工具栏搜索与类型筛选，列出翻译与润色的原文与结果。','history-list.png'],
+ ['history-detail','历史 · 详情','详情展示原文与结果，可复制，也可从历史收藏。','history-detail.png'],
+ ['history-empty','历史 · 空状态','没有记录时给出说明与“开始翻译”入口。','history-empty.png'],
+];
+const config={
+  'history-list':{surface:'app',page:'history'},
+  'history-detail':{surface:'app',page:'history',detail:'history'},
+  'history-empty':{surface:'app',page:'history',empty:'history'},
+};
+const panels=[
+ {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
+];
+bootOwletDesign();
+</script>
+</body></html>

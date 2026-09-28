@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>Owlet · 翻译与润色</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="experience" class="stage">
+<div id="menubar" class="mac-menubar"></div>
+<header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="unwritten">未能写回</option><option value="error">请求失败</option></select></div></header>
+<div class="state-browser"><span>状态预览</span><button aria-label="上一个状态" onclick="stepState(-1)">←</button><select id="statePicker" aria-label="界面状态" onchange="preview(this.value)"></select><button aria-label="下一个状态" onclick="stepState(1)">→</button><small id="stateCount"></small></div>
+<div class="window" id="window"><header class="appbar" id="appbar"></header><aside class="sidebar" id="sidebar"></aside><main class="page" id="main"></main></div>
+<footer class="stage-footer"><span>macOS 26</span><span><button onclick="sample('en')">英语示例</button> / <button onclick="sample('ja')">日语示例</button><button onclick="toggleSource()">查看模拟原选区 ↗</button></span></footer>
+</div>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="sourceDrawer" class="source-drawer hidden"><div style="display:flex;justify-content:space-between"><h3>工作沟通 · 模拟原选区</h3><button aria-label="关闭原选区" onclick="toggleSource()">×</button></div><textarea id="external" aria-label="模拟外部应用原选区"></textarea></div>
+<script src="shared.js"></script>
+<script>
+'use strict';
+const states=[
+ ['workspace','文本处理 · 结果','工具栏、原文、译文与底部操作栏；预留的收藏与学习两行仍为空位。','workspace.png'],
+ ['workspace-empty','文本处理 · 空输入','没有选区也没有文本：占位提示可见，复制与提交都不可用。','workspace-empty.png'],
+ ['workspace-input','文本处理 · 已输入','有文本但还没结果：可提交，复制仍不可用。','workspace-input.png'],
+ ['workspace-loading','文本处理 · 处理中','结果区以占位文本表示处理中，底部改为取消。','workspace-loading.png'],
+ ['workspace-polish','文本处理 · 润色结果','同一页面切到润色：标签改为润色结果与保留原意。','workspace-polish.png'],
+ ['workspace-error','文本处理 · 请求失败','行内提示失败原因，并提供服务设置入口。','workspace-error.png'],
+ ['workspace-unconfigured','文本处理 · 服务未配置','缺少服务配置时提示并指向设置。','workspace-unconfigured.png'],
+ ['workspace-learning','文本处理 · 学习表达','结果下方的学习表达区块：勾选推荐后主动入库。','workspace-learning.png'],
+ ['workspace-collapsed','文本处理 · 侧栏收起','NavigationSplitView 收起侧栏后页面不变。','workspace-collapsed.png'],
+ ['workspace-narrow','翻译与润色 · 窄窗口','内容区不足 720pt 时原文与译文上下平分高度；宽窗口时左右平分宽度。','workspace-narrow.png'],
+ ['workspace-auto','文本处理 · 自动目标','工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。','workspace-auto.png'],
+ ['workspace-target-pinned','文本处理 · 手动指定目标','用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。','workspace-target-pinned.png'],
+];
+const config={
+  workspace:{surface:'app',page:'processing',phase:'result'},
+  'workspace-empty':{surface:'app',page:'processing',phase:'input',empty:true},
+  'workspace-input':{surface:'app',page:'processing',phase:'input'},
+  'workspace-loading':{surface:'app',page:'processing',phase:'loading'},
+  'workspace-polish':{surface:'app',page:'processing',phase:'result',operation:'polish'},
+  'workspace-error':{surface:'app',page:'processing',phase:'failure',message:'认证失败，请检查 API Key。'},
+  'workspace-unconfigured':{surface:'app',page:'processing',phase:'missingConfig'},
+  'workspace-learning':{surface:'app',page:'processing',phase:'result',learning:true},
+  'workspace-collapsed':{surface:'app',page:'processing',phase:'result',collapsed:true},
+  'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true},
+  'workspace-auto':{surface:'app',page:'processing',phase:'result',targetMode:'auto'},
+  'workspace-target-pinned':{surface:'app',page:'processing',phase:'result',targetMode:'pinned',pinnedTarget:'ja'},
+};
+const panels=[
+ {title:'应用窗口 · 文本处理',note:'NavigationSplitView：可收起的系统侧边栏 + 跨整窗的统一工具栏。工具栏 trailing 端是目标语言弹出式按钮、翻译／润色分段控件，以及底部操作栏的复制与主要动作。目标语言默认为“自动”，显示按映射解析出的目标。',nodes:['workspace','workspace-empty','workspace-input','workspace-loading','workspace-polish','workspace-narrow','workspace-error','workspace-unconfigured','workspace-collapsed','workspace-learning','workspace-auto','workspace-target-pinned']},
+];
+bootOwletDesign();
+</script>
+</body></html>

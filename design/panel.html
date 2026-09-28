@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>Owlet · 浮动面板</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="experience" class="stage">
+<div id="menubar" class="mac-menubar"></div>
+<header class="studio"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><div><b>owlet</b></div></div><div class="prototype"><button onclick="showBoard()">状态总览 ↗</button><select id="scenario" aria-label="演示场景"><option value="normal">正常流程</option><option value="unwritten">未能写回</option><option value="error">请求失败</option></select></div></header>
+<div class="state-browser"><span>状态预览</span><button aria-label="上一个状态" onclick="stepState(-1)">←</button><select id="statePicker" aria-label="界面状态" onchange="preview(this.value)"></select><button aria-label="下一个状态" onclick="stepState(1)">→</button><small id="stateCount"></small></div>
+<div class="window" id="window"><header class="appbar" id="appbar"></header><aside class="sidebar" id="sidebar"></aside><main class="page" id="main"></main></div>
+<footer class="stage-footer"><span>macOS 26</span><span><button onclick="sample('en')">英语示例</button> / <button onclick="sample('ja')">日语示例</button><button onclick="toggleSource()">查看模拟原选区 ↗</button></span></footer>
+</div>
+<section id="designBoard" class="hidden"><header class="board-header"><div class="brand"><img class="owl" src="logo/owlet.png" alt="Owlet"/><b>owlet <span class="board-subtitle">按窗口与面板</span></b></div><div class="board-controls"><span id="boardSummary"></span><select id="boardZoom" aria-label="画布缩放" onchange="zoomBoard()"><option value="fit">适应宽度</option><option value="0.75">75%</option><option value="1">100%</option></select><button onclick="openExperience('result')">交互预览 ↗</button></div></header><div id="boardViewport"><div id="boardCanvas"></div></div></section>
+<div id="sourceDrawer" class="source-drawer hidden"><div style="display:flex;justify-content:space-between"><h3>工作沟通 · 模拟原选区</h3><button aria-label="关闭原选区" onclick="toggleSource()">×</button></div><textarea id="external" aria-label="模拟外部应用原选区"></textarea></div>
+<script src="shared.js"></script>
+<script>
+'use strict';
+const states=[
+ ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
+ ['polish-loading','润色 · 处理中','复用同一条紧凑条，只改状态文字。','polish-loading.png'],
+ ['direct-loading','直接替换 · 处理中','独立快捷键授权本次写回，状态文字标明。','direct-loading.png'],
+ ['error','请求 · 失败','连接失败时就地提示并给服务设置与重试。','error.png'],
+ ['format-error','请求 · 格式错误','返回格式不符合契约时提示检查提示词。','format-error.png'],
+ ['cancelled','请求 · 已取消','取消后不写回，可重新处理。','cancelled.png'],
+ ['permission','权限 · 未授权','未授权时不发起请求，入口指向权限设置。','permission.png'],
+ ['unconfigured','服务 · 未配置','缺少服务配置时提示并指向设置。','unconfigured.png'],
+ ['selection-error','选区 · 读取失败','读取不到文字时不发起请求，可改用手动输入。','selection-error.png'],
+ ['unwritten','直接替换 · 未能写回','未能写回原应用时就地提示，并可复制结果；同一布局也用于「原选区不可编辑」。','unwritten.png'],
+ ['direct-selection-error','直接替换 · 读取失败','与「选区 · 读取失败」是同一屏幕：直接替换流程读取不到文字时的紧凑条提示；Esc 关闭并取消。','direct-selection-error.png'],
+ ['direct-permission','直接替换 · 权限未授权','与「权限 · 未授权」是同一屏幕：直接替换流程的紧凑条内进入设置。','direct-permission.png'],
+ ['direct-unconfigured','直接替换 · 未配置','与「服务 · 未配置」是同一屏幕：直接替换流程的紧凑条内进入设置。','direct-unconfigured.png'],
+ ['direct-error','直接替换 · 请求失败','与「请求 · 失败」是同一屏幕：直接替换流程的紧凑条提示；Esc 关闭并取消。','direct-error.png'],
+ ['direct-format-error','直接替换 · 格式错误','与「请求 · 格式错误」是同一屏幕：直接替换流程不写回原文。','direct-format-error.png'],
+ ['direct-cancelled','直接替换 · 已取消','与「请求 · 已取消」是同一屏幕：直接替换流程的紧凑条内展示取消。','direct-cancelled.png'],
+ ['result','翻译 · 结果','展开面板：头部操作选择、原文、译文与底部复制替换。','result.png'],
+ ['polish','润色 · 结果','同一面板，标签改为润色结果与保留原意。','polish.png'],
+ ['long','翻译 · 长文本','结果滚动，复制与替换固定在底部。','long.png'],
+ ['result-loading','翻译 · 结果区处理中','已展开时重新处理保持展开，在结果区显示加载。','result-loading.png'],
+ ['result-unwritten','翻译 · 未能写回','结果仍保留，就地说明未能写回并可复制；同一布局也用于「原选区不可编辑」。','result-unwritten.png'],
+ ['result-notice','翻译 · 结果区失败','展开态失败不收起面板：结果区隐藏，行内提示加底部重试。','result-notice.png'],
+ ['result-cancelled','翻译 · 结果区已取消','取消后结果区隐藏，行内提示与底部都回到重新处理。','result-cancelled.png'],
+ ['empty','输入 · 无选区','展开面板中原文为空：来源字段可编辑，清空后 canRetry 为假，头部不显示重新处理，动作行默认分支没有可重试动作时不渲染按钮，底部只留快捷键提示。','empty.png'],
+ ['learning','学习 · 展开','展开结果内的学习表达区块：勾选推荐后主动入库。','learning.png'],
+ ['learning-loading','学习 · 整理中','学习请求独立于主结果，整理中不阻塞复制与替换。','learning-loading.png'],
+ ['learning-error','学习 · 生成失败','生成失败只重试学习内容，不重新翻译。','learning-error.png'],
+ ['learning-empty','学习 · 无推荐','没有推荐时不强凑数量，保留手动收藏。','learning-empty.png'],
+ ['saved','收藏 · 已入库','收藏后就地反馈并保留入口，不跳转打断工作。','saved.png'],
+ ['aligned','翻译 · 逐句对照','原文与译文按语义句子配对，换行不改变对应关系。','aligned.png'],
+ ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png'],
+];
+const config={
+  loading:{surface:'compact',view:'translate',strip:'loading'},
+  'polish-loading':{surface:'compact',view:'polish',strip:'loading',operation:'polish'},
+  'direct-loading':{surface:'compact',view:'direct',strip:'loading'},
+  error:{surface:'compact',view:'translate',strip:'notice',notice:'connection'},
+  'format-error':{surface:'compact',view:'translate',strip:'notice',notice:'format'},
+  cancelled:{surface:'compact',view:'translate',strip:'notice',notice:'cancelled'},
+  permission:{surface:'compact',view:'translate',strip:'notice',notice:'permission'},
+  unconfigured:{surface:'compact',view:'translate',strip:'notice',notice:'missingConfig'},
+  'selection-error':{surface:'compact',view:'translate',strip:'notice',notice:'unreadable'},
+  unwritten:{surface:'compact',view:'direct',strip:'notice',notice:'unwritten'},
+  'direct-selection-error':{surface:'compact',view:'direct',strip:'notice',notice:'unreadable'},
+  'direct-permission':{surface:'compact',view:'direct',strip:'notice',notice:'permission'},
+  'direct-unconfigured':{surface:'compact',view:'direct',strip:'notice',notice:'missingConfig'},
+  'direct-error':{surface:'compact',view:'direct',strip:'notice',notice:'connection'},
+  'direct-format-error':{surface:'compact',view:'direct',strip:'notice',notice:'format'},
+  'direct-cancelled':{surface:'compact',view:'direct',strip:'notice',notice:'cancelled'},
+  result:{surface:'panel',view:'translate',phase:'success'},
+  polish:{surface:'panel',view:'polish',phase:'success',operation:'polish'},
+  long:{surface:'panel',view:'translate',phase:'success',long:true},
+  'result-loading':{surface:'panel',view:'translate',phase:'loading'},
+  'result-unwritten':{surface:'panel',view:'translate',phase:'success',notice:'unwritten'},
+  'result-notice':{surface:'panel',view:'translate',phase:'failure',notice:'connection'},
+  'result-cancelled':{surface:'panel',view:'translate',phase:'idle',notice:'cancelled'},
+  empty:{surface:'panel',view:'translate',phase:'idle',empty:true},
+  'learning':{surface:'panel',view:'translate',phase:'success',learning:'ready'},
+  'learning-loading':{surface:'panel',view:'translate',phase:'success',learning:'loading'},
+  'learning-error':{surface:'panel',view:'translate',phase:'success',learning:'error'},
+  'learning-empty':{surface:'panel',view:'translate',phase:'success',learning:'empty'},
+  'saved':{surface:'panel',view:'translate',phase:'success',learning:'saved'},
+  'aligned':{surface:'panel',view:'translate',phase:'success',aligned:true},
+  'success':{surface:'panel',view:'direct',phase:'success',success:true},
+  debug:{surface:'app',page:'debug'},
+};
+const panels=[
+ {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
+ {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
+ {title:'浮动面板 · 学习表达区块',note:'展开结果内的独立区块：生成不阻塞复制与替换，默认手动触发；勾选后入库，动作行不再另放收藏按钮。',nodes:['learning','learning-loading','learning-error','learning-empty','saved']},
+ {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区；原文被清空时头部不显示重新处理，动作行也没有按钮。',nodes:['result','polish','long','aligned','result-loading','result-unwritten','result-notice','result-cancelled','success','empty']},
+];
+bootOwletDesign();
+</script>
+</body></html>

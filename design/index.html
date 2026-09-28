@@ -221,19 +221,16 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .mapping-row .arrow{color:var(--muted);font-size:12px}
 .mapping-row .iconbtn{display:grid;place-items:center;width:26px;height:26px;padding:0;color:var(--muted);flex:none}
 .mapping-row .iconbtn:hover{color:oklch(48% .14 25);background:oklch(48% .14 25/.1)}
-/* Debug page: the captured model exchanges behind the hidden diagnostics page. */
-.debug-card{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:13px 15px;margin-bottom:14px}
-.debug-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.debug-head .name{font-size:13px;font-weight:600}
-.debug-head .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.debug-head .glass-btn{margin-left:auto}
-.debug-failure{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(48% .14 25);margin-bottom:8px}
-.debug-failure svg{width:14px;height:14px;flex:none}
-.debug-diff{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;background:oklch(95% .007 350);border-radius:8px;padding:9px 11px;margin-bottom:10px}
-.debug-block{margin-top:10px}
-.debug-block h4{font-size:11px;font-weight:600;color:var(--muted);margin:0 0 5px}
-.debug-block pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word;background:oklch(95% .007 350);border-radius:8px;padding:9px 11px;margin:0;max-height:150px;overflow:auto}
+/* Debug page: the captured model exchanges behind the hidden diagnostics page. It is a grouped form —
+   one section per exchange, disclosures for the long payloads — like the rest of settings. */
+.debug-block{padding:10px 0;border-bottom:1px solid var(--line)}
+.debug-block:last-of-type{border-bottom:0}
+.debug-block summary{cursor:pointer;font-size:12px;padding:2px 0}
+.debug-block pre{font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow:auto;background:oklch(95% .007 350);padding:10px 12px;border-radius:8px;margin:8px 0 0}
 .debug-legend{font-size:11px;line-height:1.9;color:var(--muted);margin:2px 0 14px}
+.debug-failure{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(48% .14 25);padding:8px 0}
+.debug-failure svg{width:14px;height:14px;flex:none}
+.debug-diff{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;margin:0 0 10px}
 .window.window-narrow{width:760px;max-width:100%}
 .count{margin-left:auto;font-size:11px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
 .nav.active .count{color:oklch(99% .003 350/.8)}
@@ -722,12 +719,13 @@ const DEBUG_ENTRIES=[
    response:'{\n  "source_language": "ja",\n  "target_language": "zh-Hant",\n  "segments": [\n    {"source": "株式会社PeopleX外国籍ITエンジニア紹介部門\\n", "target": "…"}\n  ]\n}'}
 ];
 function debugCard(e){
-  return `<div class="debug-card"><div class="debug-head"><span class="name">${e.title}</span><span class="time">${e.time}</span><button class="glass-btn">复制</button></div>`
+  return `<div class="form-section"><p class="group-title">${e.title} · ${e.time}</p>`
    +`<p class="debug-failure">${icon('warn')}${esc(e.failure)}</p>`
-   +(e.diff?`<p class="debug-diff">${esc(e.diff)}</p>`:'')
-   +`<div class="debug-block"><h4>请求体</h4><pre>${esc(DEBUG_REQUEST)}</pre></div>`
-   +`<div class="debug-block"><h4>模型原始返回</h4><pre>${esc(e.response)}</pre></div>`
-   +`<div class="debug-block"><h4>提交原文</h4><pre>${esc(DEBUG_SUBMITTED)}</pre></div></div>`;
+   +(e.diff?`<pre class="debug-diff">${esc(e.diff)}</pre>`:'')
+   +`<details class="debug-block"><summary>请求体</summary><pre>${esc(DEBUG_REQUEST)}</pre></details>`
+   +`<details class="debug-block"><summary>模型原始返回</summary><pre>${esc(e.response)}</pre></details>`
+   +`<details class="debug-block"><summary>提交原文</summary><pre>${esc(DEBUG_SUBMITTED)}</pre></details>`
+   +`<div class="formrow"><span></span><span class="field"><button class="glass-btn">复制这条记录</button></span></div></div>`;
 }
 function debugHTML(){
   const empty=!!cfg().debugEmpty;

@@ -15,12 +15,22 @@ struct DebugSettingsPane: View {
                     "还没有记录", systemImage: "ladybug",
                     description: Text("发一次翻译或润色后会出现在这里。"))
             } else {
-                List {
-                    ForEach(log.exchanges) { exchange in
-                        DisclosureGroup(isExpanded: isExpanded(exchange)) {
-                            detail(exchange)
+                // `List(_:)` over the identified collection: no explicit `ForEach` needed.
+                List(log.exchanges) { exchange in
+                    VStack(alignment: .leading, spacing: 0) {
+                        // The whole row is the control, and the chevron at its trailing edge shows which
+                        // way it goes. `DisclosureGroup` would put its triangle on the leading edge,
+                        // where the row's own content starts.
+                        Button {
+                            toggle(exchange)
                         } label: {
                             summary(exchange)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(exchange.title)
+                        .accessibilityValue(isExpandedNow(exchange) ? "已展开" : "已收起")
+                        if isExpandedNow(exchange) {
+                            detail(exchange).padding(.bottom, 10)
                         }
                     }
                 }
@@ -30,7 +40,7 @@ struct DebugSettingsPane: View {
     }
 
     /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole
-    /// point of the row is to be scannable, and the disclosure opens the rest.
+    /// point of the row is to be scannable, and the chevron opens the rest.
     private func summary(_ exchange: DebugExchange) -> some View {
         HStack(spacing: 10) {
             Text(exchange.title)
@@ -45,7 +55,13 @@ struct DebugSettingsPane: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(isExpandedNow(exchange) ? 90 : 0))
+                .accessibilityHidden(true)
         }
+        .contentShape(Rectangle())
     }
 
     /// The captured content itself. No nested scroll view: the list already scrolls, and nesting a
@@ -84,15 +100,18 @@ struct DebugSettingsPane: View {
         }
     }
 
-    private func isExpanded(_ exchange: DebugExchange) -> Binding<Bool> {
-        Binding(
-            get: { expanded.contains(exchange.id) },
-            set: { open in
-                if open {
-                    expanded.insert(exchange.id)
-                } else {
-                    expanded.remove(exchange.id)
-                }
-            })
+    /// Animated, as a disclosure change is expected to be.
+    private func toggle(_ exchange: DebugExchange) {
+        withAnimation {
+            if expanded.contains(exchange.id) {
+                expanded.remove(exchange.id)
+            } else {
+                expanded.insert(exchange.id)
+            }
+        }
+    }
+
+    private func isExpandedNow(_ exchange: DebugExchange) -> Bool {
+        expanded.contains(exchange.id)
     }
 }

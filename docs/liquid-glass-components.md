@@ -85,7 +85,7 @@
 | `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）|
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
 | `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试`。编辑器分组标题的行尾是 `默认` 标记，改过之后换成小方块 `恢复默认` 按钮 |
-| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)`，每次交换一行（操作名、原文摘要 `.lineLimit(1)`、时间、行尾 `DisclosureGroup` 箭头）；展开后是失败行、原文差异与三段可选中原文；没有记录时用 `ContentUnavailableView` |
+| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)`，每次交换一行（操作名、原文摘要 `.lineLimit(1)`、时间、行尾展开箭头）；整行可点，展开后是失败行、原文差异与三段可选中原文；没有记录时用 `ContentUnavailableView` |
 | `workspace-auto.png` / `workspace-target-pinned.png` | 工具栏的 `Picker(.menu)`：`自动（简体中文）` 与显式语言两态；结果标签沿用解析出的语言名 |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
 | `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |

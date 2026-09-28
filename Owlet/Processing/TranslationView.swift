@@ -188,9 +188,6 @@ struct TranslationView: View {
             // content's corner.
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
-                    if model.operation == .translate {
-                        languagePicker.disabled(isBusy)
-                    }
                     Picker("处理方式", selection: $model.operation) {
                         ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
@@ -262,51 +259,32 @@ struct TranslationView: View {
     /// The page keeps both sides in view whatever the window is: side by side they share the width,
     /// stacked they share the height, and either way each side scrolls on its own rather than pushing
     /// the other out of the window.
+    /// Both sides are always present — the window shows where text goes in and where the result will
+    /// appear, before there is one — and each side is a `GroupBox`, so the two read as two areas of
+    /// the same page rather than as one column split by a rule.
     @ViewBuilder private var layout: some View {
-        if !showsResult {
-            sourceColumn.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        } else if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
-            HStack(alignment: .top, spacing: 0) {
-                column(sourceColumn).padding(.trailing, 28)
-                Divider()
-                column(resultColumn).padding(.leading, 28)
+        if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
+            HStack(alignment: .top, spacing: 18) {
+                sourcePane; resultPane
             }
         } else {
-            VStack(spacing: 0) {
-                column(sourceColumn)
-                Divider().padding(.vertical, 13)
-                column(resultColumn)
+            VStack(spacing: 18) {
+                sourcePane; resultPane
             }
         }
     }
 
-    /// One side: its own scroll view, filling whatever height the arrangement gives it. Both sides are
-    /// built the same way, so a stacked pair comes out an even split.
-    private func column<Content: View>(_ content: Content) -> some View {
-        ScrollView {
-            content
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                // Room for the floating buttons, so the last line can still be read.
-                .padding(.bottom, 40)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private var sourceColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            LabelRow {
-                Text(showsResult ? "自动识别" : "输入文本")
-            } trailing: {
-                Text(showsResult ? "原文" : "⌘ V 粘贴")
-            }
+    /// The source side: the editor fills the box, so the whole column is usable input rather than a
+    /// fixed strip with empty space under it. A short window keeps a floor so neither side collapses.
+    private var sourcePane: some View {
+        GroupBox {
             TextEditor(text: $model.input)
                 .textEditorStyle(.plain)
                 .font(.system(size: 16))
                 .lineSpacing(7)
-                .frame(height: 110)
                 // Cancels NSTextView's line fragment padding so text aligns with the labels.
                 .padding(.horizontal, -5)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
                     if model.input.isEmpty {
                         Text("输入或粘贴要处理的文本…")
@@ -317,11 +295,34 @@ struct TranslationView: View {
                     }
                 }
                 .accessibilityLabel("原文")
+        } label: {
+            LabelRow {
+                Text(showsResult ? "自动识别" : "输入文本")
+            } trailing: {
+                Text("原文")
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(minHeight: 180)
     }
 
-    private var resultColumn: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    /// The result side: translation or polish, then its 学习表达. It scrolls on its own so a long
+    /// result never pushes the source out of the window.
+    private var resultPane: some View {
+        GroupBox {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    resultBody
+                    if result != nil { learningSection }
+                    status
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                // Room for the floating buttons, so the last line can still be read.
+                .padding(.bottom, 40)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } label: {
             LabelRow {
                 if isBusy {
                     HStack(spacing: 6) {
@@ -334,22 +335,18 @@ struct TranslationView: View {
                     Text(model.operation == .polish ? "润色结果" : "译文")
                 }
             } trailing: {
+                // The target lives on the side it produces: it is a property of this result, not of
+                // the window. 自动 shows what this text resolves to.
                 if model.operation == .translate {
-                    // The language the shown result was made for; while one is running, the one it is
-                    // being made for.
-                    Text(LanguageCatalog.name(for: model.languages?.target ?? resolvedTarget))
+                    languagePicker.disabled(isBusy)
                 } else {
                     Text("保留原意")
                 }
             }
-            resultBody
-            // 学习表达 belongs to the result it explains, so it sits under this side rather than under
-            // the whole page.
-            if result != nil { learningSection }
-            status
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(minHeight: 180)
     }
-
     @ViewBuilder private var resultBody: some View {
         Group {
             if let result {

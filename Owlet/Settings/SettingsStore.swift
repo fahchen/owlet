@@ -204,6 +204,15 @@ extension SettingsStore {
     }
 }
 
+/// The hidden diagnostics page: off by default, and it keeps model exchanges in memory only.
+extension SettingsStore {
+    static let debugEnabledKey = "debug.enabled"
+
+    static func isDebugEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: debugEnabledKey)
+    }
+}
+
 /// Where the floating panel opens.
 enum PanelPosition: String, CaseIterable, Sendable {
     case fixed, followSelection

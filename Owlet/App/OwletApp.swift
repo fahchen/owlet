@@ -49,7 +49,7 @@ struct OwletApp: App {
 /// Main window (design/screenshots/workspace.png): native collapsible sidebar and page
 /// detail; settings is a sidebar page, not a separate window.
 private struct MainView: View {
-    enum Page: Hashable { case processing, vocabulary, history, shortcuts, settings }
+    enum Page: Hashable { case processing, vocabulary, history, shortcuts, settings, debug }
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
@@ -57,6 +57,8 @@ private struct MainView: View {
     let collection: CollectionAction
     let history: HistoryRecorder
     @Binding var promptFocus: Operation?
+    /// The debug page exists only while it is switched on in settings.
+    @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
 
     var body: some View {
         NavigationSplitView {
@@ -72,6 +74,9 @@ private struct MainView: View {
                 Section {
                     Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
                     Label("设置", systemImage: "gearshape").tag(Page.settings)
+                    if debugEnabled {
+                        Label("调试", systemImage: "ladybug").tag(Page.debug)
+                    }
                 }
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
@@ -89,9 +94,14 @@ private struct MainView: View {
                     openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
             case .settings: ServiceSettingsView(promptFocus: $promptFocus)
+            case .debug: DebugView()
             }
         }
         .frame(minWidth: 760, minHeight: 500)
+        // Turning the page off while it is open leaves the window on a page that no longer exists.
+        .onChange(of: debugEnabled) { _, enabled in
+            if !enabled, page == .debug { page = .settings }
+        }
         .task { history.observe(translation) }
     }
 }

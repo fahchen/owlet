@@ -12,6 +12,7 @@ struct ServiceSettingsView: View {
         TranslationDisplayMode.sectioned
     @AppStorage(SettingsStore.translateLearningKey) private var translateLearning = false
     @AppStorage(SettingsStore.polishLearningKey) private var polishLearning = false
+    @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
@@ -57,6 +58,13 @@ struct ServiceSettingsView: View {
                 Picker("浮窗位置", selection: $panelPosition) {
                     ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+            }
+            Section {
+                Toggle("显示调试页", isOn: $debugEnabled)
+            } header: {
+                Text("调试")
+            } footer: {
+                Text("在侧边栏显示「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。文本会发送到配置的模型服务，请自行斟酌。")
             }
             PromptSettingsView(
                 translateDraft: $translatePrompt,

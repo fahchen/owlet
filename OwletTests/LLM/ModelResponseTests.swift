@@ -45,15 +45,32 @@ private func parse(
     #"{"source_language":"en","segments":[{"source":"Good morning. Let's begin.","target":"x"}]}"#,
     #"{"source_language":"en","target_language":"zh-Hans","segments":"x"}"#,
     #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":1,"target":"x"}]}"#,
-    #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"早上好。"}]}"#,
     #"{"source_language":"en","target_language":"zh-Hans","segments":[]}"#,
     #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. Let's begin.","target":" "}]}"#,
     #"{"source_language":"en","target_language":"zh-Hans","extra":1,"segments":[{"source":"Good morning. Let's begin.","target":"x"}]}"#,
-    valid.replacingOccurrences(of: "zh-Hans", with: "ja"),
-    valid.replacingOccurrences(of: "zh-Hans", with: "zh-TW"),
 ])
 func invalidResponsesAreFormatErrors(content: String) {
     #expect(throws: ModelError.format) { try parse(content) }
+}
+
+/// A well-formed response that answers in another language is its own failure: the user has to know
+/// the model ignored the requested target, not that the JSON was malformed.
+@Test func anAnswerInAnotherLanguageIsATargetMismatch() {
+    #expect(throws: ModelError.targetMismatch(requested: "zh-Hans", returned: "ja")) {
+        try parse(valid.replacingOccurrences(of: "zh-Hans", with: "ja"))
+    }
+    // zh-TW is Traditional, which the contract keeps apart from the requested Simplified.
+    #expect(throws: ModelError.targetMismatch(requested: "zh-Hans", returned: "zh-TW")) {
+        try parse(valid.replacingOccurrences(of: "zh-Hans", with: "zh-TW"))
+    }
+}
+
+/// A response whose sources do not reassemble into the submitted text cannot be paired, so it is
+/// reported as its own failure instead of a raw structure problem.
+@Test func sourcesThatDoNotReassembleAreASourceMismatch() {
+    let partial =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"早上好。"}]}"#
+    #expect(throws: ModelError.sourceMismatch) { try parse(partial) }
 }
 
 @Test func nfcNormalizationPasses() throws {

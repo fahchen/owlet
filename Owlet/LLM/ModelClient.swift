@@ -5,21 +5,41 @@ enum ModelError: Error, Equatable {
     case unauthorized
     case http(Int)
     case emptyResponse
+    /// The returned JSON does not have the agreed shape: a missing or extra field, a wrong type, a
+    /// blank segment, or text outside one code fence.
     case format
+    /// The returned source text does not reassemble into what was submitted, so the pairing cannot
+    /// be trusted even though the JSON itself was well formed.
+    case sourceMismatch
+    /// The model answered in another language than the one requested.
+    case targetMismatch(requested: String, returned: String)
     case truncated
     case refused
 
     var message: String {
         switch self {
-        case .network(let detail): "Network error: \(detail)"
-        case .unauthorized: "Authentication failed. Check the API key."
-        case .http(let code): "Service returned HTTP \(code)."
-        case .emptyResponse: "The service returned an empty response."
-        case .format: "The response did not match the required format."
-        case .truncated: "The result was too long and got truncated."
-        case .refused: "The service refused to process this text."
+        case .network(let detail): "网络错误：\(detail)"
+        case .unauthorized: "认证失败，请检查 API Key。"
+        case .http(let code): "服务返回 HTTP \(code)。"
+        case .emptyResponse: "服务返回了空内容。"
+        case .format: "返回的结构不符合约定：字段缺失、类型不对或内容为空。"
+        case .sourceMismatch: "返回的原文与提交的内容不一致，配对无法信任。"
+        case .targetMismatch(let requested, let returned):
+            "\(Self.targetMismatchPrefix)\(returned)，与请求的 \(requested) 不一致。"
+        case .truncated: "结果过长被截断。"
+        case .refused: "服务拒绝处理这段文本。"
         }
     }
+
+    /// Whether these are the failures a prompt edit can address, rather than the service settings.
+    /// The panel routes its recovery entry with this because a failure reaches it as its message.
+    static func isContractFailure(_ message: String) -> Bool {
+        message == format.message || message == sourceMismatch.message
+            || message.hasPrefix(targetMismatchPrefix)
+    }
+
+    /// `targetMismatch` names two language tags, so only its lead is fixed.
+    static let targetMismatchPrefix = "返回的目标语言是 "
 }
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
@@ -29,6 +49,9 @@ struct ModelClient: Sendable {
     /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
     /// a test can substitute a hostile one; the fixed contract is appended by `makeRequest` either way.
     var promptForOperation: @Sendable (Operation) -> String = { SettingsStore.prompt(for: $0) }
+    /// Where a finished exchange goes for the debug page; off by default so ordinary use never keeps
+    /// the user's text.
+    var capture: DebugCapture = .live
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
@@ -51,10 +74,47 @@ struct ModelClient: Sendable {
         let target = operation == .translate ? targetLanguage : nil
         let request = try makeRequest(
             text: text, operation: operation, targetLanguage: target, config: config)
-        let data = try await send(request)
-        let content = try decodedContent(data)
-        return try TranslationResult.parse(
-            content, submitted: text, targetLanguage: target)
+        let capture = capture
+        let records = capture.isEnabled()
+        var response: String?
+        var failure: String?
+        // The record is handed off, not awaited: diagnostics must never delay or fail a request.
+        defer {
+            if records {
+                let exchange = DebugExchange(
+                    title: Self.debugTitle(operation: operation, target: target),
+                    request: Self.prettyPrintedBody(request), submitted: text, response: response,
+                    failure: failure)
+                let record = capture.record
+                Task { await record(exchange) }
+            }
+        }
+        do {
+            let data = try await send(request)
+            let content = try decodedContent(data)
+            response = content
+            return try TranslationResult.parse(content, submitted: text, targetLanguage: target)
+        } catch {
+            failure = (error as? ModelError)?.message ?? error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Names what was asked for, so a debug entry reads without opening it.
+    static func debugTitle(operation: Operation, target: String?) -> String {
+        target.map { "\(operation.title) · \($0)" } ?? operation.title
+    }
+
+    /// The body as sent, so the debug page shows the real request instead of a reconstruction. The
+    /// API key is a header, so it is not included.
+    static func prettyPrintedBody(_ request: URLRequest) -> String {
+        guard let body = request.httpBody,
+            let object = try? JSONSerialization.jsonObject(with: body),
+            let pretty = try? JSONSerialization.data(
+                withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+            let text = String(data: pretty, encoding: .utf8)
+        else { return "（请求体不可读）" }
+        return text
     }
 
     /// Fills in a Chinese meaning for one collected expression through the learning contract; the

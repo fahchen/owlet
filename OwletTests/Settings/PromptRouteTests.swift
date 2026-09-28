@@ -12,13 +12,22 @@ struct PromptRouteTests {
             model: model, defaults: UserDefaults(suiteName: "PromptRouteTests.\(UUID().uuidString)")!)
     }
 
-    @Test func formatFailureRoutesToTheCurrentOperation() {
+    @Test func contractFailuresRouteToTheCurrentOperation() {
         let controller = makeController()
         controller.model.operation = .polish
         #expect(controller.promptSettingsOperation(for: .failure(ModelError.format.message)) == .polish)
         controller.model.operation = .translate
         #expect(
             controller.promptSettingsOperation(for: .failure(ModelError.format.message)) == .translate)
+        // The mismatches are contract failures too: a prompt edit is what can address them.
+        #expect(
+            controller.promptSettingsOperation(for: .failure(ModelError.sourceMismatch.message))
+                == .translate)
+        #expect(
+            controller.promptSettingsOperation(
+                for: .failure(
+                    ModelError.targetMismatch(requested: "zh-Hans", returned: "ja").message))
+                == .translate)
     }
 
     @Test func otherNoticesDoNotRouteToPromptSettings() {

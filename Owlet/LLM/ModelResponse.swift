@@ -53,10 +53,14 @@ struct TranslationResult: Equatable {
             else { throw ModelError.format }
             return Segment(source: source, target: target)
         }
-        guard !isBlank(sourceLanguage),
-            sameLanguage(target, targetLanguage ?? sourceLanguage),
-            normalized(segments.map(\.source).joined()) == normalized(submitted)
-        else { throw ModelError.format }
+        guard !isBlank(sourceLanguage) else { throw ModelError.format }
+        guard sameLanguage(target, targetLanguage ?? sourceLanguage) else {
+            throw ModelError.targetMismatch(
+                requested: targetLanguage ?? sourceLanguage, returned: target)
+        }
+        guard normalized(segments.map(\.source).joined()) == normalized(submitted) else {
+            throw ModelError.sourceMismatch
+        }
         return TranslationResult(
             sourceLanguage: sourceLanguage, targetLanguage: target, segments: segments)
     }

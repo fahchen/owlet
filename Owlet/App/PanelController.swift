@@ -44,7 +44,7 @@ final class PanelController {
             case .permission: "权限设置"
             case .unreadable: "手动输入"
             case .missingConfig: "配置服务"
-            case .failure(let message): message == ModelError.format.message ? "提示词设置" : "服务设置"
+            case .failure(let message): ModelError.isContractFailure(message) ? "提示词设置" : "服务设置"
             case .unwritten: "复制结果"
             case .unwritable: "复制结果"
             case .cancelled: "重新处理"
@@ -55,7 +55,7 @@ final class PanelController {
         private static func isConnection(_ message: String) -> Bool {
             message == ModelError.unauthorized.message
                 || message.hasPrefix(ModelError.network("").message)
-                || message.hasPrefix("Service returned HTTP")
+                || message.hasPrefix("服务返回 HTTP")
         }
     }
 
@@ -221,10 +221,10 @@ final class PanelController {
         notice = .cancelled
     }
 
-    /// The operation whose prompt editor a format-error recovery opens; nil for every other notice,
-    /// so the panel view can route 提示词设置 to the editor that actually failed.
+    /// The operation whose prompt editor a contract failure opens; nil for every other notice, so
+    /// the panel view can route 提示词设置 to the editor that actually failed.
     func promptSettingsOperation(for notice: Notice) -> Operation? {
-        guard case .failure(let message) = notice, message == ModelError.format.message else {
+        guard case .failure(let message) = notice, ModelError.isContractFailure(message) else {
             return nil
         }
         return model.operation

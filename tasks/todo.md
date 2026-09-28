@@ -667,6 +667,29 @@
 
 **规模：**M
 
+## T27：模型失败原因可见与调试页
+
+- [x] 完成
+
+**缺口：**无。
+
+**说明：**契约失败拆成可行动的原因（结构／目标语言／原文拼接），错误文案统一为中文；新增隐藏「调试」页，记录最近若干次请求体、模型原始返回与失败原因，可一键复制。
+
+**验收条件：**
+- [x] `ModelError` 区分 `format`／`sourceMismatch`／`targetMismatch`，文案为中文；主窗口与浮窗共用同一套文案。
+- [x] 面板的恢复入口按「是否契约失败」路由到提示词设置。
+- [x] 设置页「调试」开关控制侧边栏「调试」页；关闭即隐藏并清空，数据只在内存。
+- [x] 调试页显示请求体、模型原始返回、失败原因，以及原文拼接不一致时的首个差异；单条与全部可复制，不含 API Key。
+- [x] 未开启时不记录，正常使用不保存原文。
+
+**验证：**
+- [x] `mise run test`：`DebugLogTests`、`ModelResponseTests` 的拆分用例、`PromptContractTests`、`PromptRouteTests`。
+- [x] 真实 DeepSeek 调用核对：同一请求返回合规 JSON，说明问题在本地校验路径，调试页用于取证。
+
+**依赖：**无
+
+**规模：**M
+
 ## 检查点 M5：组件对照验收
 
 - [ ] [docs/liquid-glass-components.md](../docs/liquid-glass-components.md) 第 8 节的十条验收清单逐条通过。

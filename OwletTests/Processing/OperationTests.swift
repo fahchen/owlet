@@ -26,7 +26,7 @@ private let polished =
     #expect(result.text == "I have a pen.")
     let switched = polished.replacingOccurrences(
         of: #""target_language":"en""#, with: #""target_language":"ja""#)
-    #expect(throws: ModelError.format) {
+    #expect(throws: ModelError.targetMismatch(requested: "en", returned: "ja")) {
         try TranslationResult.parse(switched, submitted: "i has a pen.", targetLanguage: nil)
     }
 }

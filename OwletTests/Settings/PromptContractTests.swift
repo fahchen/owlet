@@ -66,7 +66,7 @@ struct PromptContractTests {
             #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Other","target":"你好"}]}"#
         var client = ModelClient(transport: stub(body: chatBody(content)))
         client.promptForOperation = { _ in Self.hostile }
-        await #expect(throws: ModelError.format) {
+        await #expect(throws: ModelError.sourceMismatch) {
             try await client.process("Hello", operation: .translate, to: "zh-Hans", config: testConfig)
         }
     }
@@ -76,7 +76,9 @@ struct PromptContractTests {
             #"{"source_language":"en","target_language":"ja","segments":[{"source":"Hello","target":"你好"}]}"#
         var client = ModelClient(transport: stub(body: chatBody(content)))
         client.promptForOperation = { _ in Self.hostile }
-        await #expect(throws: ModelError.format) {
+        await #expect(
+            throws: ModelError.targetMismatch(requested: "zh-Hans", returned: "ja")
+        ) {
             try await client.process("Hello", operation: .translate, to: "zh-Hans", config: testConfig)
         }
     }

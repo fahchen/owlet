@@ -43,6 +43,13 @@ kbd{font:11px -apple-system,sans-serif;color:inherit;border:1px solid currentCol
 .window>.sidebar{grid-column:1;grid-row:2;min-width:0}
 .window>.page{grid-column:2;grid-row:2}
 .window.narrow{--rail:0px}
+/* Settings window: no sidebar, the pane switcher sits in the toolbar like a real settings window. */
+.settings-tabs{display:flex;align-items:center;gap:2px;margin:0 auto;padding:2px;border-radius:9px;background:oklch(87% .01 350/.7);box-shadow:inset 0 1px 2px oklch(30% .01 350/.12)}
+.settings-tabs button{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:500;color:var(--ink)}
+.settings-tabs button svg{width:14px;height:14px}
+.settings-tabs button[aria-selected=true]{background:var(--paper);font-weight:600;box-shadow:0 1px 2px oklch(30% .01 350/.18),0 0 0 .5px oklch(30% .01 350/.07)}
+.window.settings{--rail:0px}
+.window.settings>.sidebar{display:none}
 .window.narrow>.sidebar{display:none}
 .appbar{display:flex;align-items:center;gap:8px;height:52px;padding:0 16px 0 20px;flex-shrink:0;border-bottom:1px solid var(--line);background:oklch(98% .006 350/.8)}
 .traffic{display:flex;gap:8px;padding:0;flex:none}
@@ -324,6 +331,9 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 <symbol id="back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
 <symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></symbol>
 <symbol id="chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7"/></symbol>
+<symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.4 3.9 5.4 3.9 9s-1.3 6.6-3.9 9c-2.6-2.4-3.9-5.4-3.9-9S9.4 5.4 12 3Z"/></symbol>
+<symbol id="cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17 9.6 3.7 3.7 0 0 1 16.5 18Z"/></symbol>
+<symbol id="quote" viewBox="0 0 24 24"><path d="M5 6h14M5 11h14M5 16h9"/></symbol>
 <symbol id="ladybug" viewBox="0 0 24 24"><path d="M12 4a3 3 0 0 1 3 3H9a3 3 0 0 1 3-3ZM6 9h12a1 1 0 0 1 1 1c0 5-3 9-7 9s-7-4-7-9a1 1 0 0 1 1-1Z"/><path d="M12 9v9M6.5 8 4 5.5M17.5 8 20 5.5M5 13H2.5M19 13h2.5M6 17l-2.5 2M18 17l2.5 2"/></symbol>
 </defs></svg>
 <div id="experience" class="stage">
@@ -403,11 +413,16 @@ const states=[
  ['shortcuts','快捷键 · 未设置','三个全局动作未录制；面板内固定键只读。','shortcuts.png'],
  ['shortcuts-recording','快捷键 · 录制中','录制按钮等待新组合键；Esc 取消，Delete 清除。','shortcuts-recording.png'],
  ['shortcuts-conflict','快捷键 · 组合冲突','与已录制动作冲突时提示换一个组合。','shortcuts-conflict.png'],
- ['settings','设置 · 模型服务','DeepSeek 已保存：Base URL、Key、模型列表选择与浮窗位置。','settings.png'],
- ['settings-openai','设置 · 自定义服务商','OpenAI Compatible 默认项：Base URL 与模型名称是自由填写，显示占位文案。','settings-openai.png'],
- ['settings-saved','设置 · 已保存','保存后在页脚左侧确认，模型列表随保存重新读取。','settings-saved.png'],
- ['settings-models','设置 · 模型列表失败','DeepSeek 取模型列表失败时就地提示原始错误并给重试。','settings-models.png'],
- ['settings-models-loading','设置 · 模型列表读取中','名称行不换控件，读取状态在页脚给出。','settings-models-loading.png'],
+ // 已实现：独立设置窗口（T29），四个标签页 + 开关打开后的调试页。
+ ['settings-general','设置 · 通用','通用页：学习开关、浮窗位置与调试开关，各自成组。','settings-general.png'],
+ ['settings-language-empty','设置 · 语言','语言页：语言子集，加目标语言的兜底目标（映射表为空）。','settings-language-empty.png'],
+ ['settings-language-rows','设置 · 语言 · 已添加映射','语言页：映射表已有两行，一个源语言只保留一条。','settings-language-rows.png'],
+ ['settings-model','设置 · 模型','模型页：服务与模型两组，Base URL、Key、模型名称与思考强度。','settings-model.png'],
+ ['settings-model-openai','设置 · 模型 · 自定义服务商','模型页：OpenAI Compatible 时模型名称是自由填写。','settings-model-openai.png'],
+ ['settings-model-failed','设置 · 模型 · 模型列表失败','模型页：取模型列表失败时就地提示并给重试。','settings-model-failed.png'],
+ ['settings-prompt','设置 · Prompt','Prompt 页：翻译与润色各成一个编辑器分组，附返回格式示例。','settings-prompt.png'],
+ ['settings-debug','设置 · 调试','调试页：失败原因说明与最近一次请求（请求体、原始返回、提交原文）。','settings-debug.png'],
+ ['settings-debug-empty','设置 · 调试 · 无记录','调试页空状态；记录只在内存，重启即清空。','settings-debug-empty.png'],
  ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
  ['polish-loading','润色 · 处理中','复用同一条紧凑条，只改状态文字。','polish-loading.png'],
  ['direct-loading','直接替换 · 处理中','独立快捷键授权本次写回，状态文字标明。','direct-loading.png'],
@@ -449,21 +464,13 @@ const states=[
  ['learning-empty','学习 · 无推荐','没有推荐时不强凑数量，保留手动收藏。','learning-empty.png'],
  ['saved','收藏 · 已入库','收藏后就地反馈并保留入口，不跳转打断工作。','saved.png'],
  ['aligned','翻译 · 逐句对照','原文与译文按语义句子配对，换行不改变对应关系。','aligned.png'],
- ['settings-learning','设置 · 学习开关','翻译与润色各自控制是否在结果成功后台请求学习表达，默认关闭。','settings-learning.png'],
- ['settings-prompts','设置 · Prompt','Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。','settings-prompts.png'],
  ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png'],
  // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
  ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png'],
  // 已实现：翻译目标映射（BDR-0003）。
- ['settings-languages','设置 · 语言','语言子集：默认简体中文、英语、日语；其余选语言的地方只用这个子集，完整系统清单只在添加时出现。','settings-languages.png'],
- ['settings-targets','设置 · 目标语言','兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。','settings-targets.png'],
- ['settings-targets-rows','设置 · 目标语言 · 已添加映射','用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。','settings-targets-rows.png'],
  ['workspace-auto','文本处理 · 自动目标','工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。','workspace-auto.png'],
  ['workspace-target-pinned','文本处理 · 手动指定目标','用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。','workspace-target-pinned.png'],
  // 已实现：隐藏的调试页（设置里开启）。
- ['settings-debug','设置 · 调试开关','调试开关：打开后在侧边栏出现「调试」页。','settings-debug.png'],
- ['debug','调试 · 记录','最近一次模型请求：失败原因、请求体、模型原始返回与提交原文，可一键复制。','debug.png'],
- ['debug-empty','调试 · 无记录','还没发过请求时的空状态；记录只在内存，重启即清空。','debug-empty.png']
 ];
 const config={
   workspace:{surface:'app',page:'processing',phase:'result'},
@@ -479,10 +486,15 @@ const config={
   'shortcuts-recording':{surface:'app',page:'shortcuts',recording:'translate'},
   'shortcuts-conflict':{surface:'app',page:'shortcuts',conflict:true},
   settings:{surface:'app',page:'settings'},
-  'settings-openai':{surface:'app',page:'settings',provider:'openai'},
-  'settings-saved':{surface:'app',page:'settings',saved:true},
-  'settings-models':{surface:'app',page:'settings',models:'failed'},
-  'settings-models-loading':{surface:'app',page:'settings',models:'loading'},
+  'settings-general':{surface:'settings',pane:'general'},
+  'settings-language-empty':{surface:'settings',pane:'language'},
+  'settings-language-rows':{surface:'settings',pane:'language',targets:'rows'},
+  'settings-model':{surface:'settings',pane:'model'},
+  'settings-model-openai':{surface:'settings',pane:'model',provider:'openai'},
+  'settings-model-failed':{surface:'settings',pane:'model',models:'failed'},
+  'settings-prompt':{surface:'settings',pane:'prompt'},
+  'settings-debug':{surface:'settings',pane:'debug',debug:true},
+  'settings-debug-empty':{surface:'settings',pane:'debug',debug:true,debugEmpty:true},
   loading:{surface:'compact',view:'translate',strip:'loading'},
   'polish-loading':{surface:'compact',view:'polish',strip:'loading',operation:'polish'},
   'direct-loading':{surface:'compact',view:'direct',strip:'loading'},
@@ -524,21 +536,14 @@ const config={
   'learning-empty':{surface:'panel',view:'translate',phase:'success',learning:'empty'},
   'saved':{surface:'panel',view:'translate',phase:'success',learning:'saved'},
   'aligned':{surface:'panel',view:'translate',phase:'success',aligned:true},
-  'settings-learning':{surface:'app',page:'settings',learning:true},
-  'settings-prompts':{surface:'app',page:'settings',prompts:true},
   'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true},
   // 提案：写回成功后的确认屏，应用尚未实现。
   'success':{surface:'panel',view:'direct',phase:'success',success:true},
   // 提案：翻译目标映射（BDR-0003），应用尚未实现。
-  'settings-languages':{surface:'app',page:'settings',languages:true},
-  'settings-targets':{surface:'app',page:'settings',targets:'empty'},
-  'settings-targets-rows':{surface:'app',page:'settings',targets:'rows'},
   'workspace-auto':{surface:'app',page:'processing',phase:'result',targetMode:'auto'},
   'workspace-target-pinned':{surface:'app',page:'processing',phase:'result',targetMode:'pinned',pinnedTarget:'ja'},
   // 已实现：隐藏的调试页（设置里开启）。
-  'settings-debug':{surface:'app',page:'settings',debug:true},
   debug:{surface:'app',page:'debug'},
-  'debug-empty':{surface:'app',page:'debug',debugEmpty:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
@@ -546,8 +551,7 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'inset grouped 表单；设置是主窗口的侧栏页面，不是独立窗口。语言分组维护语言子集，其余选语言的地方只用子集；目标语言分组是兜底目标加一张由用户逐条添加的映射表；调试分组控制隐藏的诊断页。',nodes:['settings','settings-openai','settings-saved','settings-learning','settings-models','settings-models-loading','settings-prompts','settings-languages','settings-targets','settings-targets-rows','settings-debug']},
- {title:'应用窗口 · 调试',note:'隐藏页：设置里打开才出现。列出最近若干次模型请求体、原始返回与失败原因；仅在内存，不含 API Key。',nodes:['debug','debug-empty']},
+ {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-prompt','settings-debug','settings-debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -556,7 +560,7 @@ const panels=[
  {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']},
 ];
 
-let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false,targetMode='pinned';
+let state='result',which='en',prefs={target:'zh-Hans',displayMode:'sectioned'},appPage='processing',operationOverride=null,sidebarCollapsed=false,targetMode='pinned';
 let phase='success',notice=null,long=false,recording=null,saved=false,shortcutDraft=null,conflict=false,menubarMenu=false;
 let scenario='normal',toastTimer,external="Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.";
 let buildingBoard=false,boardBuilt=false;
@@ -572,12 +576,9 @@ function sample(k){which=k;external=inputText();render()}
 // ---------- 应用窗口 ----------
 function sidebarHTML(){
   const row=(p,label,glyph,count)=>`<button class="nav ${appPage===p?'active':''}" aria-current="${appPage===p?'page':'false'}" onclick="openApp('${p}')">${icon(glyph)}<span>${label}</span>${count?`<span class="count">${count}</span>`:''}</button>`;
-  // 所有画面共用目标侧边栏，包括尚未实现的生词本与历史记录：设计图描述要去的地方，实现进度由
-  // 徽标和文档说明，而不是靠画一张不完整的侧栏来表达。调试页例外：它只在设置里打开后存在。
-  const debugRow=appPage==='debug'||cfg().debug?row('debug','调试','ladybug'):'';
   return `<p class="section-label">随手处理</p><nav class="navgroup" aria-label="文本操作">${row('processing','文本处理','translate')}</nav>`
    +`<p class="section-label">我的积累</p><nav class="navgroup" aria-label="个人内容">${row('book','生词本','book',BOOK.length)}${row('history','历史记录','clock')}</nav>`
-   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}${row('settings','设置','gear')}${debugRow}</nav>`;
+   +`<nav class="navgroup" aria-label="应用">${row('shortcuts','快捷键','keyboard')}</nav>`;
 }
 function appbarHTML(){
   const titles={processing:'文本处理',shortcuts:'快捷键',settings:'设置',book:'生词本',history:'历史记录',debug:'调试'};
@@ -598,7 +599,8 @@ function appbarTools(){
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
-  return (currentOperation()==='polish'?'':targetSelectHTML(busy))
+  return `<select class="popup" aria-label="显示方式" onchange="prefs.displayMode=this.value;render()"><option value="sectioned" ${prefs.displayMode!=='aligned'?'selected':''}>分区</option><option value="aligned" ${prefs.displayMode==='aligned'?'selected':''}>对照</option></select>`
+   +(currentOperation()==='polish'?'':targetSelectHTML(busy))
    +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
 }
 function setOperation(v){operationOverride=v;render()}
@@ -624,7 +626,7 @@ function processingHTML(){
   const resultSection=(done||busy)?`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${result}</div><div class="reserved" aria-hidden="true"></div></section>`:'';
   const notice=phase==='missingConfig'?{message:'模型服务未配置',action:'配置服务'}
     :failed?{message:cfg().message||'网络错误：连接似乎已断开。',action:'服务设置'}:null;
-  const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openApp('settings')">${notice.action}</button></div>`:'';
+  const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openSettings('model')">${notice.action}</button></div>`:'';
   const footer=`<footer class="footer"><small>${busy?'处理中':''}</small><div class="actions">${busy?`<button class="glass-btn" onclick="cancelRun()">取消</button>`:`<button class="glass-btn" ${done?'':'disabled'} onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" ${busy||cfg().empty?'disabled':''} onclick="run()">${op==='polish'?'润色文本':'翻译文本'} <kbd>⌘ ↩</kbd></button>`}</div></footer>`;
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
   return `<div class="body" id="body">${source}${resultSection}${learning}${status}</div>${footer}`;
@@ -658,38 +660,67 @@ function targetsHTML(mode){
   const row=(src,tgt)=>`<div class="formrow mapping-row"><span class="field"><select ${popup('源语言')}>${options(src)}</select><span class="arrow" aria-hidden="true">→</span><select ${popup('目标语言')}>${options(tgt)}</select></span><button class="iconbtn" aria-label="删除映射">${icon('trash')}</button></div>`;
   return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}${row('en','ja')}${row('ja','zh-Hans')}<p class="section-footer">一个源语言只保留一条映射，重复添加即替换。</p>${add}</div>`;
 }
-function settingsHTML(){
-  const failed=cfg().models==='failed',openai=cfg().provider==='openai';
-  const loading=cfg().models==='loading';
-  const targetsSection=cfg().targets?targetsHTML(cfg().targets):'';
-  const languagesSection=cfg().languages?languagesHTML():'';
-  // 调试分组默认关闭：它只控制隐藏的诊断页，不属于产品功能。
-  const debugSection=cfg().debug?`<div class="form-section"><p class="group-title">调试</p>`
-   +`<div class="formrow"><label>显示调试页</label><span class="field"><input type="checkbox" role="switch" aria-label="显示调试页" checked></span></div>`
-   +`<p class="section-footer">在侧边栏显示「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。</p></div>`:'';
-  // 模型名称这一行不随读取状态换控件：DeepSeek 始终是弹出式按钮，只有选项会变；读取反馈在页脚。
+// 设置窗口（T29）：独立窗口，四个标签页 + 开关打开后的调试页；每页内再用分组分节。
+const SETTINGS_TABS=[
+  ['general','通用','gearshape'],['language','语言','globe'],['model','模型','cloud'],
+  ['prompt','Prompt','quote'],['debug','调试','ladybug'],
+];
+function settingsTabsHTML(){
+  const active=cfg().pane||'general';
+  const shown=SETTINGS_TABS.filter(([id])=>id!=='debug'||active==='debug'||cfg().debug);
+  return `<div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div><h1 class="apptitle">Owlet 设置</h1>`
+   +`<div class="settings-tabs" role="tablist">`
+   +shown.map(([id,label,glyph])=>`<button role="tab" aria-selected="${active===id}">${icon(glyph)}<span>${label}</span></button>`).join('')
+   +`</div><div class="appbar-tools"></div>`;
+}
+function learningHTML(){
+  return `<div class="form-section"><p class="group-title">学习</p>`
+   +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
+   +`<div class="formrow"><label>润色后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="润色后自动请求学习表达"></span></div></div>`;
+}
+function panelPositionHTML(){
+  return `<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`;
+}
+function debugToggleHTML(){
+  return `<div class="form-section"><p class="group-title">调试</p>`
+   +`<div class="formrow"><label>显示调试页</label><span class="field"><input type="checkbox" role="switch" aria-label="显示调试页" ${cfg().debug?'checked':''}></span></div>`
+   +`<p class="section-footer">在设置里多出一个「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。</p></div>`;
+}
+function modelPaneHTML(){
+  const openai=cfg().provider==='openai';
   const modelRow=`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`
-    +(failed?`<div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`:'');
-  // Prompt 分组是提案（T12）：应用的设置页只有“模型服务”与“浮窗”两个分组。
-  const promptSection=cfg().prompts?`<div class="form-section"><p class="group-title">Prompt</p>`
-   +['translate','polish'].map(k=>`<div class="prompt-editor"><div class="labelrow"><span class="label">${k==='translate'?'翻译':'润色'} System Prompt</span><span class="state">默认</span></div><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><details><summary>查看默认 Prompt</summary><p>${esc(DEFAULT_PROMPTS[k])}</p></details><button class="glass-btn">恢复默认</button></div></div>`).join('')
-   +`<div class="prompt-contract"><strong>返回格式 · JSON</strong><details><summary>查看返回示例（字段草案）</summary><pre>${esc(RESPONSE_EXAMPLE)}</pre></details></div></div>`:'';
-  return `<div class="body" id="body"><div class="form">`
-   +promptSection
-   +`<div class="form-section"><p class="group-title">模型服务</p>`
+   +(cfg().models==='failed'?`<div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`:'');
+  return `<div class="form-section"><p class="group-title">服务</p>`
    +`<div class="formrow"><label>服务商</label><span class="field"><select class="popup" aria-label="服务商" style="height:auto;padding:7px 26px 7px 9px"><option ${openai?'selected':''}>OpenAI Compatible</option><option ${openai?'':'selected'}>DeepSeek</option></select></span></div>`
    +`<div class="formrow"><label>Base URL</label><span class="field"><input value="${openai?'':'https://api.deepseek.com'}" placeholder="https://api.openai.com/v1" aria-label="Base URL"></span></div>`
    +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="${openai?'':'sk-example'}" placeholder="sk-…" aria-label="API Key" autocomplete="off"></span></div>`
-   +modelRow
-   +`</div>`
-   +languagesSection
-   +targetsSection
-   +(cfg().learning?`<div class="form-section"><p class="group-title">学习</p>`
-     +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
-     +`<div class="formrow"><label>润色后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="润色后自动请求学习表达"></span></div></div>`:'')
-   +`<div class="form-section"><p class="group-title">浮窗</p><div class="formrow"><label>浮窗位置</label><span class="field"><select class="popup" aria-label="浮窗位置" style="height:auto;padding:7px 26px 7px 9px"><option selected>固定位置</option><option>跟随选区</option></select></span></div></div>`
-   +debugSection
-   +`</div></div><footer class="footer"><span class="saved">${saved?`${icon('check')}已保存`:''}${loading?'<span class="spin" aria-hidden="true"></span>':''}</span><div class="actions"><button class="glass-btn prominent" onclick="saved=true;render();toast('设置已保存')">保存设置</button></div></footer>`;
+   +`<p class="section-footer">API Key 存在钥匙串里；离开输入框后生效。</p></div>`
+   +`<div class="form-section"><p class="group-title">模型</p>${modelRow}`
+   +`<div class="formrow"><label>思考强度</label><span class="field"><select class="popup" aria-label="思考强度" style="height:auto;padding:7px 26px 7px 9px"><option>自动</option><option>低</option><option>中</option><option>高</option></select></span></div>`
+   +`<p class="section-footer">思考强度会按当前模型映射成它实际接受的值。</p></div>`;
+}
+function promptPaneHTML(){
+  return ['translate','polish'].map(k=>`<div class="form-section"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p>`
+   +`<div class="prompt-editor"><div class="labelrow"><span class="label">${k==='translate'?'翻译':'润色'} System Prompt</span><span class="state">默认</span></div><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><details><summary>查看默认 Prompt</summary><p>${esc(DEFAULT_PROMPTS[k])}</p></details><button class="glass-btn">恢复默认</button></div></div></div>`).join('')
+   +`<div class="form-section"><p class="group-title">返回格式 · JSON</p><div class="prompt-contract"><details><summary>查看返回示例</summary><pre>${esc(RESPONSE_EXAMPLE)}</pre></details></div>`
+   +`<p class="section-footer">改动在编辑框失去焦点后生效，只影响之后的新请求。</p></div>`;
+}
+function debugPaneHTML(){
+  const legend=`<div class="form-section"><p class="group-title">可能的失败原因</p><p class="debug-legend">· 返回的结构不符合约定：字段缺失、类型不对、内容为空，或 JSON 外还有文字<br>· 返回的目标语言与请求不一致（例如请求 zh-Hant，返回 zh-Hans）<br>· 返回的原文与提交的内容不一致（拼接后不等）<br>· 结果过长被截断、服务拒绝处理、网络、认证、HTTP、空内容</p><p class="section-footer">只保留最近 20 次，重启即清空；内容不含 API Key。</p></div>`;
+  if(cfg().debugEmpty)return legend+`<p class="debug-legend">还没有记录。发一次翻译或润色，这里就会显示这次请求与返回。</p>`;
+  return legend
+   +`<div class="form-section"><div class="formrow"><span></span><span class="field"><button class="glass-btn">复制全部</button><button class="glass-btn">清空</button></span></div></div>`
+   +DEBUG_ENTRIES.map(debugCard).join('');
+}
+function settingsPaneHTML(){
+  const pane=cfg().pane||'general';
+  let body;
+  if(pane==='language')body=`${languagesHTML()}${targetsHTML(cfg().targets||'empty')}`;
+  else if(pane==='model')body=modelPaneHTML();
+  else if(pane==='prompt')body=promptPaneHTML();
+  else if(pane==='debug')body=debugPaneHTML();
+  else body=`${learningHTML()}${panelPositionHTML()}${debugToggleHTML()}`;
+  return `<div class="body" id="body"><div class="form">${body}</div></div>`;
 }
 // 生词本与历史：提案页面，数据是内置示例。
 function listRowHTML(kind,x){
@@ -740,19 +771,9 @@ function debugCard(e){
    +`<details class="debug-block"><summary>提交原文</summary><pre>${esc(DEBUG_SUBMITTED)}</pre></details>`
    +`<div class="formrow"><span></span><span class="field"><button class="glass-btn">复制这条记录</button></span></div></div>`;
 }
-function debugHTML(){
-  const empty=!!cfg().debugEmpty;
-  const legend=`<div class="form-section"><p class="group-title">可能的失败原因</p><p class="debug-legend">· 返回的结构不符合约定：字段缺失、类型不对、内容为空，或 JSON 外还有文字<br>· 返回的目标语言与请求不一致（例如请求 zh-Hant，返回 zh-Hans）<br>· 返回的原文与提交的内容不一致（拼接后不等）<br>· 结果过长被截断、服务拒绝处理、网络、认证、HTTP、空内容</p></div>`;
-  const body=empty
-    ?`<p class="debug-legend">还没有记录。打开「调试」后发一次翻译或润色，这里就会显示这次请求与返回。</p>`
-    :DEBUG_ENTRIES.map(debugCard).join('');
-  return `<div class="body" id="body"><div class="form">${legend}${body}</div></div>`
-   +`<footer class="footer"><span class="saved">只保留最近 20 次，重启即清空；内容不含 API Key。</span><div class="actions"><button class="glass-btn" ${empty?'disabled':''}>复制全部</button><button class="glass-btn" ${empty?'disabled':''}>清空</button></div></footer>`;
-}
 function appHTML(){
   if(appPage==='shortcuts')return shortcutsHTML();
   if(appPage==='settings')return settingsHTML();
-  if(appPage==='debug')return debugHTML();
   if(appPage==='book')return libraryHTML('book');
   if(appPage==='history')return libraryHTML('history');
   return processingHTML();
@@ -761,7 +782,7 @@ function appHTML(){
 // ---------- 浮窗 ----------
 function panelHeaderHTML(){
   const op=currentOperation();
-  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option></select></span><span class="quick-tools">${phase!=='loading'&&!cfg().empty?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openApp('settings')">${icon('gear')}</button></span></header>`;
+  return `<header class="panel-header"><span class="quick-mode">${icon('owlet')}<select aria-label="快捷操作" onchange="operationOverride=this.value;render()"><option value="translate" ${op==='translate'?'selected':''}>翻译</option><option value="polish" ${op==='polish'?'selected':''}>润色</option></select></span><span class="quick-tools">${phase!=='loading'&&!cfg().empty?`<button aria-label="重新处理" title="重新处理" onclick="run()">${icon('refresh')}</button>`:''}<button aria-label="打开设置" title="打开设置" onclick="openSettings('model')">${icon('gear')}</button></span></header>`;
 }
 function pairsHTML(){
   return (samples[which].pairs||[]).map(p=>`<div class="sentence-pair"><p class="sentence-source">${esc(p.source)}</p><p class="sentence-target">${esc(p[prefs.target]||p.zh)}</p></div>`).join('');
@@ -825,14 +846,19 @@ function compactHTML(){
 }
 function panelHTML(){return `${panelHeaderHTML()}${panelBodyHTML()}${panelFooterHTML()}`}
 function toggleSidebar(){sidebarCollapsed=!sidebarCollapsed;render()}
-function openApp(page){appPage=page;state=page==='shortcuts'?'shortcuts':page==='settings'?'settings':page==='book'?'book-list':page==='history'?'history-list':'workspace';phase=page==='processing'?'result':'success';$('#sourceDrawer').classList.add('hidden');render();syncPicker()}
+function openApp(page){appPage=page;state=page==='shortcuts'?'shortcuts':page==='book'?'book-list':page==='history'?'history-list':'workspace';phase=page==='processing'?'result':'success';$('#sourceDrawer').classList.add('hidden');render();syncPicker()}
+// 设置是独立窗口：入口只决定停在哪个标签页。
+const SETTINGS_STATE={general:'settings-general',language:'settings-language-empty',model:'settings-model',prompt:'settings-prompt',debug:'settings-debug'};
+function openSettings(pane){preview(SETTINGS_STATE[pane]||'settings-general')}
 
 // ---------- 渲染 ----------
 function render(){
   const c=cfg(),frame=$('#window'),surface=c.surface;
-  frame.classList.toggle('floating',surface!=='app');
+  const settings=surface==='settings';
+  frame.classList.toggle('floating',surface!=='app'&&!settings);
+  frame.classList.toggle('settings',settings);
   frame.classList.toggle('compact',surface==='compact');
-  frame.classList.toggle('narrow',sidebarCollapsed||!!c.collapsed);
+  frame.classList.toggle('narrow',settings||sidebarCollapsed||!!c.collapsed);
   frame.classList.toggle('window-narrow',!!c.narrowWindow);
   frame.classList.toggle('hidden',surface==='menubar');
   // 提案状态在框架上带“未实现”徽标：图标加文字表意，不只靠颜色。
@@ -845,8 +871,8 @@ function render(){
   bar.innerHTML=surface==='menubar'?menubarHTML():'';
   appPage=c.page||appPage;
   $('#sidebar').innerHTML=surface==='app'?sidebarHTML():'';
-  $('#appbar').innerHTML=surface==='app'?appbarHTML():'';
-  $('#main').innerHTML=surface==='app'?appHTML():(surface==='compact'?compactHTML():panelHTML());
+  $('#appbar').innerHTML=settings?settingsTabsHTML():surface==='app'?appbarHTML():'';
+  $('#main').innerHTML=settings?settingsPaneHTML():(surface==='app'?appHTML():(surface==='compact'?compactHTML():panelHTML()));
 }
 function syncPicker(){$('#statePicker').value=states.some(s=>s[0]===state)?state:'';const i=states.findIndex(s=>s[0]===state);$('#stateCount').textContent=(i+1)+' / '+states.length}
 function preview(id){
@@ -878,7 +904,7 @@ function recover(kind){
   if(kind==='cancelled'){run();return}
   if(kind==='unreadable'){openApp('processing');return}
   if(kind==='permission'){toast('正式应用会打开「隐私与安全性 › 辅助功能」');return}
-  openApp('settings');
+  openSettings('prompt');
 }
 async function copyResult(){try{await navigator.clipboard.writeText(resultText());toast('已复制')}catch{toast('浏览器限制剪贴板，请选中结果后按 ⌘C')}}
 function startRecording(key){recording=key;render()}
@@ -933,7 +959,7 @@ function buildBoard(){
       lane.querySelector('.window-nodes').append(node);
       const slot=node.querySelector('.flow-preview');slot.append(clone);
       const floating=clone.classList.contains('floating'),compact=clone.classList.contains('compact');
-      const h=id.startsWith('menubar')?160:floating?(compact?60:source.offsetHeight):387;
+      const h=id.startsWith('menubar')?160:floating?(compact?60:source.offsetHeight):(clone.classList.contains('settings')?520:387);
       slot.style.height=h+'px';
       if(clone.querySelector('.body'))clone.querySelector('.body').scrollTop=scrollTop;
     }
@@ -953,9 +979,10 @@ window.checkDesignStates=()=>{
     preview(id);
     if(id.startsWith('menubar')){checks.push(id);continue}
     const frame=$('#window'),c=config[id];
-    if(c.surface==='app'){
+    if(c.surface==='app'||c.surface==='settings'){
       if(!frame.querySelector('.appbar .appbar-tools'))throw Error(id+': 缺少工具栏');
       if(!frame.querySelector('.body'))throw Error(id+': 缺少内容区');
+      if(c.surface==='settings'&&!frame.querySelector('.settings-tabs'))throw Error(id+': 缺少标签页栏');
       if(c.page==='processing'&&!frame.querySelector('.footer'))throw Error(id+': 缺少底部操作栏');
     }else{
       const strip=frame.querySelector('.strip'),footer=frame.querySelector('.footer');

@@ -34,11 +34,15 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [shortcuts.png](screenshots/shortcuts.png) | 快捷键 · 未设置 | 三个全局动作未录制；面板内固定键只读。 |
 | [shortcuts-recording.png](screenshots/shortcuts-recording.png) | 快捷键 · 录制中 | 录制按钮等待新组合键；Esc 取消，Delete 清除。 |
 | [shortcuts-conflict.png](screenshots/shortcuts-conflict.png) | 快捷键 · 组合冲突 | 与已录制动作冲突时提示换一个组合。 |
-| [settings.png](screenshots/settings.png) | 设置 · 模型服务 | DeepSeek 已保存：Base URL、Key、模型列表选择与浮窗位置。 |
-| [settings-openai.png](screenshots/settings-openai.png) | 设置 · 自定义服务商 | OpenAI Compatible 默认项：Base URL 与模型名称是自由填写，显示占位文案。 |
-| [settings-saved.png](screenshots/settings-saved.png) | 设置 · 已保存 | 保存后在页脚左侧确认，模型列表随保存重新读取。 |
-| [settings-models.png](screenshots/settings-models.png) | 设置 · 模型列表失败 | DeepSeek 取模型列表失败时就地提示原始错误并给重试。 |
-| [settings-models-loading.png](screenshots/settings-models-loading.png) | 设置 · 模型列表读取中 | 名称行不换控件，读取状态在页脚给出。 |
+| [settings-general.png](screenshots/settings-general.png) | 设置 · 通用 | 通用页：学习开关、浮窗位置与调试开关，各自成组。 |
+| [settings-language-empty.png](screenshots/settings-language-empty.png) | 设置 · 语言 | 语言页：语言子集，加目标语言的兜底目标（映射表为空）。 |
+| [settings-language-rows.png](screenshots/settings-language-rows.png) | 设置 · 语言 · 已添加映射 | 语言页：映射表已有两行，一个源语言只保留一条。 |
+| [settings-model.png](screenshots/settings-model.png) | 设置 · 模型 | 模型页：服务与模型两组，Base URL、Key、模型名称与思考强度。 |
+| [settings-model-openai.png](screenshots/settings-model-openai.png) | 设置 · 模型 · 自定义服务商 | 模型页：OpenAI Compatible 时模型名称是自由填写。 |
+| [settings-model-failed.png](screenshots/settings-model-failed.png) | 设置 · 模型 · 模型列表失败 | 模型页：取模型列表失败时就地提示并给重试。 |
+| [settings-prompt.png](screenshots/settings-prompt.png) | 设置 · Prompt | Prompt 页：翻译与润色各成一个编辑器分组，附返回格式示例。 |
+| [settings-debug.png](screenshots/settings-debug.png) | 设置 · 调试 | 调试页：失败原因说明与最近一次请求（请求体、原始返回、提交原文）。 |
+| [settings-debug-empty.png](screenshots/settings-debug-empty.png) | 设置 · 调试 · 无记录 | 调试页空状态；记录只在内存，重启即清空。 |
 | [loading.png](screenshots/loading.png) | 翻译 · 处理中 | 紧凑条：选中文字摘要、加载指示、停止按钮。 |
 | [polish-loading.png](screenshots/polish-loading.png) | 润色 · 处理中 | 复用同一条紧凑条，只改状态文字。 |
 | [direct-loading.png](screenshots/direct-loading.png) | 直接替换 · 处理中 | 独立快捷键授权本次写回，状态文字标明。 |
@@ -78,15 +82,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [learning-empty.png](screenshots/learning-empty.png) | 学习 · 无推荐 | 没有推荐时不强凑数量，保留手动收藏。 |
 | [saved.png](screenshots/saved.png) | 收藏 · 已入库 | 收藏后就地反馈并保留入口，不跳转打断工作。 |
 | [aligned.png](screenshots/aligned.png) | 翻译 · 逐句对照 | 原文与译文按语义句子配对，换行不改变对应关系。 |
-| [settings-learning.png](screenshots/settings-learning.png) | 设置 · 学习开关 | 翻译与润色各自控制是否在结果成功后台请求学习表达，默认关闭。 |
-| [settings-prompts.png](screenshots/settings-prompts.png) | 设置 · Prompt | Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。 |
 | [workspace-narrow.png](screenshots/workspace-narrow.png) | 文本处理 · 窄窗口 | 内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。 |
 | [success.png](screenshots/success.png) | 直接替换 · 完成 | 写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。 |
-| [settings-languages.png](screenshots/settings-languages.png) | 设置 · 语言 | 语言子集：默认简体中文、英语、日语；其余选语言的地方只用这个子集，完整系统清单只在添加时出现。 |
-| [settings-targets.png](screenshots/settings-targets.png) | 设置 · 目标语言 | 兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。 |
-| [settings-targets-rows.png](screenshots/settings-targets-rows.png) | 设置 · 目标语言 · 已添加映射 | 用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。 |
 | [workspace-auto.png](screenshots/workspace-auto.png) | 文本处理 · 自动目标 | 工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。 |
 | [workspace-target-pinned.png](screenshots/workspace-target-pinned.png) | 文本处理 · 手动指定目标 | 用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。 |
-| [settings-debug.png](screenshots/settings-debug.png) | 设置 · 调试开关 | 调试开关：打开后在侧边栏出现「调试」页。 |
-| [debug.png](screenshots/debug.png) | 调试 · 记录 | 最近一次模型请求：失败原因、请求体、模型原始返回与提交原文，可一键复制。 |
-| [debug-empty.png](screenshots/debug-empty.png) | 调试 · 无记录 | 还没发过请求时的空状态；记录只在内存，重启即清空。 |

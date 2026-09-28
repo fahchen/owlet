@@ -363,7 +363,7 @@ const SHORTCUTS=[['翻译','translate'],['润色','polish'],['翻译并替换','
 // PanelKey.all：面板打开时始终生效的固定键，实现于 Owlet/Shortcuts/PanelKey.swift。
 const PANEL_KEYS=[['替换','⌘ ↩','浮动面板'],['复制','⌘ ⇧ C','浮动面板'],['停止处理 / 关闭','Esc','浮动面板']];
 // PanelController.Notice：消息与唯一的恢复入口，实现于 Owlet/App/PanelController.swift。
-const MODEL_LIST_ERROR='Authentication failed. Check the API key.';
+const MODEL_LIST_ERROR='认证失败，请检查 API Key。';
 const NOTICES={
   permission:{message:'需要选区读取权限',action:'权限设置'},
   unreadable:{message:'未能读取到文字',action:'手动输入'},
@@ -383,7 +383,7 @@ const states=[
  ['workspace-input','文本处理 · 已输入','有文本但还没结果：可提交，复制仍不可用。','workspace-input.png'],
  ['workspace-loading','文本处理 · 处理中','结果区以占位文本表示处理中，底部改为取消。','workspace-loading.png'],
  ['workspace-polish','文本处理 · 润色结果','同一页面切到润色：标签改为润色结果与保留原意。','workspace-polish.png'],
- ['workspace-error','文本处理 · 请求失败','行内提示 ModelError 的原始文案，并提供服务设置入口。','workspace-error.png'],
+ ['workspace-error','文本处理 · 请求失败','行内提示失败原因，并提供服务设置入口。','workspace-error.png'],
  ['workspace-unconfigured','文本处理 · 服务未配置','缺少服务配置时提示并指向设置。','workspace-unconfigured.png'],
  ['workspace-learning','文本处理 · 学习表达','结果下方的学习表达区块：勾选推荐后主动入库。','workspace-learning.png'],
  ['workspace-collapsed','文本处理 · 侧栏收起','NavigationSplitView 收起侧栏后页面不变。','workspace-collapsed.png'],
@@ -453,7 +453,7 @@ const config={
   'workspace-input':{surface:'app',page:'processing',phase:'input'},
   'workspace-loading':{surface:'app',page:'processing',phase:'loading'},
   'workspace-polish':{surface:'app',page:'processing',phase:'result',operation:'polish'},
-  'workspace-error':{surface:'app',page:'processing',phase:'failure',message:'Authentication failed. Check the API key.'},
+  'workspace-error':{surface:'app',page:'processing',phase:'failure',message:'认证失败，请检查 API Key。'},
   'workspace-unconfigured':{surface:'app',page:'processing',phase:'missingConfig'},
   'workspace-learning':{surface:'app',page:'processing',phase:'result',learning:true},
   'workspace-collapsed':{surface:'app',page:'processing',phase:'result',collapsed:true},
@@ -598,7 +598,7 @@ function processingHTML(){
   const result=done?esc(resultText()):`<span>${esc(inputText().slice(0,140))}</span>`;
   const resultSection=(done||busy)?`<section class="result-section"><div class="sep"></div><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${result}</div><div class="reserved" aria-hidden="true"></div></section>`:'';
   const notice=phase==='missingConfig'?{message:'模型服务未配置',action:'配置服务'}
-    :failed?{message:cfg().message||'Network error: The Internet connection appears to be offline.',action:'服务设置'}:null;
+    :failed?{message:cfg().message||'网络错误：连接似乎已断开。',action:'服务设置'}:null;
   const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openApp('settings')">${notice.action}</button></div>`:'';
   const footer=`<footer class="footer"><small>${busy?'处理中':''}</small><div class="actions">${busy?`<button class="glass-btn" onclick="cancelRun()">取消</button>`:`<button class="glass-btn" ${done?'':'disabled'} onclick="copyResult()">${icon('copy')} 复制</button><button class="glass-btn prominent" ${busy||cfg().empty?'disabled':''} onclick="run()">${op==='polish'?'润色文本':'翻译文本'} <kbd>⌘ ↩</kbd></button>`}</div></footer>`;
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';

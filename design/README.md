@@ -27,7 +27,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [workspace-input.png](screenshots/workspace-input.png) | 文本处理 · 已输入 | 有文本但还没结果：可提交，复制仍不可用。 |
 | [workspace-loading.png](screenshots/workspace-loading.png) | 文本处理 · 处理中 | 结果区以占位文本表示处理中，底部改为取消。 |
 | [workspace-polish.png](screenshots/workspace-polish.png) | 文本处理 · 润色结果 | 同一页面切到润色：标签改为润色结果与保留原意。 |
-| [workspace-error.png](screenshots/workspace-error.png) | 文本处理 · 请求失败 | 行内提示 ModelError 的原始文案，并提供服务设置入口。 |
+| [workspace-error.png](screenshots/workspace-error.png) | 文本处理 · 请求失败 | 行内提示失败原因，并提供服务设置入口。 |
 | [workspace-unconfigured.png](screenshots/workspace-unconfigured.png) | 文本处理 · 服务未配置 | 缺少服务配置时提示并指向设置。 |
 | [workspace-learning.png](screenshots/workspace-learning.png) | 文本处理 · 学习表达 | 结果下方的学习表达区块：勾选推荐后主动入库。 |
 | [workspace-collapsed.png](screenshots/workspace-collapsed.png) | 文本处理 · 侧栏收起 | NavigationSplitView 收起侧栏后页面不变。 |

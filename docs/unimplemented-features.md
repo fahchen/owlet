@@ -15,11 +15,11 @@
 
 其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用写回成功直接关闭浮窗，该画面保留旧布局但不再对应实现（原型未加徽标）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
 
-- **主窗口的错误提示是英文原文。** `TranslationView` 对 `.failure` 直接渲染 `ModelError.message`，而该文案是英文（如 `Authentication failed. Check the API key.`、`Network error: …`）；浮窗侧则把这些映射成中文。证据：`Owlet/LLM/ModelClient.swift` 的 `ModelError.message`、`Owlet/Processing/TranslationView.swift` 的 `status`。设计图的 `workspace-error` 因此画的是英文文案。
+- **错误文案已统一为中文，但契约失败仍只有三类。** `ModelError.message` 已全部改成中文，主窗口与浮窗共用；契约只区分「结构不符」「目标语言不一致」「原文拼接不一致」（外加截断／拒绝／网络／认证／HTTP／空内容）。要看清哪一项失败、以及模型的原始返回，须打开设置里的「调试」页。证据：`Owlet/LLM/ModelClient.swift`、`Owlet/LLM/ModelResponse.swift`、`Owlet/Debug/`。
 - **设置里模型列表失败也显示原始错误。** `ServiceSettingsView.modelField` 的 `.failed` 分支渲染 `Label(message, …)`，`message` 同样来自英文的 `ModelError` 或 `localizedDescription`。证据：`Owlet/Settings/ServiceSettingsView.swift`。
 - **浮窗没有可替换选区时不显示「替换」按钮，但这条路径没有可演示的入口。** `PanelView` 只在 `controller.selection != nil` 时传入 `replace`，因此动作行会只留「复制」；然而写回成功后 `replace(with:)` 会清空选区并关闭面板，未能构造出「面板可见、选区为空」的状态，所以设计图没有为它单独出图。证据：`Owlet/App/PanelController.swift`、`Owlet/App/ExpandedPanel.swift`。
 
-- **同一布局下的其它错误文案没有单独出图。** 紧凑条与面板行内提示复用同一个组件：`ModelError` 的 `emptyResponse`／`truncated`／`refused`（`The service returned an empty response.`、`The result was too long and got truncated.`、`The service refused to process this text.`）与快捷键注册失败的 `该组合已被系统或其他应用占用，请换一个。`、`快捷键注册失败（…）。` 都只是文案不同。设计图各取一个代表状态（`format-error`、`result-notice`、`shortcuts-conflict`）。
+- **同一布局下的其它错误文案没有单独出图。** 紧凑条与面板行内提示复用同一个组件：`ModelError` 的 `emptyResponse`／`truncated`／`refused` 与快捷键注册失败的 `该组合已被系统或其他应用占用，请换一个。`、`快捷键注册失败（…）。` 都只是文案不同。设计图各取一个代表状态（`format-error`、`result-notice`、`shortcuts-conflict`）。
 - **已展开且原文为空时，头部没有重新处理、动作行没有主操作。** `canRetry` 要求原文非空，因此该组合下 `PanelHeader` 不显示刷新按钮、`PanelFooter` 的默认分支也不渲染按钮。清空原文栏即可到达该界面，设计图见 [empty](../design/screenshots/empty.png)。证据：`Owlet/App/ExpandedPanel.swift` 的 `canRetry`。
 
 ## 实现与产品定义的差异

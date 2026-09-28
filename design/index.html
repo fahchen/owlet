@@ -102,7 +102,13 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .page{display:flex;flex-direction:column;min-height:0;min-width:0;background:oklch(99% .003 350)}
 .body{padding:28px 32px;overflow-y:auto;flex:1;min-height:0}
 /* 翻译与润色页：两侧都可以滚动，同时可见——上下排平分高度，左右排平分宽度。 */
-.body.processing{padding:20px;overflow:hidden;display:flex;flex-direction:column;position:relative;gap:18px}
+/* 翻译与润色页：内容区顶边一条 tab 控制，整个 tab view 四周留边距。 */
+.tabview-wrap{padding:16px 16px 0;display:flex;flex-direction:column;min-height:0;flex:1}
+.tabview{display:flex;gap:2px;padding:0 8px;align-items:flex-end}
+.tabview .tab{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 14px;font-size:12px;border:1px solid var(--line);border-bottom:0;border-radius:6px 6px 0 0;background:oklch(94% .01 350/.7);color:var(--muted)}
+.tabview .tab svg{width:13px;height:13px}
+.tabview .tab[aria-selected=true]{background:oklch(99% .004 350/.85);color:var(--ink);font-weight:600}
+.body.processing{padding:16px;overflow:hidden;display:flex;flex-direction:column;position:relative;gap:18px;border-top:1px solid var(--line);border-radius:0 0 0 0}
 /* 两侧各是一个 GroupBox：靠背景区隔，不再画分割线。 */
 .body.processing>.pane{border:1px solid var(--line);border-radius:10px;background:oklch(99% .004 350/.7);padding:14px 16px;box-shadow:0 1px 2px oklch(30% .01 350/.04)}
 .actionbar{position:absolute;right:20px;bottom:20px;z-index:5;display:flex;gap:8px}
@@ -635,8 +641,7 @@ function appbarTools(){
   if(appPage==='book')return `${searchFieldHTML('搜索表达或释义',c.query)}<select class="popup" aria-label="筛选语言"><option>全部语言</option><option>英语</option><option>日语</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb-text">${icon('share')} 导出…</button>`;
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
-  const busy=phase==='loading';
-  return `<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
+  return '';
 }
 function setOperation(v){operationOverride=v;render()}
 // 目标语言控件（提案 BDR-0003）：默认为自动，显示按映射解析出的目标；显式选择语言则持久覆盖映射，
@@ -669,7 +674,11 @@ function processingHTML(){
   const actions=busy
     ?`<button class="glass-btn icon" aria-label="取消" title="取消">${icon('stop')}</button>`
     :`<button class="glass-btn icon" aria-label="复制结果" title="复制结果 ⌘⇧C" ${done?'':'disabled'}>${icon('copy')}</button><button class="glass-btn prominent icon" aria-label="${op==='polish'?'润色':'翻译'}" title="${op==='polish'?'润色文本':'翻译文本'} ⌘↩">${icon(op==='polish'?'spark':'translate')}</button>`;
-  return `<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div><div class="actionbar">${actions}</div></div>`;
+  // 翻译／润色 是内容区的 tab view（HIG Tab views）：控件在内容区顶边，整个 tab view 留边距。
+  const tabs=`<div class="tabview" role="tablist">`
+   +`<button role="tab" aria-selected="${op==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">${icon('translate')}翻译</button>`
+   +`<button role="tab" aria-selected="${op==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">${icon('spark')}润色</button></div>`;
+  return `<div class="tabview-wrap">${tabs}<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div><div class="actionbar">${actions}</div></div></div>`;
 }
 function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){

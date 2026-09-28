@@ -138,8 +138,50 @@ final class TranslationModel {
 }
 
 /// Main-window 文本处理 page (design/screenshots/workspace.png): target language and
-/// operation in the window toolbar, editable source, result, and a fixed action footer.
+/// Main-window 翻译与润色 page (design/screenshots/workspace.png): 翻译 and 润色 are the two panes of a
+/// tab view, so each shows the same source with its own result and the switch is one click away.
 struct TranslationView: View {
+    @Bindable var model: TranslationModel
+    let openSettings: () -> Void
+    let collection: CollectionAction
+    let openNotebook: () -> Void
+    /// The pinned target language; an empty value means 自动. Watched here because either pane's
+    /// control can change it.
+    @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
+
+    var body: some View {
+        TabView(selection: $model.operation) {
+            ForEach(Operation.allCases, id: \.self) { operation in
+                Tab(operation.title, systemImage: operation.symbol, value: operation) {
+                    TranslationPane(
+                        model: model, openSettings: openSettings, collection: collection,
+                        openNotebook: openNotebook)
+                }
+            }
+        }
+        // Inset, as a tab view is meant to be: a margin on every side leaves room for controls that are
+        // not part of the tab contents.
+        .padding(16)
+        .navigationTitle("翻译与润色")
+        // Switching panes runs the same text again at once, so the two results can be compared without
+        // pressing the button a second time; switching back is served from the model's cache.
+        .onChange(of: model.operation) { _, _ in
+            if model.hasBeenSent {
+                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+            }
+        }
+        // Pinning or unpinning a target runs the same text again, served from cache when already
+        // produced for that language.
+        .onChange(of: pinnedTarget) { _, _ in
+            if model.hasBeenSent {
+                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+            }
+        }
+    }
+}
+
+/// One pane: the source, the result, its 学习表达 and the floating actions for one operation.
+private struct TranslationPane: View {
     @Bindable var model: TranslationModel
     /// Shows the 设置 page for service errors.
     let openSettings: () -> Void
@@ -156,47 +198,16 @@ struct TranslationView: View {
 
     var body: some View {
         layout
-            // Measured before the page padding, so 720pt is the content area, not the whole window.
+            // Measured before the padding, so 720pt is the content area, not the whole window.
             .onGeometryChange(for: CGFloat.self) {
                 $0.size.width
             } action: {
                 contentWidth = $0
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 28)
-            .navigationTitle("翻译与润色")
-            // Switching the operation runs the same text again at once, so the two results can be
-            // compared without pressing the button a second time. Switching back is served from cache.
-            .onChange(of: model.operation) { _, _ in
-                learning.reset()
-                if model.hasBeenSent { model.translate(to: resolvedTarget) }
-            }
-            // Pinning or unpinning a target runs the same text again, served from cache when already
-            // produced for that language.
-            .onChange(of: pinnedTarget) { _, _ in
-                learning.reset()
-                if model.hasBeenSent { model.translate(to: resolvedTarget) }
-            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
             // The source text changed, so the old result and its learning items no longer apply.
             .onChange(of: model.input) { _, _ in learning.reset() }
-            // Two groups, controls then actions, as a toolbar is meant to be read: the first decides what
-            // is processed, the second acts on the result. The system spreads the groups apart and moves
-            // what does not fit into its own overflow menu.
-            // The controls stay in the window toolbar. macOS has no bottom *toolbar* — SwiftUI's
-            // `ToolbarItemPlacement.bottomBar` is iOS and Catalyst only — so the two actions live in the
-            // platform's bottom bar instead, trailing-aligned, which is what reads as floating over the
-            // content's corner.
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Picker("处理方式", selection: $model.operation) {
-                        ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(isBusy)
-                }
-            }
             // A bottom *toolbar* does not exist on macOS (SwiftUI's `bottomBar` is iOS and Catalyst
             // only), so the two actions float over the content's trailing corner, the way Freeform
             // places its controls. Two separate glass icon buttons, not one merged cluster: each is its
@@ -219,7 +230,7 @@ struct TranslationView: View {
                         Button {
                             model.translate(to: resolvedTarget)
                         } label: {
-                            Label(model.operation.title, systemImage: submitSymbol)
+                            Label(model.operation.title, systemImage: model.operation.symbol)
                         }
                         .buttonStyle(.glassProminent)
                         .help("\(model.operation.title)文本 ⌘↩")
@@ -240,11 +251,6 @@ struct TranslationView: View {
     private var result: String? {
         if case .success(let text) = model.state { return text }
         return nil
-    }
-
-    /// The submit's glyph mirrors the operation the segmented control is on.
-    private var submitSymbol: String {
-        model.operation == .translate ? "translate" : "wand.and.sparkles"
     }
 
     private func copyResult() {

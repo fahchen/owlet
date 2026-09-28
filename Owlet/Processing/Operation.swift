@@ -10,6 +10,14 @@ enum Operation: String, CaseIterable, Sendable {
         }
     }
 
+    /// The glyph for this operation: the tab in the page's tab view and the submit button.
+    var symbol: String {
+        switch self {
+        case .translate: "translate"
+        case .polish: "wand.and.sparkles"
+        }
+    }
+
     var prompt: String {
         switch self {
         case .translate: DefaultPrompts.translate

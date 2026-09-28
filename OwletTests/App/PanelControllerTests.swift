@@ -432,17 +432,23 @@ struct PanelControllerTests {
     @Test func dragSavesFixedAnchor() async throws {
         let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
         let (panel, _) = makePanel(defaults: defaults, realWindow: true)
+        // Reduce Motion snaps the resize instead of easing it, so the panel has finished placing itself
+        // before the move below; while the ease runs the move is (correctly) ignored as placement.
+        panel.makeWindow = { view in
+            let window = FloatingPanel(rootView: view)
+            window.prefersReducedMotion = { true }
+            return window
+        }
         panel.read = { $0(.failure(.unreadable)) }
         panel.trigger()
         let window = try #require(panel.panel)
         #expect(window.contentView?.subviews.first is NSGlassEffectView)
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
-        // The panel's own resize is eased and places the window itself while it runs, so the move
-        // waits for it to settle — otherwise the gesture below is (correctly) ignored as placement.
-        try? await Task.sleep(for: .milliseconds(300))
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()
-        #expect(SettingsStore.panelFixedAnchor(in: defaults) == NSPoint(x: window.frame.midX, y: window.frame.maxY))
+        #expect(
+            SettingsStore.panelFixedAnchor(in: defaults)
+                == NSPoint(x: window.frame.midX, y: window.frame.maxY))
         panel.close()
     }
 

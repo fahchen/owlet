@@ -666,7 +666,7 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         // The animation's own frames move the window, so placement stays flagged for its whole
         // duration; otherwise a mid-animation frame is mistaken for a drag and saved as the anchor.
         placing = true
-        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+        guard !prefersReducedMotion() else {
             setFrame(rect, display: true)
             placing = false
             return

@@ -9,16 +9,24 @@ struct DebugSettingsPane: View {
     @State private var expanded: Set<UUID> = []
 
     var body: some View {
-        List {
-            ForEach(log.exchanges) { exchange in
-                DisclosureGroup(isExpanded: isExpanded(exchange)) {
-                    detail(exchange)
-                } label: {
-                    summary(exchange)
+        Group {
+            if log.exchanges.isEmpty {
+                ContentUnavailableView(
+                    "还没有记录", systemImage: "ladybug",
+                    description: Text("发一次翻译或润色后会出现在这里。"))
+            } else {
+                List {
+                    ForEach(log.exchanges) { exchange in
+                        DisclosureGroup(isExpanded: isExpanded(exchange)) {
+                            detail(exchange)
+                        } label: {
+                            summary(exchange)
+                        }
+                    }
                 }
+                .listStyle(.inset)
             }
         }
-        .listStyle(.inset)
     }
 
     /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole

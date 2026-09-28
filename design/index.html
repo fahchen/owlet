@@ -289,6 +289,8 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 /* Prompt editing proposal. */
 .prompt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:13px 0 2px}
 .prompt-head .group-title{margin:0}
+.prompt-title{display:inline-flex;align-items:center;gap:7px}
+.prompt-head .label-glyph{margin-left:-2px}
 .prompt-editor{padding:12px 0;border-bottom:1px solid var(--line)}
 .prompt-editor:last-of-type{border-bottom:0}
 .prompt-editor .labelrow{margin-bottom:8px}
@@ -628,8 +630,7 @@ function appbarTools(){
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
-  return `<select class="popup" aria-label="显示方式" onchange="prefs.displayMode=this.value;render()"><option value="sectioned" ${prefs.displayMode!=='aligned'?'selected':''}>分区</option><option value="aligned" ${prefs.displayMode==='aligned'?'selected':''}>对照</option></select>`
-   +(currentOperation()==='polish'?'':targetSelectHTML(busy))
+  return (currentOperation()==='polish'?'':targetSelectHTML(busy))
    +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
 }
 function setOperation(v){operationOverride=v;render()}
@@ -702,6 +703,10 @@ function settingsTabsHTML(){
    +shown.map(([id,label,glyph])=>`<button role="tab" aria-selected="${active===id}">${icon(glyph)}<span>${label}</span></button>`).join('')
    +`</div><div class="appbar-tools"></div>`;
 }
+function processingSectionHTML(){
+  return `<div class="form-section"><p class="group-title">文本处理</p>`
+   +`<div class="formrow"><label>翻译显示方式</label><span class="field"><select class="popup" aria-label="翻译显示方式" style="height:auto;padding:7px 26px 7px 9px"><option>原文／译文分区</option><option>逐句对照</option></select></span></div></div>`;
+}
 function learningHTML(){
   return `<div class="form-section"><p class="group-title">学习</p>`
    +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
@@ -732,7 +737,7 @@ function promptSectionsHTML(){
   const pop=!!cfg().popover;
   // 「查看默认 Prompt」是只读参考：用 popover 展示，比常驻的折叠行更宽，也不会把编辑器挤动。
   const popover=text=>`<div class="popover" role="dialog" aria-label="默认 Prompt" style="top:398px;left:17px"><pre>${esc(text)}</pre></div>`;
-  return ['translate','polish'].map((k,i)=>`<div class="form-section" style="position:relative"><div class="prompt-head"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p><span class="prompt-accessory">${cfg().customized?'<button class="icon-square" aria-label="恢复默认">'+icon('refresh')+'</button>':'<span class="state">默认</span>'}<button class="icon-square" aria-label="查看默认 Prompt">${icon('infoCircle')}</button></span></div>`
+  return ['translate','polish'].map((k,i)=>`<div class="form-section" style="position:relative"><div class="prompt-head"><span class="prompt-title"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p><button class="icon-square label-glyph" aria-label="查看默认 Prompt">${icon('infoCircle')}</button></span><span class="prompt-accessory">${cfg().customized?'<button class="icon-square" aria-label="恢复默认">'+icon('refresh')+'</button>':'<span class="state">默认</span>'}</span></div>`
    +`<div class="prompt-editor"><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><button class="glass-btn">查看默认 Prompt</button><button class="glass-btn">恢复默认</button></div></div>`
    +((pop&&i===0)?popover(DEFAULT_PROMPTS[k]):'')
    +`</div>`).join('')
@@ -740,6 +745,7 @@ function promptSectionsHTML(){
 }
 function debugPaneHTML(){
   const open=cfg().openRow;
+  if(cfg().debugEmpty)return `<div class="body" id="body"><div class="empty">${icon('ladybug')}<h2>还没有记录</h2><p>发一次翻译或润色后会出现在这里。</p></div></div>`;
   return `<div class="body" id="body"><div class="debug-list">`
    +DEBUG_ENTRIES.map((e,i)=>`<div class="debug-entry"><div class="debug-head"><span class="name">${e.title}</span><span class="text">${esc(e.text)}</span><span class="time">${e.time}</span><button class="disclose" aria-expanded="${open===i}" aria-label="展开这条记录">${icon('chevron')}</button></div>`
      +(open===i?`<div class="debug-body">`
@@ -758,7 +764,7 @@ function settingsPaneHTML(){
   if(pane==='language')body=`${languagesHTML()}${targetsHTML(cfg().targets||'empty')}`;
   else if(pane==='model')body=modelPaneHTML();
   else if(pane==='debug')body=debugPaneHTML();
-  else body=`${learningHTML()}${panelPositionHTML()}${debugToggleHTML()}`;
+  else body=`${processingSectionHTML()}${learningHTML()}${panelPositionHTML()}${debugToggleHTML()}`;
   return `<div class="body" id="body"><div class="form">${body}</div></div>`;
 }
 // 生词本与历史：提案页面，数据是内置示例。

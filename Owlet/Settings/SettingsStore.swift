@@ -151,13 +151,6 @@ enum TranslationDisplayMode: String, CaseIterable, Sendable {
         }
     }
 
-    /// Short form for the 文本处理 toolbar, where the full title does not fit.
-    var shortTitle: String {
-        switch self {
-        case .sectioned: "分区"
-        case .aligned: "对照"
-        }
-    }
 }
 
 extension SettingsStore {

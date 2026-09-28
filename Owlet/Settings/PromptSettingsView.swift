@@ -53,11 +53,13 @@ struct PromptSettingsView: View {
         } header: {
             HStack(spacing: 8) {
                 Text("\(operation.title) System Prompt")
+                // The glyph belongs to the label it explains, so it sits right after it; the trailing
+                // edge is left for the action.
+                defaultPromptPopover(operation, defaultPrompt)
                 Spacer(minLength: 0)
-                // The restore is only worth offering once there is something to restore, and it takes
-                // the place the 默认 mark had, so the header never grows a second row. Both accessories
-                // are small square icon buttons: `.smallSquare` is the AppKit bezel this shape comes
-                // from, and it is deprecated, so the bordered small control is used instead.
+                // The restore is only worth offering once there is something to restore. `.smallSquare`
+                // is the AppKit bezel this shape comes from, and it is deprecated, so the bordered
+                // small control is used instead.
                 if customized.contains(operation) {
                     Button {
                         text.wrappedValue = defaultPrompt
@@ -72,7 +74,6 @@ struct PromptSettingsView: View {
                     Text("默认")
                         .foregroundStyle(.secondary)
                 }
-                defaultPromptPopover(operation, defaultPrompt)
             }
         }
     }

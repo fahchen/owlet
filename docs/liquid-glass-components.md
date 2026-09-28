@@ -82,11 +82,11 @@
 | --- | --- |
 | `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 弹出式按钮 `简体中文` · 分段控件 `翻译｜润色` · `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote` · 底部操作栏 `复制` / `翻译文本`；收起态与展开态共用同一套工具栏 |
 | `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
-| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section` |
+| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）|
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
-| `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试` |
-| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)`，每次交换一行（操作名、原文摘要 `.lineLimit(1)`、时间、行尾 `DisclosureGroup` 箭头）；展开后是失败行、原文差异与三段可选中原文 |
-| `workspace-auto.png` / `workspace-target-pinned.png` | 工具栏的 `Picker(.menu)`：`自动（简体中文）` 与显式语言两态；结果标签沿用解析出的语言名。工具栏还多了显示方式（分区／对照）这个任务选项 |
+| `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` / `settings-model-prompts-default.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试`。编辑器分组标题后面跟 info 图标按钮（`.popover` 展示内置默认），行尾是 `默认` 标记，改过之后换成小方块 `恢复默认` 按钮 |
+| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)`，每次交换一行（操作名、原文摘要 `.lineLimit(1)`、时间、行尾 `DisclosureGroup` 箭头）；展开后是失败行、原文差异与三段可选中原文；没有记录时用 `ContentUnavailableView` |
+| `workspace-auto.png` / `workspace-target-pinned.png` | 工具栏的 `Picker(.menu)`：`自动（简体中文）` 与显式语言两态；结果标签沿用解析出的语言名 |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
 | `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮 |
 | `direct-selection-error.png` / `direct-permission.png` / `direct-unconfigured.png` / `direct-error.png` / `direct-format-error.png` / `direct-cancelled.png` | 与上一行逐像素相同：直接替换流程复用同一条紧凑玻璃条与同一套恢复入口，仅快捷键发起的流程不同 |

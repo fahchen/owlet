@@ -101,6 +101,12 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 /* Page */
 .page{display:flex;flex-direction:column;min-height:0;min-width:0;background:oklch(99% .003 350)}
 .body{padding:28px 32px;overflow-y:auto;flex:1;min-height:0}
+/* 翻译与润色页：两侧都可以滚动，同时可见——上下排平分高度，左右排平分宽度。 */
+.body.processing{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.body.processing>.pane{flex:1 1 0;min-height:0;overflow-y:auto;padding:28px 32px}
+.body.processing>.pane+.pane{border-top:1px solid var(--line)}
+.window:not(.window-narrow) .body.processing{flex-direction:row}
+.window:not(.window-narrow) .body.processing>.pane+.pane{border-top:0;border-left:1px solid var(--line)}
 .labelrow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-bottom:12px}
 .labelrow .label{display:flex;align-items:center;gap:7px}
 .labelrow svg{width:14px;height:14px}
@@ -492,7 +498,7 @@ const states=[
  ['learning-empty','学习 · 无推荐','没有推荐时不强凑数量，保留手动收藏。','learning-empty.png'],
  ['saved','收藏 · 已入库','收藏后就地反馈并保留入口，不跳转打断工作。','saved.png'],
  ['aligned','翻译 · 逐句对照','原文与译文按语义句子配对，换行不改变对应关系。','aligned.png'],
- ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png'],
+ ['workspace-narrow','翻译与润色 · 窄窗口','内容区不足 720pt 时原文与译文上下平分高度；宽窗口时左右平分宽度。','workspace-narrow.png'],
  // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
  ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png'],
  // 已实现：翻译目标映射（BDR-0003）。
@@ -661,7 +667,8 @@ function processingHTML(){
   const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openSettings('model')">${notice.action}</button></div>`:'';
   // 动作搬到工具栏（HIG Toolbars）：控件一组，动作一组，全部是图标按钮。
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
-  return `<div class="body" id="body">${source}${resultSection}${learning}${status}</div>`;
+  // 两侧各自滚动、平分可用高度（左右排时平分宽度），学习表达跟在结果下面。
+  return `<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div></div>`;
 }
 function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){

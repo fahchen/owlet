@@ -155,12 +155,7 @@ struct TranslationView: View {
         TranslationDisplayMode.sectioned
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                content
-                if showsResult, result != nil { learningSection }
-                status
-            }
+        layout
             // Measured before the page padding, so 720pt is the content area, not the whole window.
             .onGeometryChange(for: CGFloat.self) {
                 $0.size.width
@@ -169,64 +164,62 @@ struct TranslationView: View {
             }
             .padding(.horizontal, 32)
             .padding(.vertical, 28)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .navigationTitle("翻译与润色")
-        // Switching the operation runs the same text again at once, so the two results can be
-        // compared without pressing the button a second time. Switching back is served from cache.
-        .onChange(of: model.operation) { _, _ in
-            learning.reset()
-            if model.hasBeenSent { model.translate(to: resolvedTarget) }
-        }
-        // Pinning or unpinning a target runs the same text again, served from cache when already
-        // produced for that language.
-        .onChange(of: pinnedTarget) { _, _ in
-            learning.reset()
-            if model.hasBeenSent { model.translate(to: resolvedTarget) }
-        }
-        // The source text changed, so the old result and its learning items no longer apply.
-        .onChange(of: model.input) { _, _ in learning.reset() }
-        // Two groups, controls then actions, as a toolbar is meant to be read: the first decides what
-        // is processed, the second acts on the result. The system spreads the groups apart and moves
-        // what does not fit into its own overflow menu.
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if model.operation == .translate {
-                    languagePicker.disabled(isBusy)
-                }
-                Picker("处理方式", selection: $model.operation) {
-                    ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .disabled(isBusy)
+            .navigationTitle("翻译与润色")
+            // Switching the operation runs the same text again at once, so the two results can be
+            // compared without pressing the button a second time. Switching back is served from cache.
+            .onChange(of: model.operation) { _, _ in
+                learning.reset()
+                if model.hasBeenSent { model.translate(to: resolvedTarget) }
             }
-            ToolbarItemGroup(placement: .primaryAction) {
-                if isBusy {
-                    Button(action: model.cancel) {
-                        Label("取消", systemImage: "xmark")
+            // Pinning or unpinning a target runs the same text again, served from cache when already
+            // produced for that language.
+            .onChange(of: pinnedTarget) { _, _ in
+                learning.reset()
+                if model.hasBeenSent { model.translate(to: resolvedTarget) }
+            }
+            // The source text changed, so the old result and its learning items no longer apply.
+            .onChange(of: model.input) { _, _ in learning.reset() }
+            // Two groups, controls then actions, as a toolbar is meant to be read: the first decides what
+            // is processed, the second acts on the result. The system spreads the groups apart and moves
+            // what does not fit into its own overflow menu.
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if model.operation == .translate {
+                        languagePicker.disabled(isBusy)
                     }
-                    .labelStyle(.iconOnly)
-                    .help("取消")
-                } else {
-                    Button(action: copyResult) {
-                        Label("复制结果", systemImage: "doc.on.doc")
+                    Picker("处理方式", selection: $model.operation) {
+                        ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
-                    .labelStyle(.iconOnly)
-                    .help("复制结果 ⌘⇧C")
-                    .disabled(result == nil)
-                    Button {
-                        model.translate(to: resolvedTarget)
-                    } label: {
-                        Label(model.operation.title, systemImage: submitSymbol)
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(isBusy)
+                }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if isBusy {
+                        Button(action: model.cancel) {
+                            Label("取消", systemImage: "xmark")
+                        }
+                        .labelStyle(.iconOnly)
+                        .help("取消")
+                    } else {
+                        Button(action: copyResult) {
+                            Label("复制结果", systemImage: "doc.on.doc")
+                        }
+                        .labelStyle(.iconOnly)
+                        .help("复制结果 ⌘⇧C")
+                        .disabled(result == nil)
+                        Button {
+                            model.translate(to: resolvedTarget)
+                        } label: {
+                            Label(model.operation.title, systemImage: submitSymbol)
+                        }
+                        .labelStyle(.iconOnly)
+                        .help("\(model.operation.title)文本 ⌘↩")
+                        .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    .labelStyle(.iconOnly)
-                    .help("\(model.operation.title)文本 ⌘↩")
-                    .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-        }
     }
 
     private var isBusy: Bool { model.state == .loading }
@@ -253,35 +246,35 @@ struct TranslationView: View {
     private var showsResult: Bool { isBusy || result != nil }
 
     /// Source and result side by side once the content area is wide enough, stacked otherwise.
-    @ViewBuilder private var content: some View {
-        if showsResult {
-            switch ProcessingLayout.choose(width: contentWidth) {
-            case .sideBySide: sideBySide
-            case .stacked: stacked
+    /// The page keeps both sides in view whatever the window is: side by side they share the width,
+    /// stacked they share the height, and either way each side scrolls on its own rather than pushing
+    /// the other out of the window.
+    @ViewBuilder private var layout: some View {
+        if !showsResult {
+            sourceColumn.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
+            HStack(alignment: .top, spacing: 0) {
+                column(sourceColumn).padding(.trailing, 28)
+                Divider()
+                column(resultColumn).padding(.leading, 28)
             }
         } else {
-            sourceColumn
+            VStack(spacing: 0) {
+                column(sourceColumn)
+                Divider().padding(.vertical, 13)
+                column(resultColumn)
+            }
         }
     }
 
-    private var sideBySide: some View {
-        HStack(alignment: .top, spacing: 0) {
-            sourceColumn
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.trailing, 28)
-            Divider()
-            resultColumn
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.leading, 28)
+    /// One side: its own scroll view, filling whatever height the arrangement gives it. Both sides are
+    /// built the same way, so a stacked pair comes out an even split.
+    private func column<Content: View>(_ content: Content) -> some View {
+        ScrollView {
+            content.frame(maxWidth: .infinity, alignment: .topLeading)
         }
-    }
-
-    private var stacked: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sourceColumn.padding(.bottom, 21)
-            Divider().padding(.bottom, 13)
-            resultColumn
-        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var sourceColumn: some View {
@@ -334,6 +327,10 @@ struct TranslationView: View {
                 }
             }
             resultBody
+            // 学习表达 belongs to the result it explains, so it sits under this side rather than under
+            // the whole page.
+            if result != nil { learningSection }
+            status
         }
     }
 

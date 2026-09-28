@@ -80,7 +80,7 @@
 
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
-| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 控件组（弹出式按钮 `简体中文`、分段控件 `翻译｜润色`）· 动作组（图标按钮：`复制结果`、`翻译`／`润色`，处理中换成 `取消`）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；这一页没有底部操作栏 |
+| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 统一工具栏（跨整窗）· 侧栏切换 · 控件组（弹出式按钮 `简体中文`、分段控件 `翻译｜润色`）· 动作组（图标按钮：`复制结果`、`翻译`／`润色`，处理中换成 `取消`）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；两侧同时可见并各自滚动（宽窗口左右平分宽度、窄窗口上下平分高度），学习表达跟在译文／润色下面；这一页没有底部操作栏 |
 | `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | 设置窗口的快捷键页：`Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示 |
 | `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）；工具栏一页为快捷键页 |
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |

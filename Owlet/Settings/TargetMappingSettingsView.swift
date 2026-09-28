@@ -2,7 +2,10 @@ import SwiftUI
 
 /// 目标语言 group of the settings form (BDR-0003): the fallback target plus one row per source
 /// language. The table starts empty, and every edit is saved at once like the other pickers here.
+/// Both columns offer only the languages chosen in the 语言 group.
 struct TargetMappingSettingsView: View {
+    /// The languages in play, from the 语言 group above.
+    let languages: [String]
     @AppStorage(SettingsStore.targetLanguageKey) private var fallbackTarget =
         SettingsStore.defaultTargetLanguage
     @State private var rows: [Row] = []
@@ -17,22 +20,26 @@ struct TargetMappingSettingsView: View {
     var body: some View {
         Section {
             Picker("兜底目标", selection: $fallbackTarget) {
-                ForEach(LanguageCatalog.targets) { Text($0.name).tag($0.tag) }
+                ForEach(options) { Text($0.name).tag($0.tag) }
             }
             ForEach($rows) { $row in
                 mappingRow($row)
             }
             Button("添加映射", action: addRow)
-                .disabled(rows.count >= LanguageCatalog.targets.count)
+                .disabled(rows.count >= options.count)
         } header: {
             Text("目标语言")
         } footer: {
             Text("源语言由原文自动识别。未识别出源语言、或源语言没有对应行时使用兜底目标；一个源语言只保留一条映射。")
         }
         .onAppear(perform: load)
+        // A language leaving the selection also leaves the table, so the rows are read again.
+        .onChange(of: languages) { _, _ in load() }
         .onChange(of: rows) { _, _ in save() }
         .onChange(of: fallbackTarget) { _, _ in save() }
     }
+
+    private var options: [LanguageOption] { LanguageCatalog.options(for: languages) }
 
     /// One row's two pickers and its delete. The source list hides what other rows already map, so
     /// the table cannot end up with two targets for one language.
@@ -46,7 +53,7 @@ struct TargetMappingSettingsView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             Picker("目标语言", selection: row.target) {
-                ForEach(LanguageCatalog.targets) { Text($0.name).tag($0.tag) }
+                ForEach(options) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
             Spacer(minLength: 12)
@@ -58,12 +65,12 @@ struct TargetMappingSettingsView: View {
 
     private func sourceOptions(for row: Row) -> [LanguageOption] {
         let used = Set(rows.filter { $0.id != row.id }.map(\.source))
-        return LanguageCatalog.targets.filter { !used.contains($0.tag) }
+        return options.filter { !used.contains($0.tag) }
     }
 
     private func addRow() {
         let used = Set(rows.map(\.source))
-        guard let next = LanguageCatalog.targets.first(where: { !used.contains($0.tag) }) else {
+        guard let next = options.first(where: { !used.contains($0.tag) }) else {
             return
         }
         rows.append(Row(source: next.tag, target: fallbackTarget))

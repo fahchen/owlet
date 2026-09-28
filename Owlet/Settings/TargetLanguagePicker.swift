@@ -11,7 +11,9 @@ struct TargetLanguagePicker: View {
     var body: some View {
         Picker("目标语言", selection: $pinnedTarget) {
             Text(autoTitle).tag("")
-            ForEach(LanguageCatalog.targets) { Text($0.name).tag($0.tag) }
+            ForEach(LanguageCatalog.options(for: SettingsStore.languages())) {
+                Text($0.name).tag($0.tag)
+            }
         }
         .pickerStyle(.menu)
         .labelsHidden()

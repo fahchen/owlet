@@ -213,6 +213,37 @@ extension SettingsStore {
     }
 }
 
+/// The languages in play. Every control that picks a language offers this subset, so the system's
+/// list of hundreds is only seen while adding one.
+extension SettingsStore {
+    static let languagesKey = "translation.languages"
+    /// What a fresh install starts with: the languages the product targets.
+    static let defaultLanguages = ["zh-Hans", "en", "ja"]
+
+    static func languages(in defaults: UserDefaults = .standard) -> [String] {
+        let stored = defaults.stringArray(forKey: languagesKey) ?? []
+        return stored.isEmpty ? defaultLanguages : stored
+    }
+
+    /// Saves the selection and keeps everything else inside it, so a removed language cannot stay
+    /// behind as a fallback, a pin or a mapping row that no picker can show any more.
+    static func setLanguages(_ tags: [String], in defaults: UserDefaults = .standard) {
+        defaults.set(tags, forKey: languagesKey)
+        let allowed = Set(languages(in: defaults))
+        var mapping = targetMapping(in: defaults)
+        mapping.targets = mapping.targets.filter {
+            allowed.contains($0.key) && allowed.contains($0.value)
+        }
+        if !allowed.contains(mapping.fallback) {
+            mapping.fallback = languages(in: defaults).first ?? defaultTargetLanguage
+        }
+        setTargetMapping(mapping, in: defaults)
+        if let pinned = pinnedTarget(in: defaults), !allowed.contains(pinned) {
+            setPinnedTarget(nil, in: defaults)
+        }
+    }
+}
+
 /// Where the floating panel opens.
 enum PanelPosition: String, CaseIterable, Sendable {
     case fixed, followSelection

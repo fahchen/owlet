@@ -34,6 +34,11 @@ enum LanguageCatalog {
         return Locale.current.localizedString(forIdentifier: tag) ?? tag
     }
 
+    /// The offered choices: only the languages selected in settings, in the order they were selected.
+    static func options(for tags: [String]) -> [LanguageOption] {
+        tags.map { LanguageOption(tag: $0, name: name(for: $0)) }
+    }
+
     private static func options() -> [LanguageOption] {
         var tags = Locale.LanguageCode.isoLanguageCodes.map { LanguageTag.key($0.identifier) }
         tags.append("zh-Hant")

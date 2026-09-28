@@ -13,6 +13,9 @@ struct ServiceSettingsView: View {
     @AppStorage(SettingsStore.translateLearningKey) private var translateLearning = false
     @AppStorage(SettingsStore.polishLearningKey) private var polishLearning = false
     @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
+    /// The languages in play, owned here so the 目标语言 group below re-reads its rows when the
+    /// selection changes.
+    @State private var languages = SettingsStore.languages()
     @State private var apiKey = ""
     @State private var saved = false
     @State private var models: Models = .idle
@@ -49,7 +52,8 @@ struct ServiceSettingsView: View {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
-            TargetMappingSettingsView()
+            LanguageSettingsView(languages: $languages)
+            TargetMappingSettingsView(languages: languages)
             Section("学习") {
                 Toggle("翻译后自动请求学习表达", isOn: $translateLearning)
                 Toggle("润色后自动请求学习表达", isOn: $polishLearning)
@@ -87,6 +91,7 @@ struct ServiceSettingsView: View {
         .navigationTitle("设置")
         .onAppear {
             apiKey = SettingsStore.apiKey(for: provider) ?? ""
+            languages = SettingsStore.languages()
             loadModels()
             loadPrompts()
             applyPromptFocus()

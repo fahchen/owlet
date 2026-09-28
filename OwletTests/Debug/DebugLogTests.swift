@@ -34,6 +34,23 @@ struct DebugLogTests {
         #expect(!report.lowercased().contains("sk-"))
     }
 
+    /// A collapsed row shows the sent text on one line, so a multi-line selection must not make the
+    /// row grow.
+    @Test func theSummaryKeepsARowOnOneLine() {
+        let exchange = DebugExchange(
+            title: "翻译 · zh-Hant", request: "{}", submitted: "お世話になっております。\n株式会社PeopleX")
+        #expect(exchange.summary == "お世話になっております。 株式会社PeopleX")
+    }
+
+    @Test func theLogHandsOutEveryReportNewestFirst() {
+        let log = DebugLog()
+        log.add(DebugExchange(title: "第一次", request: "{}", submitted: "a"))
+        log.add(DebugExchange(title: "第二次", request: "{}", submitted: "b"))
+        let reports = log.reports
+        #expect(reports.contains("第一次") && reports.contains("第二次"))
+        #expect(reports.range(of: "第二次")!.lowerBound < reports.range(of: "第一次")!.lowerBound)
+    }
+
     /// Only a source mismatch gets the comparison, so the hint never claims the wrong check failed.
     @Test func aSourceMismatchPointsAtTheFirstDifferentCharacter() {
         let exchange = DebugExchange(

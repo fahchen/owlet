@@ -1,58 +1,60 @@
 import SwiftUI
 
-/// 调试 pane, shown only while the switch in 通用 is on: the last model exchanges with the raw request
-/// and response, so a contract failure can be read and copied out. Nothing here is persisted, and the
-/// API key is not part of it.
+/// 调试 pane, shown only while the switch in 通用 is on: the captured model exchanges, one list row
+/// each. A collapsed row says what was asked for and shows the text that was sent, truncated; the
+/// disclosure control on its trailing edge opens the raw request and reply.
 struct DebugSettingsPane: View {
     @State private var log = DebugLog.shared
+    /// Which rows are open, kept outside the rows so a new capture cannot leave one half expanded.
+    @State private var expanded: Set<UUID> = []
 
     var body: some View {
-        Form {
-            Section {
-                Text(
-                    """
-                    · 返回的结构不符合约定：字段缺失、类型不对、内容为空，或 JSON 外还有文字
-                    · 返回的目标语言与请求不一致（例如请求 zh-Hant，返回 zh-Hans）
-                    · 返回的原文与提交的内容不一致（拼接后不等）
-                    · 结果过长被截断、服务拒绝处理、网络、认证、HTTP、空内容
-                    """
-                )
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-            } header: {
-                Text("可能的失败原因")
-            } footer: {
-                Text("只保留最近 \(DebugLog.limit) 次，重启即清空；内容不含 API Key。")
-            }
-
-            if log.exchanges.isEmpty {
-                Section {
-                    Text("还没有记录。发一次翻译或润色，这里就会显示这次请求与返回。")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Section {
-                    GlassEffectContainer {
-                        Button("复制全部") { Clipboard.copy(allReports) }
-                            .buttonStyle(.glass)
-                        Button("清空", action: log.clear)
-                            .buttonStyle(.glass)
-                    }
-                }
-                ForEach(log.exchanges) { exchange in
-                    exchangeSection(exchange)
+        List {
+            ForEach(log.exchanges) { exchange in
+                DisclosureGroup(isExpanded: isExpanded(exchange)) {
+                    detail(exchange)
+                } label: {
+                    summary(exchange)
                 }
             }
         }
-        .formStyle(.grouped)
+        .listStyle(.inset)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("复制全部") { Clipboard.copy(log.reports) }
+                    .disabled(log.exchanges.isEmpty)
+                Button("清空", action: log.clear)
+                    .disabled(log.exchanges.isEmpty)
+            }
+        }
     }
 
-    @ViewBuilder private func exchangeSection(_ exchange: DebugExchange) -> some View {
-        Section {
+    /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole
+    /// point of the row is to be scannable, and the disclosure opens the rest.
+    private func summary(_ exchange: DebugExchange) -> some View {
+        HStack(spacing: 10) {
+            Text(exchange.title)
+                .font(.system(size: 12, weight: .medium))
+            Text(exchange.summary)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
+            Text(exchange.date.formatted(date: .omitted, time: .standard))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    /// The captured content itself. No nested scroll view: the list already scrolls, and nesting a
+    /// second one on the same axis fights it.
+    @ViewBuilder private func detail(_ exchange: DebugExchange) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             if let failure = exchange.failure {
                 Label(failure, systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 12))
                     .foregroundStyle(.red)
                     .textSelection(.enabled)
             }
@@ -61,26 +63,20 @@ struct DebugSettingsPane: View {
                     .font(.system(size: 11, design: .monospaced))
                     .textSelection(.enabled)
             }
-            block("请求体", exchange.request)
-            if let response = exchange.response {
-                block("模型原始返回", response)
-            }
             block("提交原文", exchange.submitted)
+            block("模型原始返回", exchange.response ?? "—")
+            block("请求体", exchange.request)
             Button("复制这条记录") { Clipboard.copy(exchange.report) }
-        } header: {
-            HStack {
-                Text(exchange.title)
-                Spacer(minLength: 0)
-                Text(exchange.date.formatted(date: .omitted, time: .standard))
-                    .foregroundStyle(.secondary)
-            }
         }
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Long text stays folded behind a disclosure, so the pane opens on the failure, not on a wall of
-    /// JSON.
     private func block(_ title: String, _ text: String) -> some View {
-        DisclosureGroup(title) {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
             Text(text)
                 .font(.system(size: 11, design: .monospaced))
                 .textSelection(.enabled)
@@ -88,7 +84,15 @@ struct DebugSettingsPane: View {
         }
     }
 
-    private var allReports: String {
-        log.exchanges.map(\.report).joined(separator: "\n\n---\n\n")
+    private func isExpanded(_ exchange: DebugExchange) -> Binding<Bool> {
+        Binding(
+            get: { expanded.contains(exchange.id) },
+            set: { open in
+                if open {
+                    expanded.insert(exchange.id)
+                } else {
+                    expanded.remove(exchange.id)
+                }
+            })
     }
 }

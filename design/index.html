@@ -48,6 +48,18 @@ kbd{font:11px -apple-system,sans-serif;color:inherit;border:1px solid currentCol
 .settings-tabs button{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:500;color:var(--ink)}
 .settings-tabs button svg{width:14px;height:14px}
 .settings-tabs button[aria-selected=true]{background:var(--paper);font-weight:600;box-shadow:0 1px 2px oklch(30% .01 350/.18),0 0 0 .5px oklch(30% .01 350/.07)}
+/* Debug pane: a list of captured exchanges; the trailing chevron opens one. */
+.debug-entry{border-bottom:1px solid var(--line);padding:0 2px}
+.debug-entry:last-child{border-bottom:0}
+.debug-head{display:flex;align-items:center;gap:10px;padding:12px 0}
+.debug-head .name{font-size:12px;font-weight:600;flex:none}
+.debug-head .text{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.debug-head .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.debug-head .disclose{display:grid;place-items:center;width:22px;height:22px;padding:0;color:var(--muted);flex:none}
+.debug-head .disclose svg{width:12px;height:12px;transition:transform .15s ease}
+.debug-head .disclose[aria-expanded=true] svg{transform:rotate(90deg)}
+.debug-body{padding:0 0 14px}
+
 /* Reference content that does not deserve permanent space: a floating card with an arrow pointing
    at the control that opened it. */
 .popover{position:absolute;z-index:8;width:400px;border-radius:12px;background:var(--paper);border:1px solid var(--line);box-shadow:0 12px 32px -8px oklch(20% .012 350/.32),0 0 0 .5px oklch(30% .01 350/.06)}
@@ -431,7 +443,8 @@ const states=[
  ['settings-model-prompts','设置 · 模型 · Prompt','模型页下半部分：翻译与润色各一个编辑器分组，标题右侧是「默认」标记与 info 图标。','settings-model-prompts.png'],
  ['settings-model-prompts-customized','设置 · 模型 · Prompt · 已自定义','改过之后「默认」标记换成「恢复默认」按钮，位置不变。','settings-model-prompts-customized.png'],
  ['settings-model-prompts-default','设置 · 模型 · Prompt · 默认内容','info 图标用 popover 展示内置默认，点外面即关闭。','settings-model-prompts-default.png'],
- ['settings-debug','设置 · 调试','调试页：失败原因说明与最近一次请求（请求体、原始返回、提交原文）。','settings-debug.png'],
+ ['settings-debug','设置 · 调试','调试页：捕获到的请求各占一行，显示操作与原文摘要，行尾的展开按钮打开请求体、返回与提交原文。','settings-debug.png'],
+ ['settings-debug-open','设置 · 调试 · 展开一条','展开一条记录：失败原因、原文差异（若有）与三段原始内容，附复制这条记录。','settings-debug-open.png'],
  ['settings-debug-empty','设置 · 调试 · 无记录','调试页空状态；记录只在内存，重启即清空。','settings-debug-empty.png'],
  ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
  ['polish-loading','润色 · 处理中','复用同一条紧凑条，只改状态文字。','polish-loading.png'],
@@ -506,6 +519,7 @@ const config={
   'settings-model-prompts-customized':{surface:'settings',pane:'model',prompts:true,customized:true},
   'settings-model-prompts-default':{surface:'settings',pane:'model',prompts:true,popover:true},
   'settings-debug':{surface:'settings',pane:'debug',debug:true},
+  'settings-debug-open':{surface:'settings',pane:'debug',debug:true,openRow:0},
   'settings-debug-empty':{surface:'settings',pane:'debug',debug:true,debugEmpty:true},
   loading:{surface:'compact',view:'translate',strip:'loading'},
   'polish-loading':{surface:'compact',view:'polish',strip:'loading',operation:'polish'},
@@ -563,7 +577,7 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-model-prompts','settings-model-prompts-customized','settings-model-prompts-default','settings-debug','settings-debug-empty']},
+ {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-model-prompts','settings-model-prompts-customized','settings-model-prompts-default','settings-debug','settings-debug-open','settings-debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -683,7 +697,7 @@ function settingsTabsHTML(){
   return `<div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div><h1 class="apptitle">Owlet 设置</h1>`
    +`<div class="settings-tabs" role="tablist">`
    +shown.map(([id,label,glyph])=>`<button role="tab" aria-selected="${active===id}">${icon(glyph)}<span>${label}</span></button>`).join('')
-   +`</div><div class="appbar-tools"></div>`;
+   +`</div><div class="appbar-tools">${active==='debug'?'<button class="glass-btn">复制全部</button><button class="glass-btn">清空</button>':''}</div>`;
 }
 function learningHTML(){
   return `<div class="form-section"><p class="group-title">学习</p>`
@@ -722,11 +736,18 @@ function promptSectionsHTML(){
 ;
 }
 function debugPaneHTML(){
-  const legend=`<div class="form-section"><p class="group-title">可能的失败原因</p><p class="debug-legend">· 返回的结构不符合约定：字段缺失、类型不对、内容为空，或 JSON 外还有文字<br>· 返回的目标语言与请求不一致（例如请求 zh-Hant，返回 zh-Hans）<br>· 返回的原文与提交的内容不一致（拼接后不等）<br>· 结果过长被截断、服务拒绝处理、网络、认证、HTTP、空内容</p><p class="section-footer">只保留最近 20 次，重启即清空；内容不含 API Key。</p></div>`;
-  if(cfg().debugEmpty)return legend+`<p class="debug-legend">还没有记录。发一次翻译或润色，这里就会显示这次请求与返回。</p>`;
-  return legend
-   +`<div class="form-section"><div class="formrow"><span></span><span class="field"><button class="glass-btn">复制全部</button><button class="glass-btn">清空</button></span></div></div>`
-   +DEBUG_ENTRIES.map(debugCard).join('');
+  const open=cfg().openRow;
+  return `<div class="body" id="body"><div class="debug-list">`
+   +DEBUG_ENTRIES.map((e,i)=>`<div class="debug-entry"><div class="debug-head"><span class="name">${e.title}</span><span class="text">${esc(e.text)}</span><span class="time">${e.time}</span><button class="disclose" aria-expanded="${open===i}" aria-label="展开这条记录">${icon('chevron')}</button></div>`
+     +(open===i?`<div class="debug-body">`
+       +(e.failure?`<p class="debug-failure">${icon('warn')}${esc(e.failure)}</p>`:'')
+       +(e.diff?`<pre class="debug-diff">${esc(e.diff)}</pre>`:'')
+       +`<div class="debug-block"><h4>提交原文</h4><pre>${esc(DEBUG_SUBMITTED)}</pre></div>`
+       +`<div class="debug-block"><h4>模型原始返回</h4><pre>${esc(e.response)}</pre></div>`
+       +`<div class="debug-block"><h4>请求体</h4><pre>${esc(DEBUG_REQUEST)}</pre></div>`
+       +`<div class="formrow"><span></span><span class="field"><button class="glass-btn">复制这条记录</button></span></div></div>`:'')
+     +`</div>`).join('')
+   +`</div></div>`;
 }
 function settingsPaneHTML(){
   const pane=cfg().pane||'general';
@@ -769,10 +790,10 @@ function libraryHTML(kind){
 const DEBUG_SUBMITTED='お世話になっております。\n株式会社PeopleX　外国籍ITエンジニア紹介部門\nアクティブ・コネクターグループの梅原と申します。';
 const DEBUG_REQUEST='{\n  "messages": [\n    {"role": "system", "content": "你是专业的多语言翻译助手。…（完整契约 Prompt）"},\n    {"role": "user", "content": "お世話になっております。…"}\n  ],\n  "model": "deepseek-flash",\n  "response_format": {"type": "json_object"}\n}';
 const DEBUG_ENTRIES=[
-  {title:'翻译 · zh-Hant',time:'20:12:03',
+  {title:'翻译 · zh-Hant',time:'20:12:03',text:'お世話になっております。 株式会社PeopleX 外国籍ITエンジニア紹介部門',
    failure:'返回的目标语言是 zh-Hans，与请求的 zh-Hant 不一致。',diff:'',
    response:'{\n  "source_language": "ja",\n  "target_language": "zh-Hans",\n  "segments": [\n    {"source": "お世話になっております。\\n", "target": "您好，承蒙您平日的关照。\\n"}\n  ]\n}'},
-  {title:'翻译 · zh-Hant',time:'20:08:41',
+  {title:'翻译 · zh-Hant',time:'20:08:41',text:'お世話になっております。 株式会社PeopleX 外国籍ITエンジニア紹介部門',
    failure:'返回的原文与提交的内容不一致，配对无法信任。',
    diff:'首个差异在第 11 个字符：\n返回 …株式会社PeopleX外国籍IT…\n提交 …株式会社PeopleX　外国籍IT…',
    response:'{\n  "source_language": "ja",\n  "target_language": "zh-Hant",\n  "segments": [\n    {"source": "株式会社PeopleX外国籍ITエンジニア紹介部門\\n", "target": "…"}\n  ]\n}'}

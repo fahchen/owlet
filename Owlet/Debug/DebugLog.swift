@@ -40,6 +40,11 @@ struct DebugExchange: Identifiable, Sendable {
             """
     }
 
+    /// One line of the captured text, for a collapsed row: a list row must not grow with the text.
+    var summary: String {
+        submitted.split(whereSeparator: \.isNewline).joined(separator: " ")
+    }
+
     /// The plain text a one-click copy puts on the pasteboard.
     var report: String {
         var lines = ["# \(title)", "时间：\(date.formatted(date: .numeric, time: .standard))"]
@@ -77,6 +82,9 @@ final class DebugLog {
     }
 
     func clear() { exchanges.removeAll() }
+
+    /// Every captured report, newest first, for one-click copy.
+    var reports: String { exchanges.map(\.report).joined(separator: "\n\n---\n\n") }
 }
 
 /// Where a `ModelClient` hands a finished exchange. Disabled by default, so ordinary use never keeps

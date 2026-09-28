@@ -53,7 +53,7 @@ struct ServiceConfig: Sendable, Equatable {
     var model: String
     var apiKey: String
     var provider: Provider = .openAICompatible
-    var effort: EffortLevel = .automatic
+    var effort: EffortLevel = .off
 }
 
 enum SettingsStore {
@@ -115,7 +115,7 @@ extension SettingsStore {
 
     /// The saved 思考强度, defaulting to 自动 so an untouched install keeps sending no effort parameter.
     static func effort(in defaults: UserDefaults = .standard) -> EffortLevel {
-        defaults.string(forKey: effortKey).flatMap(EffortLevel.init) ?? .automatic
+        defaults.string(forKey: effortKey).flatMap(EffortLevel.init) ?? .off
     }
 }
 

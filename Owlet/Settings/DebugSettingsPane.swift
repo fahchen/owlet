@@ -2,7 +2,8 @@ import SwiftUI
 
 /// 调试 pane, shown only while the switch in 通用 is on: the captured model exchanges, one list row
 /// each. A collapsed row says what was asked for and shows the text that was sent, truncated; the
-/// disclosure control on its trailing edge opens the raw request and reply.
+/// row is the system `DisclosureGroup`, so the indicator, the animation and the accessibility state
+/// all come from the system.
 struct DebugSettingsPane: View {
     @State private var log = DebugLog.shared
     /// Which rows are open, kept outside the rows so a new capture cannot leave one half expanded.
@@ -17,21 +18,10 @@ struct DebugSettingsPane: View {
             } else {
                 // `List(_:)` over the identified collection: no explicit `ForEach` needed.
                 List(log.exchanges) { exchange in
-                    VStack(alignment: .leading, spacing: 0) {
-                        // The whole row is the control, and the chevron at its trailing edge shows which
-                        // way it goes. `DisclosureGroup` would put its triangle on the leading edge,
-                        // where the row's own content starts.
-                        Button {
-                            toggle(exchange)
-                        } label: {
-                            summary(exchange)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(exchange.title)
-                        .accessibilityValue(isExpandedNow(exchange) ? "已展开" : "已收起")
-                        if isExpandedNow(exchange) {
-                            detail(exchange).padding(.bottom, 10)
-                        }
+                    DisclosureGroup(isExpanded: isExpanded(exchange)) {
+                        detail(exchange)
+                    } label: {
+                        summary(exchange)
                     }
                 }
                 .listStyle(.inset)
@@ -40,7 +30,7 @@ struct DebugSettingsPane: View {
     }
 
     /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole
-    /// point of the row is to be scannable, and the chevron opens the rest.
+    /// point of the row is to be scannable, and the disclosure opens the rest.
     private func summary(_ exchange: DebugExchange) -> some View {
         HStack(spacing: 10) {
             Text(exchange.title)
@@ -55,13 +45,8 @@ struct DebugSettingsPane: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(isExpandedNow(exchange) ? 90 : 0))
-                .accessibilityHidden(true)
         }
-        .contentShape(Rectangle())
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The captured content itself. No nested scroll view: the list already scrolls, and nesting a
@@ -100,18 +85,18 @@ struct DebugSettingsPane: View {
         }
     }
 
-    /// Animated, as a disclosure change is expected to be.
-    private func toggle(_ exchange: DebugExchange) {
-        withAnimation {
-            if expanded.contains(exchange.id) {
-                expanded.remove(exchange.id)
-            } else {
-                expanded.insert(exchange.id)
-            }
-        }
-    }
-
-    private func isExpandedNow(_ exchange: DebugExchange) -> Bool {
-        expanded.contains(exchange.id)
+    /// Animated: a disclosure change should read as the row growing, not as the list jumping.
+    private func isExpanded(_ exchange: DebugExchange) -> Binding<Bool> {
+        Binding(
+            get: { expanded.contains(exchange.id) },
+            set: { open in
+                withAnimation(.smooth(duration: 0.3)) {
+                    if open {
+                        expanded.insert(exchange.id)
+                    } else {
+                        expanded.remove(exchange.id)
+                    }
+                }
+            })
     }
 }

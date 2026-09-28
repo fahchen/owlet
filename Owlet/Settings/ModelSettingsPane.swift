@@ -10,7 +10,7 @@ struct ModelSettingsPane: View {
     @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
-    @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.automatic
+    @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.off
     /// The key is only read back from the Keychain, never stored in defaults, so it is a draft that
     /// commits when the field is done.
     @State private var apiKey = ""

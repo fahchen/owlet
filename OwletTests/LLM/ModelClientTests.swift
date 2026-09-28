@@ -70,11 +70,23 @@ func clientWithBuiltInPrompt() -> ModelClient {
 }
 
 @Test func automaticEffortOmitsTheReasoningParameter() throws {
+    var config = testConfig
+    config.effort = .automatic
+    let request = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: config)
+    let json = try #require(
+        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+    #expect(json["reasoning_effort"] == nil)
+}
+
+/// 关闭 is the default, so an untouched config must ask for no thinking rather than leaving it to the
+/// provider.
+@Test func theDefaultConfigAsksForNoThinking() throws {
     let request = try ModelClient().makeRequest(
         text: "Hello", targetLanguage: "zh-Hans", config: testConfig)
     let json = try #require(
         JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
-    #expect(json["reasoning_effort"] == nil)
+    #expect(json["reasoning_effort"] as? String == "none")
 }
 
 @Test func aChosenEffortRidesOnTheMainAndLearningRequests() throws {

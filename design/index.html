@@ -56,7 +56,7 @@ kbd{font:11px -apple-system,sans-serif;color:inherit;border:1px solid currentCol
 .debug-head .name{font-size:12px;font-weight:600;flex:none}
 .debug-head .text{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .debug-head .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
-.debug-head .disclose{display:grid;place-items:center;width:22px;height:22px;padding:0;color:var(--muted);flex:none}
+.debug-head .disclose{display:grid;place-items:center;width:18px;height:18px;padding:0;color:var(--muted);flex:none}
 .debug-head .disclose svg{width:12px;height:12px;transition:transform .15s ease}
 .debug-head .disclose[aria-expanded=true] svg{transform:rotate(90deg)}
 .debug-body{padding:0 0 14px}
@@ -747,7 +747,7 @@ function debugPaneHTML(){
   const open=cfg().openRow;
   if(cfg().debugEmpty)return `<div class="body" id="body"><div class="empty">${icon('ladybug')}<h2>还没有记录</h2><p>发一次翻译或润色后会出现在这里。</p></div></div>`;
   return `<div class="body" id="body"><div class="form" style="padding-top:14px"><div class="debug-list">`
-   +DEBUG_ENTRIES.map((e,i)=>`<div class="debug-entry"><div class="debug-head" onclick="setDebugRow(${open===i?-1:i})" role="button" tabindex="0" aria-expanded="${open===i}"><span class="name">${e.title}</span><span class="text">${esc(e.text)}</span><span class="time">${e.time}</span><button class="disclose" aria-expanded="${open===i}" aria-label="展开这条记录">${icon('chevron')}</button></div>`
+   +DEBUG_ENTRIES.map((e,i)=>`<div class="debug-entry"><div class="debug-head" onclick="setDebugRow(${open===i?-1:i})" role="button" tabindex="0" aria-expanded="${open===i}"><button class="disclose" aria-expanded="${open===i}" aria-label="展开这条记录">${icon('chevron')}</button><span class="name">${e.title}</span><span class="text">${esc(e.text)}</span><span class="time">${e.time}</span></div>`
      +(open===i?`<div class="debug-body">`
        +(e.failure?`<p class="debug-failure">${icon('warn')}${esc(e.failure)}</p>`:'')
        +(e.diff?`<pre class="debug-diff">${esc(e.diff)}</pre>`:'')

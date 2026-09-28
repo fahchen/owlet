@@ -32,15 +32,6 @@ mise run prod     # Release 通用二进制，校验后打包到 dist/
   状态数／分区数／提案数必须与实际一致。
 - 新工作进 `tasks/todo.md`（T 编号，含验收条件与验证），完成后同步 `tasks/plan-remaining.md`。
 
-## 设计图
-
-- `design/index.html` 是单文件原型，状态与 `design/screenshots/` 一一对应；**每张画面都要
-  对应应用里已实现的东西**，没实现的要带「未实现」徽标并单独成区。
-- 改完原型先跑语法检查，再生成截图：`node design/screenshot.mjs`（需要 ego-browser）。
-- 生成后用 `magick compare -metric AE` 比对，**只保留真正变化的 PNG**，把抗锯齿级差异
-  （通常 < 1000 像素）`git checkout` 还原，别把噪声提交进去。
-- 浏览器侧自检：`checkDesignStates()` 与 `checkFlowBoard()`，两者都必须过。
-
 ## 模型调用
 
 - `spec/llm/contract.md` 是硬约束：结构、目标语言、原文拼接三项都要在本地校验，校验失败

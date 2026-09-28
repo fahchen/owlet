@@ -213,6 +213,14 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .window{position:relative}
 .proposal-badge{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:6;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-size:10px;font-weight:600;color:var(--ink);box-shadow:0 1px 2px oklch(30% .01 350/.12);white-space:nowrap}
 .proposal-badge svg{width:11px;height:11px;color:var(--muted)}
+/* Target-language mapping group in the settings proposal: a fallback pop-up plus one row per
+   source language, each row editable in place. */
+.mapping-row{justify-content:flex-start;gap:10px}
+.mapping-row .field{flex:0 1 auto}
+.mapping-row .field select{min-width:150px}
+.mapping-row .arrow{color:var(--muted);font-size:12px}
+.mapping-row .iconbtn{display:grid;place-items:center;width:26px;height:26px;padding:0;color:var(--muted);flex:none}
+.mapping-row .iconbtn:hover{color:oklch(48% .14 25);background:oklch(48% .14 25/.1)}
 .window.window-narrow{width:760px;max-width:100%}
 .count{margin-left:auto;font-size:11px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
 .nav.active .count{color:oklch(99% .003 350/.8)}
@@ -324,7 +332,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const icon=n=>`<svg aria-hidden="true"><use href="#${n}"/></svg>`;
 
 const samples={
-  en:{language:'英语',text:"Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.",zh:'在继续推进之前，让我们先退一步，从全局的角度看一看。我们可以一起决定接下来的行动。',polish:"Before moving forward, let's take a step back and consider the bigger picture. We can then agree on the next steps together.",
+  en:{language:'英语',text:"Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.",zh:'在继续推进之前，让我们先退一步，从全局的角度看一看。我们可以一起决定接下来的行动。',ja:'まず一歩引いて、前に進む前に全体像を見てみましょう。次のステップは一緒に決められます。',polish:"Before moving forward, let's take a step back and consider the bigger picture. We can then agree on the next steps together.",
     learn:[['take a step back','退一步重新审视，常用于讨论需要换个角度时。'],['the bigger picture','全局、整体情况。强调超越眼前的细节。'],['move forward','继续推进，可用于项目进展或决策。']],
     pairs:[{source:"Let's take a step back and look at the bigger picture before we move forward.",zh:'在继续推进之前，让我们先退一步，从全局的角度看一看。'},{source:'We can decide on the next steps together.',zh:'我们可以一起决定接下来的行动。'}]},
   ja:{language:'日语',text:'お手数ですが、明日までにご確認いただけますと幸いです。',zh:'麻烦您在明天之前确认一下，不胜感激。',polish:'お手数をおかけしますが、明日までにご確認いただけますと幸いです。',
@@ -432,7 +440,12 @@ const states=[
  ['settings-prompts','设置 · Prompt','Prompt 分组：查看、编辑、恢复默认与 JSON 返回示例。','settings-prompts.png'],
  ['workspace-narrow','文本处理 · 窄窗口','内容区不足 720pt 时原文与译文上下堆叠；提案的另一半是宽窗口并排。','workspace-narrow.png'],
  // 提案状态：写回成功确认画面，应用当前在写回成功后直接关闭面板。
- ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png']
+ ['success','直接替换 · 完成','写回成功后确认替换并保留译文，按 Esc 或完成返回工作；应用现在写回成功即关闭面板，没有确认屏。','success.png'],
+ // 提案状态：翻译目标映射（BDR-0003），应用尚未实现。
+ ['settings-targets','设置 · 目标语言','兜底目标加一张空映射表：一次都没配置时，所有翻译都走兜底目标。','settings-targets.png'],
+ ['settings-targets-rows','设置 · 目标语言 · 已添加映射','用户逐条添加映射：英语 → 日语、繁體中文 → 简体中文；一个源语言只保留一条，重复添加即替换。','settings-targets-rows.png'],
+ ['workspace-auto','文本处理 · 自动目标','工具栏目标语言为“自动”，显示按映射解析出的目标；手动选择语言可持久覆盖，直到切回自动。','workspace-auto.png'],
+ ['workspace-target-pinned','文本处理 · 手动指定目标','用户显式选择了日本語：该选择覆盖映射并持久保留，控件不再显示自动。','workspace-target-pinned.png']
 ];
 const config={
   workspace:{surface:'app',page:'processing',phase:'result'},
@@ -497,7 +510,12 @@ const config={
   'settings-prompts':{surface:'app',page:'settings',prompts:true},
   'workspace-narrow':{surface:'app',page:'processing',phase:'result',narrowWindow:true},
   // 提案：写回成功后的确认屏，应用尚未实现。
-  'success':{surface:'panel',view:'direct',phase:'success',success:true}
+  'success':{surface:'panel',view:'direct',phase:'success',success:true},
+  // 提案：翻译目标映射（BDR-0003），应用尚未实现。
+  'settings-targets':{surface:'app',page:'settings',targets:'empty',proposal:true},
+  'settings-targets-rows':{surface:'app',page:'settings',targets:'rows',proposal:true},
+  'workspace-auto':{surface:'app',page:'processing',phase:'result',targetMode:'auto',proposal:true},
+  'workspace-target-pinned':{surface:'app',page:'processing',phase:'result',targetMode:'pinned',pinnedTarget:'ja',proposal:true}
 };
 // 状态总览按窗口与面板分组，分区竖向堆叠。
 const panels=[
@@ -513,9 +531,11 @@ const panels=[
  {title:'浮动面板 · 展开',note:'首次成功后展开：头部操作选择、原文与译文、底部复制与替换。已展开时重新处理保持展开，状态显示在内容区；原文被清空时头部不显示重新处理，动作行也没有按钮。',nodes:['result','polish','long','aligned','result-loading','result-unwritten','result-notice','result-cancelled','success','empty']},
  {title:'菜单栏',note:'MenuBarExtra 的常驻入口，点击展开菜单。',nodes:['menubar','menubar-menu']},
  // 提案分区：与已实现的状态分开，标题与分区说明都标示未实现。
+ {title:'提案（未实现） · 应用窗口 · 设置',note:'翻译目标映射的配置：兜底目标加一张由用户逐条添加的映射表。表为空时全部走兜底，行为与今天一致。',nodes:['settings-targets','settings-targets-rows']},
+ {title:'提案（未实现） · 应用窗口 · 文本处理',note:'目标语言默认为“自动”并显示解析出的目标；显式选择语言后持久覆盖映射，直到切回“自动”。',nodes:['workspace-auto','workspace-target-pinned']},
 ];
 
-let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false;
+let state='result',which='en',prefs={target:'zh-Hans'},appPage='processing',operationOverride=null,sidebarCollapsed=false,targetMode='pinned';
 let phase='success',notice=null,long=false,recording=null,saved=false,shortcutDraft=null,conflict=false,menubarMenu=false;
 let scenario='normal',toastTimer,external="Let's take a step back and look at the bigger picture before we move forward. We can decide on the next steps together.";
 let buildingBoard=false,boardBuilt=false;
@@ -556,10 +576,22 @@ function appbarTools(){
   if(appPage==='history')return `${searchFieldHTML('搜索原文或结果','')}<select class="popup" aria-label="筛选类型"><option>全部类型</option><option>翻译</option><option>润色</option></select><span class="tb-sep" aria-hidden="true"></span><button class="tb" aria-label="清空历史" title="清空历史">${icon('trash')}</button>`;
   if(appPage!=='processing')return '';
   const busy=phase==='loading';
-  return (currentOperation()==='polish'?'':`<select class="popup" aria-label="目标语言" ${busy?'disabled':''} onchange="prefs.target=this.value;render()">${LANGS.map(([v,l])=>`<option value="${v}" ${prefs.target===v?'selected':''}>${l}</option>`).join('')}</select>`)
+  return (currentOperation()==='polish'?'':targetSelectHTML(busy))
    +`<div class="segmented" role="group" aria-label="处理方式"><button role="radio" aria-checked="${currentOperation()==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">翻译</button><button role="radio" aria-checked="${currentOperation()==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">润色</button></div>`;
 }
 function setOperation(v){operationOverride=v;render()}
+// 目标语言控件（提案 BDR-0003）：默认为自动，显示按映射解析出的目标；显式选择语言则持久覆盖映射，
+// 直到用户重新选回“自动”。只有提案画面（配置带 targetMode）才画“自动”项，已实现功能的画面保持原样。
+function targetSelectHTML(busy){
+  const proposed=!!cfg().targetMode;
+  const auto=targetMode==='auto';
+  const autoOption=proposed?`<option value="auto" ${auto?'selected':''}>自动（${langName(prefs.target)}）</option>`:'';
+  return `<select class="popup" aria-label="目标语言" ${busy?'disabled':''} onchange="setTargetMode(this.value)">`
+   +autoOption
+   +LANGS.map(([v,l])=>`<option value="${v}" ${(!auto||!proposed)&&prefs.target===v?'selected':''}>${l}</option>`).join('')
+   +`</select>`;
+}
+function setTargetMode(v){targetMode=v==='auto'?'auto':'pinned';if(v!=='auto')prefs.target=v;render()}
 function currentOperation(){return operationOverride||cfg().operation||'translate'}
 function processingHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='result',failed=phase==='failure';
@@ -587,9 +619,20 @@ function shortcutsHTML(){
   const panelKeys=PANEL_KEYS.map(([n,k,s])=>`<div class="keyrow"><span><span class="name">${n}</span><span class="scope" style="display:block">${s}</span></span><span class="keys">${k}</span></div>`).join('');
   return `<div class="body" id="body"><div class="form"><div class="form-section"><p class="group-title">全局</p>${rows}<p class="section-footer" role="status">${note||'&nbsp;'}</p></div><div class="form-section"><p class="group-title">面板内</p>${panelKeys}<p class="section-footer">面板打开时这些键始终生效，且不能更改；上面三个快捷键由你录制。</p></div></div></div>`;
 }
+// 目标语言分组（提案 BDR-0003）：兜底目标独立设置，映射表由用户逐条添加，一个源语言只保留一条。
+function targetsHTML(mode){
+  const options=sel=>LANGS.map(([v,l])=>`<option ${v===sel?'selected':''}>${l}</option>`).join('');
+  const popup=label=>`class="popup" aria-label="${label}" style="height:auto;padding:7px 26px 7px 9px;min-width:150px"`;
+  const fallback=`<div class="formrow"><label>兜底目标</label><span class="field"><select class="popup" aria-label="兜底目标" style="height:auto;padding:7px 26px 7px 9px">${options('zh-Hans')}</select></span></div>`;
+  const add=`<div class="formrow"><span></span><span class="field"><button class="glass-btn">＋ 添加映射</button></span></div>`;
+  if(mode==='empty')return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}<p class="section-footer">还没有映射，所有翻译都使用兜底目标。添加映射后，目标语言按识别出的源语言决定。</p>${add}</div>`;
+  const row=(src,tgt)=>`<div class="formrow mapping-row"><span class="field"><select ${popup('源语言')}>${options(src)}</select><span class="arrow" aria-hidden="true">→</span><select ${popup('目标语言')}>${options(tgt)}</select></span><button class="iconbtn" aria-label="删除映射">${icon('trash')}</button></div>`;
+  return `<div class="form-section"><p class="group-title">目标语言</p>${fallback}${row('en','ja')}${row('zh-Hant','zh-Hans')}<p class="section-footer">一个源语言只保留一条映射，重复添加即替换。</p>${add}</div>`;
+}
 function settingsHTML(){
   const failed=cfg().models==='failed',openai=cfg().provider==='openai';
   const loading=cfg().models==='loading';
+  const targetsSection=cfg().targets?targetsHTML(cfg().targets):'';
   // 模型名称这一行不随读取状态换控件：DeepSeek 始终是弹出式按钮，只有选项会变；读取反馈在页脚。
   const modelRow=`<div class="formrow"><label>模型名称</label><span class="field">${openai?'<input placeholder="填写服务商提供的模型名称" aria-label="模型名称">':'<select class="popup" aria-label="模型名称" style="height:auto;padding:7px 26px 7px 9px"><option>deepseek-chat</option><option>deepseek-reasoner</option></select>'}</span></div>`
     +(failed?`<div class="formrow"><span class="error">${icon('warn')}${esc(MODEL_LIST_ERROR)}</span><button class="glass-btn" onclick="toast('重新读取模型列表')">重试</button></div>`:'');
@@ -605,6 +648,7 @@ function settingsHTML(){
    +`<div class="formrow"><label>API Key</label><span class="field"><input type="password" value="${openai?'':'sk-example'}" placeholder="sk-…" aria-label="API Key" autocomplete="off"></span></div>`
    +modelRow
    +`</div>`
+   +targetsSection
    +(cfg().learning?`<div class="form-section"><p class="group-title">学习</p>`
      +`<div class="formrow"><label>翻译后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="翻译后自动请求学习表达"></span></div>`
      +`<div class="formrow"><label>润色后自动请求学习表达</label><span class="field"><input type="checkbox" role="switch" aria-label="润色后自动请求学习表达"></span></div></div>`:'')
@@ -746,7 +790,7 @@ function preview(id){
   notice=c.strip==='notice'?c.notice:(c.notice||null);
   long=!!c.long;recording=c.recording||null;saved=!!c.saved;conflict=!!c.conflict;menubarMenu=!!c.menubarMenu;operationOverride=null;
   if(c.surface==='menubar'){$('#window').classList.add('hidden');$('#sourceDrawer').classList.add('hidden')}
-  sidebarCollapsed=!!c.collapsed;external=inputText();$('#external').value=external;
+  sidebarCollapsed=!!c.collapsed;targetMode=c.targetMode||'pinned';prefs.target=c.pinnedTarget||'zh-Hans';external=inputText();$('#external').value=external;
   render();syncPicker();
 }
 function stepState(d){const i=states.findIndex(s=>s[0]===state);preview(states[(i+d+states.length)%states.length][0])}

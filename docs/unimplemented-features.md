@@ -1,6 +1,6 @@
 # Owlet · 未实现功能清单
 
-状态：`design/index.html` 有 58 个状态：42 个对应 Swift 端已实现的功能，16 个是尚未实现功能的提案画面（画面上带“未实现”徽标，总览里各自成区）。
+状态：`design/index.html` 有 64 个状态：60 个对应 Swift 端已实现的功能，4 个是尚未实现功能的提案画面（画面上带“未实现”徽标，总览里各自成区）。另有 `success`（写回完成确认）保留旧画面、不带徽标：原生应用写回成功后直接关闭浮窗，该画面已不对应实现。
 对象：`spec/product.md` 中已定义、但 `Owlet/` 尚未落地的功能。
 目的：为每项未实现功能保留一张提案画面，并把仍无画面的部分逐条记录在此，避免产品定义随原型一起丢失。
 
@@ -10,10 +10,11 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
+| 按源语言决定翻译目标 | 翻译 | [settings-targets](../design/screenshots/settings-targets.png)、[settings-targets-rows](../design/screenshots/settings-targets-rows.png)、[workspace-auto](../design/screenshots/workspace-auto.png)、[workspace-target-pinned](../design/screenshots/workspace-target-pinned.png)；行为见 [BDR-0003](../spec/settings/decisions/BDR-0003-translation-target-mapping.md) | 待定 |
 | 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 
-其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用改为写回成功直接关闭浮窗，该画面回归提案、原型徽标沿用旧画面；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
+其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用写回成功直接关闭浮窗，该画面保留旧布局但不再对应实现（原型未加徽标）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
 
 - **主窗口的错误提示是英文原文。** `TranslationView` 对 `.failure` 直接渲染 `ModelError.message`，而该文案是英文（如 `Authentication failed. Check the API key.`、`Network error: …`）；浮窗侧则把这些映射成中文。证据：`Owlet/LLM/ModelClient.swift` 的 `ModelError.message`、`Owlet/Processing/TranslationView.swift` 的 `status`。设计图的 `workspace-error` 因此画的是英文文案。
 - **设置里模型列表失败也显示原始错误。** `ServiceSettingsView.modelField` 的 `.failed` 分支渲染 `Label(message, …)`，`message` 同样来自英文的 `ModelError` 或 `localizedDescription`。证据：`Owlet/Settings/ServiceSettingsView.swift`。

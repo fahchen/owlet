@@ -49,6 +49,9 @@ struct ModelSettingsPane: View {
             apiKey = SettingsStore.apiKey(for: provider) ?? ""
             loadModels()
         }
+        // Leaving the pane or closing the window also ends the edit, so a key typed and left alone
+        // is not lost.
+        .onDisappear(perform: commitKey)
         // A different provider is a different key and its own preset, so the row is re-read.
         .onChange(of: provider) { _, new in
             if let preset = new.preset { (baseURL, model) = preset }

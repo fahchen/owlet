@@ -19,14 +19,6 @@ struct DebugSettingsPane: View {
             }
         }
         .listStyle(.inset)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button("复制全部") { Clipboard.copy(log.reports) }
-                    .disabled(log.exchanges.isEmpty)
-                Button("清空", action: log.clear)
-                    .disabled(log.exchanges.isEmpty)
-            }
-        }
     }
 
     /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole

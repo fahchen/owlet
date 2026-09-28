@@ -287,13 +287,16 @@ body.board-open #sourceDrawer,body.board-open #toast{display:none!important}
 .detail .form-section{margin-top:16px}
 .detail .formrow .field textarea{min-height:62px}
 /* Prompt editing proposal. */
+.prompt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:13px 0 2px}
+.prompt-head .group-title{margin:0}
 .prompt-editor{padding:12px 0;border-bottom:1px solid var(--line)}
 .prompt-editor:last-of-type{border-bottom:0}
 .prompt-editor .labelrow{margin-bottom:8px}
 .prompt-editor .state{font-size:10px;color:var(--muted)}
 .prompt-editor .prompt-accessory{display:inline-flex;align-items:center;gap:8px;color:var(--muted)}
 .prompt-editor .prompt-accessory svg{width:14px;height:14px}
-.prompt-editor .prompt-accessory .glass-btn{height:22px;padding:0 9px;font-size:11px}
+.prompt-editor .prompt-accessory .icon-square{display:grid;place-items:center;width:22px;height:22px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);flex:none}
+.prompt-editor .prompt-accessory .icon-square svg{width:12px;height:12px}
 .prompt-text{font-size:12px;line-height:1.75;min-height:128px}
 .prompt-tools{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-top:8px}
 .prompt-tools details{flex:1;font-size:11px;color:var(--muted)}
@@ -697,7 +700,7 @@ function settingsTabsHTML(){
   return `<div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div><h1 class="apptitle">Owlet 设置</h1>`
    +`<div class="settings-tabs" role="tablist">`
    +shown.map(([id,label,glyph])=>`<button role="tab" aria-selected="${active===id}">${icon(glyph)}<span>${label}</span></button>`).join('')
-   +`</div><div class="appbar-tools">${active==='debug'?'<button class="glass-btn">复制全部</button><button class="glass-btn">清空</button>':''}</div>`;
+   +`</div><div class="appbar-tools"></div>`;
 }
 function learningHTML(){
   return `<div class="form-section"><p class="group-title">学习</p>`
@@ -729,8 +732,8 @@ function promptSectionsHTML(){
   const pop=!!cfg().popover;
   // 「查看默认 Prompt」是只读参考：用 popover 展示，比常驻的折叠行更宽，也不会把编辑器挤动。
   const popover=text=>`<div class="popover" role="dialog" aria-label="默认 Prompt" style="top:398px;left:17px"><pre>${esc(text)}</pre></div>`;
-  return ['translate','polish'].map((k,i)=>`<div class="form-section" style="position:relative"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p>`
-   +`<div class="prompt-editor"><div class="labelrow"><span></span><span class="prompt-accessory">${cfg().customized?'<button class="glass-btn">恢复默认</button>':'<span class="state">默认</span>'}${icon('infoCircle')}</span></div><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><button class="glass-btn">查看默认 Prompt</button><button class="glass-btn">恢复默认</button></div></div>`
+  return ['translate','polish'].map((k,i)=>`<div class="form-section" style="position:relative"><div class="prompt-head"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p><span class="prompt-accessory">${cfg().customized?'<button class="icon-square" aria-label="恢复默认">'+icon('refresh')+'</button>':'<span class="state">默认</span>'}<button class="icon-square" aria-label="查看默认 Prompt">${icon('infoCircle')}</button></span></div>`
+   +`<div class="prompt-editor"><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><button class="glass-btn">查看默认 Prompt</button><button class="glass-btn">恢复默认</button></div></div>`
    +((pop&&i===0)?popover(DEFAULT_PROMPTS[k]):'')
    +`</div>`).join('')
 ;

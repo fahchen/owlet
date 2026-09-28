@@ -81,10 +81,6 @@ final class DebugLog {
         }
     }
 
-    func clear() { exchanges.removeAll() }
-
-    /// Every captured report, newest first, for one-click copy.
-    var reports: String { exchanges.map(\.report).joined(separator: "\n\n---\n\n") }
 }
 
 /// Where a `ModelClient` hands a finished exchange. Disabled by default, so ordinary use never keeps

@@ -51,16 +51,23 @@ struct PromptSettingsView: View {
                     .foregroundStyle(.red)
             }
         } header: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Text("\(operation.title) System Prompt")
                 Spacer(minLength: 0)
                 // The restore is only worth offering once there is something to restore, and it takes
-                // the place the 默认 mark had, so the header never grows a second row.
+                // the place the 默认 mark had, so the header never grows a second row. Both accessories
+                // are small square icon buttons: `.smallSquare` is the AppKit bezel this shape comes
+                // from, and it is deprecated, so the bordered small control is used instead.
                 if customized.contains(operation) {
-                    Button("恢复默认") { text.wrappedValue = defaultPrompt }
-                        .buttonStyle(.borderless)
-                        .controlSize(.small)
-                        .help("把内置默认填回编辑框")
+                    Button {
+                        text.wrappedValue = defaultPrompt
+                    } label: {
+                        Label("恢复默认", systemImage: "arrow.uturn.backward")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("把内置默认填回编辑框")
                 } else {
                     Text("默认")
                         .foregroundStyle(.secondary)
@@ -81,7 +88,8 @@ struct PromptSettingsView: View {
             Label("查看默认 Prompt", systemImage: "info.circle")
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(.borderless)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
         .help("查看默认 Prompt")
         .popover(isPresented: showingDefaultBinding(for: operation)) {
             ScrollView {

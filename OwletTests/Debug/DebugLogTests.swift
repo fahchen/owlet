@@ -16,8 +16,6 @@ struct DebugLogTests {
         }
         #expect(log.exchanges.count == DebugLog.limit)
         #expect(log.exchanges.first?.title == "第 \(DebugLog.limit + 2) 次")
-        log.clear()
-        #expect(log.exchanges.isEmpty)
     }
 
     /// The API key travels in a header, so a copied report must not carry it.
@@ -40,15 +38,6 @@ struct DebugLogTests {
         let exchange = DebugExchange(
             title: "翻译 · zh-Hant", request: "{}", submitted: "お世話になっております。\n株式会社PeopleX")
         #expect(exchange.summary == "お世話になっております。 株式会社PeopleX")
-    }
-
-    @Test func theLogHandsOutEveryReportNewestFirst() {
-        let log = DebugLog()
-        log.add(DebugExchange(title: "第一次", request: "{}", submitted: "a"))
-        log.add(DebugExchange(title: "第二次", request: "{}", submitted: "b"))
-        let reports = log.reports
-        #expect(reports.contains("第一次") && reports.contains("第二次"))
-        #expect(reports.range(of: "第二次")!.lowerBound < reports.range(of: "第一次")!.lowerBound)
     }
 
     /// Only a source mismatch gets the comparison, so the hint never claims the wrong check failed.

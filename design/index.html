@@ -112,7 +112,8 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .body.processing .source{padding:2px 4px}
 /* 两侧各是一个 GroupBox：靠背景区隔，不再画分割线。 */
 .body.processing>.groupwrap{flex:1 1 0;min-height:180px;display:flex;flex-direction:column;gap:6px}
-.grouplabel{font-size:11px;font-weight:600;color:var(--muted);margin:0}
+.grouplabel{display:flex;align-items:center;min-height:22px;font-size:11px;font-weight:600;color:var(--muted);margin:0}
+.grouplabel .segmented button{height:20px;padding:0 10px;font-size:11px}
 .body.processing>.groupwrap>.pane{border:1px solid var(--line);border-radius:10px;background:oklch(99% .004 350/.7);padding:12px 14px;box-shadow:0 1px 2px oklch(30% .01 350/.04);flex:1 1 0;min-height:0;overflow-y:auto}
 .result-head{margin-bottom:10px}
 .result-head .segmented{height:22px}
@@ -670,11 +671,12 @@ function processingHTML(){
   const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openSettings('model')">${notice.action}</button></div>`:'';
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
   // 分组标题只留「原文」「译文」：上面已经有 tab，多余的字都去掉。
-  const source=`<div class="groupwrap"><p class="grouplabel">原文</p><div class="pane"><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="external=this.value">${cfg().empty?'':esc(inputText())}</textarea></div></div>`;
+  const sourceLanguage=`<select class="popup" aria-label="源语言" style="height:22px;padding:0 22px 0 8px;font-size:11px"><option>自动（英语）</option><option>简体中文</option><option>English</option><option>日本語</option></select>`;
+  const source=`<div class="groupwrap"><div class="grouplabel">${sourceLanguage}</div><div class="pane"><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="external=this.value">${cfg().empty?'':esc(inputText())}</textarea></div></div>`;
   // 译文与学习放在同一个分组里，用分段控件切换；目标语言也在这个分组内。
   const meta=op==='polish'?'保留原意':targetSelectHTML(busy);
-  const resultHeader=`<div class="labelrow result-head"><div class="segmented" role="group" aria-label="结果"><button role="radio" aria-checked="true">${op==='polish'?'润色结果':'译文'}</button><button role="radio" aria-checked="false">学习</button></div><span>${meta}</span></div>`;
-  const resultSection=`<div class="groupwrap"><p class="grouplabel">${op==='polish'?'润色结果':'译文'}</p><div class="pane">${resultHeader}<div class="result ${done?'':'redacted'}">${result}</div>${learning}${status}</div></div>`;
+  const resultHeader=`<div class="labelrow result-head"><span></span><span>${meta}</span></div>`;
+  const resultSection=`<div class="groupwrap"><div class="grouplabel"><div class="segmented" role="group" aria-label="结果"><button role="radio" aria-checked="true">${op==='polish'?'润色结果':'译文'}</button><button role="radio" aria-checked="false">学习</button></div></div><div class="pane">${resultHeader}<div class="result ${done?'':'redacted'}">${result}</div>${learning}${status}</div></div>`;
   // 动作浮在内容右下角：macOS 没有底部工具栏，用贴底的动作条充当。
   const actions=busy
     ?`<button class="glass-btn icon" aria-label="取消" title="取消">${icon('stop')}</button>`

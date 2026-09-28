@@ -45,6 +45,21 @@ struct TargetMappingTests {
                 == "zh-Hant")
     }
 
+    /// The source picker is an override for the *mapping lookup* only: the request still lets the
+    /// model read the language, this just decides which row is consulted.
+    @Test func aPinnedSourceDecidesTheMappingRow() {
+        SettingsStore.setTargetMapping(
+            TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
+        #expect(SettingsStore.autoSource(for: "お世話になっております。", in: defaults) == "ja")
+        SettingsStore.setPinnedSource("en", in: defaults)
+        #expect(SettingsStore.autoSource(for: "お世話になっております。", in: defaults) == "en")
+        #expect(
+            SettingsStore.resolvedTarget(for: "お世話になっております。", in: defaults) == "ja")
+        SettingsStore.setPinnedSource(nil, in: defaults)
+        #expect(
+            SettingsStore.resolvedTarget(for: "お世話になっております。", in: defaults) == "zh-Hans")
+    }
+
     @Test func clearingThePinGoesBackToAutomatic() {
         SettingsStore.setPinnedTarget("ja", in: defaults)
         SettingsStore.setPinnedTarget(nil, in: defaults)
@@ -98,6 +113,13 @@ struct TargetMappingTests {
         #expect(SettingsStore.targetMapping(in: defaults).targets.isEmpty)
         #expect(SettingsStore.targetMapping(in: defaults).fallback == "zh-Hans")
         #expect(SettingsStore.pinnedTarget(in: defaults) == nil)
+    }
+
+    /// The source pin is restricted to the selected languages too.
+    @Test func aSourceLeavingTheSelectionAlsoLeavesThePin() {
+        SettingsStore.setPinnedSource("ja", in: defaults)
+        SettingsStore.setLanguages(["zh-Hans", "en"], in: defaults)
+        #expect(SettingsStore.pinnedSource(in: defaults) == nil)
     }
 
     @Test func rowsInsideTheSelectionSurviveARemoval() {

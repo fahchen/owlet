@@ -167,6 +167,7 @@ extension SettingsStore {
 extension SettingsStore {
     static let targetMappingKey = "translation.targetMapping"
     static let pinnedTargetKey = "translation.pinnedTarget"
+    static let pinnedSourceKey = "translation.pinnedSource"
 
     static func targetMapping(in defaults: UserDefaults = .standard) -> TargetMapping {
         TargetMapping(
@@ -193,10 +194,29 @@ extension SettingsStore {
         }
     }
 
-    /// What 自动 resolves to for this text: the mapping row for the detected source, else the
-    /// fallback. Detection happens here, once per request.
+    /// The source 自动 uses: the user's choice when they made one, else what the text looks like.
+    static func autoSource(for text: String, in defaults: UserDefaults = .standard) -> String? {
+        pinnedSource(in: defaults) ?? LanguageDetector.detect(text)
+    }
+
+    /// The language the user pinned as the source; nil (or an empty value) means 自动.
+    static func pinnedSource(in defaults: UserDefaults = .standard) -> String? {
+        guard let tag = defaults.string(forKey: pinnedSourceKey), !tag.isEmpty else { return nil }
+        return tag
+    }
+
+    static func setPinnedSource(_ tag: String?, in defaults: UserDefaults = .standard) {
+        if let tag, !tag.isEmpty {
+            defaults.set(tag, forKey: pinnedSourceKey)
+        } else {
+            defaults.removeObject(forKey: pinnedSourceKey)
+        }
+    }
+
+    /// What 自动 resolves to for this text: the mapping row for the source, else the fallback.
+    /// Detection happens here, once per request.
     static func autoTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
-        targetMapping(in: defaults).target(forSource: LanguageDetector.detect(text))
+        targetMapping(in: defaults).target(forSource: autoSource(for: text, in: defaults))
     }
 
     /// The target a request should use: an explicit choice wins, otherwise 自动 decides.
@@ -243,6 +263,9 @@ extension SettingsStore {
         setTargetMapping(mapping, in: defaults)
         if let pinned = pinnedTarget(in: defaults), !allowed.contains(pinned) {
             setPinnedTarget(nil, in: defaults)
+        }
+        if let pinned = pinnedSource(in: defaults), !allowed.contains(pinned) {
+            setPinnedSource(nil, in: defaults)
         }
     }
 }

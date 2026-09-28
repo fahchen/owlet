@@ -80,7 +80,7 @@
 
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
-| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 侧栏切换 · 内容区顶边的 `TabView`（`Tab(标题, systemImage:)`，四周留边距）· 每个 pane 里两个 `GroupBox`（标题只写「原文」「译文」，靠背景区隔，不画分割线；译文那一组的内部用分段控件在结果与学习表达之间切换，目标语言 `Picker(.menu)` 也在组内）· 内容右下角浮起的两颗独立玻璃图标按钮（`复制结果`、`翻译`／`润色`，处理中换成 `取消`；`.labelStyle(.iconOnly)` + `.help()`，不套 `GlassEffectContainer`，见 §2.2）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；两侧同时可见并各自滚动（宽窗口左右平分宽度、窄窗口上下平分高度），学习表达跟在译文／润色下面；这一页没有底部操作栏 |
+| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 侧栏切换 · 内容区顶边的 `TabView`（`Tab(标题, systemImage:)`，四周留边距）· 每个 pane 里两个 `GroupBox`（靠背景区隔，不画分割线；标题位放的是控件——原文一侧 `Picker(.menu)` 选源语言、译文一侧是「译文／学习」分段控件；目标语言 `Picker(.menu)` 在译文组内）· 内容右下角浮起的两颗独立玻璃图标按钮（`复制结果`、`翻译`／`润色`，处理中换成 `取消`；`.labelStyle(.iconOnly)` + `.help()`，不套 `GlassEffectContainer`，见 §2.2）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；两侧同时可见并各自滚动（宽窗口左右平分宽度、窄窗口上下平分高度），学习表达跟在译文／润色下面；这一页没有底部操作栏 |
 | `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | 设置窗口的快捷键页：`Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示 |
 | `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）；工具栏一页为快捷键页 |
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |

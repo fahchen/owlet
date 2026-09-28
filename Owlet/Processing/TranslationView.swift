@@ -148,6 +148,8 @@ struct TranslationView: View {
     /// The pinned target language; an empty value means 自动. Watched here because either pane's
     /// control can change it.
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
+    /// The pinned source language; watched here because either pane's control can change it.
+    @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
 
     var body: some View {
         TabView(selection: $model.operation) {
@@ -171,8 +173,14 @@ struct TranslationView: View {
             }
         }
         // Pinning or unpinning a target runs the same text again, served from cache when already
-        // produced for that language.
+        // produced for that language; pinning a source can change which row the mapping picks, so it
+        // re-runs too.
         .onChange(of: pinnedTarget) { _, _ in
+            if model.hasBeenSent {
+                model.translate(to: SettingsStore.resolvedTarget(for: model.input))
+            }
+        }
+        .onChange(of: pinnedSource) { _, _ in
             if model.hasBeenSent {
                 model.translate(to: SettingsStore.resolvedTarget(for: model.input))
             }
@@ -195,6 +203,8 @@ private struct TranslationPane: View {
     @State private var section: ResultSection = .result
     /// The pinned target language; an empty value means 自动.
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
+    /// The pinned source language; an empty value means 自动.
+    @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
 
@@ -312,7 +322,8 @@ private struct TranslationPane: View {
                 }
                 .accessibilityLabel("原文")
         } label: {
-            Text("原文")
+            // The group's title slot holds the control that configures it, so nothing is named twice.
+            SourceLanguagePicker(text: model.input, pinnedSource: $pinnedSource)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .frame(minHeight: 180)
@@ -325,13 +336,6 @@ private struct TranslationPane: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    Picker("结果", selection: $section) {
-                        Text(resultTitle).tag(ResultSection.result)
-                        Text("学习").tag(ResultSection.learning)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
                     Spacer(minLength: 0)
                     if isBusy {
                         HStack(spacing: 6) {
@@ -365,7 +369,13 @@ private struct TranslationPane: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } label: {
-            Text(resultTitle)
+            Picker("结果", selection: $section) {
+                Text(resultTitle).tag(ResultSection.result)
+                Text("学习").tag(ResultSection.learning)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .frame(minHeight: 180)

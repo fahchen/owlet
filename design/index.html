@@ -108,12 +108,17 @@ select.popup{appearance:none;-webkit-appearance:none;height:28px;padding:0 26px 
 .tabview .tab{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 14px;font-size:12px;border:1px solid var(--line);border-bottom:0;border-radius:6px 6px 0 0;background:oklch(94% .01 350/.7);color:var(--muted)}
 .tabview .tab svg{width:13px;height:13px}
 .tabview .tab[aria-selected=true]{background:oklch(99% .004 350/.85);color:var(--ink);font-weight:600}
-.body.processing{padding:16px;overflow:hidden;display:flex;flex-direction:column;position:relative;gap:18px;border-top:1px solid var(--line);border-radius:0 0 0 0}
+.body.processing{padding:16px;overflow:hidden;display:flex;flex-direction:column;position:relative;gap:18px;border-top:1px solid var(--line)}
+.body.processing .source{padding:2px 4px}
 /* 两侧各是一个 GroupBox：靠背景区隔，不再画分割线。 */
-.body.processing>.pane{border:1px solid var(--line);border-radius:10px;background:oklch(99% .004 350/.7);padding:14px 16px;box-shadow:0 1px 2px oklch(30% .01 350/.04)}
+.body.processing>.groupwrap{flex:1 1 0;min-height:180px;display:flex;flex-direction:column;gap:6px}
+.grouplabel{font-size:11px;font-weight:600;color:var(--muted);margin:0}
+.body.processing>.groupwrap>.pane{border:1px solid var(--line);border-radius:10px;background:oklch(99% .004 350/.7);padding:12px 14px;box-shadow:0 1px 2px oklch(30% .01 350/.04);flex:1 1 0;min-height:0;overflow-y:auto}
+.result-head{margin-bottom:10px}
+.result-head .segmented{height:22px}
+.result-head .segmented button{height:20px;padding:0 10px;font-size:11px}
 .actionbar{position:absolute;right:20px;bottom:20px;z-index:5;display:flex;gap:8px}
 .actionbar .glass-btn.icon{width:32px;height:32px;padding:0;display:grid;place-items:center}
-.body.processing>.pane{flex:1 1 0;min-height:180px;overflow-y:auto;display:flex;flex-direction:column}
 .window:not(.window-narrow) .body.processing{flex-direction:row}
 .labelrow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);margin-bottom:12px}
 .labelrow .label{display:flex;align-items:center;gap:7px}
@@ -659,17 +664,17 @@ function setTargetMode(v){targetMode=v==='auto'?'auto':'pinned';if(v!=='auto')pr
 function currentOperation(){return operationOverride||cfg().operation||'translate'}
 function processingHTML(){
   const op=currentOperation(),busy=phase==='loading',done=phase==='result',failed=phase==='failure';
-  const source=`<section class="source-section"><div class="labelrow"><span class="label">${done||busy?'自动识别':'输入文本'}</span><span>${done||busy?'原文':'⌘ V 粘贴'}</span></div><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="external=this.value">${cfg().empty?'':esc(inputText())}</textarea></section>`;
-  const label=busy?`<span class="pending-label"><span class="spin mini" aria-hidden="true"></span>${op==='polish'?'润色中':'翻译中'}</span>`:(op==='polish'?'润色结果':'译文');
-  const meta=op==='polish'?'保留原意':targetSelectHTML(busy);
   const result=done?esc(resultText()):`<span>${esc(inputText().slice(0,140))}</span>`;
-  const resultSection=(done||busy)?`<section class="result-section"><div class="labelrow"><span class="label">${label}</span><span>${meta}</span></div><div class="result ${done?'':'redacted'}">${result}</div><div class="reserved" aria-hidden="true"></div></section>`:'';
   const notice=phase==='missingConfig'?{message:'模型服务未配置',action:'配置服务'}
     :failed?{message:cfg().message||'网络错误：连接似乎已断开。',action:'服务设置'}:null;
   const status=notice?`<div class="status" role="alert">${icon('warn')}<span class="msg">${esc(notice.message)}</span><button class="glass-btn" onclick="openSettings('model')">${notice.action}</button></div>`:'';
-  // 动作搬到工具栏（HIG Toolbars）：控件一组，动作一组，全部是图标按钮。
   const learning=cfg().learning?learningBlockHTML(cfg().learning):'';
-  // 两侧各自滚动、平分可用高度（左右排时平分宽度），学习表达跟在结果下面。
+  // 分组标题只留「原文」「译文」：上面已经有 tab，多余的字都去掉。
+  const source=`<div class="groupwrap"><p class="grouplabel">原文</p><div class="pane"><textarea class="source" aria-label="原文" spellcheck="false" placeholder="输入或粘贴要处理的文本…" oninput="external=this.value">${cfg().empty?'':esc(inputText())}</textarea></div></div>`;
+  // 译文与学习放在同一个分组里，用分段控件切换；目标语言也在这个分组内。
+  const meta=op==='polish'?'保留原意':targetSelectHTML(busy);
+  const resultHeader=`<div class="labelrow result-head"><div class="segmented" role="group" aria-label="结果"><button role="radio" aria-checked="true">${op==='polish'?'润色结果':'译文'}</button><button role="radio" aria-checked="false">学习</button></div><span>${meta}</span></div>`;
+  const resultSection=`<div class="groupwrap"><p class="grouplabel">${op==='polish'?'润色结果':'译文'}</p><div class="pane">${resultHeader}<div class="result ${done?'':'redacted'}">${result}</div>${learning}${status}</div></div>`;
   // 动作浮在内容右下角：macOS 没有底部工具栏，用贴底的动作条充当。
   const actions=busy
     ?`<button class="glass-btn icon" aria-label="取消" title="取消">${icon('stop')}</button>`
@@ -678,7 +683,7 @@ function processingHTML(){
   const tabs=`<div class="tabview" role="tablist">`
    +`<button role="tab" aria-selected="${op==='translate'}" ${busy?'disabled':''} onclick="setOperation('translate')">${icon('translate')}翻译</button>`
    +`<button role="tab" aria-selected="${op==='polish'}" ${busy?'disabled':''} onclick="setOperation('polish')">${icon('spark')}润色</button></div>`;
-  return `<div class="tabview-wrap">${tabs}<div class="body processing" id="body"><div class="pane">${source}</div><div class="pane">${resultSection}${learning}${status}</div><div class="actionbar">${actions}</div></div></div>`;
+  return `<div class="tabview-wrap">${tabs}<div class="body processing" id="body">${source}${resultSection}<div class="actionbar">${actions}</div></div></div>`;
 }
 function bindingOf(key){if(shortcutDraft&&shortcutDraft.key===key)return shortcutDraft.label;return conflict&&key==='translate'?'⌃⌥T':null}
 function shortcutsHTML(){

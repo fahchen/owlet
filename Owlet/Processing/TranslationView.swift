@@ -191,6 +191,8 @@ private struct TranslationPane: View {
     @State private var learning = LearningModel()
     /// Measured content width, which decides side by side versus stacked.
     @State private var contentWidth: CGFloat = 0
+    /// Which of the result box's panes is showing; a new result starts on the result itself.
+    @State private var section: ResultSection = .result
     /// The pinned target language; an empty value means 自动.
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
@@ -206,8 +208,13 @@ private struct TranslationPane: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 20)
-            // The source text changed, so the old result and its learning items no longer apply.
-            .onChange(of: model.input) { _, _ in learning.reset() }
+            // The source text changed, so the old result and its learning items no longer apply, and
+            // the box goes back to showing the result.
+            .onChange(of: model.input) { _, _ in
+                learning.reset()
+                section = .result
+            }
+            .onChange(of: model.operation) { _, _ in section = .result }
             // A bottom *toolbar* does not exist on macOS (SwiftUI's `bottomBar` is iOS and Catalyst
             // only), so the two actions float over the content's trailing corner, the way Freeform
             // places its controls. Two separate glass icon buttons, not one merged cluster: each is its
@@ -281,15 +288,16 @@ private struct TranslationPane: View {
     }
 
     /// The source side: the editor fills the box, so the whole column is usable input rather than a
-    /// fixed strip with empty space under it. A short window keeps a floor so neither side collapses.
+    /// fixed strip with empty space under it. The title is just 原文 — the tab above already says which
+    /// operation this is.
     private var sourcePane: some View {
         GroupBox {
             TextEditor(text: $model.input)
                 .textEditorStyle(.plain)
                 .font(.system(size: 16))
                 .lineSpacing(7)
-                // Cancels NSTextView's line fragment padding so text aligns with the labels.
-                .padding(.horizontal, -5)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .overlay(alignment: .topLeading) {
                     if model.input.isEmpty {
@@ -298,61 +306,82 @@ private struct TranslationPane: View {
                             .foregroundStyle(.tertiary)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
                     }
                 }
                 .accessibilityLabel("原文")
         } label: {
-            LabelRow {
-                Text(showsResult ? "自动识别" : "输入文本")
-            } trailing: {
-                Text("原文")
-            }
+            Text("原文")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .frame(minHeight: 180)
     }
 
-    /// The result side: translation or polish, then its 学习表达. It scrolls on its own so a long
-    /// result never pushes the source out of the window.
+    /// The result side. Its switch is a segmented control — the HIG's own example is a segmented
+    /// control that shows and hides panes of the same window — so 译文／润色 and 学习 share one box
+    /// instead of stacking, and the target language sits in the box with them.
     private var resultPane: some View {
         GroupBox {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    resultBody
-                    if result != nil { learningSection }
-                    status
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Picker("结果", selection: $section) {
+                        Text(resultTitle).tag(ResultSection.result)
+                        Text("学习").tag(ResultSection.learning)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    Spacer(minLength: 0)
+                    if isBusy {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.mini)
+                            Text("\(model.operation.title)中")
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    } else if model.operation == .translate {
+                        languagePicker
+                    } else {
+                        Text("保留原意")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                // Room for the floating buttons, so the last line can still be read.
-                .padding(.bottom, 40)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if section == .learning {
+                            learningSection
+                        } else {
+                            resultBody
+                            status
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    // Room for the floating buttons, so the last line can still be read.
+                    .padding(.bottom, 40)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } label: {
-            LabelRow {
-                if isBusy {
-                    HStack(spacing: 6) {
-                        ProgressView().controlSize(.mini)
-                        Text("\(model.operation.title)中")
-                    }
-                } else if displayMode == .aligned {
-                    Text("逐句对照")
-                } else {
-                    Text(model.operation == .polish ? "润色结果" : "译文")
-                }
-            } trailing: {
-                // The target lives on the side it produces: it is a property of this result, not of
-                // the window. 自动 shows what this text resolves to.
-                if model.operation == .translate {
-                    languagePicker.disabled(isBusy)
-                } else {
-                    Text("保留原意")
-                }
-            }
+            Text(resultTitle)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .frame(minHeight: 180)
     }
+
+    /// Which of the result box's two panes is showing.
+    private enum ResultSection: Hashable {
+        case result
+        case learning
+    }
+
+    private var resultTitle: String {
+        if displayMode == .aligned && section == .result { return "逐句对照" }
+        return model.operation == .polish ? "润色结果" : "译文"
+    }
+
     @ViewBuilder private var resultBody: some View {
         Group {
             if let result {

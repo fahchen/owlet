@@ -359,13 +359,13 @@ struct TranslationView: View {
                     Label("复制", systemImage: "doc.on.doc")
                 }
                 .buttonStyle(.glass)
+                .keyboardShortcut("c", modifiers: [.command, .shift])
                 .disabled(result == nil)
                 Button("\(model.operation.title)文本") {
                     model.translate(to: resolvedTarget)
                 }
                 .buttonStyle(.glassProminent)
-                // The ⌘↩ key equivalent belongs to the 文本处理 menu's submit item, so one place owns
-                // it; the tooltip still tells the user it exists.
+                .keyboardShortcut(.return, modifiers: .command)
                 .help("\(model.operation.title)文本 ⌘↩")
                 .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

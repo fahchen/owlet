@@ -32,8 +32,6 @@ struct OwletApp: App {
         .commands {
             CommandGroup(replacing: .saveItem) { CloseWindowButton() }
             SidebarCommands()
-            ProcessingMenu(panel: panel)
-            TextProcessingMenu(translation: translation, page: $page)
         }
         // A real settings window: the scene is what puts 设置… and ⌘, in the App menu, and SwiftUI
         // manages showing it. Nothing else in the app carries a settings entry.
@@ -145,8 +143,8 @@ private struct CloseWindowButton: View {
     }
 }
 
-/// Runs a processing shortcut action on the panel; shared by the 处理 menu and the menu bar extra so
-/// both stay identical to the global shortcut instead of naming a second, drifting code path.
+/// Runs a processing shortcut action on the panel; the menu bar extra uses it so its items stay
+/// identical to the global shortcut instead of naming a second, drifting code path.
 @MainActor
 private struct ProcessingAction {
     let panel: PanelController
@@ -156,82 +154,6 @@ private struct ProcessingAction {
         case .translate: panel.trigger()
         case .translateReplace: panel.trigger(replace: true)
         case .polish: panel.trigger(.polish)
-        }
-    }
-}
-
-/// The 文本处理 menu's two decisions, kept apart from the menu so a test can reach them: SwiftUI
-/// menu wiring is not unit-testable, and the rest of each item is a direct call into the model.
-enum TextProcessingCommands {
-    /// The submit item reads like the footer button: the current operation names it.
-    static func submitTitle(for operation: Operation) -> String { "\(operation.title)文本" }
-
-    /// Copy is offered only with a result, exactly as the footer's copy button is.
-    static func canCopy(_ state: TranslationModel.State) -> Bool {
-        if case .success = state { return true }
-        return false
-    }
-}
-
-/// The window's own controls as commands: the toolbar carries the target language and the operation
-/// and the footer the submit and copy, so each of them is named once here with the same shortcut the
-/// button shows. The submit's ⌘↩ and the copy's ⌘⇧C live on these items rather than on the buttons,
-/// so a shortcut has one owner; the panel keeps its own keys through its key monitor.
-private struct TextProcessingMenu: Commands {
-    let translation: TranslationModel
-    @Binding var page: MainView.Page
-
-    var body: some Commands {
-        // The menu mirrors the toolbar control: 自动 resolves from the mapping, an explicit language
-        // pins the target. The stored value is shared with the window and the panel.
-        let language = Binding(
-            get: { UserDefaults.standard.string(forKey: SettingsStore.pinnedTargetKey) ?? "" },
-            set: { SettingsStore.setPinnedTarget($0.isEmpty ? nil : $0) })
-        CommandMenu("文本处理") {
-            TargetLanguagePicker(text: translation.input, pinnedTarget: language)
-                .disabled(translation.operation != .translate)
-            Picker("处理方式", selection: Binding(get: { translation.operation }, set: { translation.operation = $0 })) {
-                ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
-            }
-            Divider()
-            Button(TextProcessingCommands.submitTitle(for: translation.operation)) { submit() }
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(translation.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("复制结果") { copyResult() }
-                .keyboardShortcut("c", modifiers: [.command, .shift])
-                .disabled(!TextProcessingCommands.canCopy(translation.state))
-        }
-    }
-
-    /// The same rule the footer button follows: the current operation, at the target this text
-    /// resolves to — a pinned language, else the mapping, else the fallback.
-    private func submit() {
-        page = .processing
-        translation.translate(to: SettingsStore.resolvedTarget(for: translation.input))
-    }
-
-    private func copyResult() {
-        guard let result else { return }
-        Clipboard.copy(result)
-    }
-
-    private var result: String? {
-        if case .success(let text) = translation.state { return text }
-        return nil
-    }
-}
-
-/// 处理 menu exposes the same selection operations the global shortcuts already run, named once so
-/// the menu bar teaches what the app can do without inventing an action that has no code path.
-private struct ProcessingMenu: Commands {
-    let panel: PanelController
-
-    var body: some Commands {
-        let perform = ProcessingAction(panel: panel)
-        CommandMenu("处理") {
-            Button("翻译") { perform(.translate) }
-            Button("翻译并替换") { perform(.translateReplace) }
-            Button("润色") { perform(.polish) }
         }
     }
 }

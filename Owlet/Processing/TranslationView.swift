@@ -149,14 +149,10 @@ struct TranslationView: View {
     @State private var learning = LearningModel()
     /// Measured content width, which decides side by side versus stacked.
     @State private var contentWidth: CGFloat = 0
-    @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
-        SettingsStore.defaultTargetLanguage
+    /// The pinned target language; an empty value means 自动.
+    @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
-
-    static let languages = [
-        ("zh-Hans", "简体中文"), ("zh-Hant", "繁體中文"), ("en", "English"), ("ja", "日本語"),
-    ]
 
     var body: some View {
         ScrollView {
@@ -181,12 +177,13 @@ struct TranslationView: View {
         // compared without pressing the button a second time. Switching back is served from cache.
         .onChange(of: model.operation) { _, _ in
             learning.reset()
-            if model.hasBeenSent { model.translate(to: targetLanguage) }
+            if model.hasBeenSent { model.translate(to: resolvedTarget) }
         }
-        // A new target language runs the same text again, served from cache when already produced.
-        .onChange(of: targetLanguage) { _, _ in
+        // Pinning or unpinning a target runs the same text again, served from cache when already
+        // produced for that language.
+        .onChange(of: pinnedTarget) { _, _ in
             learning.reset()
-            if model.hasBeenSent { model.translate(to: targetLanguage) }
+            if model.hasBeenSent { model.translate(to: resolvedTarget) }
         }
         // The source text changed, so the old result and its learning items no longer apply.
         .onChange(of: model.input) { _, _ in learning.reset() }
@@ -207,6 +204,9 @@ struct TranslationView: View {
     }
 
     private var isBusy: Bool { model.state == .loading }
+
+    /// What this text resolves to right now: an explicit choice, else the mapping, else the fallback.
+    private var resolvedTarget: String { SettingsStore.resolvedTarget(for: model.input) }
 
     private var result: String? {
         if case .success(let text) = model.state { return text }
@@ -290,7 +290,9 @@ struct TranslationView: View {
                 }
             } trailing: {
                 if model.operation == .translate {
-                    Text(Self.languages.first { $0.0 == targetLanguage }?.1 ?? targetLanguage)
+                    // The language the shown result was made for; while one is running, the one it is
+                    // being made for.
+                    Text(LanguageCatalog.name(for: model.languages?.target ?? resolvedTarget))
                 } else {
                     Text("保留原意")
                 }
@@ -357,7 +359,7 @@ struct TranslationView: View {
                 .buttonStyle(.glass)
                 .disabled(result == nil)
                 Button("\(model.operation.title)文本") {
-                    model.translate(to: targetLanguage)
+                    model.translate(to: resolvedTarget)
                 }
                 .buttonStyle(.glassProminent)
                 // The ⌘↩ key equivalent belongs to the 文本处理 menu's submit item, so one place owns
@@ -369,12 +371,7 @@ struct TranslationView: View {
     }
 
     private var languagePicker: some View {
-        Picker("目标语言", selection: $targetLanguage) {
-            ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
-        }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .fixedSize()
+        TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
     }
 }
 

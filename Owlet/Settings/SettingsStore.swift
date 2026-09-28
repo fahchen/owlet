@@ -61,6 +61,8 @@ enum SettingsStore {
     static let baseURLKey = "service.baseURL"
     static let modelKey = "service.model"
     static let targetLanguageKey = "translation.targetLanguage"
+    /// The language used when the mapping has no row for the detected source. It doubles as the
+    /// pre-mapping "target language" setting, so an older install migrates without a write.
     static let defaultTargetLanguage = "zh-Hans"
     private static let keychainService = "dev.fahchen.owlet.apiKey"
 
@@ -156,6 +158,49 @@ extension SettingsStore {
     /// The saved display preference, defaulting to 分区 so an untouched install keeps the old layout.
     static func displayMode(in defaults: UserDefaults = .standard) -> TranslationDisplayMode {
         defaults.string(forKey: displayModeKey).flatMap(TranslationDisplayMode.init) ?? .sectioned
+    }
+}
+
+/// Source → target mapping (BDR-0003): the target follows the detected source language, an explicit
+/// choice pins it, and `translation.targetLanguage` is the fallback.
+extension SettingsStore {
+    static let targetMappingKey = "translation.targetMapping"
+    static let pinnedTargetKey = "translation.pinnedTarget"
+
+    static func targetMapping(in defaults: UserDefaults = .standard) -> TargetMapping {
+        TargetMapping(
+            targets: defaults.dictionary(forKey: targetMappingKey) as? [String: String] ?? [:],
+            fallback: defaults.string(forKey: targetLanguageKey) ?? defaultTargetLanguage)
+    }
+
+    static func setTargetMapping(_ mapping: TargetMapping, in defaults: UserDefaults = .standard) {
+        defaults.set(mapping.targets, forKey: targetMappingKey)
+        defaults.set(mapping.fallback, forKey: targetLanguageKey)
+    }
+
+    /// The language the user pinned; nil (or an empty value) means 自动.
+    static func pinnedTarget(in defaults: UserDefaults = .standard) -> String? {
+        guard let tag = defaults.string(forKey: pinnedTargetKey), !tag.isEmpty else { return nil }
+        return tag
+    }
+
+    static func setPinnedTarget(_ tag: String?, in defaults: UserDefaults = .standard) {
+        if let tag, !tag.isEmpty {
+            defaults.set(tag, forKey: pinnedTargetKey)
+        } else {
+            defaults.removeObject(forKey: pinnedTargetKey)
+        }
+    }
+
+    /// What 自动 resolves to for this text: the mapping row for the detected source, else the
+    /// fallback. Detection happens here, once per request.
+    static func autoTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
+        targetMapping(in: defaults).target(forSource: LanguageDetector.detect(text))
+    }
+
+    /// The target a request should use: an explicit choice wins, otherwise 自动 decides.
+    static func resolvedTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
+        pinnedTarget(in: defaults) ?? autoTarget(for: text, in: defaults)
     }
 }
 

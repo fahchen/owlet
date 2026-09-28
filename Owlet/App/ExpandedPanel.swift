@@ -18,8 +18,8 @@ struct ExpandedPanel: View {
     let openSettings: () -> Void
     /// One learning section per panel session, so 收起／展开 reuses what was already generated.
     @State private var learning = LearningModel()
-    @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
-        SettingsStore.defaultTargetLanguage
+    /// The pinned target language; an empty value means 自动.
+    @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,9 +47,9 @@ struct ExpandedPanel: View {
                 cancel: cancel)
         }
         .frame(width: PanelMetrics.width)
-        // A new target language runs the same text again at once, like switching the operation;
-        // a language already produced for this text comes from the model's cache.
-        .onChange(of: targetLanguage) { _, _ in
+        // A pinned target runs the same text again at once, like switching the operation; a language
+        // already produced for this text comes from the model's cache.
+        .onChange(of: pinnedTarget) { _, _ in
             learning.reset()
             if canRetry { retry() }
         }
@@ -129,8 +129,8 @@ private struct PanelBody: View {
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
     let learning: LearningModel
-    @AppStorage(SettingsStore.targetLanguageKey) private var targetLanguage =
-        SettingsStore.defaultTargetLanguage
+    /// The pinned target language; an empty value means 自动.
+    @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
     /// While 逐句对照 shows the response pairs, the source field is folded into them and only
@@ -255,16 +255,11 @@ private struct PanelBody: View {
     }
 
     private var languagePicker: some View {
-        Picker("目标语言", selection: $targetLanguage) {
-            ForEach(TranslationView.languages, id: \.0) { Text($0.1).tag($0.0) }
-        }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .buttonStyle(.borderless)
-        .fixedSize()
-        .font(.system(size: 11))
-        // Changing it mid-request would label the running result with a language it was not made for.
-        .disabled(model.state == .loading)
+        TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
+            .buttonStyle(.borderless)
+            .font(.system(size: 11))
+            // Changing it mid-request would label the running result with a language it was not made for.
+            .disabled(model.state == .loading)
     }
 }
 

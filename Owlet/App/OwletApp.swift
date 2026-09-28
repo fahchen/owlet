@@ -172,17 +172,14 @@ private struct TextProcessingMenu: Commands {
     @Binding var page: MainView.Page
 
     var body: some Commands {
+        // The menu mirrors the toolbar control: 自动 resolves from the mapping, an explicit language
+        // pins the target. The stored value is shared with the window and the panel.
         let language = Binding(
-            get: {
-                UserDefaults.standard.string(forKey: SettingsStore.targetLanguageKey)
-                    ?? SettingsStore.defaultTargetLanguage
-            },
-            set: { UserDefaults.standard.set($0, forKey: SettingsStore.targetLanguageKey) })
+            get: { UserDefaults.standard.string(forKey: SettingsStore.pinnedTargetKey) ?? "" },
+            set: { SettingsStore.setPinnedTarget($0.isEmpty ? nil : $0) })
         CommandMenu("文本处理") {
-            Picker("目标语言", selection: language) {
-                ForEach(TranslationView.languages, id: \.0) { Text($0.1).tag($0.0) }
-            }
-            .disabled(translation.operation != .translate)
+            TargetLanguagePicker(text: translation.input, pinnedTarget: language)
+                .disabled(translation.operation != .translate)
             Picker("处理方式", selection: Binding(get: { translation.operation }, set: { translation.operation = $0 })) {
                 ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
             }
@@ -196,12 +193,11 @@ private struct TextProcessingMenu: Commands {
         }
     }
 
-    /// The same rule the footer button follows: the current operation, in the current target language.
+    /// The same rule the footer button follows: the current operation, at the target this text
+    /// resolves to — a pinned language, else the mapping, else the fallback.
     private func submit() {
         page = .processing
-        translation.translate(
-            to: UserDefaults.standard.string(forKey: SettingsStore.targetLanguageKey)
-                ?? SettingsStore.defaultTargetLanguage)
+        translation.translate(to: SettingsStore.resolvedTarget(for: translation.input))
     }
 
     private func copyResult() {

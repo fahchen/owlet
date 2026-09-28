@@ -48,6 +48,7 @@ struct ServiceSettingsView: View {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
+            TargetMappingSettingsView()
             Section("学习") {
                 Toggle("翻译后自动请求学习表达", isOn: $translateLearning)
                 Toggle("润色后自动请求学习表达", isOn: $polishLearning)

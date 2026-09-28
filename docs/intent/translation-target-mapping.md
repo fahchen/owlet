@@ -1,6 +1,6 @@
 # 意图：翻译目标映射
 
-状态：已确认（2026-10-04）。行为规格见 [BDR-0003](../spec/settings/decisions/BDR-0003-translation-target-mapping.md) 与 [target-mapping.feature](../spec/settings/features/target-mapping.feature)。
+状态：已实现（T26，2026-10-04）。行为规格见 [BDR-0003](../spec/settings/decisions/BDR-0003-translation-target-mapping.md) 与 [target-mapping.feature](../spec/settings/features/target-mapping.feature)。
 
 ## 一句话
 

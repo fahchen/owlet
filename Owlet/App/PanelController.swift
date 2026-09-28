@@ -173,10 +173,9 @@ final class PanelController {
     }
 
     func translate() {
-        // The injected store, not `.standard`: a test must not inherit the developer's settings.
-        let language =
-            defaults.string(forKey: SettingsStore.targetLanguageKey)
-            ?? SettingsStore.defaultTargetLanguage
+        // The injected store, not `.standard`: a test must not inherit the developer's settings. The
+        // target follows the mapping unless the user pinned one, so the panel and the window agree.
+        let language = SettingsStore.resolvedTarget(for: model.input, in: defaults)
         requestID += 1
         let id = requestID
         if expanded { notice = nil }

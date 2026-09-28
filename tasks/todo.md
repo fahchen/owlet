@@ -641,6 +641,32 @@
 
 **规模：**M
 
+## T26：按源语言决定翻译目标
+
+- [x] 完成
+
+**缺口：**无。
+
+**说明：**落实 BDR-0003：发请求前在本地检测源语言，按用户配置的「源语言 → 目标语言」映射决定目标，未命中用兜底目标。映射表初始为空，兜底目标沿用原来的目标语言设置。
+
+**验收条件：**
+- [x] 源语言由 `NLLanguageRecognizer` 在发请求前检测；置信度或领先幅度不足、以及过短文本走兜底。检测只用于选目标，返回契约与校验不变。
+- [x] 映射表按源语言一对一并持久化；兜底目标独立设置；旧的目标语言设置直接成为兜底目标，不需要迁移写入。
+- [x] 工具栏、浮动面板与文本处理菜单共用「自动／指定」控件；显式选择持久覆盖映射，切回自动恢复。
+- [x] 翻译并替换复用同一解析；润色不显示该控件。
+- [x] 语言选项取自系统清单（`Locale`），中文保留 `zh-Hans`／`zh-Hant`；应用不再维护自有语言列表。
+- [x] 润色默认 Prompt 补混写规则，`DefaultPrompts.polish` 与 `spec/llm/default-prompts.json` 同步。
+
+**验证：**
+- [x] `mise run test`：`TargetMappingTests`、`LanguageDetectorTests`、`LanguageTagTests`，以及 `PanelControllerTests` 的映射与钉住用例。
+- [x] 设计图同步：`settings-targets`、`settings-targets-rows`、`workspace-auto`、`workspace-target-pinned` 不再是提案画面。
+
+**依赖：**T14
+
+**预计文件：**LanguageDetector.swift、LanguageTag.swift、TargetMapping.swift、TargetLanguagePicker.swift、TargetMappingSettingsView.swift、SettingsStore.swift、TranslationView.swift、ExpandedPanel.swift、PanelController.swift、OwletApp.swift
+
+**规模：**M
+
 ## 检查点 M5：组件对照验收
 
 - [ ] [docs/liquid-glass-components.md](../docs/liquid-glass-components.md) 第 8 节的十条验收清单逐条通过。

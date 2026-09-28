@@ -83,18 +83,7 @@ struct TranslationResult: Equatable {
     }
 
     static func sameLanguage(_ lhs: String, _ rhs: String) -> Bool {
-        languageKey(lhs) == languageKey(rhs)
-    }
-
-    private static func languageKey(_ tag: String) -> String {
-        let parts = tag.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).map(
-            String.init)
-        guard let primary = parts.first else { return "" }
-        guard primary == "zh" else { return primary }
-        let rest = parts.dropFirst()
-        if rest.contains("hant") { return "zh-hant" }
-        if rest.contains("hans") { return "zh-hans" }
-        return rest.contains(where: { ["tw", "hk", "mo"].contains($0) }) ? "zh-hant" : "zh-hans"
+        LanguageTag.same(lhs, rhs)
     }
 
     static func isBlank(_ text: String) -> Bool {

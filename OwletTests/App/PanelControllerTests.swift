@@ -109,6 +109,65 @@ struct PanelControllerTests {
         panel.close()
     }
 
+    /// The panel resolves the target exactly as the window does: the mapping decides from the
+    /// detected source, unless the user pinned a language.
+    @Test func thePanelUsesTheMappedTarget() async {
+        let defaults = UserDefaults(suiteName: "PanelControllerTests.target.\(UUID().uuidString)")!
+        SettingsStore.setTargetMapping(
+            TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
+        let captured = Captured()
+        let model = TranslationModel(
+            client: ModelClient(transport: { request in
+                captured.request = request
+                let reply =
+                    #"{"source_language":"en","target_language":"ja","segments":[{"source":"Could you send me the report?","target":"報告書を送っていただけますか。"}]}"#
+                return try await stub(body: chatBody(reply))(request)
+            }),
+            config: { testConfig })
+        let panel = PanelController(model: model, defaults: defaults)
+        panel.makeWindow = { OffScreenPanel(rootView: $0) }
+        let text = "Could you send me the report?"
+        let read = Selection(
+            text: text, element: AXUIElementCreateApplication(1), app: nil,
+            range: SelectedRange(location: 0, length: text.count))
+        panel.read = { $0(.success(read)) }
+        panel.trigger()
+        await settle()
+        let body = String(decoding: captured.request?.httpBody ?? Data(), as: UTF8.self)
+        #expect(body.contains("Target language: ja"))
+        #expect(panel.model.state == .success("報告書を送っていただけますか。"))
+        panel.close()
+    }
+
+    /// A pinned language wins over the mapping in the panel too.
+    @Test func thePanelUsesThePinnedTarget() async {
+        let defaults = UserDefaults(suiteName: "PanelControllerTests.pinned.\(UUID().uuidString)")!
+        SettingsStore.setTargetMapping(
+            TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
+        SettingsStore.setPinnedTarget("zh-Hant", in: defaults)
+        let captured = Captured()
+        let model = TranslationModel(
+            client: ModelClient(transport: { request in
+                captured.request = request
+                let reply =
+                    #"{"source_language":"en","target_language":"zh-Hant","segments":[{"source":"Could you send me the report?","target":"請把報告寄給我。"}]}"#
+                return try await stub(body: chatBody(reply))(request)
+            }),
+            config: { testConfig })
+        let panel = PanelController(model: model, defaults: defaults)
+        panel.makeWindow = { OffScreenPanel(rootView: $0) }
+        let text = "Could you send me the report?"
+        let read = Selection(
+            text: text, element: AXUIElementCreateApplication(1), app: nil,
+            range: SelectedRange(location: 0, length: text.count))
+        panel.read = { $0(.success(read)) }
+        panel.trigger()
+        await settle()
+        let body = String(decoding: captured.request?.httpBody ?? Data(), as: UTF8.self)
+        #expect(body.contains("Target language: zh-Hant"))
+        panel.close()
+    }
+
     @Test func lateResponseAfterCancelDoesNotWrite() async {
         let gate = Gate()
         let (panel, writes) = makePanel(gate: gate)

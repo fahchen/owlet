@@ -200,39 +200,38 @@ struct TranslationView: View {
                     .disabled(isBusy)
                 }
             }
-            .safeAreaBar(edge: .bottom) {
+            // A bottom *toolbar* does not exist on macOS (SwiftUI's `bottomBar` is iOS and Catalyst
+            // only), so the two actions float over the content's trailing corner, the way Freeform
+            // places its controls. Two separate glass icon buttons, not one merged cluster: each is its
+            // own control. The words live in the tooltips and the accessibility labels.
+            .overlay(alignment: .bottomTrailing) {
                 HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    GlassEffectContainer {
-                        HStack(spacing: 8) {
-                            if isBusy {
-                                Button(action: model.cancel) {
-                                    Label("取消", systemImage: "xmark")
-                                }
-                                .buttonStyle(.glass)
-                                .help("取消")
-                            } else {
-                                Button(action: copyResult) {
-                                    Label("复制结果", systemImage: "doc.on.doc")
-                                }
-                                .buttonStyle(.glass)
-                                .help("复制结果 ⌘⇧C")
-                                .disabled(result == nil)
-                                Button {
-                                    model.translate(to: resolvedTarget)
-                                } label: {
-                                    Label(model.operation.title, systemImage: submitSymbol)
-                                }
-                                .buttonStyle(.glassProminent)
-                                .help("\(model.operation.title)文本 ⌘↩")
-                                .disabled(
-                                    model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
+                    if isBusy {
+                        Button(action: model.cancel) {
+                            Label("取消", systemImage: "xmark")
                         }
+                        .buttonStyle(.glass)
+                        .help("取消")
+                    } else {
+                        Button(action: copyResult) {
+                            Label("复制结果", systemImage: "doc.on.doc")
+                        }
+                        .buttonStyle(.glass)
+                        .help("复制结果 ⌘⇧C")
+                        .disabled(result == nil)
+                        Button {
+                            model.translate(to: resolvedTarget)
+                        } label: {
+                            Label(model.operation.title, systemImage: submitSymbol)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .help("\(model.operation.title)文本 ⌘↩")
+                        .disabled(
+                            model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 12)
+                .labelStyle(.iconOnly)
+                .padding(20)
             }
     }
 
@@ -285,7 +284,10 @@ struct TranslationView: View {
     /// built the same way, so a stacked pair comes out an even split.
     private func column<Content: View>(_ content: Content) -> some View {
         ScrollView {
-            content.frame(maxWidth: .infinity, alignment: .topLeading)
+            content
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                // Room for the floating buttons, so the last line can still be read.
+                .padding(.bottom, 40)
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

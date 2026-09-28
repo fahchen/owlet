@@ -15,9 +15,6 @@ struct PromptSettingsView: View {
     @State private var invalid: Operation?
     @FocusState private var focused: Operation?
 
-    /// Operation whose built-in default is shown in a popover; one at a time, never nested.
-    @State private var showingDefault: Operation?
-
     var body: some View {
         // The two sections are handed to the surrounding `Form`; the lifecycle lives on the group so
         // it does not attach to whichever section happens to be last.
@@ -53,9 +50,6 @@ struct PromptSettingsView: View {
         } header: {
             HStack(spacing: 8) {
                 Text("\(operation.title) System Prompt")
-                // The glyph belongs to the label it explains, so it sits right after it; the trailing
-                // edge is left for the action.
-                defaultPromptPopover(operation, defaultPrompt)
                 Spacer(minLength: 0)
                 // The restore is only worth offering once there is something to restore. `.smallSquare`
                 // is the AppKit bezel this shape comes from, and it is deprecated, so the bordered
@@ -76,47 +70,6 @@ struct PromptSettingsView: View {
                 }
             }
         }
-    }
-
-    /// Read-only reference behind an info glyph: a popover can be wider than this header without
-    /// pushing the editor around, and it closes as soon as the pointer leaves.
-    @ViewBuilder private func defaultPromptPopover(_ operation: Operation, _ defaultPrompt: String)
-        -> some View
-    {
-        Button {
-            showingDefault = operation
-        } label: {
-            Label("查看默认 Prompt", systemImage: "info.circle")
-        }
-        .labelStyle(.iconOnly)
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .help("查看默认 Prompt")
-        .popover(isPresented: showingDefaultBinding(for: operation)) {
-            ScrollView {
-                Text(defaultPrompt)
-                    .font(.system(size: 12))
-                    .lineSpacing(4)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-            }
-            .frame(width: 400, height: 220)
-            .accessibilityLabel("\(operation.title) 默认 System Prompt")
-        }
-    }
-
-    /// One popover at a time: the binding is true only for the operation whose button was pressed.
-    private func showingDefaultBinding(for operation: Operation) -> Binding<Bool> {
-        Binding(
-            get: { showingDefault == operation },
-            set: { open in
-                if open {
-                    showingDefault = operation
-                } else if showingDefault == operation {
-                    showingDefault = nil
-                }
-            })
     }
 
     /// Writes one editor's text; a blank draft is refused so the previous text stays in force.

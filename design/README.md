@@ -42,7 +42,6 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [settings-model-failed.png](screenshots/settings-model-failed.png) | 设置 · 模型 · 模型列表失败 | 模型页：取模型列表失败时就地提示并给重试。 |
 | [settings-model-prompts.png](screenshots/settings-model-prompts.png) | 设置 · 模型 · Prompt | 模型页下半部分：翻译与润色各一个编辑器分组，标题右侧是「默认」标记与 info 图标。 |
 | [settings-model-prompts-customized.png](screenshots/settings-model-prompts-customized.png) | 设置 · 模型 · Prompt · 已自定义 | 改过之后「默认」标记换成「恢复默认」按钮，位置不变。 |
-| [settings-model-prompts-default.png](screenshots/settings-model-prompts-default.png) | 设置 · 模型 · Prompt · 默认内容 | info 图标用 popover 展示内置默认，点外面即关闭。 |
 | [settings-debug.png](screenshots/settings-debug.png) | 设置 · 调试 | 调试页：捕获到的请求各占一行，显示操作与原文摘要，行尾的展开按钮打开请求体、返回与提交原文。 |
 | [settings-debug-open.png](screenshots/settings-debug-open.png) | 设置 · 调试 · 展开一条 | 展开一条记录：失败原因、原文差异（若有）与三段原始内容，附复制这条记录。 |
 | [settings-debug-empty.png](screenshots/settings-debug-empty.png) | 设置 · 调试 · 无记录 | 调试页空状态；记录只在内存，重启即清空。 |

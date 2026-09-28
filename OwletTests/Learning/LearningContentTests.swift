@@ -52,7 +52,7 @@ struct LearningContentTests {
     }
 
     @Test func learningRequestReusesThePromptAndAddsTheContract() throws {
-        let request = try ModelClient().makeLearningRequest(
+        let request = try clientWithBuiltInPrompt().makeLearningRequest(
             text: "Let's take a step back.", operation: .translate, targetLanguage: "zh-Hans",
             result: "让我们退一步。", config: testConfig)
         let json = try #require(

@@ -74,6 +74,10 @@ final class DebugLog {
 
     private(set) var exchanges: [DebugExchange] = []
 
+    /// Drops everything captured so far. The switch that turns the page on is also the consent for
+    /// keeping the user's text in memory, so turning it off must not leave records behind.
+    func clear() { exchanges.removeAll() }
+
     func add(_ exchange: DebugExchange) {
         exchanges.insert(exchange, at: 0)
         if exchanges.count > Self.limit {

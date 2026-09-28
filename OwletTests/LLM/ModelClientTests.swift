@@ -27,8 +27,16 @@ func chatBody(_ content: String, finishReason: String = "stop", refusal: String?
     return String(decoding: data, as: UTF8.self)
 }
 
+/// A client whose behaviour prompt is the built-in one. Request-shape tests assert against
+/// `DefaultPrompts`, so they must not inherit a prompt saved in the developer's own settings.
+func clientWithBuiltInPrompt() -> ModelClient {
+    var client = ModelClient()
+    client.promptForOperation = { $0.prompt }
+    return client
+}
+
 @Test func requestConstruction() throws {
-    let request = try ModelClient().makeRequest(
+    let request = try clientWithBuiltInPrompt().makeRequest(
         text: "Hello", targetLanguage: "zh-Hans", config: testConfig)
     #expect(request.url?.absoluteString == "https://example.test/v1/chat/completions")
     #expect(request.httpMethod == "POST")

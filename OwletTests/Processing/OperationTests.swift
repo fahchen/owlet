@@ -7,7 +7,7 @@ private let polished =
     #"{"source_language":"en","target_language":"en","segments":[{"source":"i has a pen.","target":"I have a pen."}]}"#
 
 @Test func polishRequestUsesPolishPromptWithoutTargetLanguage() throws {
-    let request = try ModelClient().makeRequest(
+    let request = try clientWithBuiltInPrompt().makeRequest(
         text: "i has a pen.", operation: .polish, targetLanguage: nil, config: testConfig)
     let json = try #require(
         JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])

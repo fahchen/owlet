@@ -94,6 +94,21 @@ struct DebugLogTests {
         #expect(box.exchanges.first?.response?.contains("\"ja\"") == true)
     }
 
+    /// The switch is the only consent for keeping the user's text, so it must decide both whether to
+    /// record and whether what was already recorded survives.
+    @Test func theSwitchDecidesRecordingAndClearsWhenTurnedOff() {
+        let defaults = UserDefaults(suiteName: "DebugLogTests.settings.\(UUID().uuidString)")!
+        #expect(!SettingsStore.isDebugEnabled(in: defaults))
+        defaults.set(true, forKey: SettingsStore.debugEnabledKey)
+        #expect(SettingsStore.isDebugEnabled(in: defaults))
+
+        let log = DebugLog()
+        log.add(DebugExchange(title: "翻译", request: "{}", submitted: "x"))
+        #expect(log.exchanges.count == 1)
+        log.clear()
+        #expect(log.exchanges.isEmpty)
+    }
+
     @Test func nothingIsRecordedWhenTheCaptureIsOff() async {
         let box = Box()
         var client = ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello"))))

@@ -26,7 +26,7 @@ struct GeneralSettingsPane: View {
                 }
             }
             Section {
-                Toggle("显示调试页", isOn: $debugEnabled)
+                Toggle("显示调试页", isOn: debugSwitch)
             } header: {
                 Text("调试")
             } footer: {
@@ -34,5 +34,16 @@ struct GeneralSettingsPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Recording is already gated on this switch; clearing on the way out also drops what was
+    /// captured while it was on, so nothing stays in memory once the page is gone.
+    private var debugSwitch: Binding<Bool> {
+        Binding(
+            get: { debugEnabled },
+            set: { on in
+                debugEnabled = on
+                if !on { DebugLog.shared.clear() }
+            })
     }
 }

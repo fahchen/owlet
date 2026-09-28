@@ -1,0 +1,49 @@
+import SwiftUI
+
+/// The app's settings window. The `Settings` scene in `OwletApp` is what puts 设置… and ⌘, in the App
+/// menu; this view is its content: one tab per group of settings, each tab a `Form` of sections.
+struct SettingsView: View {
+    /// The pane to open on, kept so the window returns to the last one people used.
+    @AppStorage(SettingsStore.settingsPaneKey) private var pane = SettingsPane.general.rawValue
+    /// One-shot request from the panel's contract-error entry: open the Prompt pane, focused.
+    @Binding var promptFocus: Operation?
+    @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
+
+    var body: some View {
+        TabView(selection: $pane) {
+            Tab("通用", systemImage: "gearshape", value: SettingsPane.general.rawValue) {
+                GeneralSettingsPane()
+            }
+            Tab("语言", systemImage: "character.bubble", value: SettingsPane.language.rawValue) {
+                LanguageSettingsPane()
+            }
+            Tab("模型", systemImage: "cloud", value: SettingsPane.model.rawValue) {
+                ModelSettingsPane()
+            }
+            Tab("Prompt", systemImage: "text.quote", value: SettingsPane.prompt.rawValue) {
+                PromptSettingsPane(promptFocus: $promptFocus)
+            }
+            // The diagnostics pane exists only while it is switched on, which is the point of the
+            // switch: a fresh install shows four panes and nothing else.
+            if debugEnabled {
+                Tab("调试", systemImage: "ladybug", value: SettingsPane.debug.rawValue) {
+                    DebugSettingsPane()
+                }
+            }
+        }
+        .frame(width: 620, height: 560)
+        .onAppear(perform: applyPromptFocus)
+        .onChange(of: promptFocus) { _, _ in applyPromptFocus() }
+    }
+
+    /// The failing operation's editor is in the Prompt pane, so the pane follows the request.
+    private func applyPromptFocus() {
+        if promptFocus != nil { pane = SettingsPane.prompt.rawValue }
+    }
+}
+
+/// The panes, in toolbar order. The raw value is what gets stored, so reordering cases never
+/// invalidates a saved choice.
+enum SettingsPane: String, CaseIterable {
+    case general, language, model, prompt, debug
+}

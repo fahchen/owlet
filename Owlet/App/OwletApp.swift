@@ -30,11 +30,15 @@ struct OwletApp: App {
         }
         .defaultSize(width: 1080, height: 690)
         .commands {
-            CommandGroup(replacing: .appSettings) { SettingsButton(page: $page) }
             CommandGroup(replacing: .saveItem) { CloseWindowButton() }
             SidebarCommands()
             ProcessingMenu(panel: panel)
             TextProcessingMenu(translation: translation, page: $page)
+        }
+        // A real settings window: the scene is what puts 设置… and ⌘, in the App menu, and SwiftUI
+        // manages showing it. Nothing else in the app carries a settings entry.
+        Settings {
+            SettingsView(promptFocus: $promptFocus)
         }
         MenuBarExtra {
             MenuContent(shortcuts: shortcuts, panel: panel, page: $page)
@@ -46,10 +50,10 @@ struct OwletApp: App {
     }
 }
 
-/// Main window (design/screenshots/workspace.png): native collapsible sidebar and page
-/// detail; settings is a sidebar page, not a separate window.
+/// Main window (design/screenshots/workspace.png): native collapsible sidebar and page detail. The
+/// settings live in their own window instead, so no page here is a settings page.
 private struct MainView: View {
-    enum Page: Hashable { case processing, vocabulary, history, shortcuts, settings, debug }
+    enum Page: Hashable { case processing, vocabulary, history, shortcuts }
 
     let translation: TranslationModel
     let shortcuts: ShortcutController
@@ -57,8 +61,7 @@ private struct MainView: View {
     let collection: CollectionAction
     let history: HistoryRecorder
     @Binding var promptFocus: Operation?
-    /// The debug page exists only while it is switched on in settings.
-    @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         NavigationSplitView {
@@ -73,10 +76,6 @@ private struct MainView: View {
                 }
                 Section {
                     Label("快捷键", systemImage: "keyboard").tag(Page.shortcuts)
-                    Label("设置", systemImage: "gearshape").tag(Page.settings)
-                    if debugEnabled {
-                        Label("调试", systemImage: "ladybug").tag(Page.debug)
-                    }
                 }
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
@@ -84,7 +83,7 @@ private struct MainView: View {
             switch page {
             case .processing:
                 TranslationView(
-                    model: translation, openSettings: { page = .settings }, collection: collection,
+                    model: translation, openSettings: openModelSettings, collection: collection,
                     openNotebook: { page = .vocabulary })
             case .vocabulary:
                 VocabularyView(collection: collection, openProcessing: { page = .processing })
@@ -93,16 +92,17 @@ private struct MainView: View {
                     store: HistoryStore.shared, collection: collection,
                     openProcessing: { page = .processing })
             case .shortcuts: ShortcutSettingsView(controller: shortcuts)
-            case .settings: ServiceSettingsView(promptFocus: $promptFocus)
-            case .debug: DebugView()
             }
         }
         .frame(minWidth: 760, minHeight: 500)
-        // Turning the page off while it is open leaves the window on a page that no longer exists.
-        .onChange(of: debugEnabled) { _, enabled in
-            if !enabled, page == .debug { page = .settings }
-        }
         .task { history.observe(translation) }
+    }
+
+    /// The processing page's service errors belong on the 模型 pane, so the pane is chosen before the
+    /// window comes up.
+    private func openModelSettings() {
+        UserDefaults.standard.set(SettingsPane.model.rawValue, forKey: SettingsStore.settingsPaneKey)
+        openSettings()
     }
 }
 
@@ -236,19 +236,6 @@ private struct ProcessingMenu: Commands {
     }
 }
 
-/// 设置… (⌘,) in the app menu and the menu bar menu.
-private struct SettingsButton: View {
-    @Binding var page: MainView.Page
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        Button("设置…") {
-            OpenMainWindow(openWindow: openWindow, page: $page)(.settings)
-        }
-        .keyboardShortcut(",", modifiers: .command)
-    }
-}
-
 /// The menu bar label is always rendered, so it wires the shortcut and the panel's
 /// recovery entries to scene actions that also recreate closed windows.
 private struct MenuBarLabel: View {
@@ -259,6 +246,7 @@ private struct MenuBarLabel: View {
     let history: HistoryRecorder
     @Binding var promptFocus: Operation?
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Image("OwletMark")
@@ -271,16 +259,16 @@ private struct MenuBarLabel: View {
                 shortcuts.onAction = { perform($0) }
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
                 (NSApp.delegate as? AppDelegate)?.openMainWindow = { open.reopen() }
-                panel.openSettings = { open(.settings) }
+                panel.openSettings = { openSettings() }
                 panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
                 history.observe(panel.model)
-                // The format error's 提示词设置 entry lands on the failing operation's editor, not on
+                // The contract error's 提示词设置 entry lands on the failing operation's editor, not on
                 // the service fields it used to open.
                 panel.openPromptSettings = { operation in
                     promptFocus = operation
-                    open(.settings)
+                    openSettings()
                 }
             }
     }
@@ -293,6 +281,7 @@ private struct MenuContent: View {
     let panel: PanelController
     @Binding var page: MainView.Page
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let perform = ProcessingAction(panel: panel)
@@ -303,7 +292,8 @@ private struct MenuContent: View {
         ForEach(ShortcutAction.allCases, id: \.self) { action in
             Button(title(for: action)) { perform(action) }
         }
-        SettingsButton(page: $page)
+        // The settings window manages itself, so this only has to open it; ⌘, lives in the App menu.
+        Button("设置…") { openSettings() }
         Divider()
         Button("退出 Owlet") { NSApp.terminate(nil) }
     }

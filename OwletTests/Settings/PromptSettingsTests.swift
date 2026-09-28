@@ -38,15 +38,11 @@ struct PromptSettingsTests {
         #expect(SettingsStore.prompt(for: .translate, in: defaults) == DefaultPrompts.translate)
     }
 
-    @Test func setPromptsRefusesAnyBlankWithoutWritingTheRest() {
-        #expect(SettingsStore.setPrompts([.translate: "翻译", .polish: "  "], in: defaults) == .polish)
-        #expect(!SettingsStore.isCustomized(.translate, in: defaults))
-        #expect(!SettingsStore.isCustomized(.polish, in: defaults))
-    }
-
-    @Test func setPromptsWritesEveryOperation() {
-        #expect(SettingsStore.setPrompts([.translate: "翻译2", .polish: "润色2"], in: defaults) == nil)
+    /// Each editor commits on its own, so a blank one must not disturb the other operation.
+    @Test func aRefusedBlankLeavesTheOtherOperationAlone() {
+        #expect(SettingsStore.setPrompt("翻译2", for: .translate, in: defaults))
+        #expect(!SettingsStore.setPrompt("  ", for: .polish, in: defaults))
         #expect(SettingsStore.prompt(for: .translate, in: defaults) == "翻译2")
-        #expect(SettingsStore.prompt(for: .polish, in: defaults) == "润色2")
+        #expect(SettingsStore.prompt(for: .polish, in: defaults) == DefaultPrompts.polish)
     }
 }

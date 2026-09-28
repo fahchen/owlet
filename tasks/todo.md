@@ -710,6 +710,28 @@
 
 **规模：**S
 
+## T29：设置改为独立窗口并按标签页分组
+
+- [x] 完成
+
+**说明：**按 Apple HIG 的 Settings 与 SwiftUI 的 `Settings` scene 重做设置：独立设置窗口（App 菜单与 ⌘, 打开，主窗口侧栏不再有设置入口），内部四个标签页 + 开关打开后的调试页，每页再用分组分节；任务专属的「翻译显示方式」移到文本处理页。本任务推翻 T19 的「保持侧栏页面」决定。
+
+**验收条件：**
+- [x] `Settings` scene 提供 App 菜单项与 ⌘,；主窗口侧栏去掉设置与调试入口。
+- [x] 标签页：通用、语言、模型、Prompt；开关打开后多一个调试页。每页内用 `Section` 分组。
+- [x] 标签页选择持久化，重新打开回到上次的页。
+- [x] 取消整页保存按钮，改为即时生效：API Key 与 Prompt 在编辑框失焦时提交。
+- [x] 翻译显示方式移到文本处理页的工具栏（任务选项放回上下文），切换仍不重新请求。
+- [x] 面板的服务错误与契约错误分别打开模型页与 Prompt 页。
+
+**验证：**
+- [x] `mise run test`：`ServiceModelOptionsTests`、`PromptSettingsTests` 随结构调整。
+- [x] 设计图与逐屏组件对照同步。
+
+**依赖：**T26、T28
+
+**规模：**M
+
 ## 检查点 M5：组件对照验收
 
 - [ ] [docs/liquid-glass-components.md](../docs/liquid-glass-components.md) 第 8 节的十条验收清单逐条通过。

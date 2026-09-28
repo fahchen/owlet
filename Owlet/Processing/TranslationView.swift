@@ -188,6 +188,8 @@ struct TranslationView: View {
         // The source text changed, so the old result and its learning items no longer apply.
         .onChange(of: model.input) { _, _ in learning.reset() }
         .toolbar {
+            // Task-specific, so it sits with the task: the layout of the result being looked at.
+            ToolbarItem(placement: .primaryAction) { displayModePicker }
             if model.operation == .translate {
                 ToolbarItem(placement: .primaryAction) { languagePicker.disabled(isBusy) }
             }
@@ -372,6 +374,16 @@ struct TranslationView: View {
 
     private var languagePicker: some View {
         TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
+    }
+
+    /// Switching the layout never re-requests the model, so this stays enabled while a request runs.
+    private var displayModePicker: some View {
+        Picker("显示方式", selection: $displayMode) {
+            ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.shortTitle).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .fixedSize()
     }
 }
 

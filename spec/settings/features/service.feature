@@ -1,5 +1,44 @@
 Feature: 自行配置模型服务
-  用户使用自己的兼容服务与 API Key。
+  用户使用自己的兼容服务与 API Key，设置放在独立的设置窗口里。
+
+  Rule: 设置是独立窗口并按标签页分组
+    Scenario: 从 App 菜单打开
+      When 用户选择 App 菜单的「设置…」或按下 ⌘,
+      Then 打开独立的设置窗口
+      And 主窗口侧栏不提供设置入口
+
+    Scenario: 标签页分组
+      Given 用户打开设置
+      Then 分为通用、语言、模型、Prompt 四个标签页
+      And 每个标签页内的设置项再按分组显示
+
+    Scenario: 回到上次的标签页
+      Given 用户上次停留在语言标签页
+      When 用户重新打开设置
+      Then 直接显示语言标签页
+
+    Scenario: 改动即时生效
+      Given 用户打开设置
+      Then 不存在整页的保存按钮
+      When 用户修改任一项设置
+      Then 该项立即生效并持久化
+
+  Rule: 语言子集限定可选语言
+    Scenario: 默认子集
+      Given 用户未修改语言子集
+      When 用户打开语言标签页
+      Then 列出简体中文、英语、日语
+      And 目标语言与映射表只提供这三种语言
+
+    Scenario: 添加语言
+      When 用户在语言标签页添加一种语言
+      Then 该语言出现在目标语言与映射表的候选中
+
+    Scenario: 移除语言时收干净
+      Given 某种语言已在映射表中使用且是当前兜底目标
+      When 用户移除该语言
+      Then 引用它的映射行一并删除
+      And 兜底目标改到子集内的第一种语言
 
   Rule: 用户决定请求发送到哪里
     Scenario: 保存服务配置
@@ -27,22 +66,22 @@ Feature: 自行配置模型服务
       And 不需要登录应用账号或开启同步
 
   Rule: 用户可以自定义 System Prompt
-    Scenario: 查看默认并保存自定义内容
+    Scenario: 查看默认并提交自定义内容
       Given 用户未修改翻译 System Prompt
       When 用户打开设置
       Then 显示完整默认翻译 Prompt
-      When 用户编辑并保存翻译 Prompt
+      When 用户编辑翻译 Prompt 并离开编辑框
       Then 后续翻译和翻译并替换使用该配置
       And 润色 Prompt 不受影响
 
     Scenario: 恢复默认
       Given 用户已有自定义润色 Prompt
-      When 用户恢复润色默认 Prompt 并保存
+      When 用户恢复润色默认 Prompt 并离开编辑框
       Then 后续润色使用显示的默认内容
 
     Scenario: 拒绝空白 Prompt
-      When 用户尝试保存仅含空白的 System Prompt
-      Then 提示不能保存
+      When 用户尝试提交仅含空白的 System Prompt
+      Then 提示不能生效
       And 已生效的配置不变
 
   Rule: 用户可以调整思考强度

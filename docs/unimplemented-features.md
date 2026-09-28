@@ -10,7 +10,6 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 
 其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用写回成功直接关闭浮窗，该画面保留旧布局但不再对应实现（原型未加徽标）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
@@ -26,6 +25,6 @@
 
 以下各条是已实现代码相对 `spec/product.md` 的偏离，均给出现状与出处。
 
-- **设置是主窗口的侧栏页面，不是独立窗口。** `MainView` 用 `NavigationSplitView`，`.settings` 只是 `Page` 的一个 case；`⌘,` 由 `SettingsButton` 切到该页面，应用里没有 `Settings` scene。证据：`Owlet/App/OwletApp.swift`。
+- **设置是独立窗口，且不再有整页保存按钮。** `OwletApp` 用 `Settings` scene（App 菜单与 ⌘, 由 SwiftUI 提供），主窗口侧栏只有文本处理／生词本／历史记录／快捷键；标签页为通用、语言、模型、Prompt（调试开关打开后多一页）。API Key 与 Prompt 在编辑框失焦时提交。证据：`Owlet/App/OwletApp.swift`、`Owlet/Settings/SettingsView.swift`、`Owlet/Settings/PromptSettingsPane.swift`。
 - **面板在首次成功后展开，之后一直保持展开；复制与写回成功则直接关闭。** `expanded` 在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；复制结果（`copyResult`）与写回成功关闭浮窗，不再停留确认（`empty` 对应展开后原文被清空的界面，[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`、`copyResult`、`performReplace`。
 - **写回失败只有两种文案，共用同一个布局。** `inlineNotice` 在 `.success` 且 `writebackRefusal` 非空时返回它：粘贴确实没落到任何地方是 `Notice.unwritten`（"未能写回原应用"），选区可证明不能容纳文字是 `Notice.unwritable`（"原选区不可编辑"）。`ExpandedPanel` 渲染的是 `notice.message`，两个状态下布局相同、动作都是"复制结果"，因此设计图只出一张（`result-unwritten`／`unwritten`），文案变体不单独出图。

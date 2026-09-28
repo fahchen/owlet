@@ -150,6 +150,14 @@ enum TranslationDisplayMode: String, CaseIterable, Sendable {
         case .aligned: "逐句对照"
         }
     }
+
+    /// Short form for the 文本处理 toolbar, where the full title does not fit.
+    var shortTitle: String {
+        switch self {
+        case .sectioned: "分区"
+        case .aligned: "对照"
+        }
+    }
 }
 
 extension SettingsStore {
@@ -207,6 +215,8 @@ extension SettingsStore {
 /// The hidden diagnostics page: off by default, and it keeps model exchanges in memory only.
 extension SettingsStore {
     static let debugEnabledKey = "debug.enabled"
+    /// The settings pane the window opens on, kept so it returns to the last one people used.
+    static let settingsPaneKey = "settings.pane"
 
     static func isDebugEnabled(in defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: debugEnabledKey)
@@ -325,21 +335,6 @@ extension SettingsStore {
             defaults.set(text, forKey: promptKey(for: operation))
         }
         return true
-    }
-
-    /// Saves every prompt together so a blank one cannot leave the settings half applied; returns
-    /// the first blank operation, or nil once all of them are stored.
-    @discardableResult
-    static func setPrompts(
-        _ prompts: [Operation: String], in defaults: UserDefaults = .standard
-    ) -> Operation? {
-        if let blank = Operation.allCases.first(where: { isBlank(prompts[$0] ?? "") }) {
-            return blank
-        }
-        for operation in Operation.allCases {
-            setPrompt(prompts[operation] ?? "", for: operation, in: defaults)
-        }
-        return nil
     }
 
     /// Whether the saved text differs from the built-in default, which is what the settings badge shows.

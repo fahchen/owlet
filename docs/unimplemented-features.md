@@ -1,6 +1,6 @@
 # Owlet · 未实现功能清单
 
-状态：`design/index.html` 有 64 个状态：60 个对应 Swift 端已实现的功能，4 个是尚未实现功能的提案画面（画面上带“未实现”徽标，总览里各自成区）。另有 `success`（写回完成确认）保留旧画面、不带徽标：原生应用写回成功后直接关闭浮窗，该画面已不对应实现。
+状态：`design/index.html` 有 64 个状态，全部对应 Swift 端已实现的功能（画面上没有“未实现”徽标）。例外是 `success`（写回完成确认）：它保留旧画面，原生应用写回成功后直接关闭浮窗，该画面已不对应实现。
 对象：`spec/product.md` 中已定义、但 `Owlet/` 尚未落地的功能。
 目的：为每项未实现功能保留一张提案画面，并把仍无画面的部分逐条记录在此，避免产品定义随原型一起丢失。
 
@@ -10,7 +10,6 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 按源语言决定翻译目标 | 翻译 | [settings-targets](../design/screenshots/settings-targets.png)、[settings-targets-rows](../design/screenshots/settings-targets-rows.png)、[workspace-auto](../design/screenshots/workspace-auto.png)、[workspace-target-pinned](../design/screenshots/workspace-target-pinned.png)；行为见 [BDR-0003](../spec/settings/decisions/BDR-0003-translation-target-mapping.md) | 待定 |
 | 独立 Settings 窗口（现在是主窗口的侧栏页面） | 两种界面形态 | —（仍无画面；[settings-prompts](../design/screenshots/settings-prompts.png) 只画 Prompt 编辑分组） | T19 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 

@@ -65,9 +65,6 @@ final class PanelController {
     /// Why a finished result was not written back, if it was not; the expanded view then offers to
     /// copy it instead of pretending the other app took it.
     private(set) var writebackRefusal: Notice?
-    /// True after the other app took the result, so the expanded view confirms the write-back and
-    /// keeps the result copyable until Esc or 完成 dismisses the panel.
-    private(set) var writebackConfirmed = false
     /// Set by the translate-and-replace shortcut: write back once the translation succeeds.
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
@@ -158,7 +155,6 @@ final class PanelController {
         autoReplace = replace
         selection = nil
         writebackRefusal = nil
-        writebackConfirmed = false
         switch result {
         case .success(let selection):
             self.selection = selection
@@ -182,7 +178,6 @@ final class PanelController {
         requestID += 1
         let id = requestID
         if expanded { notice = nil }
-        writebackConfirmed = false
         let task = model.translate(to: language)
         // Auto write-back is one-shot: only the first request after a replace trigger, and only with a selection.
         let auto = autoReplace && selection != nil
@@ -257,14 +252,12 @@ final class PanelController {
     @discardableResult
     private func performReplace(_ text: String) async -> ReplaceOutcome {
         guard let selection else {
-            // A write with nothing selected is a miss, but it must not overwrite the confirmation of
-            // one that already landed.
-            if !writebackConfirmed { writebackRefusal = .unwritten }
+            // A write with nothing selected is a miss; the panel stays with the result to copy.
+            writebackRefusal = .unwritten
             return .refused
         }
         // The panel owns the keyboard while it is up and a synthetic ⌘V follows the keyboard, so the
-        // panel steps aside first; it comes back either way, because a miss needs the result to copy
-        // and a hit now confirms the write-back instead of vanishing.
+        // panel steps aside first; a miss comes back with the result to copy, a hit closes it.
         panel?.suspendsDismissal = true
         panel?.releaseKeyboard()
         let outcome = await write(selection, text)
@@ -274,11 +267,10 @@ final class PanelController {
             show()
             return outcome
         }
+        // The other app took the result, so the panel's job is done and it closes.
         self.selection = nil
         writebackRefusal = nil
-        writebackConfirmed = true
-        expanded = true
-        show()
+        close()
         return outcome
     }
 
@@ -320,7 +312,6 @@ final class PanelController {
         model.cancel()
         notice = nil
         expanded = false
-        writebackConfirmed = false
     }
 
     private func show() {
@@ -702,12 +693,10 @@ struct PanelView: View {
             replace: replaceAction,
             collection: controller.collection,
             openNotebook: controller.openNotebook,
-            confirmed: controller.writebackConfirmed,
             notice: controller.inlineNotice,
             recover: recover,
             retry: controller.translate,
             cancel: controller.stop,
-            done: controller.close,
             openSettings: settings)
     }
 

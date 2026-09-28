@@ -87,8 +87,8 @@
 - [x] 写回只走粘贴，只读选区一个键都不发，无权限或无法前置时拒绝（`pasteReplacesTheSelectionAndRestoresTheClipboard`、`readOnlySelectionIsNeverTypedInto`、`onlyEditableTextRolesTakeAPaste`、`unknownRoleStillPastes`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
 - [x] 文本确实没变时如实返回失败，读不到文本与替换成同一段文字都不误判为失败（`pasteThatTheAppIgnoresIsRefused`、`unreadableElementIsNotEvidenceOfFailure`、`replacingWithTheSameTextCountsAsPasted`）。
 - [x] 按键在所属应用前置之后才发出，且即使应用已经是前台也仍然请求前置（`theAppComesForwardBeforeTheKeyIsPressed`、`comingForwardIsAlwaysAskedFor`）。
-- [x] 写回先把键盘让出去但不关闭面板，失败时把结果留在屏幕内（`writeBackReleasesTheKeyboardWithoutDismissing`、`refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable`）。
-- [x] 写回成功后保留面板并确认，结果仍可复制，Esc／完成关闭（`successfulWriteBackConfirmsAndEscCloses`、`finishClosesTheConfirmation`）。
+- [x] 写回先把键盘让出去，失败时把结果留在屏幕内（`writeBackReleasesTheKeyboardThenCloses`、`refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable`）。
+- [x] 写回成功后直接关闭浮窗，不再停留确认（`successfulWriteBackClosesThePanel`、`pastedWriteConsumesTheSelection`）。
 - [x] 失焦不关闭且不取消写回，点击浮窗外部关闭、点击内部不关闭，外部点击监听随可见性安装与移除（`losingKeyNeitherClosesNorCancelsTheWrite`、`mouseDownOutsideDismissesButInsideDoesNot`、`mouseMonitorFollowsVisibility`）。
 - [x] 合成按键是完整的 ⌘ 包夹序列，而不是只带 flags 的一个按键（`commandPressBracketsTheKey`）。
 - [x] 超时只先给出提示：迟到但有效的读取仍会生效，关闭后到达的读取被丢弃（`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`、`lateReadAfterCloseIsIgnored`）。

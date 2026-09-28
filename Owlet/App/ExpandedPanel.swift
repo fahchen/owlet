@@ -9,14 +9,10 @@ struct ExpandedPanel: View {
     /// Nil when the panel was built without the notebook, which the tests do.
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
-    /// True after a successful write-back, so the body confirms it and the footer offers 完成.
-    let confirmed: Bool
     let notice: PanelController.Notice?
     let recover: (PanelController.Notice) -> Void
     let retry: () -> Void
     let cancel: () -> Void
-    /// Closes the panel from 完成; the confirmation has already done everything else.
-    let done: () -> Void
     let openSettings: () -> Void
     /// One learning section per panel session, so 收起／展开 reuses what was already generated.
     @State private var learning = LearningModel()
@@ -32,7 +28,7 @@ struct ExpandedPanel: View {
             Divider()
             ScrollView {
                 PanelBody(
-                    model: model, notice: notice, confirmed: confirmed, recover: recover,
+                    model: model, notice: notice, recover: recover,
                     collection: collection, openNotebook: openNotebook, learning: learning)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -43,11 +39,9 @@ struct ExpandedPanel: View {
                 state: model.state,
                 operation: model.operation,
                 cancelled: notice == .cancelled,
-                confirmed: confirmed,
                 replace: replace,
                 retry: canRetry ? retry : nil,
-                cancel: cancel,
-                done: done)
+                cancel: cancel)
         }
         .frame(width: PanelMetrics.width)
         // A new target language runs the same text again at once, like switching the operation;
@@ -128,8 +122,6 @@ private struct ToolButton: View {
 private struct PanelBody: View {
     @Bindable var model: TranslationModel
     let notice: PanelController.Notice?
-    /// True after a successful write-back; the result section then confirms it.
-    let confirmed: Bool
     let recover: (PanelController.Notice) -> Void
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
@@ -247,13 +239,7 @@ private struct PanelBody: View {
     }
 
     @ViewBuilder private var status: some View {
-        if confirmed {
-            StatusNote(symbol: "checkmark", tint: .green) {
-                Text("已写回原选区，译文已保留。")
-                    .font(.system(size: 12))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        } else if let notice {
+        if let notice {
             StatusNote(symbol: notice != .cancelled ? "exclamationmark.triangle" : "info.circle") {
                 Text(notice.message)
                     .font(.system(size: 12))
@@ -321,12 +307,9 @@ private struct PanelFooter: View {
     let operation: Operation
     /// Idle because the user stopped processing; the main button then reads "重新处理".
     let cancelled: Bool
-    /// The result was written back, so the main button is 完成 instead of 替换.
-    let confirmed: Bool
     let replace: ((String) -> Void)?
     let retry: (() -> Void)?
     let cancel: () -> Void
-    let done: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -362,11 +345,7 @@ private struct PanelFooter: View {
             .buttonStyle(.glass)
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .help("复制结果 ⌘⇧C")
-            if confirmed {
-                Button("完成 Esc", action: done)
-                    .buttonStyle(.glassProminent)
-                    .help("完成 Esc")
-            } else if let replace {
+            if let replace {
                 Button("替换 ⌘↩") { replace(text) }
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.return, modifiers: .command)

@@ -183,20 +183,20 @@ struct PanelControllerTests {
         #expect(writes.texts.isEmpty)
     }
 
-    /// A paste is a write too: the source is still consumed, no refusal is left and the panel
-    /// confirms the write-back instead of closing. Driven through the footer's entry point, which
-    /// is what a click or ⌘↩ reaches, so the assertion does not depend on the window's key state.
+    /// A paste is a write too: the source is still consumed, no refusal is left, and a success
+    /// closes the panel. Driven through the footer's entry point, which is what a click or ⌘↩
+    /// reaches, so the assertion does not depend on the window's key state.
     @Test func pastedWriteConsumesTheSelection() async {
-        let (panel, writes) = makePanel(outcome: .pasted)
+        let (panel, writes, stub) = recordingPanel(outcome: .pasted)
         panel.trigger()
         await settle()
         #expect(panel.selection != nil)
         panel.replace(with: "T:Hello")
-        for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
+        for _ in 0..<40 where stub.closes == 0 { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
         #expect(panel.writebackRefusal == nil)
-        #expect(panel.writebackConfirmed)
+        #expect(stub.closes == 1)
     }
 
     @Test func rapidTriggersAcceptOnlyLatestRead() async {
@@ -229,13 +229,12 @@ struct PanelControllerTests {
         gate.release()
         await settle()
         #expect(writes.texts == ["T:Hello"])
-        #expect(panel.writebackConfirmed)
-        panel.close()
+        #expect(stub.closes == 1)
     }
 
     /// The write-back takes the keyboard away from the panel first — a synthetic ⌘V follows the
-    /// keyboard — without dismissing it, and the write itself still happens exactly once.
-    @Test func writeBackReleasesTheKeyboardWithoutDismissing() async throws {
+    /// keyboard — and a successful write then closes the panel.
+    @Test func writeBackReleasesTheKeyboardThenCloses() async throws {
         final class Holder { var panel: RecordingPanel? }
         let holder = Holder()
         let (panel, writes) = makePanel()
@@ -258,15 +257,13 @@ struct PanelControllerTests {
             releasesAtWrite.withLock { $0 = holder.panel?.releases ?? -1 }
             return .pasted
         }
-        for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
+        for _ in 0..<40 where closes == 0 { try? await Task.sleep(for: .milliseconds(50)) }
         #expect(writes.texts == ["T:Hello"])
         // Released exactly once, and already released by the time the write ran.
         #expect(releasesAtWrite.withLock { $0 } == 1)
         #expect(!stub.isVisible)
         #expect(panel.selection == nil)
-        // The panel is not dismissed: it comes back to confirm the write-back.
-        #expect(closes == 0)
-        #expect(panel.writebackConfirmed)
+        #expect(closes == 1)
     }
 
     /// A write-back that never landed comes back with the result still in hand, so the failure is
@@ -279,7 +276,6 @@ struct PanelControllerTests {
         }
         #expect(panel.writebackRefusal == .unwritten)
         #expect(panel.selection != nil)
-        #expect(!panel.writebackConfirmed)
     }
 
     /// A read-only selection is reported as such rather than as a generic failure.
@@ -291,40 +287,19 @@ struct PanelControllerTests {
         }
         #expect(panel.writebackRefusal == .unwritable)
         #expect(panel.selection != nil)
-        #expect(!panel.writebackConfirmed)
     }
 
-    /// A successful write-back confirms instead of vanishing: the panel stays on screen with the
-    /// result still copyable, and Esc closes it.
-    @Test func successfulWriteBackConfirmsAndEscCloses() async throws {
+    /// A successful write-back closes the panel instead of leaving a confirmation on screen.
+    @Test func successfulWriteBackClosesThePanel() async throws {
         let (panel, _, stub) = recordingPanel()
         panel.trigger()
         await settle()
         #expect(panel.model.state == .success("T:Hello"))
+        #expect(stub.shows >= 1)
         panel.replace(with: "T:Hello")
-        for _ in 0..<40 where !panel.writebackConfirmed { try? await Task.sleep(for: .milliseconds(50)) }
-        #expect(panel.writebackConfirmed)
+        for _ in 0..<40 where stub.closes == 0 { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(stub.closes == 1)
         #expect(panel.selection == nil)
-        #expect(panel.model.state == .success("T:Hello"))
-        #expect(panel.inlineNotice == nil)
-        // Presented rather than hidden: the confirmation has to be on screen to be read.
-        #expect(stub.shows >= 1)
-        panel.run(.cancel)
-        #expect(stub.closes == 1)
-        #expect(!panel.writebackConfirmed)
-    }
-
-    /// 完成 closes the confirmation through the same controller close the footer button calls.
-    @Test func finishClosesTheConfirmation() async throws {
-        let (panel, _, stub) = recordingPanel()
-        panel.trigger()
-        await settle()
-        panel.replace(with: "T:Hello")
-        for _ in 0..<40 where !panel.writebackConfirmed { try? await Task.sleep(for: .milliseconds(50)) }
-        #expect(stub.shows >= 1)
-        panel.close()
-        #expect(stub.closes == 1)
-        #expect(!panel.writebackConfirmed)
     }
 
     /// A click that misses the glass dismisses the panel; a click on the panel is not a dismissal.
@@ -363,7 +338,6 @@ struct PanelControllerTests {
         // Presented again, because a missed write is exactly when the result needs copying.
         #expect(stub.shows >= 2)
         #expect(stub.closes == 0)
-        #expect(!panel.writebackConfirmed)
         panel.close()
     }
 

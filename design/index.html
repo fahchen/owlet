@@ -48,6 +48,11 @@ kbd{font:11px -apple-system,sans-serif;color:inherit;border:1px solid currentCol
 .settings-tabs button{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:500;color:var(--ink)}
 .settings-tabs button svg{width:14px;height:14px}
 .settings-tabs button[aria-selected=true]{background:var(--paper);font-weight:600;box-shadow:0 1px 2px oklch(30% .01 350/.18),0 0 0 .5px oklch(30% .01 350/.07)}
+/* Reference content that does not deserve permanent space: a floating card with an arrow pointing
+   at the control that opened it. */
+.popover{position:absolute;z-index:8;width:400px;border-radius:12px;background:var(--paper);border:1px solid var(--line);box-shadow:0 12px 32px -8px oklch(20% .012 350/.32),0 0 0 .5px oklch(30% .01 350/.06)}
+.popover::before{content:'';position:absolute;top:-7px;left:38px;width:12px;height:12px;transform:rotate(45deg);background:var(--paper);border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.popover pre{font-size:11px;line-height:1.9;white-space:pre-wrap;margin:0;padding:15px 17px;max-height:208px;overflow:auto}
 .window.settings{--rail:0px}
 .window.settings>.sidebar{display:none}
 .window.narrow>.sidebar{display:none}
@@ -421,6 +426,7 @@ const states=[
  ['settings-model-openai','设置 · 模型 · 自定义服务商','模型页：OpenAI Compatible 时模型名称是自由填写。','settings-model-openai.png'],
  ['settings-model-failed','设置 · 模型 · 模型列表失败','模型页：取模型列表失败时就地提示并给重试。','settings-model-failed.png'],
  ['settings-prompt','设置 · Prompt','Prompt 页：翻译与润色各成一个编辑器分组，附返回格式示例。','settings-prompt.png'],
+ ['settings-prompt-default','设置 · Prompt · 默认内容','「查看默认 Prompt」用 popover 展示内置默认，点外面即关闭。','settings-prompt-default.png'],
  ['settings-debug','设置 · 调试','调试页：失败原因说明与最近一次请求（请求体、原始返回、提交原文）。','settings-debug.png'],
  ['settings-debug-empty','设置 · 调试 · 无记录','调试页空状态；记录只在内存，重启即清空。','settings-debug-empty.png'],
  ['loading','翻译 · 处理中','紧凑条：选中文字摘要、加载指示、停止按钮。','loading.png'],
@@ -493,6 +499,7 @@ const config={
   'settings-model-openai':{surface:'settings',pane:'model',provider:'openai'},
   'settings-model-failed':{surface:'settings',pane:'model',models:'failed'},
   'settings-prompt':{surface:'settings',pane:'prompt'},
+  'settings-prompt-default':{surface:'settings',pane:'prompt',popover:true},
   'settings-debug':{surface:'settings',pane:'debug',debug:true},
   'settings-debug-empty':{surface:'settings',pane:'debug',debug:true,debugEmpty:true},
   loading:{surface:'compact',view:'translate',strip:'loading'},
@@ -551,7 +558,7 @@ const panels=[
  {title:'应用窗口 · 生词本',note:'工具栏搜索与语言筛选，内容区是 List；空状态与无匹配共用同一个系统空状态视图。',nodes:['book-list','book-detail','book-empty','no-results']},
  {title:'应用窗口 · 历史记录',note:'与生词本同构；清空历史是破坏性动作，需确认且不影响收藏。',nodes:['history-list','history-detail','history-empty']},
  {title:'应用窗口 · 快捷键',note:'全局动作录制与面板内固定快捷键；无默认组合。',nodes:['shortcuts','shortcuts-recording','shortcuts-conflict']},
- {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-prompt','settings-debug','settings-debug-empty']},
+ {title:'应用窗口 · 设置',note:'独立设置窗口（App 菜单与 ⌘, 打开），四个标签页 + 开关打开后的调试页；每页是一个 grouped 表单再分节。',nodes:['settings-general','settings-language-empty','settings-language-rows','settings-model','settings-model-openai','settings-model-failed','settings-prompt','settings-prompt-default','settings-debug','settings-debug-empty']},
  {title:'浮动面板 · 紧凑条',note:'快捷键唤起后的单行玻璃条：选中文字摘要、加载指示、停止按钮；失败与缺少条件时就地给一个恢复入口。',nodes:['loading','polish-loading','direct-loading','error','format-error','cancelled','permission','unconfigured','selection-error','unwritten']},
  // 直接替换流程复用同一紧凑条组件：画面与翻译流程的对应状态相同，故单独成区说明来源。
  {title:'浮动面板 · 直接替换 · 紧凑提示',note:'已实现：这六张画面与「浮动面板 · 紧凑条」里的对应状态是同一个组件——“翻译并替换”快捷键走同一条紧凑提示路径，应用用同一套 Notice 呈现，画面本身相同。因此逐张与翻译流程一致：读取失败、权限未授权、服务未配置、请求失败、格式错误、已取消。',nodes:['direct-selection-error','direct-permission','direct-unconfigured','direct-error','direct-format-error','direct-cancelled']},
@@ -700,8 +707,13 @@ function modelPaneHTML(){
    +`<p class="section-footer">思考强度会按当前模型映射成它实际接受的值。</p></div>`;
 }
 function promptPaneHTML(){
-  return ['translate','polish'].map(k=>`<div class="form-section"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p>`
-   +`<div class="prompt-editor"><div class="labelrow"><span class="label">${k==='translate'?'翻译':'润色'} System Prompt</span><span class="state">默认</span></div><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><details><summary>查看默认 Prompt</summary><p>${esc(DEFAULT_PROMPTS[k])}</p></details><button class="glass-btn">恢复默认</button></div></div></div>`).join('')
+  const pop=!!cfg().popover;
+  // 「查看默认 Prompt」是只读参考：用 popover 展示，比常驻的折叠行更宽，也不会把编辑器挤动。
+  const popover=text=>`<div class="popover" role="dialog" aria-label="默认 Prompt" style="top:398px;left:17px"><pre>${esc(text)}</pre></div>`;
+  return ['translate','polish'].map((k,i)=>`<div class="form-section" style="position:relative"><p class="group-title">${k==='translate'?'翻译':'润色'} System Prompt</p>`
+   +`<div class="prompt-editor"><div class="labelrow"><span class="label">${k==='translate'?'翻译':'润色'} System Prompt</span><span class="state">默认</span></div><textarea class="prompt-text" rows="7" aria-label="${k==='translate'?'翻译':'润色'} System Prompt">${esc(DEFAULT_PROMPTS[k])}</textarea><div class="prompt-tools"><button class="glass-btn">查看默认 Prompt</button><button class="glass-btn">恢复默认</button></div></div>`
+   +((pop&&i===0)?popover(DEFAULT_PROMPTS[k]):'')
+   +`</div>`).join('')
    +`<div class="form-section"><p class="group-title">返回格式 · JSON</p><div class="prompt-contract"><details><summary>查看返回示例</summary><pre>${esc(RESPONSE_EXAMPLE)}</pre></details></div>`
    +`<p class="section-footer">改动在编辑框失去焦点后生效，只影响之后的新请求。</p></div>`;
 }

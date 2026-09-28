@@ -41,6 +41,7 @@ Scrollable content retains its designed viewport; source text is the built-in En
 | [settings-model-openai.png](screenshots/settings-model-openai.png) | 设置 · 模型 · 自定义服务商 | 模型页：OpenAI Compatible 时模型名称是自由填写。 |
 | [settings-model-failed.png](screenshots/settings-model-failed.png) | 设置 · 模型 · 模型列表失败 | 模型页：取模型列表失败时就地提示并给重试。 |
 | [settings-prompt.png](screenshots/settings-prompt.png) | 设置 · Prompt | Prompt 页：翻译与润色各成一个编辑器分组，附返回格式示例。 |
+| [settings-prompt-default.png](screenshots/settings-prompt-default.png) | 设置 · Prompt · 默认内容 | 「查看默认 Prompt」用 popover 展示内置默认，点外面即关闭。 |
 | [settings-debug.png](screenshots/settings-debug.png) | 设置 · 调试 | 调试页：失败原因说明与最近一次请求（请求体、原始返回、提交原文）。 |
 | [settings-debug-empty.png](screenshots/settings-debug-empty.png) | 设置 · 调试 · 无记录 | 调试页空状态；记录只在内存，重启即清空。 |
 | [loading.png](screenshots/loading.png) | 翻译 · 处理中 | 紧凑条：选中文字摘要、加载指示、停止按钮。 |

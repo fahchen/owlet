@@ -15,6 +15,9 @@ struct PromptSettingsPane: View {
     @State private var invalid: Operation?
     @FocusState private var focused: Operation?
 
+    /// Operation whose built-in default is shown in a popover; one at a time, never nested.
+    @State private var showingDefault: Operation?
+
     var body: some View {
         Form {
             editor(.translate, text: $translateDraft)
@@ -44,7 +47,7 @@ struct PromptSettingsPane: View {
         .onDisappear { if let focused { commit(focused) } }
     }
 
-    /// One operation's editor, its state badge, the default disclosure and the restore action.
+    /// One operation's editor, its state badge, the default popover and the restore action.
     @ViewBuilder private func editor(_ operation: Operation, text: Binding<String>) -> some View {
         let defaultPrompt = SettingsStore.defaultPrompt(for: operation)
         Section {
@@ -59,18 +62,28 @@ struct PromptSettingsPane: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.red)
             }
-            DisclosureGroup("查看默认 Prompt") {
-                Text(defaultPrompt)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
-            }
-            GlassEffectContainer {
-                // Fills the editor only: the restore takes effect when the editor commits.
-                Button("恢复默认") { text.wrappedValue = defaultPrompt }
+            HStack(spacing: 8) {
+                // Read-only reference: it is worth a popover, which can be wider than this row without
+                // pushing the editor around, and closes as soon as the pointer leaves.
+                Button("查看默认 Prompt") { showingDefault = operation }
                     .buttonStyle(.glass)
+                    .popover(isPresented: showingDefaultBinding(for: operation)) {
+                        ScrollView {
+                            Text(defaultPrompt)
+                                .font(.system(size: 12))
+                                .lineSpacing(4)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                        }
+                        .frame(width: 400, height: 220)
+                        .accessibilityLabel("\(operation.title) 默认 System Prompt")
+                    }
+                GlassEffectContainer {
+                    // Fills the editor only: the restore takes effect when the editor commits.
+                    Button("恢复默认") { text.wrappedValue = defaultPrompt }
+                        .buttonStyle(.glass)
+                }
             }
         } header: {
             HStack {
@@ -81,6 +94,19 @@ struct PromptSettingsPane: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// One popover at a time: the binding is true only for the operation whose button was pressed.
+    private func showingDefaultBinding(for operation: Operation) -> Binding<Bool> {
+        Binding(
+            get: { showingDefault == operation },
+            set: { open in
+                if open {
+                    showingDefault = operation
+                } else if showingDefault == operation {
+                    showingDefault = nil
+                }
+            })
     }
 
     /// Writes one editor's text; a blank draft is refused so the previous text stays in force.

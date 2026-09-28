@@ -45,6 +45,30 @@ Feature: 自行配置模型服务
       Then 提示不能保存
       And 已生效的配置不变
 
+  Rule: 用户可以调整思考强度
+    Scenario: 沿用服务商默认
+      Given 用户未设置思考强度
+      When 应用组装一次请求
+      Then 请求不包含思考强度参数
+      And 思考行为由服务商与模型决定
+
+    Scenario: 关闭或改变思考强度
+      Given 用户将思考强度设为关闭或某一档
+      When 应用组装一次请求
+      Then 请求包含对应的思考强度参数
+      And JSON 返回契约与本地校验不变
+
+    Scenario: 档位按模型映射
+      Given 用户选择某个思考强度档位
+      When 当前模型支持该档位
+      Then 请求发送该模型接受的值
+      And 模型不支持该档位时发送最近的较低档
+
+    Scenario: 模型不使用思考强度
+      Given 当前模型不接受推理参数
+      When 用户选择任一档位
+      Then 请求不包含思考强度参数
+
   Rule: 自定义 Prompt 不解除 JSON 返回契约
     Scenario: 返回非 JSON 文本
       Given 用户执行翻译并替换

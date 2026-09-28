@@ -16,6 +16,8 @@
 
 支持结构化输出的服务可使用响应 Schema 约束；发送给供应商的 Schema 删去其不支持的关键字（如 OpenAI strict 模式不支持的 `minLength`），被删的约束仍在本地校验；其他兼容服务（如 DeepSeek，仅支持 `json_object`）通过明确 Prompt 要求 JSON，但仍执行完全相同的本地校验。不得在校验失败后退回原始文本写回。具体供应商的格式参数在原生接入阶段依据其文档确定。
 
+思考强度是用户控制的请求参数，不属于本契约。应用提供统一档位（自动／关闭／低／中／高／最高），按当前模型映射为该模型接受的 `reasoning_effort`：档位表来自服务商文档，模型不支持的档位取最近的较低档，不使用推理参数的模型（如 gpt-4o）不发送该字段，未知模型原样发送。默认（自动）不发送，由服务商与模型决定；无论取何值都不得放松上面的 JSON 结构与本地校验。DeepSeek 取 `none`／`low`／`high`／`max` 并把 `medium` 折叠为 `high`。
+
 ## 翻译与润色结果
 
 按 [responses.schema.json](responses.schema.json) 中 `$defs.result` 校验：

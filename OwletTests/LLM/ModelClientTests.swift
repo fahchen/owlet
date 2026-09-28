@@ -61,6 +61,54 @@ func chatBody(_ content: String, finishReason: String = "stop", refusal: String?
     #expect(messages.first?["content"]?.contains("json") == true)
 }
 
+@Test func automaticEffortOmitsTheReasoningParameter() throws {
+    let request = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: testConfig)
+    let json = try #require(
+        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+    #expect(json["reasoning_effort"] == nil)
+}
+
+@Test func aChosenEffortRidesOnTheMainAndLearningRequests() throws {
+    let config = ServiceConfig(
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
+        provider: .deepSeek, effort: .low)
+    let main = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: config)
+    #expect(
+        (try JSONSerialization.jsonObject(with: main.httpBody!) as? [String: Any])?[
+            "reasoning_effort"] as? String == "low")
+    let learning = try ModelClient().makeLearningRequest(
+        text: "Hello", operation: .translate, targetLanguage: "zh-Hans", result: "你好",
+        config: config)
+    #expect(
+        (try JSONSerialization.jsonObject(with: learning.httpBody!) as? [String: Any])?[
+            "reasoning_effort"] as? String == "low")
+}
+
+@Test func effortOffReachesTheProviderAsNone() throws {
+    let config = ServiceConfig(
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
+        provider: .deepSeek, effort: .off)
+    let request = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: config)
+    let json = try #require(
+        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+    #expect(json["reasoning_effort"] as? String == "none")
+}
+
+/// The per-model table decides the wire value, so DeepSeek's missing 中 becomes high.
+@Test func theModelMappingDecidesTheSentValue() throws {
+    let config = ServiceConfig(
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
+        provider: .deepSeek, effort: .medium)
+    let request = try ModelClient().makeRequest(
+        text: "Hello", targetLanguage: "zh-Hans", config: config)
+    let json = try #require(
+        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+    #expect(json["reasoning_effort"] as? String == "high")
+}
+
 @Test func deepSeekPresetMatchesDocs() {
     #expect(Provider.deepSeek.preset?.baseURL == "https://api.deepseek.com")
     #expect(Provider.openAICompatible.preset == nil)

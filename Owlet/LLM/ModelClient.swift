@@ -91,14 +91,11 @@ struct ModelClient: Sendable {
         let payload = try JSONSerialization.data(withJSONObject: [
             "expression": expression, "language": language, "context": context,
         ])
-        let body: [String: Any] = [
-            "model": config.model,
-            "messages": [
+        let body = requestBody(
+            messages: [
                 ["role": "system", "content": system],
                 ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ],
-            "response_format": responseFormat,
-        ]
+            ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let data = try await send(request)
         return try LearningResult.item(try decodedContent(data), expression: expression).meaning
@@ -154,14 +151,11 @@ struct ModelClient: Sendable {
         let payload = try JSONSerialization.data(withJSONObject: [
             "original": text, "result": result,
         ])
-        let body: [String: Any] = [
-            "model": config.model,
-            "messages": [
+        let body = requestBody(
+            messages: [
                 ["role": "system", "content": system],
                 ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ],
-            "response_format": responseFormat,
-        ]
+            ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
@@ -189,6 +183,22 @@ struct ModelClient: Sendable {
             !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw ModelError.emptyResponse }
         return content
+    }
+
+    /// The shared chat body: model, messages and response format, plus the reasoning effort only when
+    /// the user chose one, so a provider that rejects the field is left untouched by the default.
+    private func requestBody(
+        messages: [[String: Any]], responseFormat: [String: Any], config: ServiceConfig
+    ) -> [String: Any] {
+        var body: [String: Any] = [
+            "model": config.model,
+            "messages": messages,
+            "response_format": responseFormat,
+        ]
+        if let value = ModelEffort.reasoningEffort(for: config.effort, model: config.model) {
+            body["reasoning_effort"] = value
+        }
+        return body
     }
 
     private func send(_ request: URLRequest) async throws -> Data {
@@ -241,13 +251,10 @@ struct ModelClient: Sendable {
                     "schema": TranslationResult.providerSchema,
                 ],
             ]
-        let body: [String: Any] = [
-            "model": config.model,
-            "messages": [
+        let body = requestBody(
+            messages: [
                 ["role": "system", "content": system], ["role": "user", "content": text],
-            ],
-            "response_format": responseFormat,
-        ]
+            ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }

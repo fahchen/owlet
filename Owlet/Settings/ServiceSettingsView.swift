@@ -6,6 +6,7 @@ struct ServiceSettingsView: View {
     @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
+    @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.automatic
     @AppStorage(SettingsStore.panelPositionKey) private var panelPosition = PanelPosition.fixed
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
@@ -40,6 +41,7 @@ struct ServiceSettingsView: View {
                 SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
                 modelField
                 modelStatus
+                effortField
             }
             Section("文本处理") {
                 Picker("翻译显示方式", selection: $displayMode) {
@@ -102,6 +104,19 @@ struct ServiceSettingsView: View {
     }
 
     private var modelOptions: [String] { Self.modelOptions(for: models, model: model) }
+
+    /// 思考强度 sits under the model row; the hint shows what the current model will actually
+    /// receive, since the same level maps to different values per model (see `ModelEffort`).
+    private var effortField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker("思考强度", selection: $effort) {
+                ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Text(ModelEffort.summary(for: effort, model: model))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+    }
 
     /// What the picker offers: the last list that loaded, plus the saved model so a name the list
     /// no longer offers stays selectable. Before the first list arrives that is just the saved name.

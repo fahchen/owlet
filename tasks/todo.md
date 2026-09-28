@@ -280,7 +280,7 @@
 
 # 里程碑 3：更多设置
 
-说明：设置已作为主窗口侧边栏页实现（`OwletApp.swift` 的 `MainView` 与 `ServiceSettingsView.swift`），服务商、Base URL、API Key、模型名称、浮窗位置控件及 DeepSeek 模型列表加载均已实现；T12–T14 三项设置功能本身尚未实现。
+说明：设置已作为主窗口侧边栏页实现（`OwletApp.swift` 的 `MainView` 与 `ServiceSettingsView.swift`），服务商、Base URL、API Key、模型名称、思考强度、浮窗位置控件及 DeepSeek 模型列表加载均已实现；T12–T14、T26 已实现。
 
 ## T12：自定义 System Prompt
 
@@ -347,6 +347,28 @@
 **依赖：**T07
 
 **预计文件：**SettingsStore.swift、SettingsView.swift、TranslationView.swift
+
+**规模：**S
+
+## T26：思考强度设置
+
+- [x] 完成
+
+**缺口：**无。默认「自动」不发送参数，保持现有行为；DeepSeek 默认开启思考且强度最高，用户可在设置中调低或关闭。
+
+**说明：**在设置页增加思考强度选项，请求按当前模型映射后带上 `reasoning_effort`。
+
+**验收条件：**
+- [x] 选项为自动／关闭／低／中／高／最高，默认自动；保存后持久化，主请求、学习请求与补充释义都生效。
+- [x] 按模型映射：DeepSeek 的 `medium` 发 `high`，o-series 的 `关闭`／`最高` 钳到 `low`／`high`，GPT-6 Astra 的 `关闭` 发 `minimal`，非推理模型与自动不发送；JSON 返回契约与本地校验不变。
+
+**验证：**
+- [x] `mise run test`：默认自动与非法值回退、各模型映射与钳位、非推理模型不发、主／学习请求携带参数。
+- [ ] 手测 DeepSeek 下关闭与自动的返回时长差异。
+
+**依赖：**T01
+
+**预计文件：**SettingsStore.swift、ServiceSettingsView.swift、ModelEffort.swift、ModelClient.swift、EffortTests.swift、ModelEffortTests.swift、ModelClientTests.swift
 
 **规模：**S
 

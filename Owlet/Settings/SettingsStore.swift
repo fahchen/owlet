@@ -26,11 +26,34 @@ enum Provider: String, CaseIterable, Sendable {
     var keychainAccount: String { self == .openAICompatible ? "default" : rawValue }
 }
 
+/// How hard the provider may think before answering. `.automatic` keeps the provider's own default
+/// and sends no parameter, so models that reject the field are never sent it.
+enum EffortLevel: String, CaseIterable, Sendable {
+    case automatic = "automatic"
+    case off = "none"
+    case low = "low"
+    case medium = "medium"
+    case high = "high"
+    case max = "max"
+
+    var title: String {
+        switch self {
+        case .automatic: "自动（服务商默认）"
+        case .off: "关闭"
+        case .low: "低"
+        case .medium: "中"
+        case .high: "高"
+        case .max: "最高"
+        }
+    }
+}
+
 struct ServiceConfig: Sendable, Equatable {
     var baseURL: URL
     var model: String
     var apiKey: String
     var provider: Provider = .openAICompatible
+    var effort: EffortLevel = .automatic
 }
 
 enum SettingsStore {
@@ -52,7 +75,8 @@ enum SettingsStore {
             !model.isEmpty,
             let key = apiKey(for: provider), !key.isEmpty
         else { return nil }
-        return ServiceConfig(baseURL: url, model: model, apiKey: key, provider: provider)
+        return ServiceConfig(
+            baseURL: url, model: model, apiKey: key, provider: provider, effort: effort())
     }
 
     static func apiKey(for provider: Provider) -> String? {
@@ -81,6 +105,15 @@ enum SettingsStore {
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: provider.keychainAccount,
         ]
+    }
+}
+
+extension SettingsStore {
+    static let effortKey = "service.effort"
+
+    /// The saved 思考强度, defaulting to 自动 so an untouched install keeps sending no effort parameter.
+    static func effort(in defaults: UserDefaults = .standard) -> EffortLevel {
+        defaults.string(forKey: effortKey).flatMap(EffortLevel.init) ?? .automatic
     }
 }
 

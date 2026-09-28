@@ -302,6 +302,19 @@ struct PanelControllerTests {
         #expect(panel.selection == nil)
     }
 
+    /// Copying is a finished interaction too, so the panel closes once the result is copied.
+    @Test func copyClosesThePanel() async throws {
+        let (panel, _, stub) = recordingPanel()
+        panel.trigger()
+        await settle()
+        #expect(panel.model.state == .success("T:Hello"))
+        var copied: String?
+        panel.copy = { copied = $0 }
+        panel.run(.copy)
+        #expect(copied == "T:Hello")
+        #expect(stub.closes == 1)
+    }
+
     /// A click that misses the glass dismisses the panel; a click on the panel is not a dismissal.
     @Test func clicksOutsideTheGlassDismissAndClicksInsideDoNot() {
         let frame = NSRect(x: 100, y: 100, width: 560, height: 200)

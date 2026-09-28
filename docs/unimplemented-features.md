@@ -27,5 +27,5 @@
 以下各条是已实现代码相对 `spec/product.md` 的偏离，均给出现状与出处。
 
 - **设置是主窗口的侧栏页面，不是独立窗口。** `MainView` 用 `NavigationSplitView`，`.settings` 只是 `Page` 的一个 case；`⌘,` 由 `SettingsButton` 切到该页面，应用里没有 `Settings` scene。证据：`Owlet/App/OwletApp.swift`。
-- **面板在首次成功后展开，之后一直保持展开；写回成功则直接关闭。** `expanded` 在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；写回成功关闭浮窗，不再停留确认（`empty` 对应展开后原文被清空的界面，[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`、`performReplace`。
+- **面板在首次成功后展开，之后一直保持展开；复制与写回成功则直接关闭。** `expanded` 在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；复制结果（`copyResult`）与写回成功关闭浮窗，不再停留确认（`empty` 对应展开后原文被清空的界面，[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`、`copyResult`、`performReplace`。
 - **写回失败只有两种文案，共用同一个布局。** `inlineNotice` 在 `.success` 且 `writebackRefusal` 非空时返回它：粘贴确实没落到任何地方是 `Notice.unwritten`（"未能写回原应用"），选区可证明不能容纳文字是 `Notice.unwritable`（"原选区不可编辑"）。`ExpandedPanel` 渲染的是 `notice.message`，两个状态下布局相同、动作都是"复制结果"，因此设计图只出一张（`result-unwritten`／`unwritten`），文案变体不单独出图。

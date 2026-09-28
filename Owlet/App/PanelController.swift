@@ -72,6 +72,8 @@ final class PanelController {
     let model: TranslationModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
+    /// Copies a result; injectable so a test does not touch the user's real pasteboard.
+    var copy: @MainActor (String) -> Void = { Clipboard.copy($0) }
     var openSettings: () -> Void = {}
     /// Opens the settings page on the prompt editor for the operation whose result failed to parse.
     var openPromptSettings: (Operation) -> Void = { _ in }
@@ -242,6 +244,13 @@ final class PanelController {
         }
     }
 
+    /// Copies the result and closes the panel: copying is a finished interaction, like a replace.
+    func copyResult() {
+        guard case .success(let text) = model.state else { return }
+        copy(text)
+        close()
+    }
+
     /// Writes `text` back once; the source is consumed on success so it is never reused.
     func replace(with text: String) {
         Task { [weak self] in await self?.performReplace(text) }
@@ -295,8 +304,7 @@ final class PanelController {
         case .cancel:
             if model.state == .loading { stop() } else { close() }
         case .copy:
-            guard case .success(let text) = model.state else { return }
-            Clipboard.copy(text)
+            copyResult()
         case .replace:
             guard case .success(let text) = model.state, selection != nil else { return }
             replace(with: text)
@@ -691,6 +699,7 @@ struct PanelView: View {
         ExpandedPanel(
             model: controller.model,
             replace: replaceAction,
+            copy: { _ in controller.copyResult() },
             collection: controller.collection,
             openNotebook: controller.openNotebook,
             notice: controller.inlineNotice,
@@ -738,8 +747,7 @@ struct PanelView: View {
         case .unreadable: manualInput()
         case .missingConfig, .failure: settings()
         case .unwritten, .unwritable:
-            guard case .success(let text) = controller.model.state else { return }
-            Clipboard.copy(text)
+            controller.copyResult()
         case .cancelled: controller.translate()
         case .translating: break
         }

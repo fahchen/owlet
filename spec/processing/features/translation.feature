@@ -34,6 +34,13 @@ Feature: 翻译
       When 用户复制结果
       Then 剪贴板包含译文
 
+  Rule: 复制结果即完成一次交互
+    Scenario: 在浮窗复制译文
+      Given 用户已在浮窗获得译文
+      When 用户复制结果
+      Then 剪贴板包含译文
+      And 浮窗关闭
+
   Rule: 处理失败不得呈现为成功
     Scenario: 服务拒绝请求
       Given 翻译服务返回认证失败

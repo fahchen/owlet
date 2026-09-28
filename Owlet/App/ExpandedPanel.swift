@@ -6,6 +6,8 @@ struct ExpandedPanel: View {
     @Bindable var model: TranslationModel
     /// Writes the result back to the original selection; nil when there is no source.
     let replace: ((String) -> Void)?
+    /// Copies the result; the panel closes afterwards, so a copy is one finished interaction.
+    let copy: (String) -> Void
     /// Nil when the panel was built without the notebook, which the tests do.
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
@@ -40,6 +42,7 @@ struct ExpandedPanel: View {
                 operation: model.operation,
                 cancelled: notice == .cancelled,
                 replace: replace,
+                copy: copy,
                 retry: canRetry ? retry : nil,
                 cancel: cancel)
         }
@@ -308,6 +311,7 @@ private struct PanelFooter: View {
     /// Idle because the user stopped processing; the main button then reads "重新处理".
     let cancelled: Bool
     let replace: ((String) -> Void)?
+    let copy: (String) -> Void
     let retry: (() -> Void)?
     let cancel: () -> Void
 
@@ -321,10 +325,6 @@ private struct PanelFooter: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 45)
-    }
-
-    private func copy(_ text: String) {
-        Clipboard.copy(text)
     }
 
     private var retryTitle: String {

@@ -9,7 +9,7 @@ Feature: 自行配置模型服务
 
     Scenario: 标签页分组
       Given 用户打开设置
-      Then 分为通用、语言、模型、Prompt 四个标签页
+      Then 分为通用、语言、模型三个标签页，Prompt 归在模型页
       And 每个标签页内的设置项再按分组显示
 
     Scenario: 回到上次的标签页

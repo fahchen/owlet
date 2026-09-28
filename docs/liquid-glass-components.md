@@ -1,6 +1,6 @@
 # Owlet · macOS 26 Liquid Glass 组件对照
 
-状态：`design/index.html` 有 65 个状态（对应 `design/screenshots/`），全部对应 `Owlet/` 已实现的功能，设计图与实现一致；唯一的例外是 `success`（写回完成确认）保留旧画面，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
+状态：`design/index.html` 有 66 个状态（对应 `design/screenshots/`），全部对应 `Owlet/` 已实现的功能，设计图与实现一致；唯一的例外是 `success`（写回完成确认）保留旧画面，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
 
 ## 1. 两条判据
 **判据一：功能层用 Liquid Glass，内容层不用。** Liquid Glass 只属于浮在内容之上的控制与导航层——工具栏、侧边栏、面板、弹窗；内容层用系统材质，绝不叠玻璃。`materials.md › Liquid Glass`：**Don't use Liquid Glass in the content layer.**
@@ -25,7 +25,7 @@
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
 | 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
-| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 10 个横向分区（文本处理 12 / 生词本 4 / 历史记录 3 / 快捷键 3 / 设置 10 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
+| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 10 个横向分区（文本处理 12 / 生词本 4 / 历史记录 3 / 快捷键 3 / 设置 11 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
 ### 2.2 建议但当前未采纳
 
@@ -48,7 +48,7 @@
 
 ## 3. 组件对照总表
 
-按 Apple HIG 的组件分类（<https://developer.apple.com/design/human-interface-guidelines/components>）排列；只列 65 个状态中真实出现的东西。
+按 Apple HIG 的组件分类（<https://developer.apple.com/design/human-interface-guidelines/components>）排列；只列 66 个状态中真实出现的东西。
 
 ### 3.1 组件 › 布局与组织
 - 主窗口骨架（侧栏 + 内容）→ `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`，桌面端不用 `TabView`，分隔线用系统自带 divider，永不自绘 1px 竖线；侧边栏本体、`Section` 分组与选中态由 `List` 的 sidebar 外观与系统 source list 选中态负责；显示／隐藏用系统侧栏切换工具栏项 + `⌃⌘S`（`sidebars.md`：**Consider letting people hide the sidebar.**）；设置分区用 `Form` + `Section`（`.formStyle(.grouped)`），设置仍是主窗口侧栏页面，见 §6。
@@ -76,7 +76,7 @@
 
 ## 4. 逐屏对照
 
-与 `design/index.html` 的“状态总览”同一分组：10 个分区竖向堆叠（应用窗口的文本处理、生词本、历史记录、快捷键、设置，浮动面板的紧凑条、直接替换紧凑提示、学习表达区块、展开，菜单栏）；共 65 个状态。除 `success` 保留旧画面外，每张画面都对应应用里已实现的界面。
+与 `design/index.html` 的“状态总览”同一分组：10 个分区竖向堆叠（应用窗口的文本处理、生词本、历史记录、快捷键、设置，浮动面板的紧凑条、直接替换紧凑提示、学习表达区块、展开，菜单栏）；共 66 个状态。除 `success` 保留旧画面外，每张画面都对应应用里已实现的界面。
 
 | 截图 | 已落到设计里的系统组件 |
 | --- | --- |
@@ -84,8 +84,7 @@
 | `shortcuts.png` / `shortcuts-recording.png` / `shortcuts-conflict.png` | `Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示；页面没有底部操作栏 |
 | `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section` |
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
-| `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）与「模型」分组（模型名称、思考强度）；模型列表失败时在名称行下就地提示与 `重试` |
-| `settings-prompt.png` / `settings-prompt-default.png` | Prompt 页：翻译与润色各一个 `Section`（`TextEditor`、`查看默认 Prompt`、`恢复默认`）与「返回格式 · JSON」分组；内置默认用 `.popover` 展示，箭头指向按钮、点外面即关 |
+| `settings-model.png` / `settings-model-openai.png` / `settings-model-failed.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试` |
 | `settings-debug.png` / `settings-debug-empty.png` | 调试页：失败原因说明、`复制全部` / `清空`、每次交换一个 `Section`（失败行 `Label(systemImage:)` + 三段 `DisclosureGroup`） |
 | `workspace-auto.png` / `workspace-target-pinned.png` | 工具栏的 `Picker(.menu)`：`自动（简体中文）` 与显式语言两态；结果标签沿用解析出的语言名。工具栏还多了显示方式（分区／对照）这个任务选项 |
 | `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
@@ -128,7 +127,7 @@
 | `history-list`、`history-detail`、`history-empty` | `Owlet/History/HistoryView.swift` · `Owlet/History/HistoryStore.swift` · `Owlet/History/HistoryRecorder.swift` |
 | `learning`、`learning-loading`、`learning-error`、`learning-empty`、`saved` | `Owlet/Learning/LearningView.swift` · `Owlet/Learning/LearningContent.swift` · `Owlet/App/ExpandedPanel.swift` |
 | `aligned` | `Owlet/Processing/AlignedSegments.swift` · `Owlet/Processing/TranslationView.swift`（`TranslationDisplayMode` 的 `.aligned`） |
-| `settings-prompt`、`settings-prompt-default` | `Owlet/Settings/PromptSettingsPane.swift` · `Owlet/LLM/DefaultPrompts.swift` |
+| `settings-model-prompts`、`settings-model-prompts-customized`、`settings-model-prompts-default` | `Owlet/Settings/PromptSettingsView.swift` · `Owlet/LLM/DefaultPrompts.swift` |
 | `workspace-narrow` | `Owlet/Processing/ProcessingLayout.swift`（720pt 阈值）· `Owlet/Processing/TranslationView.swift` |
 | `success` | 提案（未实现）：原型画写回完成确认；应用 `Owlet/App/PanelController.swift` 的 `performReplace` 在写回成功后直接关闭浮窗 |
 
@@ -186,8 +185,8 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 
 `design/index.html` 控制台里有两个自动检查：
 
-- `checkDesignStates()` → 65 个状态逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（文本处理页还要有底部操作栏）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
-- `checkFlowBoard()` → 65 个状态全部出现在总览上、无重复，分区数与定义一致（10 个窗口／面板）；返回 `{states, frames, panels}`。
+- `checkDesignStates()` → 66 个状态逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（文本处理页还要有底部操作栏）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
+- `checkFlowBoard()` → 66 个状态全部出现在总览上、无重复，分区数与定义一致（10 个窗口／面板）；返回 `{states, frames, panels}`。
 
 ## 9. 迁移顺序
 

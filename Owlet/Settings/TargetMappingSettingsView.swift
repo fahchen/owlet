@@ -28,7 +28,7 @@ struct TargetMappingSettingsView: View {
             Button("添加映射", action: addRow)
                 .disabled(rows.count >= options.count)
         } header: {
-            Text("目标语言")
+            Text("翻译目标语言")
         } footer: {
             Text("源语言由原文自动识别。未识别出源语言、或源语言没有对应行时使用兜底目标；一个源语言只保留一条映射。")
         }

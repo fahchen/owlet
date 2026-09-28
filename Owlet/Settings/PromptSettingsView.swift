@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Prompt pane: one editor per operation, the built-in default behind a disclosure, a restore that
-/// only fills the editor, and the fixed JSON response example. There is no save button: an editor
-/// commits when it gives up focus, so the settings window behaves like a settings window.
-struct PromptSettingsPane: View {
+/// The two prompt editors, as sections of the 模型 pane: they are about how the model is asked, which
+/// is the same concern as which model is asked. There is no save button: an editor commits when it
+/// gives up focus, so the settings window behaves like a settings window.
+struct PromptSettingsView: View {
     /// One-shot request from the panel's contract-error entry, so the failing operation's editor is
     /// the one that focuses.
     @Binding var promptFocus: Operation?
@@ -19,24 +19,12 @@ struct PromptSettingsPane: View {
     @State private var showingDefault: Operation?
 
     var body: some View {
-        Form {
+        // The two sections are handed to the surrounding `Form`; the lifecycle lives on the group so
+        // it does not attach to whichever section happens to be last.
+        Group {
             editor(.translate, text: $translateDraft)
             editor(.polish, text: $polishDraft)
-            Section {
-                DisclosureGroup("查看返回示例") {
-                    Text(DefaultPrompts.responseExample)
-                        .font(.system(size: 11, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 4)
-                }
-            } header: {
-                Text("返回格式 · JSON")
-            } footer: {
-                Text("改动在编辑框失去焦点后生效，只影响之后的新请求。")
-            }
         }
-        .formStyle(.grouped)
         .onAppear(perform: load)
         .onChange(of: promptFocus) { _, _ in applyFocus() }
         // Committing on the edge of focus is what replaces the old save button; leaving the pane also
@@ -47,7 +35,7 @@ struct PromptSettingsPane: View {
         .onDisappear { if let focused { commit(focused) } }
     }
 
-    /// One operation's editor, its state badge, the default popover and the restore action.
+    /// One operation's editor, its header accessory and the restore action.
     @ViewBuilder private func editor(_ operation: Operation, text: Binding<String>) -> some View {
         let defaultPrompt = SettingsStore.defaultPrompt(for: operation)
         Section {
@@ -62,37 +50,50 @@ struct PromptSettingsPane: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.red)
             }
-            HStack(spacing: 8) {
-                // Read-only reference: it is worth a popover, which can be wider than this row without
-                // pushing the editor around, and closes as soon as the pointer leaves.
-                Button("查看默认 Prompt") { showingDefault = operation }
-                    .buttonStyle(.glass)
-                    .popover(isPresented: showingDefaultBinding(for: operation)) {
-                        ScrollView {
-                            Text(defaultPrompt)
-                                .font(.system(size: 12))
-                                .lineSpacing(4)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(16)
-                        }
-                        .frame(width: 400, height: 220)
-                        .accessibilityLabel("\(operation.title) 默认 System Prompt")
-                    }
-                GlassEffectContainer {
-                    // Fills the editor only: the restore takes effect when the editor commits.
-                    Button("恢复默认") { text.wrappedValue = defaultPrompt }
-                        .buttonStyle(.glass)
-                }
-            }
         } header: {
-            HStack {
+            HStack(spacing: 10) {
                 Text("\(operation.title) System Prompt")
                 Spacer(minLength: 0)
-                Text(customized.contains(operation) ? "已自定义" : "默认")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                // The restore is only worth offering once there is something to restore, and it takes
+                // the place the 默认 mark had, so the header never grows a second row.
+                if customized.contains(operation) {
+                    Button("恢复默认") { text.wrappedValue = defaultPrompt }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .help("把内置默认填回编辑框")
+                } else {
+                    Text("默认")
+                        .foregroundStyle(.secondary)
+                }
+                defaultPromptPopover(operation, defaultPrompt)
             }
+        }
+    }
+
+    /// Read-only reference behind an info glyph: a popover can be wider than this header without
+    /// pushing the editor around, and it closes as soon as the pointer leaves.
+    @ViewBuilder private func defaultPromptPopover(_ operation: Operation, _ defaultPrompt: String)
+        -> some View
+    {
+        Button {
+            showingDefault = operation
+        } label: {
+            Label("查看默认 Prompt", systemImage: "info.circle")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .help("查看默认 Prompt")
+        .popover(isPresented: showingDefaultBinding(for: operation)) {
+            ScrollView {
+                Text(defaultPrompt)
+                    .font(.system(size: 12))
+                    .lineSpacing(4)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+            }
+            .frame(width: 400, height: 220)
+            .accessibilityLabel("\(operation.title) 默认 System Prompt")
         }
     }
 

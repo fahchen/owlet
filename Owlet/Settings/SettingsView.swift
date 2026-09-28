@@ -18,10 +18,7 @@ struct SettingsView: View {
                 LanguageSettingsPane()
             }
             Tab("模型", systemImage: "cloud", value: SettingsPane.model.rawValue) {
-                ModelSettingsPane()
-            }
-            Tab("Prompt", systemImage: "text.quote", value: SettingsPane.prompt.rawValue) {
-                PromptSettingsPane(promptFocus: $promptFocus)
+                ModelSettingsPane(promptFocus: $promptFocus)
             }
             // The diagnostics pane exists only while it is switched on, which is the point of the
             // switch: a fresh install shows four panes and nothing else.
@@ -32,18 +29,33 @@ struct SettingsView: View {
             }
         }
         .frame(width: 620, height: 560)
-        .onAppear(perform: applyPromptFocus)
+        .onAppear {
+            normalisePane()
+            applyPromptFocus()
+        }
         .onChange(of: promptFocus) { _, _ in applyPromptFocus() }
     }
 
-    /// The failing operation's editor is in the Prompt pane, so the pane follows the request.
+    /// The failing operation's editor lives on the 模型 pane, so the pane follows the request.
     private func applyPromptFocus() {
-        if promptFocus != nil { pane = SettingsPane.prompt.rawValue }
+        if promptFocus != nil { pane = SettingsPane.model.rawValue }
+    }
+
+    /// A pane that no longer exists (the Prompt tab was folded into 模型) or is hidden (调试 showing
+    /// while the switch is off) must not leave the window blank.
+    private func normalisePane() {
+        if pane == "prompt" {
+            pane = SettingsPane.model.rawValue
+        } else if SettingsPane(rawValue: pane) == nil
+            || (pane == SettingsPane.debug.rawValue && !debugEnabled)
+        {
+            pane = SettingsPane.general.rawValue
+        }
     }
 }
 
 /// The panes, in toolbar order. The raw value is what gets stored, so reordering cases never
 /// invalidates a saved choice.
 enum SettingsPane: String, CaseIterable {
-    case general, language, model, prompt, debug
+    case general, language, model, debug
 }

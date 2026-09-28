@@ -4,6 +4,9 @@ import SwiftUI
 /// is no save button: every control is either a `@AppStorage` binding or writes on commit, which is
 /// how a settings window is expected to behave.
 struct ModelSettingsPane: View {
+    /// One-shot request from the panel's contract-error entry; it belongs to the prompt editors, which
+    /// live on this pane.
+    @Binding var promptFocus: Operation?
     @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
@@ -45,6 +48,7 @@ struct ModelSettingsPane: View {
                     ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
+            PromptSettingsView(promptFocus: $promptFocus)
         }
         .formStyle(.grouped)
         .onAppear {

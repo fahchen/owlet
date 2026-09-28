@@ -24,6 +24,10 @@ run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=
 depends = ["generate"]
 run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet test"
 
+[tasks.design]
+description = "Inline shared.css/shared.js into the design pages, so each renders on its own"
+run = "node scripts/build-design.mjs"
+
 [tasks.prod]
 description = "Release build, verified and packaged for another Mac"
 run = "scripts/prod-build.sh"

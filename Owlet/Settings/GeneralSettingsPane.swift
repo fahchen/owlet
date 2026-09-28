@@ -23,7 +23,7 @@ struct GeneralSettingsPane: View {
             } header: {
                 Text("调试")
             } footer: {
-                Text("在设置里多出一个「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。文本会发送到配置的模型服务，请自行斟酌。")
+                Text("在设置里显示「调试」页，记录最近几次模型请求与返回。")
             }
         }
         .formStyle(.grouped)

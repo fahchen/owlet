@@ -20,18 +20,6 @@ enum ModelEffort {
         return nil
     }
 
-    /// One line for the settings hint that says what the current model will receive.
-    static func summary(for level: EffortLevel, model: String) -> String {
-        guard !model.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return "填写模型名称后显示实际发送值。"
-        }
-        guard level != .automatic else { return "沿用服务商默认，不发送 reasoning_effort。" }
-        guard let value = reasoningEffort(for: level, model: model) else {
-            return "该模型不使用思考强度，此项不生效。"
-        }
-        return "发送 reasoning_effort: \(value)。"
-    }
-
     /// The value per UI level for one model. An empty table means the field must be omitted.
     static func mapping(for model: String) -> [EffortLevel: String] {
         let id = model.lowercased()

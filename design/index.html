@@ -691,7 +691,7 @@ function panelPositionHTML(){
 function debugToggleHTML(){
   return `<div class="form-section"><p class="group-title">调试</p>`
    +`<div class="formrow"><label>显示调试页</label><span class="field"><input type="checkbox" role="switch" aria-label="显示调试页" ${cfg().debug?'checked':''}></span></div>`
-   +`<p class="section-footer">在设置里多出一个「调试」页：保留最近若干次模型请求与返回（含原文），只存在内存里，重启即清空。</p></div>`;
+   +`<p class="section-footer">在设置里显示「调试」页，记录最近几次模型请求与返回。</p></div>`;
 }
 function modelPaneHTML(){
   const openai=cfg().provider==='openai';
@@ -704,7 +704,7 @@ function modelPaneHTML(){
    +`<p class="section-footer">API Key 存在钥匙串里；离开输入框后生效。</p></div>`
    +`<div class="form-section"><p class="group-title">模型</p>${modelRow}`
    +`<div class="formrow"><label>思考强度</label><span class="field"><select class="popup" aria-label="思考强度" style="height:auto;padding:7px 26px 7px 9px"><option>自动</option><option>低</option><option>中</option><option>高</option></select></span></div>`
-   +`<p class="section-footer">思考强度会按当前模型映射成它实际接受的值。</p></div>`;
+   +`</div>`;
 }
 function promptPaneHTML(){
   const pop=!!cfg().popover;

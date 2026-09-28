@@ -39,10 +39,4 @@ struct ModelEffortTests {
         #expect(ModelEffort.reasoningEffort(for: .medium, model: "my-local-llm") == "medium")
     }
 
-    @Test func theSummaryNamesWhatWillBeSent() {
-        #expect(ModelEffort.summary(for: .automatic, model: "deepseek-flash").contains("不发送"))
-        #expect(ModelEffort.summary(for: .medium, model: "deepseek-flash").contains("high"))
-        #expect(ModelEffort.summary(for: .high, model: "gpt-4o").contains("不生效"))
-        #expect(ModelEffort.summary(for: .low, model: " ").contains("模型名称"))
-    }
 }

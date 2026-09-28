@@ -41,7 +41,9 @@ struct ModelSettingsPane: View {
             Section("模型") {
                 modelField
                 modelStatus
-                effortField
+                Picker("思考强度", selection: $effort) {
+                    ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
             }
         }
         .formStyle(.grouped)
@@ -73,19 +75,6 @@ struct ModelSettingsPane: View {
     }
 
     private var modelOptions: [String] { Self.modelOptions(for: models, model: model) }
-
-    /// 思考强度 sits under the model row; the hint shows what the current model will actually
-    /// receive, since the same level maps to different values per model (see `ModelEffort`).
-    private var effortField: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Picker("思考强度", selection: $effort) {
-                ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
-            }
-            Text(ModelEffort.summary(for: effort, model: model))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
-    }
 
     /// What the picker offers: the last list that loaded, plus the saved model so a name the list no
     /// longer offers stays selectable. Before the first list arrives that is just the saved name.

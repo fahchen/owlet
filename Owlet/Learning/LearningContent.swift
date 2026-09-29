@@ -32,7 +32,7 @@ struct LearningRequest: Equatable {
     }
 
     /// Builds the request from a finished result; nil until the model has one to reason about.
-    @MainActor static func from(_ model: TranslationModel) -> LearningRequest? {
+    @MainActor static func from(_ model: TextProcessingModel) -> LearningRequest? {
         guard case .success(let text) = model.state, let languages = model.languages else {
             return nil
         }

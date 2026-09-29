@@ -45,10 +45,10 @@ private let polished =
 }
 
 @MainActor @Test func modelRunsSelectedOperation() async {
-    let model = TranslationModel(
+    let model = TextProcessingModel(
         client: ModelClient(transport: stub(body: chatBody(polished))), config: { testConfig })
     model.input = "i has a pen."
     model.operation = .polish
-    await model.translate(to: "zh-Hans")?.value
+    await model.process(to: "zh-Hans")?.value
     #expect(model.state == .success("I have a pen."))
 }

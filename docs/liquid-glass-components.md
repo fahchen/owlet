@@ -35,7 +35,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | 侧边栏是真正的 source list | 178px 固定栏，自己画红绿灯、自己画分组标题、选中态是自定义白胶囊；`设置` 与 `本地` 钉在栏底 | `NavigationSplitView` + `List(selection:)`：工具栏自带的收起／展开按钮来自系统（设计图里的切换按钮就是它）；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，当前未添加，见 tasks/todo.md T25；选中态是系统外观；`设置` 移入同一分组，取消栏底钉死；`本地` 角标删除；`.badge` 计数未采用 | `sidebars.md › Best practices`；`sidebars.md › Desktop (macOS)`：**Avoid putting critical information or actions at the bottom of a sidebar.** |
 | 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
-| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`NoticeStrip` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
+| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`CompactNoticeView` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
 | 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
 | 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 9 个横向分区（翻译与润色 12 / 生词本 4 / 历史记录 3 / 设置 14 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
 
@@ -119,29 +119,29 @@
 
 | 状态 | 实现位置 |
 | --- | --- |
-| `workspace`、`workspace-empty`、`workspace-input`、`workspace-loading`、`workspace-polish`、`workspace-error`、`workspace-unconfigured` | `Owlet/Processing/TranslationView.swift`（含 TranslationModel 状态机与工具栏动作）· `Owlet/App/OwletApp.swift`（窗口、侧栏与菜单命令） |
+| `workspace`、`workspace-empty`、`workspace-input`、`workspace-loading`、`workspace-polish`、`workspace-error`、`workspace-unconfigured` | `Owlet/Processing/TextProcessingView.swift`（工作台工具栏与编辑区）· `Owlet/Processing/TextProcessingModel.swift`（处理状态）· `Owlet/App/OwletApp.swift`（窗口、侧栏与菜单命令） |
 | `workspace-collapsed` | `Owlet/App/OwletApp.swift`（MainView 的 NavigationSplitView 侧栏） |
 | `settings-shortcuts`、`settings-shortcuts-recording`、`settings-shortcuts-conflict`（`ShortcutController.registrationError` 的冲突文案） | `Owlet/Shortcuts/ShortcutSettingsPane.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
 | `settings-general` | `Owlet/Settings/SettingsView.swift`（标签页）· `Owlet/Settings/GeneralSettingsPane.swift` |
 | `settings-language-empty`、`settings-language-rows` | `Owlet/Settings/LanguageSettingsPane.swift` · `Owlet/Settings/LanguageSettingsView.swift` · `Owlet/Settings/TargetMappingSettingsView.swift` · `Owlet/Settings/TargetMapping.swift` |
 | `settings-model`、`settings-model-openai`、`settings-model-failed` | `Owlet/Settings/ModelSettingsPane.swift` · `Owlet/Settings/SettingsStore.swift`（Keychain） |
-| `workspace-auto`、`workspace-target-pinned` | `Owlet/Settings/TargetLanguagePicker.swift` · `Owlet/Processing/LanguageDetector.swift` · `Owlet/Processing/TranslationView.swift` |
+| `workspace-auto`、`workspace-target-pinned` | `Owlet/Settings/TargetLanguagePicker.swift` · `Owlet/Processing/LanguageDetector.swift` · `Owlet/Processing/TextProcessingView.swift` |
 | `settings-debug`、`settings-debug-open`、`settings-debug-empty` | `Owlet/Settings/DebugSettingsPane.swift` · `Owlet/Debug/DebugLog.swift` · `Owlet/LLM/ModelClient.swift`（记录点） |
-| `loading`、`polish-loading`、`direct-loading` | `Owlet/App/PanelController.swift`（ProcessingStrip） |
-| `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/PanelController.swift`（Notice、NoticeStrip、recover）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
-| `direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` | `Owlet/App/PanelController.swift`：“翻译并替换”复用同一 `Notice`／`NoticeStrip`，与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 同屏 |
-| `result`、`polish`、`long`、`result-loading` | `Owlet/App/ExpandedPanel.swift`（PanelHeader／PanelBody／PanelFooter）· `Owlet/App/PanelController.swift`（展开时机） |
-| `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/ExpandedPanel.swift`（StatusNote）· `Owlet/App/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
-| `result-unwritten` | `Owlet/App/PanelController.swift`（`writebackRefusal` → `inlineNotice` 返回 `.unwritten`／`.unwritable`）· `Owlet/App/ExpandedPanel.swift` |
-| `empty` | `Owlet/App/ExpandedPanel.swift`（`canRetry` 与 `PanelFooter` 默认分支）· `Owlet/App/PanelController.swift`（空原文时 `translate()` 置 `.idle`，展开态保留） |
+| `loading`、`polish-loading`、`direct-loading` | `Owlet/App/Panel/CompactPanelContent.swift`（CompactProcessingView） |
+| `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/Panel/PanelController.swift`（Notice）· `Owlet/App/Panel/PanelRootView.swift`（recover）· `Owlet/App/Panel/CompactPanelContent.swift`（CompactNoticeView）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
+| `direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` | `Owlet/App/Panel/PanelController.swift`：“翻译并替换”复用同一 `Notice`／`CompactNoticeView`，与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 同屏 |
+| `result`、`polish`、`long`、`result-loading` | `Owlet/App/Panel/ExpandedPanel.swift` · `Owlet/App/Panel/PanelHeader.swift` · `Owlet/App/Panel/ExpandedPanelContent.swift` · `Owlet/App/Panel/PanelFooter.swift`· `Owlet/App/Panel/PanelController.swift`（展开时机） |
+| `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/Panel/ExpandedPanelContent.swift`（StatusNote）· `Owlet/App/Panel/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
+| `result-unwritten` | `Owlet/App/Panel/PanelController.swift`（`writebackRefusal` → `inlineNotice` 返回 `.unwritten`／`.unwritable`）· `Owlet/App/Panel/ExpandedPanel.swift` |
+| `empty` | `Owlet/App/Panel/ExpandedPanel.swift`（`canRetry`）· `Owlet/App/Panel/PanelFooter.swift`（默认分支）· `Owlet/App/Panel/PanelController.swift`（空原文时 `processCurrentText()` 置 `.idle`，展开态保留） |
 | `menubar`、`menubar-menu` | `Owlet/App/OwletApp.swift`（MenuBarExtra、MenuContent、MenuBarLabel） |
 | `book-list`、`book-detail`、`book-empty`、`no-results` | `Owlet/Vocabulary/VocabularyView.swift` · `Owlet/Vocabulary/VocabularyStore.swift` · `Owlet/Vocabulary/CollectionAction.swift` |
 | `history-list`、`history-detail`、`history-empty` | `Owlet/History/HistoryView.swift` · `Owlet/History/HistoryStore.swift` · `Owlet/History/HistoryRecorder.swift` |
-| `learning`、`learning-loading`、`learning-error`、`learning-empty`、`saved` | `Owlet/Learning/LearningView.swift` · `Owlet/Learning/LearningContent.swift` · `Owlet/App/ExpandedPanel.swift` |
-| `aligned` | `Owlet/Processing/AlignedSegments.swift` · `Owlet/Processing/TranslationView.swift`（`TranslationDisplayMode` 的 `.aligned`） |
+| `learning`、`learning-loading`、`learning-error`、`learning-empty`、`saved` | `Owlet/Learning/LearningView.swift` · `Owlet/Learning/LearningContent.swift` · `Owlet/App/Panel/ExpandedPanel.swift` |
+| `aligned` | `Owlet/Processing/AlignedSegments.swift` · `Owlet/Processing/TextProcessingView.swift`（`TranslationDisplayMode` 的 `.aligned`） |
 | `settings-model-prompts`、`settings-model-prompts-customized` | `Owlet/Settings/PromptSettingsView.swift` · `Owlet/LLM/DefaultPrompts.swift` |
-| `workspace-narrow` | `Owlet/Processing/ProcessingLayout.swift`（720pt 阈值）· `Owlet/Processing/TranslationView.swift` |
-| `success` | 提案（未实现）：原型画写回完成确认；应用 `Owlet/App/PanelController.swift` 的 `performReplace` 在写回成功后直接关闭浮窗 |
+| `workspace-narrow` | `Owlet/Processing/ProcessingLayout.swift`（720pt 阈值）· `Owlet/Processing/TextProcessingView.swift` |
+| `success` | 提案（未实现）：原型画写回完成确认；应用 `Owlet/App/Panel/PanelController.swift` 的 `performReplace` 在写回成功后直接关闭浮窗 |
 
 ## 5. 设计令牌退役表
 
@@ -152,7 +152,7 @@
 | `RoseGlass.accent` / `ink` / `muted` / `paper` / `line` / `selectedNav` / `tint` / `keyFill` | 主按钮与焦点、正文与标题、次要文字、内容底、分隔线、侧栏选中、录制底色与键帽 | 应用 `AccentColor` 资源（唯一允许的品牌色出口）；`.primary` / `.secondary` / `.tint(nil)`；系统窗口纸张与列表材质；`Divider()` |
 | `RoseGlass.errorFill` / `errorText` / `green` / `skeleton` / 粉色渐变呼吸描边 | 错误块、成功、骨架屏、处理中装饰 | `StatusNote`（`Label` + `.secondary`）、`.green`、`.redacted(reason: .placeholder)`；呼吸未采纳，实现只用 `ProgressView`（T24） |
 | `RoseGlass.window` / `sidebar` / `footerFill` | 窗口／侧栏／底栏底 | 系统窗口背景、`List` sidebar 外观、底部 safe area bar 材质 |
-| `MainButtonStyle` / `MainLabelStyle` / `FieldBox` / `SelectField` / `KbdChip` / `GroupTitle` / `FormRow` / `PageFooter` / `PageHeader` / `SectionLabel` / `NavRow` / `ProcessingStrip` / `NoticeStrip` | 自绘按钮、输入框描边与焦点环、自绘下拉、键帽、自绘窗口与紧凑条零件 | `.bordered` / `.borderedProminent` / `.glass` / `.glassProminent`；`Form` 行内系统 `TextField` + 系统焦点环；`Picker(.menu)`；快捷键归菜单栏与 `.help()`（设计图仍画 `⌘ ↩`，§2.2 #7）；`Form` + `Section`、`.toolbar`、`List`；紧凑条保留玻璃容器，内部只用 `ProgressView`、`Text`、`Label`、`Button(.glass)`、`StatusNote` |
+| `MainButtonStyle` / `MainLabelStyle` / `FieldBox` / `SelectField` / `KbdChip` / `GroupTitle` / `FormRow` / `PageFooter` / `PageHeader` / `SectionLabel` / `NavRow` / `ProcessingStrip` / `CompactNoticeView` | 自绘按钮、输入框描边与焦点环、自绘下拉、键帽、自绘窗口与紧凑条零件 | `.bordered` / `.borderedProminent` / `.glass` / `.glassProminent`；`Form` 行内系统 `TextField` + 系统焦点环；`Picker(.menu)`；快捷键归菜单栏与 `.help()`（设计图仍画 `⌘ ↩`，§2.2 #7）；`Form` + `Section`、`.toolbar`、`List`；紧凑条保留玻璃容器，内部只用 `ProgressView`、`Text`、`Label`、`Button(.glass)`、`StatusNote` |
 
 ## 6. 关于设置窗口的建议（未改动设计图）
 

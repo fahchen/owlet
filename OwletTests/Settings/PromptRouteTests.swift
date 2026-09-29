@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct PromptRouteTests {
     private func makeController() -> PanelController {
-        let model = TranslationModel(client: ModelClient(), config: { testConfig })
+        let model = TextProcessingModel(client: ModelClient(), config: { testConfig })
         return PanelController(
             model: model, defaults: UserDefaults(suiteName: "PromptRouteTests.\(UUID().uuidString)")!)
     }

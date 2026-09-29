@@ -114,7 +114,7 @@ struct LearningView: View {
                         if index < items.count - 1 { Divider() }
                     }
                     if attempted {
-                        CollectionFeedback(collection: collection, openNotebook: openNotebook)
+                        NotebookSaveFeedback(collection: collection, openNotebook: openNotebook)
                     }
                 }
                 .padding(.vertical, 8)

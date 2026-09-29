@@ -56,10 +56,10 @@ struct PanelControllerTests {
             if let gate { await withCheckedContinuation { gate.continuations.append($0) } }
             return try await stub(body: chatBody(TestReplies.reply(for: "Hello")))(request)
         }
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: transport), config: { testConfig })
         let panel = PanelController(model: model, defaults: defaults)
-        if !realWindow { panel.makeWindow = { (view: PanelView) in OffScreenPanel(rootView: view) } }
+        if !realWindow { panel.makeWindow = { (view: PanelRootView) in OffScreenPanel(rootView: view) } }
         let writes = Box()
         let selection = selection
         panel.read = { $0(.success(selection)) }
@@ -78,7 +78,7 @@ struct PanelControllerTests {
         -> (PanelController, Box, RecordingPanel)
     {
         let (panel, writes) = makePanel(gate: gate, outcome: outcome)
-        let stub = RecordingPanel(rootView: PanelView(controller: panel))
+        let stub = RecordingPanel(rootView: PanelRootView(controller: panel))
         panel.makeWindow = { _ in stub }
         return (panel, writes, stub)
     }
@@ -91,7 +91,7 @@ struct PanelControllerTests {
     @Test
     func successWritesOnce() async {
         let (panel, writes) = makePanel()
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
         #expect(writes.texts == ["T:Hello"])
         #expect(panel.selection == nil)
@@ -102,7 +102,7 @@ struct PanelControllerTests {
     @Test
     func plainTranslateDoesNotWrite() async {
         let (panel, writes) = makePanel()
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(writes.texts.isEmpty)
         #expect(panel.expanded)
@@ -116,7 +116,7 @@ struct PanelControllerTests {
         SettingsStore.setTargetMapping(
             TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
         let captured = Captured()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: { request in
                 captured.request = request
                 let reply =
@@ -131,7 +131,7 @@ struct PanelControllerTests {
             text: text, element: AXUIElementCreateApplication(1), app: nil,
             range: SelectedRange(location: 0, length: text.count))
         panel.read = { $0(.success(read)) }
-        panel.trigger()
+        panel.processSelection()
         await settle()
         let body = String(decoding: captured.request?.httpBody ?? Data(), as: UTF8.self)
         #expect(body.contains("Target language: ja"))
@@ -146,7 +146,7 @@ struct PanelControllerTests {
             TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
         SettingsStore.setPinnedTarget("zh-Hant", in: defaults)
         let captured = Captured()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: { request in
                 captured.request = request
                 let reply =
@@ -161,7 +161,7 @@ struct PanelControllerTests {
             text: text, element: AXUIElementCreateApplication(1), app: nil,
             range: SelectedRange(location: 0, length: text.count))
         panel.read = { $0(.success(read)) }
-        panel.trigger()
+        panel.processSelection()
         await settle()
         let body = String(decoding: captured.request?.httpBody ?? Data(), as: UTF8.self)
         #expect(body.contains("Target language: zh-Hant"))
@@ -171,7 +171,7 @@ struct PanelControllerTests {
     @Test func lateResponseAfterCancelDoesNotWrite() async {
         let gate = Gate()
         let (panel, writes) = makePanel(gate: gate)
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
         panel.close()
         gate.release()
@@ -183,9 +183,9 @@ struct PanelControllerTests {
     func newRequestSupersedesOld() async {
         let gate = Gate()
         let (panel, writes) = makePanel(gate: gate)
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
         gate.release()
         gate.release()
@@ -197,7 +197,7 @@ struct PanelControllerTests {
     @Test func noSelectionDoesNotWrite() async {
         let (panel, writes) = makePanel()
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
         #expect(writes.texts.isEmpty)
         #expect(panel.notice == .unreadable)
@@ -218,7 +218,7 @@ struct PanelControllerTests {
     @Test func readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer() async {
         let (panel, _) = makePanel()
         let reads = deferredReads(panel)
-        panel.trigger()
+        panel.processSelection()
         #expect(panel.notice == nil)
         try? await Task.sleep(for: .milliseconds(1_100))
         #expect(panel.notice == .unreadable)
@@ -231,7 +231,7 @@ struct PanelControllerTests {
     @Test func lateReadAfterCloseIsIgnored() async {
         let (panel, writes) = makePanel()
         let reads = deferredReads(panel)
-        panel.trigger(.polish, replace: true)
+        panel.processSelection(.polish, replace: true)
         try? await Task.sleep(for: .milliseconds(250))
         panel.close()
         reads.completions[0](.success(selection))
@@ -247,7 +247,7 @@ struct PanelControllerTests {
     /// reaches, so the assertion does not depend on the window's key state.
     @Test func pastedWriteConsumesTheSelection() async {
         let (panel, writes, stub) = recordingPanel(outcome: .pasted)
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(panel.selection != nil)
         panel.replace(with: "T:Hello")
@@ -261,8 +261,8 @@ struct PanelControllerTests {
     @Test func rapidTriggersAcceptOnlyLatestRead() async {
         let (panel, writes) = makePanel()
         let reads = deferredReads(panel)
-        panel.trigger(replace: true)
-        panel.trigger()
+        panel.processSelection(replace: true)
+        panel.processSelection()
         reads.completions[1](.failure(.unreadable))
         reads.completions[0](.success(selection))
         await settle()
@@ -278,7 +278,7 @@ struct PanelControllerTests {
     @Test func losingKeyNeitherClosesNorCancelsTheWrite() async throws {
         let gate = Gate()
         let (panel, writes, stub) = recordingPanel(gate: gate)
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         await settle()
         #expect(panel.notice == .translating)
         #expect(panel.replacing)
@@ -302,7 +302,7 @@ struct PanelControllerTests {
             holder.panel = stub
             return stub
         }
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         let stub = try #require(holder.panel)
         var closes = 0
         let onClose = stub.onClose
@@ -329,7 +329,7 @@ struct PanelControllerTests {
     /// visible instead of the panel closing as if it had worked.
     @Test func refusedWriteBackKeepsTheResult() async {
         let (panel, _) = makePanel(outcome: .refused)
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         for _ in 0..<40 where panel.writebackRefusal == nil {
             try? await Task.sleep(for: .milliseconds(50))
         }
@@ -340,7 +340,7 @@ struct PanelControllerTests {
     /// A read-only selection is reported as such rather than as a generic failure.
     @Test func readOnlySelectionIsReportedAsUnwritable() async {
         let (panel, _) = makePanel(outcome: .unwritable)
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         for _ in 0..<40 where panel.writebackRefusal == nil {
             try? await Task.sleep(for: .milliseconds(50))
         }
@@ -351,7 +351,7 @@ struct PanelControllerTests {
     /// A successful write-back closes the panel instead of leaving a confirmation on screen.
     @Test func successfulWriteBackClosesThePanel() async throws {
         let (panel, _, stub) = recordingPanel()
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(panel.model.state == .success("T:Hello"))
         #expect(stub.shows >= 1)
@@ -364,7 +364,7 @@ struct PanelControllerTests {
     /// Copying is a finished interaction too, so the panel closes once the result is copied.
     @Test func copyClosesThePanel() async throws {
         let (panel, _, stub) = recordingPanel()
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(panel.model.state == .success("T:Hello"))
         var copied: String?
@@ -388,7 +388,7 @@ struct PanelControllerTests {
     @Test func mouseMonitorFollowsVisibility() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.watchesMouse)
         panel.close()
@@ -399,7 +399,7 @@ struct PanelControllerTests {
     /// the result still copyable.
     @Test func writeBackBringsThePanelBackOnAMiss() async throws {
         let (panel, _, stub) = recordingPanel(outcome: .refused)
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(panel.selection != nil)
         panel.replace(with: "T:Hello")
@@ -417,7 +417,7 @@ struct PanelControllerTests {
     @Test func closeIsNotReentrant() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         var closes = 0
         let onClose = window.onClose
@@ -442,7 +442,7 @@ struct PanelControllerTests {
     @Test func shapesItsShadowLikeTheGlass() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         let shape = try #require(window.contentView)
         let glass = try #require(shape.subviews.first as? NSGlassEffectView)
@@ -461,7 +461,7 @@ struct PanelControllerTests {
     @Test func opensWithNothingFocusedButTabStillReachesTheControls() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.firstResponder === window)
         let tab = try #require(
@@ -486,7 +486,7 @@ struct PanelControllerTests {
             return window
         }
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.contentView?.subviews.first is NSGlassEffectView)
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
@@ -512,7 +512,7 @@ struct PanelControllerTests {
         var selection = selection
         selection.bounds = axRect
         panel.read = { [selection] in $0(.success(selection)) }
-        panel.trigger()
+        panel.processSelection()
         await settle()
         let window = try #require(panel.panel)
         let rect = PanelPlacement.appKitRect(fromAX: axRect, primaryScreenHeight: screen.frame.height)
@@ -536,7 +536,7 @@ struct PanelControllerTests {
     @Test func processingEdgeIsAnAccentRingThatGlows() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         let surface = try #require(window.contentView as? PanelSurface)
         surface.layout()
@@ -551,7 +551,7 @@ struct PanelControllerTests {
     @Test func processingEdgeBreathesOnlyWhileProcessing() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         let surface = try #require(window.contentView as? PanelSurface)
         let frame = window.frame
@@ -572,7 +572,7 @@ struct PanelControllerTests {
     @Test func reduceMotionHoldsTheProcessingEdgeSteady() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
-        panel.trigger()
+        panel.processSelection()
         let window = try #require(panel.panel)
         let surface = try #require(window.contentView as? PanelSurface)
         window.prefersReducedMotion = { true }
@@ -596,7 +596,7 @@ struct PanelControllerTests {
     /// The controller pushes the loading state to the panel edge and clears it when the result lands.
     @Test func processingEdgeFollowsTheRequest() async {
         let (panel, _, stub) = recordingPanel()
-        panel.trigger()
+        panel.processSelection()
         await settle()
         #expect(stub.processing.first == true)
         #expect(stub.processing.last == false)

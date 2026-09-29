@@ -12,9 +12,9 @@
 
 ## 实现位置
 
-- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift)：`read(completion:)` 按下述流程读取；`SerialLatest` 工作队列；可注入的 AX 属性读取器。
-- [PanelController.swift](../Owlet/App/PanelController.swift)：`trigger` 分配操作标识，异步接收读取结果并按工具栏是否展开呈现错误。
-- 测试：[SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift)、[SerialLatestTests.swift](../OwletTests/Selection/SerialLatestTests.swift)、[PanelControllerTests.swift](../OwletTests/App/PanelControllerTests.swift)。
+- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift)：`read(completion:)` 按下述流程读取；`LatestPendingSerialQueue` 工作队列；可注入的 AX 属性读取器。写回与剪贴板交互在 [SelectionWriteback.swift](../Owlet/Selection/SelectionWriteback.swift)。
+- [PanelController.swift](../Owlet/App/Panel/PanelController.swift)：`processSelection` 分配操作标识，异步接收读取结果并按工具栏是否展开呈现错误。
+- 测试：[SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift)、[LatestPendingSerialQueueTests.swift](../OwletTests/Selection/LatestPendingSerialQueueTests.swift)、[PanelControllerTests.swift](../OwletTests/App/Panel/PanelControllerTests.swift)。
 
 ## 读取流程
 

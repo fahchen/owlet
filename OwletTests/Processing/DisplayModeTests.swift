@@ -9,8 +9,8 @@ import Testing
 struct DisplayModeTests {
     final class Calls: @unchecked Sendable { var count = 0 }
 
-    func model(_ calls: Calls, reply: String) -> TranslationModel {
-        TranslationModel(
+    func model(_ calls: Calls, reply: String) -> TextProcessingModel {
+        TextProcessingModel(
             client: ModelClient(transport: { request in
                 calls.count += 1
                 return try await stub(body: chatBody(reply))(request)
@@ -36,7 +36,7 @@ struct DisplayModeTests {
             #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"早上好。"},{"source":"Let's begin.","target":"我们开始吧。"}]}"#
         let model = model(Calls(), reply: reply)
         model.input = "Good morning. Let's begin."
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(model.segments.map(\.source) == ["Good morning. ", "Let's begin."])
         #expect(model.segments.map(\.target) == ["早上好。", "我们开始吧。"])
         guard case .success(let text) = model.state else {
@@ -51,7 +51,7 @@ struct DisplayModeTests {
         let calls = Calls()
         let model = model(calls, reply: TestReplies.reply(for: "Hello"))
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(calls.count == 1)
         let defaults = UserDefaults(suiteName: "DisplayModeTests.\(UUID().uuidString)")!
         defaults.set(TranslationDisplayMode.aligned.rawValue, forKey: SettingsStore.displayModeKey)
@@ -64,7 +64,7 @@ struct DisplayModeTests {
     @Test func changingTheTextDropsThePairs() async {
         let model = model(Calls(), reply: TestReplies.reply(for: "Hello"))
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(!model.segments.isEmpty)
         model.input = "Goodbye"
         #expect(model.segments.isEmpty)

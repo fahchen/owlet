@@ -11,8 +11,8 @@ struct OperationSwitchTests {
     final class Calls: @unchecked Sendable { var count = 0 }
 
     /// A transport that answers every request and counts them.
-    func countingModel(_ calls: Calls) -> TranslationModel {
-        TranslationModel(
+    func countingModel(_ calls: Calls) -> TextProcessingModel {
+        TextProcessingModel(
             client: ModelClient(transport: { request in
                 calls.count += 1
                 let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
@@ -26,17 +26,17 @@ struct OperationSwitchTests {
         let calls = Calls()
         let model = countingModel(calls)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(model.state == .success("T:Hello"))
         #expect(calls.count == 1)
 
         model.operation = .polish
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(calls.count == 2)
 
         // Back to the first operation: the same text and settings are already answered.
         model.operation = .translate
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(model.state == .success("T:Hello"))
         #expect(calls.count == 2)
     }
@@ -46,9 +46,9 @@ struct OperationSwitchTests {
         let calls = Calls()
         let model = countingModel(calls)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         model.input = "Goodbye"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(calls.count == 2)
     }
 
@@ -57,8 +57,8 @@ struct OperationSwitchTests {
         let calls = Calls()
         let model = countingModel(calls)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
-        await model.translate(to: "en")?.value
+        await model.process(to: "zh-Hans")?.value
+        await model.process(to: "en")?.value
         #expect(calls.count == 2)
     }
 
@@ -66,11 +66,11 @@ struct OperationSwitchTests {
     /// sent once.
     @Test func nothingHasBeenSentBeforeTheFirstRequest() async {
         let model = countingModel(Calls())
-        #expect(!model.hasBeenSent)
+        #expect(!model.shouldReprocessOnOptionChange)
         model.input = "Hello"
-        #expect(!model.hasBeenSent)
-        await model.translate(to: "zh-Hans")?.value
-        #expect(model.hasBeenSent)
+        #expect(!model.shouldReprocessOnOptionChange)
+        await model.process(to: "zh-Hans")?.value
+        #expect(model.shouldReprocessOnOptionChange)
     }
 
     /// A cached answer still comes back as a finished task, which is what the panel's one-shot
@@ -79,8 +79,8 @@ struct OperationSwitchTests {
         let calls = Calls()
         let model = countingModel(calls)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
-        let again = model.translate(to: "zh-Hans")
+        await model.process(to: "zh-Hans")?.value
+        let again = model.process(to: "zh-Hans")
         #expect(again != nil)
         await again?.value
         #expect(calls.count == 1)
@@ -89,15 +89,15 @@ struct OperationSwitchTests {
     /// A failure is not cached: retrying it must reach the model again.
     @Test func failuresAreNotCached() async {
         let calls = Calls()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: { _ in
                 calls.count += 1
                 throw ModelError.http(500)
             }),
             config: { testConfig })
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         #expect(calls.count == 2)
     }
 }

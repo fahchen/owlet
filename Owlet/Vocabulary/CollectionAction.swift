@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 
 /// Which region of the current result the user is collecting from.
@@ -108,7 +107,7 @@ extension VocabularyDraft {
     /// Builds the snapshot for a collect action: the user's selection wins over the whole region,
     /// and a polish pair is kept whenever the current operation produced one.
     @MainActor static func from(
-        region: CollectedRegion, model: TranslationModel, selection: String?
+        region: CollectedRegion, model: TextProcessingModel, selection: String?
     ) -> VocabularyDraft? {
         guard case .success(let result) = model.state, let languages = model.languages else {
             return nil
@@ -137,18 +136,5 @@ extension VocabularyDraft {
             context: record.source,
             polishBefore: polish ? record.source : nil,
             polishAfter: polish ? record.result : nil)
-    }
-}
-
-/// Reads the selection of the key window's focused text view so a word or phrase can be collected
-/// instead of the whole source or result.
-enum TextSelection {
-    @MainActor static func current() -> String? {
-        guard let view = NSApp.keyWindow?.firstResponder as? NSTextView else { return nil }
-        let range = view.selectedRange()
-        guard range.length > 0, NSMaxRange(range) <= (view.string as NSString).length else {
-            return nil
-        }
-        return (view.string as NSString).substring(with: range)
     }
 }

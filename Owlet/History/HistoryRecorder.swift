@@ -11,8 +11,8 @@ final class HistoryRecorder {
     private(set) var task: Task<Void, Never>?
 
     private struct Watched {
-        weak var model: TranslationModel?
-        var lastState: TranslationModel.State
+        weak var model: TextProcessingModel?
+        var lastState: TextProcessingModel.State
     }
 
     init(store: HistoryStore = .shared) {
@@ -21,7 +21,7 @@ final class HistoryRecorder {
 
     /// Observes a model once; a repeated call for the same model is ignored, so re-opening a window
     /// cannot start a second recording chain.
-    func observe(_ model: TranslationModel) {
+    func observe(_ model: TextProcessingModel) {
         let id = ObjectIdentifier(model)
         guard watched[id] == nil else { return }
         watched[id] = Watched(model: model, lastState: model.state)

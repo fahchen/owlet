@@ -4,10 +4,10 @@ import Testing
 
 @testable import Owlet
 
-struct SerialLatestTests {
+struct LatestPendingSerialQueueTests {
     /// While one job runs, only the newest submitted job is kept pending.
     @Test func keepsOneRunningAndLatestPending() {
-        let worker = SerialLatest()
+        let worker = LatestPendingSerialQueue()
         let ran = Mutex<[Int]>([])
         let started = DispatchSemaphore(value: 0)
         let release = DispatchSemaphore(value: 0)

@@ -195,11 +195,11 @@ struct LearningContentTests {
     }
 
     @Test func learningFailureLeavesTheMainResultUsable() async throws {
-        let main = TranslationModel(
+        let main = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(translationPayload))),
             config: { testConfig })
         main.input = "Let's take a step back."
-        await main.translate(to: "zh-Hans")?.value
+        await main.process(to: "zh-Hans")?.value
         let request = try #require(LearningRequest.from(main))
 
         let learning = LearningModel(

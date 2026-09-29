@@ -51,13 +51,13 @@ struct HistoryStoreTests {
 
     @Test func aSuccessfulTranslationIsRecorded() async throws {
         let (store, _) = try makeStores()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello")))),
             config: { testConfig })
         let recorder = HistoryRecorder(store: store)
         recorder.observe(model)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         await recorder.flush()
 
         let record = try #require(try store.records().first)
@@ -72,13 +72,13 @@ struct HistoryStoreTests {
         let (store, _) = try makeStores()
         let content =
             #"{"source_language":"en","target_language":"en","segments":[{"source":"This are bad.","target":"This is bad."}]}"#
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(content))), config: { testConfig })
         let recorder = HistoryRecorder(store: store)
         recorder.observe(model)
         model.operation = .polish
         model.input = "This are bad."
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         await recorder.flush()
 
         let record = try #require(try store.records().first)
@@ -90,13 +90,13 @@ struct HistoryStoreTests {
 
     @Test func aFailedRequestIsNotRecorded() async throws {
         let (store, _) = try makeStores()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: { _ in throw URLError(.notConnectedToInternet) }),
             config: { testConfig })
         let recorder = HistoryRecorder(store: store)
         recorder.observe(model)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         await recorder.flush()
         #expect(try store.records().isEmpty)
     }
@@ -108,11 +108,11 @@ struct HistoryStoreTests {
             await gate.wait()
             return try await stub(body: chatBody(TestReplies.reply(for: "Hello")))(request)
         })
-        let model = TranslationModel(client: client, config: { testConfig })
+        let model = TextProcessingModel(client: client, config: { testConfig })
         let recorder = HistoryRecorder(store: store)
         recorder.observe(model)
         model.input = "Hello"
-        let task = model.translate(to: "zh-Hans")
+        let task = model.process(to: "zh-Hans")
         for _ in 0..<100 where !gate.isWaiting { await Task.yield() }
         model.cancel()
         gate.release()
@@ -123,7 +123,7 @@ struct HistoryStoreTests {
 
     @Test func aWriteBackFailureStillRecordsTheTranslation() async throws {
         let (store, _) = try makeStores()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello")))),
             config: { testConfig })
         let recorder = HistoryRecorder(store: store)
@@ -140,7 +140,7 @@ struct HistoryStoreTests {
                         range: SelectedRange(location: 0, length: 5))))
         }
         panel.write = { _, _ in .refused }
-        panel.trigger(replace: true)
+        panel.processSelection(replace: true)
         for _ in 0..<100 where panel.writebackRefusal == nil {
             try? await Task.sleep(for: .milliseconds(20))
         }
@@ -155,15 +155,15 @@ struct HistoryStoreTests {
 
     @Test func aRepublishedCachedResultIsNotRecordedTwice() async throws {
         let (store, _) = try makeStores()
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello")))),
             config: { testConfig })
         let recorder = HistoryRecorder(store: store)
         recorder.observe(model)
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         await recorder.flush()
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         await recorder.flush()
         #expect(try store.records().count == 1)
     }

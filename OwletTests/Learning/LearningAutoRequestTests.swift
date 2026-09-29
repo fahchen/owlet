@@ -12,12 +12,12 @@ private let learningPayload =
 @MainActor
 struct LearningAutoRequestTests {
     /// A finished translation whose input is "Hello".
-    func completedTranslation() async -> TranslationModel {
-        let model = TranslationModel(
+    func completedTranslation() async -> TextProcessingModel {
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello")))),
             config: { testConfig })
         model.input = "Hello"
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         return model
     }
 
@@ -71,11 +71,11 @@ struct LearningAutoRequestTests {
     }
 
     @Test func aFailedResultNeverAutoRequests() async {
-        let main = TranslationModel(
+        let main = TextProcessingModel(
             client: ModelClient(transport: { _ in throw URLError(.notConnectedToInternet) }),
             config: { testConfig })
         main.input = "Hello"
-        await main.translate(to: "zh-Hans")?.value
+        await main.process(to: "zh-Hans")?.value
         if case .failure = main.state {
         } else {
             Issue.record("expected a failure, got \(main.state)")

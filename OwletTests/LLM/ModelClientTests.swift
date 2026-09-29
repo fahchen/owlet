@@ -176,9 +176,9 @@ func clientWithBuiltInPrompt() -> ModelClient {
 }
 
 @MainActor @Test func missingConfigIsReported() {
-    let model = TranslationModel(client: ModelClient(), config: { nil })
+    let model = TextProcessingModel(client: ModelClient(), config: { nil })
     model.input = "Hi"
-    model.translate(to: "zh-Hans")
+    model.process(to: "zh-Hans")
     #expect(model.state == .missingConfig)
 }
 
@@ -189,11 +189,11 @@ func clientWithBuiltInPrompt() -> ModelClient {
         if text == "old" { try? await Task.sleep(for: .milliseconds(200)) }
         return try await stub(body: chatBody(TestReplies.reply(for: text)))(request)
     })
-    let model = TranslationModel(client: client, config: { testConfig })
+    let model = TextProcessingModel(client: client, config: { testConfig })
     model.input = "old"
-    let first = model.translate(to: "zh-Hans")
+    let first = model.process(to: "zh-Hans")
     model.input = "new"
-    let second = model.translate(to: "zh-Hans")
+    let second = model.process(to: "zh-Hans")
     await second?.value
     await first?.value
     #expect(model.state == .success("T:new"))

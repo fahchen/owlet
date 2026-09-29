@@ -55,7 +55,7 @@ struct HistoryView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
                             Text(
-                                "\(record.operationKind.title) · \(LanguageDisplay.name(record.language)) · \(HistoryTime.display(record.createdAt))"
+                                "\(record.operationKind.title) · \(LanguageDisplay.localizedName(for: record.language)) · \(HistoryTime.display(record.createdAt))"
                             )
                             .font(.caption).foregroundStyle(.secondary)
                             VStack(alignment: .leading, spacing: 12) {

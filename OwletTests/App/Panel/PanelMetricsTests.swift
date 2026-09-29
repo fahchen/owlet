@@ -20,8 +20,8 @@ struct PanelMetricsTests {
     /// The compact strip and the expanded panel must be the same width, so expanding only grows the
     /// panel's height.
     @Test func bothSurfacesAreTheSameWidth() {
-        let compact = size(ProcessingStrip(summary: "Hello there", status: "翻译中…", stop: {}))
-        let notice = size(NoticeStrip(message: "未能读取到文字") { Button("手动输入") {} })
+        let compact = size(CompactProcessingView(summary: "Hello there", status: "翻译中…", stop: {}))
+        let notice = size(CompactNoticeView(message: "未能读取到文字") { Button("手动输入") {} })
         #expect(compact.width == PanelMetrics.width)
         #expect(notice.width == PanelMetrics.width)
         #expect(compact.width == notice.width)

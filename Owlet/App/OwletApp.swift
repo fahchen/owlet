@@ -5,7 +5,7 @@ import SwiftUI
 struct OwletApp: App {
     /// Keeps a Dock click able to rebuild the main window SwiftUI releases when it is closed.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var translation = TranslationModel(
+    @State private var translation = TextProcessingModel(
         client: ModelClient(), config: SettingsStore.currentConfig)
     @State private var shortcuts: ShortcutController = {
         let controller = ShortcutController()
@@ -15,7 +15,7 @@ struct OwletApp: App {
     @State private var collection = CollectionAction()
     @State private var history = HistoryRecorder()
     @State private var panel = PanelController(
-        model: TranslationModel(client: ModelClient(), config: SettingsStore.currentConfig))
+        model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig))
     @State private var page: MainView.Page = .processing
     /// One-shot focus request for the prompt editor the panel's format error points at.
     @State private var promptFocus: Operation?
@@ -61,7 +61,7 @@ struct OwletApp: App {
 private struct MainView: View {
     enum Page: Hashable { case processing, vocabulary, history }
 
-    let translation: TranslationModel
+    let translation: TextProcessingModel
     @Binding var page: Page
     let collection: CollectionAction
     let history: HistoryRecorder
@@ -84,7 +84,7 @@ private struct MainView: View {
         } detail: {
             switch page {
             case .processing:
-                TranslationView(
+                TextProcessingView(
                     model: translation, openSettings: openModelSettings, collection: collection,
                     openNotebook: { page = .vocabulary })
             case .vocabulary:
@@ -150,11 +150,11 @@ private struct CloseWindowButton: View {
 /// 翻译文本／润色文本 (⌘↩) in the File menu: the main page's submit action, named for the operation
 /// the page is on.
 private struct SubmitTextButton: View {
-    let translation: TranslationModel
+    let translation: TextProcessingModel
 
     var body: some View {
         Button("\(translation.operation.title)文本") {
-            translation.translate(to: SettingsStore.resolvedTarget(for: translation.input))
+            translation.process(to: SettingsStore.resolvedTarget(for: translation.input))
         }
         .keyboardShortcut(.return, modifiers: .command)
         .disabled(translation.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -164,7 +164,7 @@ private struct SubmitTextButton: View {
 /// 复制结果 (⌘⇧C) in the Edit menu: the result is not the selection, so it gets its own item rather
 /// than borrowing the system Copy.
 private struct CopyResultButton: View {
-    let translation: TranslationModel
+    let translation: TextProcessingModel
 
     var body: some View {
         Button("复制结果") {
@@ -189,9 +189,9 @@ private struct ProcessingAction {
 
     func callAsFunction(_ action: ShortcutAction) {
         switch action {
-        case .translate: panel.trigger()
-        case .translateReplace: panel.trigger(replace: true)
-        case .polish: panel.trigger(.polish)
+        case .translate: panel.processSelection()
+        case .translateReplace: panel.processSelection(replace: true)
+        case .polish: panel.processSelection(.polish)
         }
     }
 }

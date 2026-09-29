@@ -355,14 +355,14 @@ struct CollectionActionTests {
 
 @MainActor
 struct VocabularyDraftTests {
-    func polishModel() async throws -> TranslationModel {
+    func polishModel() async throws -> TextProcessingModel {
         let content =
             #"{"source_language":"en","target_language":"en","segments":[{"source":"This are bad.","target":"This is bad."}]}"#
-        let model = TranslationModel(
+        let model = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(content))), config: { testConfig })
         model.operation = .polish
         model.input = "This are bad."
-        await model.translate(to: "zh-Hans")?.value
+        await model.process(to: "zh-Hans")?.value
         return model
     }
 
@@ -395,7 +395,7 @@ struct VocabularyDraftTests {
     }
 
     @Test func noResultMeansNothingToCollect() async throws {
-        let model = TranslationModel(client: ModelClient(), config: { testConfig })
+        let model = TextProcessingModel(client: ModelClient(), config: { testConfig })
         model.input = "Hello"
         #expect(VocabularyDraft.from(region: .source, model: model, selection: nil) == nil)
     }

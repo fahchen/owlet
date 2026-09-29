@@ -1,6 +1,6 @@
 # Owlet · 未实现功能清单
 
-状态：`design/index.html` 有 66 个状态，全部对应 Swift 端已实现的功能（画面上没有“未实现”徽标）。例外是 `success`（写回完成确认）：它保留旧画面，原生应用写回成功后直接关闭浮窗，该画面已不对应实现。
+状态：仓库内 `design/` 已退役，不再维护旧截图状态数。当前原生布局升级见 T33；旧截图名称和逐像素说明仅作历史记录，不代表当前实现。
 对象：`spec/product.md` 中已定义、但 `Owlet/` 尚未落地的功能。
 目的：为每项未实现功能保留一张提案画面，并把仍无画面的部分逐条记录在此，避免产品定义随原型一起丢失。
 
@@ -28,3 +28,7 @@
 - **设置是独立窗口，且不再有整页保存按钮。** `OwletApp` 用 `Settings` scene（App 菜单与 ⌘, 由 SwiftUI 提供），主窗口侧栏只有文本处理／生词本／历史记录／快捷键；标签页为通用、语言、模型、Prompt（调试开关打开后多一页）。API Key 与 Prompt 在编辑框失焦时提交。证据：`Owlet/App/OwletApp.swift`、`Owlet/Settings/SettingsView.swift`、`Owlet/Settings/PromptSettingsPane.swift`。
 - **面板在首次成功后展开，之后一直保持展开；复制与写回成功则直接关闭。** `expanded` 在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；复制结果（`copyResult`）与写回成功关闭浮窗，不再停留确认（`empty` 对应展开后原文被清空的界面，[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/PanelController.swift` 的 `translate()`、`copyResult`、`performReplace`。
 - **写回失败只有两种文案，共用同一个布局。** `inlineNotice` 在 `.success` 且 `writebackRefusal` 非空时返回它：粘贴确实没落到任何地方是 `Notice.unwritten`（"未能写回原应用"），选区可证明不能容纳文字是 `Notice.unwritable`（"原选区不可编辑"）。`ExpandedPanel` 渲染的是 `notice.message`，两个状态下布局相同、动作都是"复制结果"，因此设计图只出一张（`result-unwritten`／`unwritten`），文案变体不单独出图。
+
+## T33 原生布局升级
+
+按确认原型落地原生工具栏、分组、学习展开流程与管理页分栏。管理页导出、复制、编辑入口已从当前产品范围移除，不计为未实现功能；旧导出数据能力不要求删除。验证进度以 `tasks/todo.md` 的 T33 为准。

@@ -68,7 +68,11 @@ final class VocabularyStore {
 
     /// Removes an entry; the cascade takes its contexts with it, so no orphan sentence survives.
     func delete(_ entry: VocabularyEntry) throws {
-        context.delete(entry)
+        try delete([entry])
+    }
+
+    func delete(_ items: [VocabularyEntry]) throws {
+        for item in items { context.delete(item) }
         try context.save()
     }
 

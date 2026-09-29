@@ -49,7 +49,11 @@ final class HistoryStore {
 
     /// Removes one record; the notebook is a separate model and stays untouched.
     func delete(_ record: HistoryRecord) throws {
-        context.delete(record)
+        try delete([record])
+    }
+
+    func delete(_ items: [HistoryRecord]) throws {
+        for item in items { context.delete(item) }
         try context.save()
     }
 

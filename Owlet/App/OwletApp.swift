@@ -27,7 +27,9 @@ struct OwletApp: App {
                 collection: collection, history: history, promptFocus: $promptFocus
             )
             .modelContainer(collection.store.container)
+            .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
+        .windowToolbarStyle(.unified(showsTitle: false))
         .defaultSize(width: 1080, height: 690)
         .commands {
             CommandGroup(replacing: .saveItem) { CloseWindowButton() }
@@ -42,6 +44,7 @@ struct OwletApp: App {
         // manages showing it. Nothing else in the app carries a settings entry.
         Settings {
             SettingsView(shortcuts: shortcuts, promptFocus: $promptFocus)
+                .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
         MenuBarExtra {
             MenuContent(shortcuts: shortcuts, panel: panel, page: $page)
@@ -72,10 +75,11 @@ private struct MainView: View {
                 // The main page needs no group title: it is what the app is for.
                 Label("翻译与润色", systemImage: "translate").tag(Page.processing)
                 Section("我的积累") {
-                    Label("生词本", systemImage: "book").tag(Page.vocabulary)
+                    Label("生词本", systemImage: "books.vertical").tag(Page.vocabulary)
                     Label("历史记录", systemImage: "clock").tag(Page.history)
                 }
             }
+            .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 160, ideal: 178, max: 260)
         } detail: {
             switch page {
@@ -91,6 +95,7 @@ private struct MainView: View {
                     openProcessing: { page = .processing })
             }
         }
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .frame(minWidth: 760, minHeight: 500)
         .task { history.observe(translation) }
     }

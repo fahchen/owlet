@@ -7,7 +7,7 @@ enum ProcessingLayout: Equatable {
     case stacked
 
     /// The content-area width at which both columns still fit.
-    static let sideBySideThreshold: CGFloat = 720
+    static let sideBySideThreshold: CGFloat = 600
 
     static func choose(width: CGFloat) -> ProcessingLayout {
         width >= sideBySideThreshold ? .sideBySide : .stacked

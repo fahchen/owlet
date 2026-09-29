@@ -1,257 +1,230 @@
 import SwiftData
 import SwiftUI
 
-/// Sidebar 历史记录 page: search, type filter and deletion over the finished results.
 struct HistoryView: View {
     let store: HistoryStore
     let collection: CollectionAction
     let openProcessing: () -> Void
     @Query(sort: \HistoryRecord.createdAt, order: .reverse) private var records: [HistoryRecord]
     @State private var search = ""
-    /// Nil means 全部类型; the picker's tags are optional so the filter can be cleared.
     @State private var operationFilter: Operation?
+    @State private var selection: Set<PersistentIdentifier> = []
     @State private var actionError: String?
-
-    var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("历史记录")
-                .searchable(text: $search, prompt: "搜索原文或结果")
-                .navigationDestination(for: HistoryRecord.self) { record in
-                    HistoryDetailView(record: record, collection: collection)
-                }
-                .toolbar { toolbar }
-                .safeAreaInset(edge: .top, spacing: 0) { errorBanner }
-                .confirmationDialog(
-                    "清空全部历史？",
-                    isPresented: Binding(
-                        get: { store.isConfirmingClear },
-                        set: { if !$0 { store.cancelClear() } }),
-                    titleVisibility: .visible
-                ) {
-                    Button("清空全部", role: .destructive) { clear() }
-                    Button("取消", role: .cancel) { store.cancelClear() }
-                } message: {
-                    Text("删除后无法恢复；生词本与收藏不受影响。")
-                }
-                .alert(
-                    "操作失败",
-                    isPresented: Binding(
-                        get: { actionError != nil },
-                        set: { if !$0 { actionError = nil } })
-                ) {
-                    Button("好", role: .cancel) {}
-                } message: {
-                    Text(actionError ?? "")
-                }
-        }
-    }
+    @State private var confirmingDelete = false
+    @State private var learning = LearningModel()
+    @State private var learningReveal = 0
 
     private var filtered: [HistoryRecord] {
         HistoryFilter.apply(records, search: search, operation: operationFilter)
     }
 
-    @ViewBuilder private var content: some View {
-        if records.isEmpty {
-            ContentUnavailableView {
-                Label("暂无历史", systemImage: "clock")
-            } description: {
-                Text("成功的翻译与润色会自动记录在这里。")
-            } actions: {
-                Button("开始翻译", action: openProcessing).buttonStyle(.glass)
-            }
-        } else if filtered.isEmpty {
-            ContentUnavailableView {
-                Label("无匹配结果", systemImage: "clock")
-            } description: {
-                Text("没有记录符合当前的搜索和筛选条件。")
-            } actions: {
-                Button("清除筛选") {
-                    search = ""
-                    operationFilter = nil
+    private var selectedRecords: [HistoryRecord] {
+        filtered.filter { selection.contains($0.persistentModelID) }
+    }
+
+    private var selectedRecord: HistoryRecord? {
+        selectedRecords.count == 1 ? selectedRecords.first : nil
+    }
+
+    var body: some View {
+        HSplitView {
+            List(selection: $selection) {
+                Text("\(filtered.count) 条记录")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+                    .selectionDisabled()
+                    .listRowSeparator(.hidden)
+                ForEach(filtered) { record in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(record.source).font(.headline).lineLimit(1)
+                        Text(record.result).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    .padding(.vertical, 12)
+                    .tag(record.persistentModelID)
                 }
-                .buttonStyle(.glass)
-            }
-        } else {
-            List(filtered) { record in
-                HistoryRowLink(record: record) { delete(record) }
             }
             .listStyle(.inset)
+            .contentMargins(.top, 0, for: .scrollContent)
+            .frame(minWidth: 200, idealWidth: 280, maxWidth: 380)
+            if let record = selectedRecord {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            Text(
+                                "\(record.operationKind.title) · \(LanguageDisplay.name(record.language)) · \(HistoryTime.display(record.createdAt))"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("原文").font(.headline)
+                                GroupBox {
+                                    Text(record.source).textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(record.operationKind == .translate ? "译文" : "润色结果").font(.headline)
+                                GroupBox {
+                                    Text(record.result).textSelection(.enabled)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            GroupBox {
+                                LearningView(
+                                    learning: learning, request: learningRequest(record),
+                                    collection: collection, openNotebook: nil
+                                )
+                                .id(record.persistentModelID)
+                            }
+                            .id("learning")
+                        }
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .onChange(of: learningReveal) { _, _ in
+                        proxy.scrollTo("learning", anchor: .top)
+                    }
+                }
+                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+            } else if selection.count > 1 {
+                ContentUnavailableView(
+                    "已选择 \(selection.count) 条历史记录", systemImage: "checkmark.circle",
+                    description: Text("可使用工具栏删除所选内容。")
+                )
+                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+            } else if !filtered.isEmpty {
+                ContentUnavailableView(
+                    "选择一个记录", systemImage: "sidebar.left",
+                    description: Text("在左侧列表中选择内容以查看详情。")
+                )
+                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                emptyState
+                    .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        // Keep the native divider inside the content safe area, below the unified toolbar.
+        .padding(.top, 1)
+        .navigationTitle("")
+        .searchable(text: $search, placement: .toolbar, prompt: "搜索原文或结果")
+        .toolbar { toolbar }
+        .safeAreaInset(edge: .top) {
+            if let message = store.lastError {
+                HStack {
+                    Label("历史保存失败：\(message)", systemImage: "exclamationmark.triangle")
+                    Spacer()
+                    Button("关闭", systemImage: "xmark") { store.dismissError() }
+                        .labelStyle(.iconOnly).help("关闭提示")
+                }.padding()
+            }
+        }
+        .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
+            selection.formIntersection(ids)
+            if selection.isEmpty, let first = ids.first { selection = [first] }
+        }
+        .onChange(of: selection) { _, _ in learning.reset() }
+        .onDisappear { learning.reset() }
+        .confirmationDialog("删除所选 \(selection.count) 条历史记录？", isPresented: $confirmingDelete, titleVisibility: .visible)
+        {
+            Button("删除", role: .destructive) { deleteSelected() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("生词本中的表达不受影响。")
+        }
+        .alert(
+            "操作失败",
+            isPresented: Binding(
+                get: { actionError != nil }, set: { if !$0 { actionError = nil } })
+        ) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(actionError ?? "")
         }
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Picker("筛选类型", selection: $operationFilter) {
-                Text("全部类型").tag(Operation?.none)
-                ForEach(Operation.allCases, id: \.self) { operation in
-                    Text(operation.title).tag(Operation?.some(operation))
+        ToolbarItemGroup(placement: .navigation) {
+            Menu {
+                Picker("筛选类型", selection: $operationFilter) {
+                    Text("全部类型").tag(Operation?.none)
+                    ForEach(Operation.allCases, id: \.self) { operation in
+                        Text(operation.title).tag(Operation?.some(operation))
+                    }
                 }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-        }
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                store.requestClear()
+                .pickerStyle(.inline)
             } label: {
-                Label("清空历史", systemImage: "trash")
+                Label("筛选类型", systemImage: "line.3.horizontal.decrease")
             }
-            .disabled(records.isEmpty)
+            .labelStyle(.iconOnly).help("筛选类型")
+        }
+        ToolbarItemGroup(placement: .principal) {
+            Button("上一条", systemImage: "chevron.up") { if let previous { selection = [previous] } }
+                .labelStyle(.iconOnly).help("上一条").disabled(previous == nil)
+            Button("下一条", systemImage: "chevron.down") { if let next { selection = [next] } }
+                .labelStyle(.iconOnly).help("下一条").disabled(next == nil)
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                guard let record = selectedRecord else { return }
+                learning.isExpanded = true
+                learning.generate(for: learningRequest(record))
+                learningReveal += 1
+            } label: {
+                Label("学习", systemImage: "lightbulb.fill")
+            }
+            .labelStyle(.iconOnly).disabled(selectedRecord == nil).help("学习词汇与表达")
+            Button {
+                confirmingDelete = true
+            } label: {
+                Label("删除", systemImage: "trash")
+            }
+            .labelStyle(.iconOnly).disabled(selection.isEmpty).help("删除所选内容")
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        DefaultToolbarItem(kind: .search, placement: .primaryAction)
+    }
+
+    private func learningRequest(_ record: HistoryRecord) -> LearningRequest {
+        LearningRequest(
+            text: record.source, operation: record.operationKind, targetLanguage: record.language,
+            result: record.result, claimAutoRequest: { false })
+    }
+
+    private var previous: PersistentIdentifier? {
+        adjacentSelection(in: filtered.map(\.persistentModelID), to: selectedRecord?.persistentModelID, offset: -1)
+    }
+
+    private var next: PersistentIdentifier? {
+        adjacentSelection(in: filtered.map(\.persistentModelID), to: selectedRecord?.persistentModelID, offset: 1)
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label(records.isEmpty ? "暂无历史记录" : "无匹配结果", systemImage: "clock")
+        } description: {
+            Text(records.isEmpty ? "成功的翻译与润色会自动记录在这里。" : "试试其他搜索词或筛选条件。")
+        } actions: {
+            if records.isEmpty {
+                Button("前往翻译", action: openProcessing).buttonStyle(.glass)
+            } else {
+                Button("清除筛选") {
+                    search = ""; operationFilter = nil
+                }.buttonStyle(.glass)
+            }
         }
     }
 
-    /// A storage failure is reported here because the result itself stays on the processing screen.
-    @ViewBuilder private var errorBanner: some View {
-        if let message = store.lastError {
-            HStack(spacing: 12) {
-                Label("历史保存失败：\(message)", systemImage: "exclamationmark.triangle")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                GlassEffectContainer {
-                    Button("关闭") { store.dismissError() }.buttonStyle(.glass)
-                }
-            }
-            .font(.system(size: 12))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
-            .background(.bar)
-        }
-    }
-
-    private func delete(_ record: HistoryRecord) {
+    private func deleteSelected() {
+        guard !selectedRecords.isEmpty else { return }
         do {
-            try store.delete(record)
+            try store.delete(selectedRecords)
+            selection = []
             actionError = nil
-        } catch {
-            actionError = error.localizedDescription
-        }
-    }
-
-    private func clear() {
-        do {
-            try store.confirmClear()
-            actionError = nil
-        } catch {
-            actionError = error.localizedDescription
-        }
-    }
-}
-
-/// One list row whose delete control is revealed on hover, so the list stays quiet at rest.
-private struct HistoryRowLink: View {
-    let record: HistoryRecord
-    let onDelete: () -> Void
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(spacing: 8) {
-            NavigationLink(value: record) {
-                HistoryRow(record: record)
-            }
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
-            .opacity(isHovering ? 1 : 0)
-            .help("删除")
-            .accessibilityLabel("删除 \(record.source)")
-        }
-        .onHover { isHovering = $0 }
-        .contextMenu {
-            Button("删除", role: .destructive, action: onDelete)
-        }
-    }
-}
-
-private struct HistoryRow: View {
-    let record: HistoryRecord
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(LanguageDisplay.code(record.language))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 24)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(record.source)
-                    .font(.system(size: 14, weight: .medium))
-                    .lineLimit(2)
-                Text(record.result)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 12)
-            Text(record.operationKind.title)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct HistoryDetailView: View {
-    let record: HistoryRecord
-    let collection: CollectionAction
-    /// True once this page collected, so a status another screen left behind never shows up here.
-    @State private var didCollect = false
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("\(LanguageDisplay.name(record.language)) · \(record.operationKind.title)")
-                    Spacer()
-                    Text(HistoryTime.display(record.createdAt))
-                }
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 12)
-                Text(record.source)
-                    .font(.system(size: 15))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-                    .padding(.bottom, 22)
-                Text(record.result)
-                    .font(.system(size: 20))
-                    .lineSpacing(8)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if didCollect {
-                    CollectionFeedback(collection: collection, openNotebook: nil)
-                        .font(.system(size: 11))
-                        .padding(.top, 24)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 28)
-        }
-        .navigationTitle("历史记录 / 详情")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Clipboard.copy(record.result)
-                } label: {
-                    Label("复制", systemImage: "doc.on.doc")
-                }
-                .buttonStyle(.glass)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button("收藏", action: collect).buttonStyle(.glassProminent)
-            }
-        }
-    }
-
-    /// Collects through the shared collect action, which saves first and only then asks for a missing
-    /// Chinese meaning, so a failed request leaves this record's own context in the notebook.
-    private func collect() {
-        didCollect = true
-        collection.collect(VocabularyDraft.from(record: record))
+        } catch { actionError = error.localizedDescription }
     }
 }
 

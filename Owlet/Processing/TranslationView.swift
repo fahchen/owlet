@@ -137,61 +137,28 @@ final class TranslationModel {
     }
 }
 
-/// Main-window 翻译与润色 page: the source and the result side by side, the operation in the window
-/// toolbar as a segmented control, and the actions floating over the content's trailing corner.
 struct TranslationView: View {
     @Bindable var model: TranslationModel
-    /// Shows the 设置 page for service errors.
     let openSettings: () -> Void
     let collection: CollectionAction
     let openNotebook: () -> Void
-    /// One learning section per page session, so 收起／展开 reuses what was already generated.
     @State private var learning = LearningModel()
-    /// Measured content width, which decides side by side versus stacked.
     @State private var contentWidth: CGFloat = 0
-    /// Which of the result box's panes is showing; a new result starts on the result itself.
-    @State private var section: ResultSection = .result
-    /// The pinned target language; an empty value means 自动.
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
-    /// The pinned source language; an empty value means 自动.
     @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
-    @AppStorage(SettingsStore.displayModeKey) private var displayMode =
-        TranslationDisplayMode.sectioned
+    @AppStorage(SettingsStore.displayModeKey) private var displayMode = TranslationDisplayMode.sectioned
 
     var body: some View {
-        layout
-            // Measured before the padding, so 720pt is the content area, not the whole window.
+        pageContent
             .onGeometryChange(for: CGFloat.self) {
                 $0.size.width
             } action: {
                 contentWidth = $0
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 20)
-            .navigationTitle("翻译与润色")
-            // Switching the operation runs the same text again at once, so the two results can be
-            // compared without pressing the button a second time; switching back is served from cache.
-            .onChange(of: model.operation) { _, _ in
-                section = .result
-                if model.hasBeenSent {
-                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-                }
-            }
-            // Pinning a target or a source runs the same text again, served from cache when already
-            // produced for that language.
-            .onChange(of: pinnedTarget) { _, _ in
-                if model.hasBeenSent {
-                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-                }
-            }
-            .onChange(of: pinnedSource) { _, _ in
-                if model.hasBeenSent {
-                    model.translate(to: SettingsStore.resolvedTarget(for: model.input))
-                }
-            }
-            // The operation is a toolbar control: it decides what this page does, next to the title.
+            .padding(24)
+            .navigationTitle("")
             .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
+                ToolbarItem(placement: .principal) {
                     Picker("处理方式", selection: $model.operation) {
                         ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
@@ -200,222 +167,179 @@ struct TranslationView: View {
                     .fixedSize()
                     .disabled(isBusy)
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    if isBusy {
+                        Button("取消", systemImage: "stop.fill", action: model.cancel)
+                            .labelStyle(.iconOnly)
+                            .help("停止处理")
+                    } else {
+                        Button(model.operation.title, systemImage: model.operation.symbol) {
+                            model.translate(to: resolvedTarget)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .labelStyle(.iconOnly)
+                        .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .help("\(model.operation.title)文本 ⌘↩")
+                    }
+                }
             }
-            // The source text changed, so the old result and its learning items no longer apply, and
-            // the box goes back to showing the result.
-            .onChange(of: model.input) { _, _ in
-                learning.reset()
-                section = .result
-            }
-            // 自动请求学习表达 still means "as soon as the result lands", whether or not this pane is
-            // the one on screen; the claim inside keeps it to one request per result.
-            .onChange(of: model.state) { _, _ in
+            .onChange(of: model.operation) { _, _ in refreshResult() }
+            .onChange(of: pinnedTarget) { _, _ in refreshResult() }
+            .onChange(of: pinnedSource) { _, _ in refreshResult() }
+            .onChange(of: model.input) { _, _ in learning.reset() }
+            .onChange(of: model.state) { _, state in
+                if state == .loading { learning.reset() }
                 if let request = LearningRequest.from(model) {
                     learning.generateIfAutoRequested(for: request)
                 }
             }
-            // A bottom *toolbar* does not exist on macOS (SwiftUI's `bottomBar` is iOS and Catalyst
-            // only), so the two actions float over the content's trailing corner, the way Freeform
-            // places its controls. Two separate glass icon buttons, not one merged cluster: each is its
-            // own control. The words live in the tooltips and the accessibility labels.
-            .overlay(alignment: .bottomTrailing) {
-                HStack(spacing: 8) {
-                    if isBusy {
-                        Button(action: model.cancel) {
-                            Label("取消", systemImage: "xmark")
-                        }
-                        .buttonStyle(.glass)
-                        .help("取消")
-                    } else {
-                        Button(action: copyResult) {
-                            Label("复制结果", systemImage: "doc.on.doc")
-                        }
-                        .buttonStyle(.glass)
-                        .help("复制结果 ⌘⇧C")
-                        .disabled(result == nil)
-                        Button {
-                            model.translate(to: resolvedTarget)
-                        } label: {
-                            Label(model.operation.title, systemImage: model.operation.symbol)
-                        }
-                        .buttonStyle(.glassProminent)
-                        .help("\(model.operation.title)文本 ⌘↩")
-                        .disabled(
-                            model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    @ViewBuilder private var pageContent: some View {
+        if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
+            workspace
+        } else {
+            // Both editors and learning must remain reachable at the window's minimum height.
+            ScrollView { workspace }
+        }
+    }
+
+    private var workspace: some View {
+        VStack(spacing: 16) {
+            layout
+            GroupBox {
+                if let request = LearningRequest.from(model) {
+                    LearningView(
+                        learning: learning, request: request, collection: collection,
+                        openNotebook: openNotebook)
+                } else {
+                    DisclosureGroup {
+                        Text("完成翻译或润色后，即可学习词汇与表达。")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("学习", systemImage: "lightbulb.fill")
+                            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
                     }
+                    .disabled(true)
+                    .help("完成翻译或润色后可用")
                 }
-                .labelStyle(.iconOnly)
-                .padding(20)
             }
+            .glassEffect(.regular, in: ContainerRelativeShape())
+            .padding(.top, 8)
+        }
     }
 
     private var isBusy: Bool { model.state == .loading }
-
-    /// What this text resolves to right now: an explicit choice, else the mapping, else the fallback.
     private var resolvedTarget: String { SettingsStore.resolvedTarget(for: model.input) }
-
     private var result: String? {
         if case .success(let text) = model.state { return text }
         return nil
     }
 
-    private func copyResult() {
-        guard let result else { return }
-        Clipboard.copy(result)
+    private func refreshResult() {
+        learning.reset()
+        if model.hasBeenSent { model.translate(to: resolvedTarget) }
     }
 
-    /// Mirrors the prototype: before the first result the page is a plain input.
-    private var showsResult: Bool { isBusy || result != nil }
-
-    /// Source and result side by side once the content area is wide enough, stacked otherwise.
-    /// The page keeps both sides in view whatever the window is: side by side they share the width,
-    /// stacked they share the height, and either way each side scrolls on its own rather than pushing
-    /// the other out of the window.
-    /// Both sides are always present — the window shows where text goes in and where the result will
-    /// appear, before there is one — and each side is a `GroupBox`, so the two read as two areas of
-    /// the same page rather than as one column split by a rule.
     @ViewBuilder private var layout: some View {
         if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
-            HStack(alignment: .top, spacing: 18) {
-                sourcePane; resultPane
+            HSplitView {
+                sourcePane.frame(minWidth: 280)
+                resultPane.frame(minWidth: 280)
             }
+            .padding(.top, 1)
         } else {
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
                 sourcePane; resultPane
             }
         }
     }
 
-    /// The source side: the editor fills the box, so the whole column is usable input rather than a
-    /// fixed strip with empty space under it. The title is just 原文 — the tab above already says which
-    /// operation this is.
     private var sourcePane: some View {
         GroupBox {
-            TextEditor(text: $model.input)
-                .textEditorStyle(.plain)
-                // The editor brings its own background; hiding it lets the box's border and fill show,
-                // which is what makes this side read as a box.
-                .scrollContentBackground(.hidden)
-                .font(.system(size: 16))
-                .lineSpacing(7)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .overlay(alignment: .topLeading) {
-                    if model.input.isEmpty {
-                        Text("输入或粘贴要处理的文本…")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.tertiary)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                    }
+            VStack(spacing: 12) {
+                HStack {
+                    Text("原文").font(.headline)
+                    Spacer(minLength: 8)
+                    SourceLanguagePicker(text: model.input, pinnedSource: $pinnedSource)
+                        .opacity(model.operation == .translate ? 1 : 0)
+                        .allowsHitTesting(model.operation == .translate)
+                        .disabled(model.operation != .translate)
+                        .accessibilityHidden(model.operation != .translate)
                 }
-                .accessibilityLabel("原文")
-        } label: {
-            // The group's title slot holds the control that configures it, so nothing is named twice.
-            SourceLanguagePicker(text: model.input, pinnedSource: $pinnedSource)
+                TextEditor(text: $model.input)
+                    .textEditorStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .font(.system(size: 17))
+                    .accessibilityLabel("原文")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack {
+                    Text("\(model.input.count) 字符").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("清空原文", systemImage: "trash") {
+                        model.cancel()
+                        model.input = ""
+                        model.translate(to: resolvedTarget)
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.glass)
+                    .help("清空原文")
+                    .disabled(model.input.isEmpty)
+                }
+            }
+            .padding(16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .frame(minHeight: 180)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: 260)
+        .glassEffect(.regular, in: ContainerRelativeShape())
     }
 
-    /// The result side. Its switch is a segmented control — the HIG's own example is a segmented
-    /// control that shows and hides panes of the same window — so 译文／润色 and 学习 share one box
-    /// instead of stacking, and the target language sits in the box with them.
     private var resultPane: some View {
         GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    Spacer(minLength: 0)
-                    if isBusy {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.mini)
-                            Text("\(model.operation.title)中")
-                        }
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    } else if model.operation == .translate {
-                        languagePicker
-                    } else {
-                        Text("保留原意")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
+            VStack(spacing: 12) {
+                HStack {
+                    Text(model.operation == .translate ? "译文" : "结果").font(.headline)
+                    Spacer(minLength: 8)
+                    TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
+                        .opacity(model.operation == .translate ? 1 : 0)
+                        .allowsHitTesting(model.operation == .translate)
+                        .disabled(model.operation != .translate)
+                        .accessibilityHidden(model.operation != .translate)
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        if section == .learning {
-                            learningSection
-                        } else {
-                            resultBody
-                            status
+                        if isBusy {
+                            ProgressView("\(model.operation.title)中…")
+                        } else if let result {
+                            if displayMode == .aligned, !model.segments.isEmpty {
+                                AlignedSegments(
+                                    segments: model.segments, sourceSize: 16, targetSize: 17,
+                                    lineSpacing: 7, pairSpacing: 14)
+                            } else {
+                                Text(result).font(.system(size: 18)).lineSpacing(8).textSelection(.enabled)
+                            }
                         }
+                        status
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    // Room for the floating buttons, so the last line can still be read.
-                    .padding(.bottom, 40)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        } label: {
-            Picker("结果", selection: $section) {
-                Text(resultTitle).tag(ResultSection.result)
-                Text("学习").tag(ResultSection.learning)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .frame(minHeight: 180)
-    }
-
-    /// Which of the result box's two panes is showing.
-    private enum ResultSection: Hashable {
-        case result
-        case learning
-    }
-
-    private var resultTitle: String {
-        if displayMode == .aligned && section == .result { return "逐句对照" }
-        return model.operation == .polish ? "润色结果" : "译文"
-    }
-
-    @ViewBuilder private var resultBody: some View {
-        Group {
-            if let result {
-                if displayMode == .aligned, !model.segments.isEmpty {
-                    AlignedSegments(
-                        segments: model.segments, sourceSize: 16, targetSize: 17,
-                        lineSpacing: 7, pairSpacing: 14)
-                } else {
-                    Text(result)
-                        .font(.system(size: 17))
-                        .lineSpacing(8)
-                        .textSelection(.enabled)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack {
+                    Spacer()
+                    Button("复制结果", systemImage: "doc.on.doc") {
+                        if let result { Clipboard.copy(result) }
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.glass)
+                    .help("复制结果 ⌘⇧C")
+                    .disabled(result == nil || isBusy)
                 }
-            } else {
-                Text(model.input)
-                    .font(.system(size: 17))
-                    .lineSpacing(8)
-                    .lineLimit(2)
-                    .redacted(reason: .placeholder)
-                    .accessibilityLabel("正在生成结果")
             }
+            .padding(16)
         }
-        .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
-        .accessibilityAddTraits(.updatesFrequently)
-    }
-
-    @ViewBuilder private var learningSection: some View {
-        if let request = LearningRequest.from(model) {
-            LearningView(
-                learning: learning, reveal: .immediate, request: request, collection: collection,
-                openNotebook: openNotebook)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: 260)
+        .glassEffect(.regular, in: ContainerRelativeShape())
     }
 
     @ViewBuilder private var status: some View {
@@ -425,45 +349,18 @@ struct TranslationView: View {
         default: EmptyView()
         }
     }
-
-    private var languagePicker: some View {
-        TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
-    }
-
 }
 
-/// Section caption: secondary label left, meta right.
-private struct LabelRow<Leading: View, Trailing: View>: View {
-    @ViewBuilder let leading: Leading
-    @ViewBuilder let trailing: Trailing
-
-    var body: some View {
-        HStack(spacing: 10) {
-            leading
-            Spacer()
-            trailing
-        }
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-    }
-}
-
-/// Error or missing-config note with its recovery entry.
 private struct StatusNote: View {
     let message: String
     let action: String
     let perform: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack {
             Label(message, systemImage: "exclamationmark.triangle")
             Spacer(minLength: 0)
-            GlassEffectContainer {
-                Button(action, action: perform).buttonStyle(.glass)
-            }
+            Button(action, action: perform).buttonStyle(.glass)
         }
-        .font(.system(size: 12))
-        .padding(.top, 16)
-        .accessibilityElement(children: .contain)
     }
 }

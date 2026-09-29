@@ -8,6 +8,17 @@ import Testing
 @MainActor
 struct VocabularyStoreTests {
     /// One fresh in-memory container per test, per `tasks/plan.md`.
+    @Test func deletesSelectedEntriesAndTheirContextsOnly() throws {
+        let store = try makeStore()
+        let first = try store.collect(draft("one"))
+        let second = try store.collect(draft("two"))
+        _ = try store.collect(draft("three"))
+        try store.delete([first, second])
+        let fresh = ModelContext(store.container)
+        #expect(try fresh.fetch(FetchDescriptor<VocabularyEntry>()).map(\.expression) == ["three"])
+        #expect(try fresh.fetchCount(FetchDescriptor<VocabularyContext>()) == 1)
+    }
+
     func makeStore() throws -> VocabularyStore {
         let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

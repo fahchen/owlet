@@ -23,6 +23,17 @@ private final class Gate {
 @MainActor
 struct HistoryStoreTests {
     /// One fresh in-memory container per test, shared by history and the notebook as in the app.
+    @Test func deletesSelectedRecordsOnly() throws {
+        let (store, notebook) = try makeStores()
+        let first = try store.record(operation: .translate, source: "one", result: "一", language: "zh")
+        let second = try store.record(operation: .translate, source: "two", result: "二", language: "zh")
+        try store.record(operation: .translate, source: "three", result: "三", language: "zh")
+        _ = try notebook.collect(draft())
+        try store.delete([first, second])
+        #expect(try store.records().map(\.source) == ["three"])
+        #expect(try notebook.entries().count == 1)
+    }
+
     func makeStores() throws -> (HistoryStore, VocabularyStore) {
         let schema = Schema([HistoryRecord.self, VocabularyEntry.self, VocabularyContext.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

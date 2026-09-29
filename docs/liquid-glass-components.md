@@ -1,5 +1,17 @@
 # Owlet · macOS 26 Liquid Glass 组件对照
 
+> T33 当前组件对照（取代下文旧截图中的工作台、生词本和历史布局）：设计原型仅表达布局，实际界面全部使用系统组件。`design/` 已退役，下文截图清单保留为历史记录，不代表当前界面。
+
+| 页面 | 原生组件与当前行为 |
+| --- | --- |
+| 翻译与润色 | 原生 `.toolbar`：中间 `Picker(.segmented)`，右侧执行 `Button`；系统 SF Symbols 与 `.help`。原文／结果用 `GroupBox`，标题与语言 `Picker(.menu)` 同排，语言靠右。 |
+| 学习（工作台、历史、浮窗共用） | `DisclosureGroup` 展开触发请求，系统 disclosure 外观；`Toggle(.checkbox)` 选择表达，图标按钮帮助说明为“加入生词本”。无独立释义语言设置。 |
+| 生词本 | 原生分栏、`List(selection:)` 与详情滚动区，各自滚动；工具栏搜索／筛选一组，右侧删除。无导出、复制、编辑按钮。 |
+| 历史 | 同构分栏与搜索／筛选；右侧学习、删除。学习打开该条结果的学习区，勾选后加入生词本。无复制、编辑按钮。 |
+
+不仿制 HTML 的圆角、chevron 或图标按钮外观，不自定义 `ButtonStyle`；由原生组件决定外观和辅助功能。
+
+
 状态：`design/index.html` 有 66 个状态（对应 `design/screenshots/`），全部对应 `Owlet/` 已实现的功能，设计图与实现一致；唯一的例外是 `success`（写回完成确认）保留旧画面，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
 
 ## 1. 两条判据
@@ -202,3 +214,23 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 ## 10. 参考
 
 HIG 参考资料位于 `.pi/skills/apple-design/references/hig/`：`liquid-glass.md`（`Where the material belongs` / `Which variant` / `Color on glass` / `Review checklist`）、`materials.md`、`color.md`、`layout.md`、`designing-for-macos.md`、`sidebars.md`、`toolbars.md`、`windows.md`、`panels.md`、`split-views.md`、`settings.md`、`the-menu-bar.md`、`buttons.md`、`segmented-controls.md`、`pop-up-buttons.md`、`menus.md`、`search-fields.md`、`lists-and-tables.md`、`boxes.md`、`labels.md`、`text-views.md`、`toggles.md`、`pickers.md`、`progress-indicators.md`、`feedback.md`、`writing.md`、`accessibility.md`、`focus-and-selection.md`、`dark-mode.md`、`generative-ai.md`。组件分类依 Apple 官方目录：<https://developer.apple.com/design/human-interface-guidelines/components>
+
+T33 材质：导航与工具栏采用系统默认 Liquid Glass；内容区不叠玻璃，使用 GroupBox／Form 的系统背景。动作使用系统 `.glass`／`.glassProminent`，图标来自 SF Symbols。窄窗工作台通过原生 ScrollView 保持编辑器和学习区可达。
+
+2026-09-29 用户确认覆盖前述内容层限制：工作台三个 GroupBox 添加原生 `.glassEffect(.regular, in: ContainerRelativeShape())`，形状跟随容器，未新增颜色、模糊、边框或阴影实现。
+
+管理页标题：生词本和历史页不重复显示窗口导航标题；数量为 List 第一行 Text（secondary、selectionDisabled），不再使用吸顶 Section 标题。
+
+T35 布局还原：工作台标题移除，语言 Picker 保留布局尺寸，学习 GroupBox 常驻；管理详情采用独立 ScrollView、灰色元信息与原生 GroupBox，列表支持系统多选；ToolbarSpacer 分隔上一条/下一条与内容动作。
+
+T36：移除品牌强调色配置，使用系统默认强调色；侧栏显式 List.sidebar，不覆盖字号。学习使用 SF Symbols lightbulb.fill，生词本使用 books.vertical；筛选 Menu 内 Picker.inline，选项在一级直接显示。
+
+T37：搜索使用 AppKit NSSearchField，系统提供放大镜、清除按钮和焦点环；独立 ToolbarItem 隐藏共享背景，避免玻璃胶囊与局部焦点环叠加。
+
+T38 覆盖 T37：搜索改为 SwiftUI searchable + DefaultToolbarItem(.search)，由系统负责尺寸、焦点和搜索交互；ToolbarSpacer 分隔导航、内容动作和最右侧搜索。
+
+T39：保持 NavigationSplitView；统一工具栏按 navigation/principal/primaryAction 分布筛选、上下条、内容动作与搜索。
+
+管理页正文分栏与顶部安全区保留最小间距，系统分隔线不延伸进入统一工具栏；不裁剪原生列表。
+
+T40：宽屏工作台使用原生 HSplitView，与管理页采用同一分栏方式；原文与结果各自滚动，底部学习仍常驻，窄屏保留上下排列。

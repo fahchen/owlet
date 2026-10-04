@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Owlet 本地库设计</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --paper: #faf8f5;
+    --surface: #ffffff;
+    --sunken: #f2eee8;
+    --ink: #1b1d22;
+    --muted: #6b7280;
+    --faint: #767d89;
+    --rule: #e2ddd4;
+    --accent: #3d5a8a;
+    --accent-soft: #e8edf6;
+    --amber: #9a6b2f;
+    --amber-soft: #f6eddf;
+    --ok: #3f6b4e;
+    --bad: #93412f;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --display: "Fraunces", Georgia, "Songti SC", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15171b; --surface: #1c1f24; --sunken: #222630;
+      --ink: #e8e6e1; --muted: #9ba3b0; --faint: #949caa; --rule: #2d323b;
+      --accent: #8fabd8; --accent-soft: #232c3b;
+      --amber: #ceab74; --amber-soft: #2d2820;
+      --ok: #85b394; --bad: #d68f7c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15171b; --surface: #1c1f24; --sunken: #222630;
+    --ink: #e8e6e1; --muted: #9ba3b0; --faint: #949caa; --rule: #2d323b;
+    --accent: #8fabd8; --accent-soft: #232c3b;
+    --amber: #ceab74; --amber-soft: #2d2820;
+    --ok: #85b394; --bad: #d68f7c;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  img { max-width: 100%; }
+
+  .shell {
+    max-width: 940px;
+    margin: 0 auto;
+    padding-inline: 24px;
+    padding-block: 0 88px;
+  }
+
+  header.mast { padding-block: 56px 32px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  header.mast h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  header.mast p { margin: 0; max-width: 62ch; color: var(--muted); }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 10px;
+    margin-top: 22px;
+    font-family: var(--mono); font-size: 13px; color: var(--faint);
+  }
+  .mast-meta span { background: var(--sunken); padding: 3px 9px; border-radius: 3px; }
+
+  section { padding-top: 52px; }
+  section > h2 {
+    font-family: var(--display);
+    font-weight: 600; font-size: 24px;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+  }
+  section > .lede { margin: 0 0 26px; color: var(--muted); max-width: 66ch; }
+
+  /* ---- schema map ---- */
+  .map {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    margin-bottom: 26px;
+  }
+  .node {
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--sunken);
+    padding: 13px 14px;
+  }
+  .node h3 {
+    margin: 0 0 4px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .node p { margin: 0; font-size: 14px; color: var(--muted); }
+  .node .rel {
+    margin-top: 9px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--accent);
+  }
+  .node.standalone .rel { color: var(--faint); }
+
+  /* ---- table block ---- */
+  .tbl {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .tbl > header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunken);
+  }
+  .tbl > header .name {
+    font-family: var(--mono); font-weight: 600; font-size: 14.5px;
+  }
+  .tbl > header .kind {
+    font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .tbl > header .src {
+    font-family: var(--mono); font-size: 13px; color: var(--faint); margin-left: auto;
+  }
+  .tbl > .note {
+    padding: 13px 18px; margin: 0;
+    color: var(--muted); font-size: 13.5px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tbl > .note:last-child { border-bottom: none; }
+
+  .cols { width: 100%; border-collapse: collapse; }
+  .cols th {
+    text-align: left;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .cols td {
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: 14px;
+  }
+  .cols tr:last-child td { border-bottom: none; }
+  .cols td.f { font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+  .cols td.t { font-family: var(--mono); font-size: 13px; color: var(--accent); white-space: nowrap; }
+  .cols td.d { color: var(--muted); }
+  .table-scroll { overflow-x: auto; }
+
+  .tag {
+    font-family: var(--mono); font-size: 12px;
+    padding: 1px 5px; border-radius: 3px;
+    margin-left: 6px; vertical-align: 1px;
+    white-space: nowrap;
+  }
+  .tag.pk { color: var(--accent); background: var(--accent-soft); }
+  .tag.null { color: var(--amber); background: var(--amber-soft); }
+  .tag.fk { color: var(--ok); background: var(--sunken); border: 1px solid var(--rule); }
+
+  pre {
+    margin: 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    background: var(--sunken);
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    border-top: 1px solid var(--rule);
+  }
+  pre code { color: var(--ink); }
+  .k { color: var(--accent); }
+  .s { color: var(--ok); }
+  .c { color: var(--faint); font-style: italic; }
+  code.inline {
+    font-family: var(--mono); font-size: 0.89em;
+    background: var(--sunken); padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* ---- example rows ---- */
+  .rows {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .rows > header {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunken);
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--faint); font-weight: 600;
+  }
+  .grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .grid th {
+    text-align: left;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .grid td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .grid tr:last-child td { border-bottom: none; }
+  .grid td.m { font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+  .grid td.wrap { min-width: 22ch; color: var(--muted); }
+  .grid .nul { color: var(--faint); font-style: italic; }
+  .grid .empty { color: var(--amber); font-family: var(--mono); font-size: 13.5px; }
+  .grid tbody tr.alt { background: var(--sunken); }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--amber-soft);
+    padding: 14px 16px;
+    margin-bottom: 22px;
+    font-size: 14px;
+  }
+  .callout b {
+    display: block;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--amber); margin-bottom: 7px;
+  }
+  .callout p { margin: 0 0 8px; color: var(--muted); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .rule-list { display: flex; flex-direction: column; gap: 0; }
+  .rule {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 13px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .rule:last-child { border-bottom: none; }
+  .rule .n {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); background: var(--accent-soft);
+    border-radius: 4px; height: 22px;
+    display: grid; place-items: center;
+  }
+  .rule h3 { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+  .rule p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 13px; color: var(--faint);
+  }
+
+  @media (max-width: 640px) {
+    header.mast { padding-block: 32px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="mast">
+    <p class="eyebrow">Owlet · SwiftData 本地库</p>
+    <h1>本地库设计</h1>
+    <p>一个 <code class="inline">ModelContainer</code>，三张表。生词本两张（词条 + 语境，一对多），历史一张（独立，不与前两者关联）。下面是列定义、约束与示例数据。</p>
+    <div class="mast-meta">
+      <span>SwiftData / CoreData 底层</span>
+      <span>Application Support 单库</span>
+      <span>无显式迁移版本</span>
+      <span>导出 version 1</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>表关系</h2>
+    <p class="lede">容器在 <code class="inline">VocabularyStore.makeContainer()</code> 注册：<code class="inline">ModelContainer(for: VocabularyEntry.self, VocabularyContext.self, HistoryRecord.self)</code>。历史与生词本共用容器但模型集不相干，级联删除不会互相波及。</p>
+
+    <div class="map">
+      <div class="node">
+        <h3>VocabularyEntry</h3>
+        <p>收藏的表达。一个表达一行。</p>
+        <div class="rel">1 ──&lt; contexts</div>
+      </div>
+      <div class="node">
+        <h3>VocabularyContext</h3>
+        <p>该表达被收藏时所在的句子，可多条。</p>
+        <div class="rel">&gt;── entry (inverse)</div>
+      </div>
+      <div class="node standalone">
+        <h3>HistoryRecord</h3>
+        <p>翻译 / 润色记录。可作为收藏来源。</p>
+        <div class="rel">无外键 · 独立表</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>VocabularyEntry</h2>
+    <p class="lede">收藏的表达本体。唯一键是 <code class="inline">(language, expression)</code> 复合键，<code class="inline">expression</code> 入库前已 trim——同一表达重复收藏不分叉成两行，只往 contexts 追加。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyEntry</span>
+        <span class="kind">@Model</span>
+        <span class="src">Owlet/Vocabulary/VocabularyEntry.swift:7</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="f">expression<span class="tag pk">唯一键</span></td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">表达本体。写入前 <code class="inline">trimmingCharacters(in: .whitespacesAndNewlines)</code>，空则抛 <code class="inline">VocabularyError.emptyExpression</code>。</td>
+            </tr>
+            <tr>
+              <td class="f">language<span class="tag pk">唯一键</span></td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">语言 tag，如 <code class="inline">en</code> / <code class="inline">ja</code>。与 expression 共同构成唯一键，所以同形异语（英 <code class="inline">ride</code> / 法 <code class="inline">ride</code>）各占一行。</td>
+            </tr>
+            <tr>
+              <td class="f">meaning</td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">释义。<b>空字符串表示“尚未填充”，不是 null</b>——界面与补充逻辑都按 <code class="inline">isEmpty</code> 判断。</td>
+            </tr>
+            <tr>
+              <td class="f">createdAt</td>
+              <td class="t">Date</td>
+              <td class="t">Date()</td>
+              <td class="d">列表默认 <code class="inline">.reverse</code> 排序键。不参与导出。</td>
+            </tr>
+            <tr>
+              <td class="f">contexts<span class="tag fk">一对多</span></td>
+              <td class="t">[VocabularyContext]</td>
+              <td class="t">[]</td>
+              <td class="d"><code class="inline">deleteRule: .cascade</code>，inverse 为 <code class="inline">VocabularyContext.entry</code>。删词条连同其所有语境一并删除。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code><span class="c">// 唯一性由 SwiftData 的 #Unique 宏声明，不是应用层去重</span>
+#Unique&lt;VocabularyEntry&gt;([\.language, \.expression])</code></pre>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · VocabularyEntry</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>expression</th><th>language</th><th>meaning</th><th>createdAt</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">follow up</td>
+              <td class="m">en</td>
+              <td class="wrap">跟进；后续联系。</td>
+              <td class="m">2026-10-02 09:14:22Z</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">bandwidth</td>
+              <td class="m">en</td>
+              <td class="empty">""  ← 尚未填充</td>
+              <td class="m">2026-10-02 09:31:07Z</td>
+            </tr>
+            <tr>
+              <td class="m">お疲れ様です</td>
+              <td class="m">ja</td>
+              <td class="wrap">辛苦了。日常寒暄，同事间高频使用。</td>
+              <td class="m">2026-10-03 14:02:55Z</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">把问题收敛一下</td>
+              <td class="m">zh-Hans</td>
+              <td class="wrap">narrow the problem down；收窄讨论范围。</td>
+              <td class="m">2026-10-03 16:48:10Z</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>meaning 的语言：当前实现写死简体中文</b>
+      <p>你的判断（应为目标语言）是对的产品方向，但<b>与当前代码不符</b>。现在三处 prompt 都硬编码中文：<code class="inline">ModelClient.swift:130</code>「给出简体中文释义」、<code class="inline">:190</code>「用简体中文解释含义与用法」、<code class="inline">:196</code>「meaning is Simplified Chinese」，契约 <code class="inline">spec/llm/contract.md:62</code> 也写「<code class="inline">meaning</code> 使用中文」。</p>
+      <p>所以上表第 4 行——中文母语者收藏中文表达——拿到的仍是中文释义，对英语学习者场景不成立。改为目标语言要动那三段 prompt + 契约文档；DB 列本身不用改，<code class="inline">meaning</code> 已是裸 String，不限语言。要我改就说。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>VocabularyContext</h2>
+    <p class="lede">一条表达可以在多个句子里被收藏，每次收藏存一行。润色来源额外存前后对照。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyContext</span>
+        <span class="kind">@Model</span>
+        <span class="src">Owlet/Vocabulary/VocabularyEntry.swift:28</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="f">source</td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">收藏时所在的整句。同时作为释义补充请求的上下文。</td>
+            </tr>
+            <tr>
+              <td class="f">polishBefore<span class="tag null">可空</span></td>
+              <td class="t">String?</td>
+              <td class="t">nil</td>
+              <td class="d">润色前原文。仅当来源操作为 <code class="inline">polish</code> 时写入。</td>
+            </tr>
+            <tr>
+              <td class="f">polishAfter<span class="tag null">可空</span></td>
+              <td class="t">String?</td>
+              <td class="t">nil</td>
+              <td class="d">润色后结果。与 before 成对写入，界面只在两者皆非 nil 时渲染对照。</td>
+            </tr>
+            <tr>
+              <td class="f">createdAt</td>
+              <td class="t">Date</td>
+              <td class="t">Date()</td>
+              <td class="d">不参与导出。</td>
+            </tr>
+            <tr>
+              <td class="f">entry<span class="tag fk">外键</span></td>
+              <td class="t">VocabularyEntry?</td>
+              <td class="t">nil</td>
+              <td class="d">反向引用。由 <code class="inline">@Relationship</code> 自动维护，不手工赋值。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">去重不靠唯一键，靠 <code class="inline">hasSameContent</code>：<code class="inline">source</code> / <code class="inline">polishBefore</code> / <code class="inline">polishAfter</code> 三者各自 trim 后全等即视为同一条，不追加。已有语境永不被覆盖。</p>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · VocabularyContext（entry 列为可读性而显示，实际是对象引用）</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>entry</th><th>source</th><th>polishBefore</th><th>polishAfter</th><th>createdAt</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">en/follow up</td>
+              <td class="wrap">I will follow up with the team tomorrow.</td>
+              <td class="nul">nil</td>
+              <td class="nul">nil</td>
+              <td class="m">2026-10-02 09:14:22Z</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">en/follow up</td>
+              <td class="wrap">Could you follow up on that invoice?</td>
+              <td class="nul">nil</td>
+              <td class="nul">nil</td>
+              <td class="m">2026-10-02 11:05:41Z</td>
+            </tr>
+            <tr>
+              <td class="m">en/bandwidth</td>
+              <td class="wrap">I don't have the bandwidth for this today.</td>
+              <td class="nul">nil</td>
+              <td class="nul">nil</td>
+              <td class="m">2026-10-02 09:31:07Z</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">ja/お疲れ様です</td>
+              <td class="wrap">お疲れ様です、本日はありがとうございました。</td>
+              <td class="nul">nil</td>
+              <td class="nul">nil</td>
+              <td class="m">2026-10-03 14:02:55Z</td>
+            </tr>
+            <tr>
+              <td class="m">zh-Hans/把问题收敛一下</td>
+              <td class="wrap">我们先把问题收敛一下，再讨论方案。</td>
+              <td class="wrap">我们先把问题收敛下再说方案吧</td>
+              <td class="wrap">我们先把问题收敛一下，再讨论方案。</td>
+              <td class="m">2026-10-03 16:48:10Z</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:-4px;">第 1、2 行演示一对多：同一 <code class="inline">en/follow up</code> 词条两次收藏，各存一条语境，词条本身不重复。第 5 行演示润色来源——<code class="inline">source</code> 存润色后的句子，前后对照另存两列。</p>
+  </section>
+
+  <section>
+    <h2>HistoryRecord</h2>
+    <p class="lede">翻译 / 润色历史。与生词本无外键关系，但可作为收藏来源：从历史详情收藏时 <code class="inline">expression = result</code>、<code class="inline">context = source</code>，这样历史删除后词条仍保有原句。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">HistoryRecord</span>
+        <span class="kind">@Model</span>
+        <span class="src">Owlet/History/HistoryRecord.swift:7</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="f">operation</td>
+              <td class="t">String</td>
+              <td class="t">"translate"</td>
+              <td class="d">存枚举裸值而非枚举，让记录与 <code class="inline">Operation</code> 解耦。读取经 <code class="inline">operationKind</code>，解析失败回落 <code class="inline">.translate</code>。</td>
+            </tr>
+            <tr>
+              <td class="f">source</td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">提交的原文。</td>
+            </tr>
+            <tr>
+              <td class="f">result</td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">翻译 / 润色结果。</td>
+            </tr>
+            <tr>
+              <td class="f">language</td>
+              <td class="t">String</td>
+              <td class="t">""</td>
+              <td class="d">结果语言。润色时与源语言相同。</td>
+            </tr>
+            <tr>
+              <td class="f">createdAt</td>
+              <td class="t">Date</td>
+              <td class="t">Date()</td>
+              <td class="d">列表排序键。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">无唯一约束——同一段文字可以重复翻译并各留一条记录。</p>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · HistoryRecord</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>operation</th><th>source</th><th>result</th><th>language</th><th>createdAt</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">translate</td>
+              <td class="wrap">I will follow up with the team tomorrow.</td>
+              <td class="wrap">我明天会跟团队跟进。</td>
+              <td class="m">zh-Hans</td>
+              <td class="m">2026-10-02 09:14:02Z</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">polish</td>
+              <td class="wrap">我们先把问题收敛下再说方案吧</td>
+              <td class="wrap">我们先把问题收敛一下，再讨论方案。</td>
+              <td class="m">zh-Hans</td>
+              <td class="m">2026-10-03 16:47:33Z</td>
+            </tr>
+            <tr>
+              <td class="m">translate</td>
+              <td class="wrap">お疲れ様です、本日はありがとうございました。</td>
+              <td class="wrap">辛苦了，今天非常感谢。</td>
+              <td class="m">zh-Hans</td>
+              <td class="m">2026-10-03 14:02:31Z</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>写入规则</h2>
+    <p class="lede">约束不全在 schema 里，一部分由 <code class="inline">VocabularyStore</code> 在写入路径上执行。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">collect / update / delete</span>
+        <span class="kind">store</span>
+        <span class="src">Owlet/Vocabulary/VocabularyStore.swift:20</span>
+      </header>
+      <div style="padding: 4px 18px 16px;">
+        <div class="rule-list">
+          <div class="rule">
+            <span class="n">1</span>
+            <div>
+              <h3>expression 入库前 trim，空则拒绝</h3>
+              <p>抛 <code class="inline">VocabularyError.emptyExpression</code>。唯一键比的是 trim 后的值，所以 <code class="inline">" follow up "</code> 与 <code class="inline">"follow up"</code> 是同一条。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">2</span>
+            <div>
+              <h3>命中既有词条则复用，只追加语境</h3>
+              <p>先按 <code class="inline">(language, expression)</code> 查；命中且新语境 <code class="inline">hasSameContent</code> 不重复才 append。既有 <code class="inline">meaning</code> 不被覆盖。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">3</span>
+            <div>
+              <h3>meaning 后填，失败不回滚已存内容</h3>
+              <p>收藏先落库，释义异步补。请求失败只落在 UI 状态，词条与语境已经存在，可在生词本里重试。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">4</span>
+            <div>
+              <h3>改名撞唯一键则拒绝</h3>
+              <p><code class="inline">update</code> 里同语言下已存在同名表达时报错，不做合并——身份始终是 (language, trimmed expression)。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">5</span>
+            <div>
+              <h3>删词条级联删语境</h3>
+              <p><code class="inline">deleteRule: .cascade</code>。反过来不成立：删语境不影响词条，词条可以 0 语境存在。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>导出格式</h2>
+    <p class="lede">只读 store，不改库。<code class="inline">createdAt</code> 与对象引用都不导出，<code class="inline">version</code> 让后续版本能认出文件形状。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyExportDocument</span>
+        <span class="kind">codable</span>
+        <span class="src">Owlet/Vocabulary/VocabularyExport.swift:8</span>
+      </header>
+      <pre><code>{
+  <span class="s">"version"</span>: <span class="k">1</span>,
+  <span class="s">"entries"</span>: [
+    {
+      <span class="s">"expression"</span>: <span class="s">"follow up"</span>,
+      <span class="s">"language"</span>: <span class="s">"en"</span>,
+      <span class="s">"meaning"</span>: <span class="s">"跟进；后续联系。"</span>,
+      <span class="s">"contexts"</span>: [
+        { <span class="s">"source"</span>: <span class="s">"I will follow up with the team tomorrow."</span> },
+        { <span class="s">"source"</span>: <span class="s">"Could you follow up on that invoice?"</span> }
+      ]
+    },
+    {
+      <span class="s">"expression"</span>: <span class="s">"bandwidth"</span>,
+      <span class="s">"language"</span>: <span class="s">"en"</span>,
+      <span class="s">"meaning"</span>: <span class="s">""</span>,              <span class="c">// 未填充也照样导出</span>
+      <span class="s">"contexts"</span>: [
+        { <span class="s">"source"</span>: <span class="s">"I don't have the bandwidth for this today."</span> }
+      ]
+    },
+    {
+      <span class="s">"expression"</span>: <span class="s">"把问题收敛一下"</span>,
+      <span class="s">"language"</span>: <span class="s">"zh-Hans"</span>,
+      <span class="s">"meaning"</span>: <span class="s">"narrow the problem down；收窄讨论范围。"</span>,
+      <span class="s">"contexts"</span>: [
+        {
+          <span class="s">"source"</span>: <span class="s">"我们先把问题收敛一下，再讨论方案。"</span>,
+          <span class="s">"polishBefore"</span>: <span class="s">"我们先把问题收敛下再说方案吧"</span>,
+          <span class="s">"polishAfter"</span>: <span class="s">"我们先把问题收敛一下，再讨论方案。"</span>
+        }
+      ]
+    }
+  ]
+}</code></pre>
+      <p class="note">编码为 <code class="inline">.prettyPrinted</code> + <code class="inline">.sortedKeys</code> + <code class="inline">.withoutEscapingSlashes</code> 的 UTF-8——中日文保持字面可读。<code class="inline">polishBefore</code> / <code class="inline">polishAfter</code> 为 nil 时整个键省略。<code class="inline">HistoryRecord</code> 不在导出范围内。</p>
+    </article>
+  </section>
+
+  <footer>
+    Owlet · Owlet/Vocabulary/VocabularyEntry.swift · VocabularyStore.swift · VocabularyExport.swift · Owlet/History/HistoryRecord.swift · main @ a9fd22e
+  </footer>
+
+</div>
+</body>
+</html>

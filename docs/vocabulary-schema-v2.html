@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>生词本库重新设计</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --paper: #faf8f5;
+    --surface: #ffffff;
+    --sunken: #f2eee8;
+    --ink: #1b1d22;
+    --muted: #6b7280;
+    --faint: #767d89;
+    --rule: #e2ddd4;
+    --accent: #3d5a8a;
+    --accent-soft: #e8edf6;
+    --amber: #9a6b2f;
+    --amber-soft: #f6eddf;
+    --ok: #3f6b4e;
+    --ok-soft: #e7efe9;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --display: "Fraunces", Georgia, "Songti SC", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15171b; --surface: #1c1f24; --sunken: #222630;
+      --ink: #e8e6e1; --muted: #9ba3b0; --faint: #949caa; --rule: #2d323b;
+      --accent: #8fabd8; --accent-soft: #232c3b;
+      --amber: #ceab74; --amber-soft: #2d2820;
+      --ok: #85b394; --ok-soft: #1f2a23;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15171b; --surface: #1c1f24; --sunken: #222630;
+    --ink: #e8e6e1; --muted: #9ba3b0; --faint: #949caa; --rule: #2d323b;
+    --accent: #8fabd8; --accent-soft: #232c3b;
+    --amber: #ceab74; --amber-soft: #2d2820;
+    --ok: #85b394; --ok-soft: #1f2a23;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  img { max-width: 100%; }
+
+  .shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-inline: 24px;
+    padding-block: 0 88px;
+  }
+
+  header.mast { padding-block: 56px 32px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  header.mast h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  header.mast p { margin: 0; max-width: 64ch; color: var(--muted); }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 10px;
+    margin-top: 22px;
+    font-family: var(--mono); font-size: 13px; color: var(--faint);
+  }
+  .mast-meta span { background: var(--sunken); padding: 3px 9px; border-radius: 3px; }
+
+  section { padding-top: 52px; }
+  section > h2 {
+    font-family: var(--display);
+    font-weight: 600; font-size: 24px;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+  }
+  section > .lede { margin: 0 0 26px; color: var(--muted); max-width: 68ch; }
+
+  .decisions {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    margin-bottom: 28px;
+  }
+  .dec {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 14px 15px;
+  }
+  .dec h3 { margin: 0 0 5px; font-size: 14px; font-weight: 600; }
+  .dec p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .dec .yours {
+    display: inline-block;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ok); background: var(--ok-soft);
+    padding: 1px 7px; border-radius: 3px;
+    margin-bottom: 8px;
+  }
+
+  .map {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 26px;
+  }
+  .node {
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--sunken);
+    padding: 13px 14px;
+  }
+  .node.new { background: var(--accent-soft); border-color: var(--accent); }
+  .node h3 { margin: 0 0 4px; font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
+  .node p { margin: 0; font-size: 14px; color: var(--muted); }
+  .node .rel { margin-top: 9px; font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+  .node.standalone .rel { color: var(--faint); }
+
+  .tbl {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .tbl > header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunken);
+  }
+  .tbl > header .name { font-family: var(--mono); font-weight: 600; font-size: 14.5px; }
+  .tbl > header .kind {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .tbl > header .kind.add { color: var(--ok); background: var(--ok-soft); }
+  .tbl > header .src { font-family: var(--mono); font-size: 13px; color: var(--faint); margin-left: auto; }
+  .tbl > .note {
+    padding: 13px 18px; margin: 0;
+    color: var(--muted); font-size: 13.5px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tbl > .note:last-child { border-bottom: none; }
+
+  .cols { width: 100%; border-collapse: collapse; }
+  .cols th {
+    text-align: left;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .cols td {
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-size: 14px;
+  }
+  .cols tr:last-child td { border-bottom: none; }
+  .cols td.f { font-family: var(--mono); font-weight: 500; white-space: nowrap; }
+  .cols td.t { font-family: var(--mono); font-size: 13px; color: var(--accent); white-space: nowrap; }
+  .cols td.d { color: var(--muted); }
+  .cols tr.added td.f::before { content: "+"; color: var(--ok); font-weight: 600; margin-right: 5px; }
+  .table-scroll { overflow-x: auto; }
+
+  .tag {
+    font-family: var(--mono); font-size: 12px;
+    padding: 1px 5px; border-radius: 3px;
+    margin-left: 6px; white-space: nowrap;
+  }
+  .tag.pk { color: var(--accent); background: var(--accent-soft); }
+  .tag.null { color: var(--amber); background: var(--amber-soft); }
+  .tag.fk { color: var(--ok); background: var(--ok-soft); }
+
+  pre {
+    margin: 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    background: var(--sunken);
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    border-top: 1px solid var(--rule);
+  }
+  pre code { color: var(--ink); }
+  .k { color: var(--accent); }
+  .s { color: var(--ok); }
+  .c { color: var(--faint); font-style: italic; }
+  code.inline {
+    font-family: var(--mono); font-size: 0.89em;
+    background: var(--sunken); padding: 1px 5px; border-radius: 3px;
+  }
+
+  .rows {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .rows > header {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunken);
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--muted); font-weight: 600;
+  }
+  .grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .grid th {
+    text-align: left;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  .grid td { padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .grid tr:last-child td { border-bottom: none; }
+  .grid td.m { font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
+  .grid td.wrap { min-width: 20ch; color: var(--muted); }
+  .grid .nul { color: var(--faint); font-style: italic; }
+  .grid .empty { color: var(--amber); font-family: var(--mono); font-size: 13.5px; }
+  .grid tbody tr.alt { background: var(--sunken); }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--amber-soft);
+    padding: 14px 16px;
+    margin-bottom: 22px;
+    font-size: 14px;
+  }
+  .callout.calm { background: var(--sunken); }
+  .callout b { display: block; font-family: var(--mono); font-size: 12px; color: var(--amber); margin-bottom: 7px; }
+  .callout.calm b { color: var(--accent); }
+  .callout p { margin: 0 0 8px; color: var(--muted); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .rule-list { display: flex; flex-direction: column; gap: 0; }
+  .rule {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 13px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .rule:last-child { border-bottom: none; }
+  .rule .n {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); background: var(--accent-soft);
+    border-radius: 4px; height: 22px;
+    display: grid; place-items: center;
+  }
+  .rule h3 { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+  .rule p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  .stage {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    margin-bottom: 22px;
+  }
+  .st {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 14px 15px;
+  }
+  .st .when {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted); background: var(--sunken);
+    padding: 1px 7px; border-radius: 3px;
+    display: inline-block; margin-bottom: 8px;
+  }
+  .st h3 { margin: 0 0 5px; font-size: 14px; font-weight: 600; }
+  .st p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 13px; color: var(--faint);
+  }
+
+  @media (max-width: 640px) {
+    header.mast { padding-block: 32px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="mast">
+    <p class="eyebrow">Owlet · SwiftData · schema v2 提案</p>
+    <h1>生词本库重新设计</h1>
+    <p>为长期收藏与后续扩展重做的 schema。保留现有唯一键与级联语义，把「一个表达」拆成身份、释义、遇见三层，让音标、词性这类字段各就各位，而不是往 <code class="inline">VocabularyEntry</code> 上不断糊新列。现状文档见 <code class="inline">docs/data-shapes.html</code>。</p>
+    <div class="mast-meta">
+      <span>混合扩展策略</span>
+      <span>单条释义，留 sense 扩展位</span>
+      <span>历史表不动</span>
+      <span>一次数据迁移，其余全是加列</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>三个设计决定</h2>
+    <p class="lede">按你的选择定下来，后面整个 schema 都从这三条推出来。</p>
+
+    <div class="decisions">
+      <div class="dec">
+        <span class="yours">你的选择</span>
+        <h3>混合扩展</h3>
+        <p>音标、词性、词频这类高频字段给独立列——可查询、可排序、类型安全。长尾字段（词源、变位表）丢进一个 JSON 列。</p>
+      </div>
+      <div class="dec">
+        <span class="yours">你的选择</span>
+        <h3>先单条释义，留扩展位</h3>
+        <p>现在仍是一条释义。但释义相关的列全部搬到独立的 <code class="inline">VocabularySense</code> 表，一条表达恰好挂一条 sense——以后要多义项，多插一行即可，不迁移已有数据。</p>
+      </div>
+      <div class="dec">
+        <span class="yours">你的澄清</span>
+        <h3>学习本 = 历史记录</h3>
+        <p>不新建「学习本」模型。<code class="inline">HistoryRecord</code> 保持原样，只补一个计数列，让「这次翻译贡献了几个生词」可见。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>字段命名</h2>
+    <p class="lede">改名原则：名字说清<b>是什么</b>而不是<b>从哪来</b>；Bool 带 <code class="inline">is</code> 前缀；同一个概念在三张表里用同一个词；避免与 <code class="inline">HistoryRecord</code> 已有列撞义。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">改名对照</span>
+        <span class="kind">rename</span>
+        <span class="src">现有列 / 本文初稿 → 定稿</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>表</th><th>原名</th><th>定稿</th><th>为什么</th></tr></thead>
+          <tbody>
+            <tr><td class="t">Entry</td><td class="f">meaning</td><td class="f">→ Sense.definition</td><td class="d">搬表。<code class="inline">meaning</code> 太泛，<code class="inline">definition</code> 是词典行话，一眼知道是释义正文。</td></tr>
+            <tr><td class="t">Entry</td><td class="f">lemma</td><td class="f">baseForm</td><td class="d"><code class="inline">lemma</code> 是语言学术语，非专业读者要查。<code class="inline">baseForm</code> 自解释。</td></tr>
+            <tr><td class="t">Entry / Sense</td><td class="f">phonetic</td><td class="f">pronunciation</td><td class="d"><code class="inline">phonetic</code> 是形容词，当名词用别扭。且假名、拼音不是「音标」，<code class="inline">pronunciation</code> 才涵盖全部体系。</td></tr>
+            <tr><td class="t">Entry</td><td class="f">phoneticSystem</td><td class="f">pronunciationScheme</td><td class="d">跟上一条配套。<code class="inline">scheme</code> 比 <code class="inline">system</code> 更贴「注音方案」。</td></tr>
+            <tr><td class="t">Entry</td><td class="f">starred</td><td class="f">isStarred</td><td class="d">Swift 惯例：Bool 用 <code class="inline">is</code> / <code class="inline">has</code> 前缀，调用点 <code class="inline">entry.isStarred</code> 读起来是句子。</td></tr>
+            <tr><td class="t">Entry</td><td class="f">extra</td><td class="f">attributes</td><td class="d"><code class="inline">extra</code> 是「杂物」，暗示可以随便塞。<code class="inline">attributes</code> 说明这是有结构的属性包。</td></tr>
+            <tr><td class="t">Sense</td><td class="f">definitionLanguage</td><td class="f">definitionLocale</td><td class="d">存的是 <code class="inline">zh-Hans</code> 这种带脚本的 locale tag，不只是语言。与 Entry.language 区分开——那个才是表达本身的语言。</td></tr>
+            <tr><td class="t">Sense</td><td class="f">examples</td><td class="f">exampleSentences</td><td class="d">单独一个 <code class="inline">examples</code> 不知道是例句还是例子用法。</td></tr>
+            <tr><td class="t">Sense</td><td class="f">note</td><td class="f">userNote</td><td class="d">前缀 <code class="inline">user</code> 直接编码了写入规则：只有用户能改，自动流程不碰。</td></tr>
+            <tr><td class="t">Sense</td><td class="f">order</td><td class="f">rank</td><td class="d"><code class="inline">order</code> 在 SQL 里是保留字，在 Swift 里与 <code class="inline">SortOrder</code> 撞。<code class="inline">rank</code> 干净。</td></tr>
+            <tr><td class="t">Context</td><td class="f">source</td><td class="f">sentence</td><td class="d"><code class="inline">HistoryRecord.source</code> 是「原文」，这里是「遇见的句子」，同名不同义是读代码时的坑。</td></tr>
+            <tr><td class="t">Context</td><td class="f">polishBefore / polishAfter</td><td class="f">originalText / polishedText</td><td class="d">名词对名词，不再是「润色之前」这种时间状语当字段名。</td></tr>
+            <tr><td class="t">Context</td><td class="f">origin</td><td class="f">capturedFrom</td><td class="d"><code class="inline">origin</code> 与 <code class="inline">originalText</code> 前缀撞车。<code class="inline">capturedFrom</code> 与下面一条共用动词，成对。</td></tr>
+            <tr><td class="t">Context</td><td class="f">sourceApp</td><td class="f">capturedAppID</td><td class="d">又一个 <code class="inline">source</code>。<code class="inline">ID</code> 后缀说明存的是 bundle id 不是显示名。</td></tr>
+            <tr><td class="t">History</td><td class="f">collectedCount</td><td class="f">collectedEntryCount</td><td class="d">数的是什么要说清——是收藏的词条数，不是收藏动作次数。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">没改的：<code class="inline">expression</code>、<code class="inline">language</code>、<code class="inline">tags</code>、<code class="inline">definition</code>、<code class="inline">partOfSpeech</code>、<code class="inline">createdAt</code> / <code class="inline">updatedAt</code>、<code class="inline">senses</code> / <code class="inline">contexts</code>、<code class="inline">entry</code>。这些已经是最短的准确名字。</p>
+    </article>
+  </section>
+
+  <section>
+    <h2>表关系</h2>
+    <p class="lede">三层：<b>Entry</b> 是身份（什么词、哪种语言），<b>Sense</b> 是释义（什么意思、什么词性），<b>Context</b> 是遇见（在哪句话里见过）。音标挂 Entry——同一个词不同义项通常共享读音；<code class="inline">record</code> 这种名动读音不同的，由 Sense 自己的 <code class="inline">pronunciation</code> 覆盖。</p>
+
+    <div class="map">
+      <div class="node">
+        <h3>VocabularyEntry</h3>
+        <p>表达身份。唯一键 (language, expression)。读音、tags、isStarred 在这层。</p>
+        <div class="rel">1 ──&lt; senses<br>1 ──&lt; contexts</div>
+      </div>
+      <div class="node new">
+        <h3>VocabularySense</h3>
+        <p>新表。一个义项：释义、词性、例句、笔记。现在每条 Entry 恰好一条。</p>
+        <div class="rel">&gt;── entry</div>
+      </div>
+      <div class="node">
+        <h3>VocabularyContext</h3>
+        <p>遇见记录。句子 + 润色对照 + 捕获出处。</p>
+        <div class="rel">&gt;── entry</div>
+      </div>
+      <div class="node standalone">
+        <h3>HistoryRecord</h3>
+        <p>翻译 / 润色历史。结构不变。</p>
+        <div class="rel">无外键 · 独立表</div>
+      </div>
+    </div>
+
+    <div class="callout calm">
+      <b>为什么把 sense 拆出来，而不是先留几个空列</b>
+      <p>如果把 <code class="inline">definition</code>、<code class="inline">partOfSpeech</code> 直接放 Entry 上，以后要支持多义项就得：建 Sense 表、写迁移把每行那几列搬过去、改所有读取点。拆在前面，这笔迁移永远不用做，代价只是今天多一张表和一次 <code class="inline">senses.first</code>。</p>
+      <p>这是「先单条，留扩展位」的唯一诚实实现：扩展位不是预留空列，是预留<b>基数</b>。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>VocabularyEntry</h2>
+    <p class="lede">只管身份与整词级属性。唯一键、trim 规则、级联语义与现版本一致，已有数据无需转换。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyEntry</span>
+        <span class="kind">@Model</span>
+        <span class="src">改自 VocabularyEntry.swift:7</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="f">expression<span class="tag pk">唯一键</span></td>
+              <td class="t">String</td><td class="t">""</td>
+              <td class="d">表达本体，写入前 trim。不变。</td>
+            </tr>
+            <tr>
+              <td class="f">language<span class="tag pk">唯一键</span></td>
+              <td class="t">String</td><td class="t">""</td>
+              <td class="d">语言 tag。不变。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">baseForm<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">词典原形。收藏 <code class="inline">running</code> 时存 <code class="inline">run</code>，让变形与原形能聚到一起查。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">pronunciation<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">读音，不带斜杠（<code class="inline">ˈbændwɪdθ</code>）。整词级读音。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">pronunciationScheme<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">注音体系：<code class="inline">ipa</code> / <code class="inline">pinyin</code> / <code class="inline">kana</code> / <code class="inline">romaji</code>。没有它，假名、罗马字、拼音无法区分渲染。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">tags</td>
+              <td class="t">[String]</td><td class="t">[]</td>
+              <td class="d">自由标签（<code class="inline">工作</code>、<code class="inline">商务邮件</code>）。SwiftData 原生支持 <code class="inline">[String]</code>，无需连接表。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">isStarred</td>
+              <td class="t">Bool</td><td class="t">false</td>
+              <td class="d">重点标记。一个 Bool 比一个叫「重点」的 tag 更好查、更好排序。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">attributes<span class="tag null">可空</span></td>
+              <td class="t">Data?</td><td class="t">nil</td>
+              <td class="d">长尾字段的 JSON blob。<b>不可查询</b>——只放展示用信息，需要筛选或排序的必须升格成独立列。</td>
+            </tr>
+            <tr>
+              <td class="f">createdAt</td>
+              <td class="t">Date</td><td class="t">Date()</td>
+              <td class="d">不变。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">updatedAt</td>
+              <td class="t">Date</td><td class="t">Date()</td>
+              <td class="d">任何字段改动时刷新。以后做同步或「最近编辑」排序要用。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">senses<span class="tag fk">一对多</span></td>
+              <td class="t">[VocabularySense]</td><td class="t">[]</td>
+              <td class="d"><code class="inline">.cascade</code>。当前恒为 1 条。</td>
+            </tr>
+            <tr>
+              <td class="f">contexts<span class="tag fk">一对多</span></td>
+              <td class="t">[VocabularyContext]</td><td class="t">[]</td>
+              <td class="d"><code class="inline">.cascade</code>。不变。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><code><span class="c">// 唯一键不变，已有行无需转换</span>
+#Unique&lt;VocabularyEntry&gt;([\.language, \.expression])
+
+<span class="c">// 当前恒为单义项，调用点不必关心基数</span>
+<span class="k">var</span> primarySense: VocabularySense? { senses.min(by: { $0.rank &lt; $1.rank }) }
+<span class="k">var</span> definition: <span class="k">String</span> { primarySense?.definition ?? <span class="s">""</span> }</code></pre>
+      <p class="userNote"><code class="inline">meaning</code> 列移除，由 <code class="inline">definition</code> 计算属性代理到 sense。界面与导出本来就只读一个字符串，改动面很小。</p>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · VocabularyEntry</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>expression</th><th>language</th><th>pronunciation</th><th>scheme</th><th>tags</th><th>isStarred</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">follow up</td><td class="m">en</td>
+              <td class="m">ˈfɒləʊ ʌp</td><td class="m">ipa</td>
+              <td class="wrap">["工作", "邮件"]</td><td class="m">true</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">bandwidth</td><td class="m">en</td>
+              <td class="m">ˈbændwɪdθ</td><td class="m">ipa</td>
+              <td class="wrap">["口语"]</td><td class="m">false</td>
+            </tr>
+            <tr>
+              <td class="m">お疲れ様です</td><td class="m">ja</td>
+              <td class="m">おつかれさまです</td><td class="m">kana</td>
+              <td class="wrap">["寒暄", "职场"]</td><td class="m">false</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">収斂</td><td class="m">ja</td>
+              <td class="m">しゅうれん</td><td class="m">kana</td>
+              <td class="wrap">["书面语"]</td><td class="m">false</td>
+            </tr>
+            <tr>
+              <td class="m">把问题收敛一下</td><td class="m">zh-Hans</td>
+              <td class="nul">nil</td><td class="nul">nil</td>
+              <td class="wrap">["会议"]</td><td class="m">false</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:-4px;"><code class="inline">pronunciationScheme</code> 的价值在第 3、4 行对第 1、2 行：同一列里既有 IPA 又有假名，不标体系没法正确渲染或朗读。第 5 行整句无音标——这正是它可空的原因。</p>
+  </section>
+
+  <section>
+    <h2>VocabularySense</h2>
+    <p class="lede">新表，承载一切「意思」层面的信息。现在每条 Entry 恰好一条；以后 <code class="inline">bank</code> 要拆成「银行 / 河岸」，只是多插一行。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularySense</span>
+        <span class="kind add">@Model · 新增</span>
+        <span class="src">新文件 Owlet/Vocabulary/VocabularySense.swift</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr class="added">
+              <td class="f">definition</td>
+              <td class="t">String</td><td class="t">""</td>
+              <td class="d">释义正文。<code class="inline">""</code> 仍表示「尚未填充」，与现有补充逻辑语义一致。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">definitionLocale</td>
+              <td class="t">String</td><td class="t">"zh-Hans"</td>
+              <td class="d">释义用什么语言写的。<b>当前实现恒为中文</b>，见下方说明。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">partOfSpeech<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">词性：<code class="inline">noun</code> / <code class="inline">verb</code> / <code class="inline">phrase</code>…… 整句收藏时为 nil。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">pronunciation<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">义项级读音，覆盖 Entry 的值。只为 <code class="inline">record</code>（名 ˈrekɔːd / 动 rɪˈkɔːd）这类词存在，绝大多数行是 nil。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">exampleSentences</td>
+              <td class="t">[String]</td><td class="t">[]</td>
+              <td class="d">例句。与 Context 的区别：例句是教学材料（可生成），Context 是真实遇见记录（不可编造）。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">userNote<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">你手写的笔记。与 LLM 生成的 <code class="inline">definition</code> 分开存，重新生成释义时不会被覆盖。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">rank</td>
+              <td class="t">Int</td><td class="t">0</td>
+              <td class="d">义项排序。单义项时恒为 0；多义项后决定哪个是主义项。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">entry<span class="tag fk">外键</span></td>
+              <td class="t">VocabularyEntry?</td><td class="t">nil</td>
+              <td class="d">反向引用，由 <code class="inline">@Relationship</code> 维护。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="userNote"><code class="inline">userNote</code> 与 <code class="inline">definition</code> 分列是关键：释义可随时重新生成，笔记是你的劳动成果，绝不能被一次「重新补充释义」抹掉。</p>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · VocabularySense（entry 列为可读性而显示，实际是对象引用）</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>entry</th><th>definition</th><th>locale</th><th>pos</th><th>userNote</th><th>rank</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">en/follow up</td>
+              <td class="wrap">跟进；后续联系。</td>
+              <td class="m">zh-Hans</td><td class="m">phrase</td>
+              <td class="wrap">比 chase 礼貌，适合对客户用</td><td class="m">0</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">en/bandwidth</td>
+              <td class="empty">""  ← 尚未填充</td>
+              <td class="m">zh-Hans</td><td class="nul">nil</td>
+              <td class="nul">nil</td><td class="m">0</td>
+            </tr>
+            <tr>
+              <td class="m">ja/お疲れ様です</td>
+              <td class="wrap">辛苦了。日常寒暄，同事间高频使用。</td>
+              <td class="m">zh-Hans</td><td class="m">phrase</td>
+              <td class="nul">nil</td><td class="m">0</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">ja/収斂</td>
+              <td class="wrap">收敛；聚拢到一点。</td>
+              <td class="m">zh-Hans</td><td class="m">noun</td>
+              <td class="nul">nil</td><td class="m">0</td>
+            </tr>
+            <tr>
+              <td class="m">zh-Hans/把问题收敛一下</td>
+              <td class="wrap">narrow the problem down；收窄讨论范围。</td>
+              <td class="m">zh-Hans</td><td class="m">phrase</td>
+              <td class="nul">nil</td><td class="m">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>definitionLocale 现在是摆设，但值得现在就加</b>
+      <p>当前三处 prompt 写死中文：<code class="inline">ModelClient.swift:130 / :190 / :196</code>，契约 <code class="inline">spec/llm/contract.md:62</code> 同。所以这一列现在每行都是 <code class="inline">zh-Hans</code>。</p>
+      <p>加它的理由是上表最后一行：中文母语者收藏中文表达，拿到的「释义」只能夹着英文——因为模型被要求用中文解释中文。等 prompt 改成「用用户母语解释」，这一列立刻有意义，而且老数据标着 <code class="inline">zh-Hans</code> 仍然正确，不需要回填。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>VocabularyContext</h2>
+    <p class="lede">遇见记录。沿用现有去重语义，补上出处与来源追溯。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyContext</span>
+        <span class="kind">@Model</span>
+        <span class="src">改自 VocabularyEntry.swift:28</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td class="f">sentence</td><td class="t">String</td><td class="t">""</td><td class="d">遇见时的整句。原 <code class="inline">source</code>，改名避免与 HistoryRecord.source 撞义。</td></tr>
+            <tr><td class="f">originalText<span class="tag null">可空</span></td><td class="t">String?</td><td class="t">nil</td><td class="d">润色前。原 <code class="inline">polishBefore</code>。</td></tr>
+            <tr><td class="f">polishedText<span class="tag null">可空</span></td><td class="t">String?</td><td class="t">nil</td><td class="d">润色后。原 <code class="inline">polishAfter</code>。</td></tr>
+            <tr class="added">
+              <td class="f">capturedFrom</td>
+              <td class="t">String</td><td class="t">"selection"</td>
+              <td class="d">来源类型：<code class="inline">selection</code>（划选）/ <code class="inline">learning</code>（学习区推荐）/ <code class="inline">history</code>（历史详情）。回答「我的词从哪来」。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">capturedAppID<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">原文所在 App 的 bundle id，随翻译→历史→学习→收藏链路传递（BDR-0007）；手动输入为 nil。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">historyID<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">来源历史记录的 id 字符串。<b>弱引用</b>：历史删除后悬空，语境文本与来源信息已独立存下不受影响；历史详情按此列反查「收藏了哪些词」。</td>
+            </tr>
+            <tr><td class="f">createdAt</td><td class="t">Date</td><td class="t">Date()</td><td class="d">不变。</td></tr>
+            <tr><td class="f">entry<span class="tag fk">外键</span></td><td class="t">VocabularyEntry?</td><td class="t">nil</td><td class="d">不变。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="userNote">去重仍按 <code class="inline">hasSameContent</code>（sentence / originalText / polishedText 三者 trim 后全等）。新增的 capturedFrom、capturedAppID、historyID <b>不参与</b>去重——同一句话从两个入口收藏两次，仍然只存一条。</p>
+    </article>
+
+    <div class="rows">
+      <header>示例数据 · VocabularyContext</header>
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr><th>entry</th><th>sentence</th><th>capturedFrom</th><th>capturedAppID</th><th>historyID</th><th>polish 前 / 后</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="m">en/follow up</td>
+              <td class="wrap">I will follow up with the team tomorrow.</td>
+              <td class="m">selection</td><td class="m">com.apple.mail</td><td class="m">H-1042</td>
+              <td class="nul">nil / nil</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">en/follow up</td>
+              <td class="wrap">Could you follow up on that invoice?</td>
+              <td class="m">learning</td><td class="m">com.apple.mail</td><td class="m">H-1042</td>
+              <td class="nul">nil / nil</td>
+            </tr>
+            <tr>
+              <td class="m">en/bandwidth</td>
+              <td class="wrap">I don't have the bandwidth for this today.</td>
+              <td class="m">selection</td><td class="m">com.tinyspeck.slackmacgap</td><td class="m">H-1051</td>
+              <td class="nul">nil / nil</td>
+            </tr>
+            <tr class="alt">
+              <td class="m">ja/収斂</td>
+              <td class="wrap">議論を収斂させましょう。</td>
+              <td class="m">history</td><td class="m">com.tinyspeck.slackmacgap</td><td class="m">H-0988</td>
+              <td class="nul">nil / nil</td>
+            </tr>
+            <tr>
+              <td class="m">zh-Hans/把问题收敛一下</td>
+              <td class="wrap">我们先把问题收敛一下，再讨论方案。</td>
+              <td class="m">selection</td><td class="m">com.hnc.Discord</td><td class="m">H-1077</td>
+              <td class="wrap">我们先把问题收敛下再说方案吧 / 我们先把问题收敛一下，再讨论方案。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:-4px;">第 1、2 行同一词条两条语境，一对多保持不变；第 2 行从学习区收藏，来源 App 随链路传递仍是 Mail。<code class="inline">historyID</code> 是历史详情反查「收藏了哪些词」的键，弱引用。</p>
+  </section>
+
+  <section>
+    <h2>HistoryRecord</h2>
+    <p class="lede">按你的澄清，这就是「学习本」。结构不变，只补一列让收藏成果可见。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">HistoryRecord</span>
+        <span class="kind">@Model</span>
+        <span class="src">Owlet/History/HistoryRecord.swift:7</span>
+      </header>
+      <div class="table-scroll">
+        <table class="cols">
+          <thead><tr><th>列</th><th>类型</th><th>默认</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td class="f">operation</td><td class="t">String</td><td class="t">"translate"</td><td class="d">不变。</td></tr>
+            <tr><td class="f">source</td><td class="t">String</td><td class="t">""</td><td class="d">不变。</td></tr>
+            <tr><td class="f">result</td><td class="t">String</td><td class="t">""</td><td class="d">不变。</td></tr>
+            <tr><td class="f">language</td><td class="t">String</td><td class="t">""</td><td class="d">不变。</td></tr>
+            <tr><td class="f">createdAt</td><td class="t">Date</td><td class="t">Date()</td><td class="d">不变。</td></tr>
+            <tr class="added">
+              <td class="f">capturedAppID<span class="tag null">可空</span></td>
+              <td class="t">String?</td><td class="t">nil</td>
+              <td class="d">原文所在 App 的 bundle id；手动输入为 nil。列表显示与筛选用，并在收藏时传给语境。</td>
+            </tr>
+            <tr class="added">
+              <td class="f">collectedEntryCount</td>
+              <td class="t">Int</td><td class="t">0</td>
+              <td class="d">从这条记录收藏过几个表达。冗余计数，换历史列表直接显示「已收藏 2 个」而无需反查。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="userNote">不加指向 Entry 的真实关系：历史可被整体清空（<code class="inline">deleteAll</code>），而生词本必须活下来。两个模型集互不级联是现有设计的正确之处，不动它。</p>
+    </article>
+  </section>
+
+  <section>
+    <h2>扩展策略</h2>
+    <p class="lede">「以后加字段」具体怎么加——按这个顺序判断，避免 attributes 变成垃圾桶。</p>
+
+    <div class="stage">
+      <div class="st">
+        <span class="when">需要筛选 / 排序 / 唯一性</span>
+        <h3>升格成独立列</h3>
+        <p>词频、难度等级、下次复习时间。加一个可空列，SwiftData 对新增可空列是自动迁移。</p>
+      </div>
+      <div class="st">
+        <span class="when">只展示，不查询</span>
+        <h3>放 attributes JSON</h3>
+        <p>词源、同义词列表、变位表。用 Codable struct 编解码，不要裸 Dictionary。</p>
+      </div>
+      <div class="st">
+        <span class="when">一条表达有多个</span>
+        <h3>挂到 Sense 或建子表</h3>
+        <p>多义项已由 Sense 承接。复习记录这种「一对多且持续增长」的，建独立表，不要塞数组列。</p>
+      </div>
+    </div>
+
+    <pre><code><span class="c">// attributes 的类型安全用法：永远经 Codable，不裸 Dictionary</span>
+<span class="k">struct</span> EntryAttributes: Codable {
+    <span class="k">var</span> etymology: <span class="k">String</span>?
+    <span class="k">var</span> synonyms: [<span class="k">String</span>]?
+    <span class="k">var</span> inflections: [<span class="k">String</span>: <span class="k">String</span>]?
+}
+
+<span class="k">extension</span> VocabularyEntry {
+    <span class="k">var</span> decodedAttributes: EntryAttributes {
+        <span class="k">get</span> { attributes.flatMap { <span class="k">try</span>? JSONDecoder().decode(EntryAttributes.self, from: $0) } ?? EntryAttributes() }
+        <span class="k">set</span> { attributes = <span class="k">try</span>? JSONEncoder().encode(newValue) }
+    }
+}</code></pre>
+
+    <div class="callout">
+      <b>attributes 的使用纪律</b>
+      <p>一旦 attributes 里某个字段需要「找出所有 X 的词」，它就必须升格成独立列。JSON blob 在 SwiftData 里无法建谓词查询——写进去容易，查出来要全表扫描后在内存里过滤。</p>
+      <p>判断标准只有一条：<b>这个字段会出现在筛选器、排序键或统计里吗？</b>会 → 独立列。不会 → attributes。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>写入规则</h2>
+    <p class="lede">约束仍由 <code class="inline">VocabularyStore</code> 在写入路径执行，新增的标出来了。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">collect / update / delete</span>
+        <span class="kind">store</span>
+        <span class="src">改自 VocabularyStore.swift:20</span>
+      </header>
+      <div style="padding: 4px 18px 16px;">
+        <div class="rule-list">
+          <div class="rule">
+            <span class="n">1</span>
+            <div>
+              <h3>expression 入库前 trim，空则拒绝</h3>
+              <p>不变。唯一键比的是 trim 后的值。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">2</span>
+            <div>
+              <h3>新建 Entry 时同步建一条空 Sense</h3>
+              <p>新增。保证 <code class="inline">senses</code> 永不为空，调用点无需处理「有词条但没义项」这个不该存在的状态。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">3</span>
+            <div>
+              <h3>命中既有词条则复用，只追加语境</h3>
+              <p>不变。既有 definition 不被覆盖；新增字段（pronunciation、tags）为空时才填充，非空时保留用户已有的值。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">4</span>
+            <div>
+              <h3>definition 后填，失败不回滚已存内容</h3>
+              <p>不变。写入目标从 <code class="inline">entry.meaning</code> 变成 <code class="inline">entry.primarySense.definition</code>。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">5</span>
+            <div>
+              <h3>userNote 永不被自动写入覆盖</h3>
+              <p>新增。释义补充、重新生成只写 definition / exampleSentences，<code class="inline">userNote</code> 只有用户编辑能改。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">6</span>
+            <div>
+              <h3>任何写入刷新 updatedAt</h3>
+              <p>新增。集中在 store 的 save 路径做，不散落到各调用点。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">7</span>
+            <div>
+              <h3>删词条级联删 senses 与 contexts</h3>
+              <p>两条关系都是 <code class="inline">.cascade</code>。反向不成立。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>导出格式 v2</h2>
+    <p class="lede"><code class="inline">version</code> 升到 2。v1 文件仍可读入——缺失字段取默认值，<code class="inline">meaning</code> 映射为单条 sense 的 <code class="inline">definition</code>。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">VocabularyExportDocument</span>
+        <span class="kind">codable</span>
+        <span class="src">改自 VocabularyExport.swift:8</span>
+      </header>
+      <pre><code>{
+  <span class="s">"version"</span>: <span class="k">2</span>,
+  <span class="s">"entries"</span>: [
+    {
+      <span class="s">"expression"</span>: <span class="s">"follow up"</span>,
+      <span class="s">"language"</span>: <span class="s">"en"</span>,
+      <span class="s">"pronunciation"</span>: <span class="s">"ˈfɒləʊ ʌp"</span>,
+      <span class="s">"pronunciationScheme"</span>: <span class="s">"ipa"</span>,
+      <span class="s">"tags"</span>: [<span class="s">"工作"</span>, <span class="s">"邮件"</span>],
+      <span class="s">"isStarred"</span>: <span class="k">true</span>,
+      <span class="s">"senses"</span>: [
+        {
+          <span class="s">"definition"</span>: <span class="s">"跟进；后续联系。"</span>,
+          <span class="s">"definitionLocale"</span>: <span class="s">"zh-Hans"</span>,
+          <span class="s">"partOfSpeech"</span>: <span class="s">"phrase"</span>,
+          <span class="s">"userNote"</span>: <span class="s">"比 chase 礼貌，适合对客户用"</span>,
+          <span class="s">"rank"</span>: <span class="k">0</span>
+        }
+      ],
+      <span class="s">"contexts"</span>: [
+        {
+          <span class="s">"sentence"</span>: <span class="s">"I will follow up with the team tomorrow."</span>,
+          <span class="s">"capturedFrom"</span>: <span class="s">"selection"</span>,
+          <span class="s">"capturedAppID"</span>: <span class="s">"com.apple.mail"</span>
+        },
+        {
+          <span class="s">"sentence"</span>: <span class="s">"Could you follow up on that invoice?"</span>,
+          <span class="s">"capturedFrom"</span>: <span class="s">"learning"</span>
+        }
+      ]
+    },
+    {
+      <span class="s">"expression"</span>: <span class="s">"bandwidth"</span>,
+      <span class="s">"language"</span>: <span class="s">"en"</span>,
+      <span class="s">"pronunciation"</span>: <span class="s">"ˈbændwɪdθ"</span>,
+      <span class="s">"pronunciationScheme"</span>: <span class="s">"ipa"</span>,
+      <span class="s">"tags"</span>: [<span class="s">"口语"</span>],
+      <span class="s">"isStarred"</span>: <span class="k">false</span>,
+      <span class="s">"senses"</span>: [
+        { <span class="s">"definition"</span>: <span class="s">""</span>, <span class="s">"definitionLocale"</span>: <span class="s">"zh-Hans"</span>, <span class="s">"rank"</span>: <span class="k">0</span> }
+      ],
+      <span class="s">"contexts"</span>: [
+        {
+          <span class="s">"sentence"</span>: <span class="s">"I don't have the bandwidth for this today."</span>,
+          <span class="s">"capturedFrom"</span>: <span class="s">"selection"</span>,
+          <span class="s">"capturedAppID"</span>: <span class="s">"com.tinyspeck.slackmacgap"</span>
+        }
+      ]
+    }
+  ]
+}</code></pre>
+      <p class="userNote">nil 字段整键省略，编码仍为 <code class="inline">.prettyPrinted</code> + <code class="inline">.sortedKeys</code> + <code class="inline">.withoutEscapingSlashes</code>。<code class="inline">createdAt</code>、<code class="inline">updatedAt</code>、<code class="inline">attributes</code> 不导出——时间戳与机器本地状态跨设备没有意义。<code class="inline">HistoryRecord</code> 仍不在导出范围。</p>
+    </article>
+  </section>
+
+  <section>
+    <h2>落地顺序</h2>
+    <p class="lede">每一步都是能独立编译、独立发布的提交，不预建下一步要的东西。</p>
+
+    <article class="tbl">
+      <header>
+        <span class="name">迁移路径</span>
+        <span class="kind">plan</span>
+        <span class="src">建议</span>
+      </header>
+      <div style="padding: 4px 18px 16px;">
+        <div class="rule-list">
+          <div class="rule">
+            <span class="n">1</span>
+            <div>
+              <h3>拆出 VocabularySense</h3>
+              <p>建表，把 <code class="inline">meaning</code> 搬成单条 sense，Entry 上留 <code class="inline">definition</code> 计算属性代理。<b>这是唯一需要写数据迁移的一步</b>——先做完，后面全是加列。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">2</span>
+            <div>
+              <h3>加读音三件套</h3>
+              <p><code class="inline">pronunciation</code>、<code class="inline">pronunciationScheme</code> 加 Sense 的覆盖列。可空列，SwiftData 自动迁移。先只做展示，填充靠手动编辑。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">3</span>
+            <div>
+              <h3>让 LLM 返回读音与词性</h3>
+              <p>扩 learning 契约的 item schema，加两个可选字段。模型不返回时保持 nil，不阻塞收藏。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">4</span>
+            <div>
+              <h3>加 tags / isStarred / userNote</h3>
+              <p>纯本地字段，不碰 LLM。配套做筛选器与编辑界面——没有界面的字段等于不存在。</p>
+            </div>
+          </div>
+          <div class="rule">
+            <span class="n">5</span>
+            <div>
+              <h3>加 capturedFrom / capturedAppID，导出升 v2</h3>
+              <p>来源追溯。放最后因为它纯属锦上添花，前面四步才是你每天会用到的。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <div class="callout calm">
+      <b>没放进来的东西</b>
+      <p><b>复习调度</b>（SM-2 间隔重复、复习日志表）——你在选项里没选它，所以一列都没加。真要做时它是独立一张 <code class="inline">ReviewLog</code> 表加 Entry 上几个调度列，与这版 schema 不冲突。</p>
+      <p><b>牌组 / 收藏夹</b>——<code class="inline">tags</code> 先顶着。等到需要「牌组有自己的名字、描述、学习进度」时再建实体，现在建就是空壳。</p>
+    </div>
+  </section>
+
+  <footer>
+    Owlet · 基于 Owlet/Vocabulary/*.swift 与 Owlet/History/HistoryRecord.swift 现状重新设计 · 行为规则见 spec/vocabulary/decisions/BDR-0004 · BDR-0006、spec/learning/decisions/BDR-0005、spec/history/decisions/BDR-0007 · main @ a9fd22e
+  </footer>
+
+</div>
+</body>
+</html>

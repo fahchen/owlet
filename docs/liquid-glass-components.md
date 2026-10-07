@@ -4,7 +4,7 @@
 
 | 页面 | 原生组件与当前行为 |
 | --- | --- |
-| 翻译与润色 | 原生 `.toolbar`：中间 `Picker(.segmented)`，右侧执行 `Button`；系统 SF Symbols 与 `.help`。原文／结果用 `GroupBox`，标题与语言 `Picker(.menu)` 同排，语言靠右。 |
+| 翻译与润色 | 原生 `.toolbar`：中间 `SwiftUI 承载的 NSSegmentedControl（momentary／fit）`，右侧执行 `Button`；系统 SF Symbols 与 `.help`。原文／结果用 `GroupBox`，标题与语言 `Picker(.menu)` 同排，语言靠右。 |
 | 学习（工作台、历史、浮窗共用） | `DisclosureGroup` 展开触发请求，系统 disclosure 外观；`Toggle(.checkbox)` 选择表达，图标按钮帮助说明为“加入生词本”。无独立释义语言设置。 |
 | 生词本 | 原生分栏、`List(selection:)` 与详情滚动区，各自滚动；工具栏搜索／筛选一组，右侧删除。无导出、复制、编辑按钮。 |
 | 历史 | 同构分栏与搜索／筛选；右侧学习、删除。学习打开该条结果的学习区，勾选后加入生词本。无复制、编辑按钮。 |
@@ -66,7 +66,7 @@
 - 主窗口骨架（侧栏 + 内容）→ `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`，桌面端不用 `TabView`，分隔线用系统自带 divider，永不自绘 1px 竖线；侧边栏本体、`Section` 分组与选中态由 `List` 的 sidebar 外观与系统 source list 选中态负责；显示／隐藏用系统侧栏切换工具栏项 + `⌃⌘S`（`sidebars.md`：**Consider letting people hide the sidebar.**）；设置分区用 `Form` + `Section`（`.formStyle(.grouped)`），设置仍是主窗口侧栏页面，见 §6。
 
 ### 3.2 组件 › 菜单与操作
-- 顶部工具栏 → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`，跨整窗、位于侧栏之上；`简体中文` → `Picker(.menu)`，`翻译｜润色` → `Picker(.segmented)`（段标签用名词）；底部操作栏的 `翻译文本` / `保存设置` / `复制` → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`，宾语保留在按钮里（§2.2 #8）；面板头部（重试 / 设置）与底部动作行（`复制 ⌘⇧C` / `替换 ⌘↩` / `取消`）用 `Button(.glass)` 包在 `GlassEffectContainer` 中，提示文字仍在（§2.2 #7）；菜单栏常驻图标用 `MenuBarExtra` + `Menu`（`the-menu-bar.md`：**Display a menu — not a popover — when people click your menu bar extra.**）。
+- 顶部工具栏 → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`，跨整窗、位于侧栏之上；`简体中文` → `Picker(.menu)`，`翻译｜润色` → `SwiftUI 承载的 NSSegmentedControl（momentary／fit）`（段标签用名词）；底部操作栏的 `翻译文本` / `保存设置` / `复制` → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`，宾语保留在按钮里（§2.2 #8）；面板头部（重试 / 设置）与底部动作行（`复制 ⌘⇧C` / `替换 ⌘↩` / `取消`）用 `Button(.glass)` 包在 `GlassEffectContainer` 中，提示文字仍在（§2.2 #7）；菜单栏常驻图标用 `MenuBarExtra` + `Menu`（`the-menu-bar.md`：**Display a menu — not a popover — when people click your menu bar extra.**）。
 
 ### 3.3 组件 › 导航与搜索
 - 侧栏导航（文本处理／生词本／历史记录／快捷键／设置，调试开关打开时多一项）→ `List(selection:)` 绑定 `enum Page`；快捷键页的“全局／面板内”分组用 `Form` + `Section`；生词本与历史的 `List`、工具栏搜索与筛选、行内删除、列表→详情层级均已落地（见 [docs/unimplemented-features.md](unimplemented-features.md)）。
@@ -234,3 +234,39 @@ T39：保持 NavigationSplitView；统一工具栏按 navigation/principal/prima
 管理页正文分栏与顶部安全区保留最小间距，系统分隔线不延伸进入统一工具栏；不裁剪原生列表。
 
 T40：宽屏工作台使用原生 HSplitView，与管理页采用同一分栏方式；原文与结果各自滚动，底部学习仍常驻，窄屏保留上下排列。
+
+T42 浮窗：原文摘要与结果使用系统 glassEffect；状态条和原文组合操作用 SwiftUI 承载的 NSSegmentedControl（momentary／fit），独立动作用 Button.glass，更多操作用 contextMenu，学习用 List 与逐条 borderless 收藏按钮；无外层玻璃覆盖透明间隙。
+
+### T42 精确画板组件核对
+
+仅以 [6313:31216](https://www.figma.com/design/PL0seWKhVgNHzaHLFbWLaQ/macOS-27--Community-?node-id=6313-31216) 为布局依据。以下主组件和变体均从实例详情读取，Button 已经通过 From this file 跳转 master 核对；其他画板不作为布局来源。
+
+| 画板内实例 | 主组件／变体 | SwiftUI 对应 |
+| --- | --- | --- |
+| 6313:31543 原文操作；6313:31552 错误状态；6313:31628 处理中 | Segmented Control / Light / XL / Active=True；master 605:3160 | SwiftUI 承载的 NSSegmentedControl（momentary／fit），保留图标与文字，不拼装多个按钮 |
+| 6313:31274、6329:31755 内容材质 | Liquid Glass - Medium / Light；master 483:9257 | 系统 glassEffect |
+| 6313:31301 关闭、6313:31302 复制、6329:31761 学习 | Button / Light / XL / Idle；master 648:4854 | Button(.glass)，SF Symbols xmark、doc.on.doc、lamp.desk |
+| 6313:31478 收藏 | Buttons / Over-Glass / Borderless / Idle；master 502:5872 | Button(.borderless)，bookmark／bookmark.fill |
+| 6329:31758、6313:31277 | Separators | Divider |
+
+外观跟随系统，不固定 Light；无自行绘制颜色、材质、边框、按钮样式。
+
+T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt，系统圆形按钮 36pt；结果与学习面板分别 257／295pt 高，动作叠在右下角。大表面使用系统 ButtonBorderShape.roundedRectangle，未手填半径。
+
+### 原生 panel 隔离预览
+
+`python3 scripts/panel-preview.py` 使用固定选区与模拟模型，绕过系统权限请求，生词本仅在内存；主 app 的配置不变。⌘1–⌘5 切换处理中、缺配置、连接失败、成功、学习五态。
+
+`python3 scripts/panel-preview.py --live` 从进程环境读取 `DEEPSEEK_API_KEY` 进行真实联调，密钥不落盘、不输出。`--background /绝对路径/背景.png` 可为玻璃截图提供窗口内对照背景；默认不附带或修改系统壁纸。
+
+浮窗组合操作的 NSSegmentedControl 关闭 cell 自带边框（isBordered = false），由单层 `.glassEffect(.regular)` 提供背景；避免叠层，同时保持背景清晰。
+
+T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。
+
+预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收。窗口未激活时系统按钮会显示非活跃颜色。
+
+T44：结果展开使用 SwiftUI spring 与 NSAnimationContext.animate(.spring)，窗口与内容均从顶部展开；学习行 HStack 居中，结果／学习底部动作距右边及底边24pt。
+
+T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使用 borderless Button，图标随 SwiftData Query 的实际收藏状态切换，不再禁用已收藏按钮。
+
+学习左侧译文使用原生 NSTextField(wrappingLabelWithString:) 与 justified 段落对齐，17pt、行间距2pt，可选择复制，末行自然对齐。预览 `--active` 只用于对照系统控件活跃颜色，不代表鼠标 hover 或真实窗口活跃状态；底部按钮保留标准 Button.glass。

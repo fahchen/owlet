@@ -1,70 +1,110 @@
 import SwiftUI
 
-/// The panel's one width: the compact strip and the expanded panel share it, so expanding never
-/// changes the panel's width — only its height grows.
 enum PanelMetrics {
-    static let width: CGFloat = 560
+    static let width: CGFloat = 773
+    static let contentInset: CGFloat = 24
 }
 
-/// Compact processing bar: one-line summary of the selected text, spinner, status, stop.
 struct CompactProcessingView: View {
+    @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
     let summary: String
     let status: String
     let stop: () -> Void
+    var close: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 10) {
+        VStack(spacing: 12) {
+            PanelSourceBar(summary: summary, close: close ?? stop)
+            PanelSegmentedControl(items: [
+                .init(title: status, symbol: "translate", action: {}),
+                .init(title: "", symbol: "xmark", action: stop, accessibilityLabel: "取消处理"),
+            ])
+            .fixedSize()
+            .frame(height: 36)
+            .padding(.horizontal, 4)
+            .glassEffect(glassEffect.glass)
+
+        }
+        .frame(width: PanelMetrics.width)
+    }
+}
+
+struct PanelSourceBar: View {
+    @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
+    let summary: String
+    var retry: (() -> Void)? = nil
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
             Text(summary.replacing(/\s+/, with: " "))
-                .font(.system(size: 12))
+                .font(.system(size: 17, weight: .regular))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help(summary)
-            ProgressView().controlSize(.small)
-            Text(status)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+            if let retry {
+                PanelSegmentedControl(items: [
+                    .init(title: "Retry", symbol: "arrow.clockwise", action: retry),
+                    .init(title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗"),
+                ])
                 .fixedSize()
-            GlassEffectContainer {
-                Button("停止", systemImage: "stop.fill", action: stop)
+                .frame(height: 36)
+                .padding(.horizontal, 4)
+                .glassEffect(glassEffect.glass)
+
+            } else {
+                Button(action: close) { Label("关闭", systemImage: "xmark").foregroundStyle(.primary) }
                     .labelStyle(.iconOnly)
-                    .buttonStyle(.glass)
-                    .help("停止处理")
+                    .font(.system(size: 13, weight: .medium))
+                    .buttonStyle(.glass(glassEffect.glass))
+                    .buttonBorderShape(.circle)
+                    .controlSize(.extraLarge)
+                    .buttonSizing(.flexible)
+                    .frame(width: 36, height: 36)
+                    .help("关闭浮窗")
             }
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 8)
-        .frame(width: PanelMetrics.width)
-        .frame(minHeight: 42)
-        .contentShape(Rectangle())
+        .padding(.leading, 24)
+        .padding(.trailing, 12)
+        .frame(width: PanelMetrics.width, height: 62)
+        .glassEffect(glassEffect.glass)
         .gesture(WindowDragGesture())
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(status) \(summary)")
     }
 }
 
-/// Compact notice bar used before the first result: message left, glass recovery buttons right.
-struct CompactNoticeView<Actions: View>: View {
+struct CompactNoticeView: View {
+    @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
     let message: String
-    @ViewBuilder let actions: Actions
+    var summary = ""
+    var retry: (() -> Void)? = nil
+    var close: () -> Void = {}
+    var symbol = "exclamationmark.triangle"
+    var actionTitle = "设置"
+    var actionSymbol = "gearshape"
+    var recover: () -> Void = {}
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text(message)
-                .font(.system(size: 12))
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            GlassEffectContainer {
-                HStack(spacing: 6) { actions }.buttonStyle(.glass)
+        VStack(spacing: 12) {
+            if !summary.isEmpty {
+                PanelSourceBar(summary: summary, retry: retry, close: close)
             }
+            PanelSegmentedControl(
+                items: [
+                    .init(title: message, symbol: symbol, action: recover),
+                    .init(title: "", symbol: actionSymbol, action: action ?? recover, accessibilityLabel: actionTitle),
+                ]
+                    + (summary.isEmpty
+                        ? [.init(title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗")] : [])
+            )
+            .fixedSize()
+            .frame(height: 36)
+            .padding(.horizontal, 4)
+            .glassEffect(glassEffect.glass)
+
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 8)
-        .padding(.vertical, 7)
         .frame(width: PanelMetrics.width)
-        .frame(minHeight: 42)
-        .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
         .accessibilityElement(children: .contain)
     }
 }

@@ -70,6 +70,25 @@ final class CollectionAction {
         }
     }
 
+    /// Learning rows mirror stored membership, including entries collected outside this panel.
+    @discardableResult
+    func setCollected(_ selected: Bool, draft: VocabularyDraft, meaning: String) -> Bool {
+        if selected { return collect(draft, meaning: meaning) != nil }
+        do {
+            if let entry = try store.entry(
+                language: draft.language,
+                expression: draft.expression.trimmingCharacters(in: .whitespacesAndNewlines))
+            {
+                try store.delete(entry)
+            }
+            status = .idle
+            return true
+        } catch {
+            status = .saveFailed(error.localizedDescription)
+            return false
+        }
+    }
+
     /// Runs or retries the meaning request for an entry that has none yet.
     func fillMeaning(for entry: VocabularyEntry) {
         guard let config = config() else {

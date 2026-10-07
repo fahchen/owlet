@@ -102,24 +102,6 @@ final class PanelController {
             SelectionBridge.read(
                 bounds: SettingsStore.panelPosition(in: defaults) == .followSelection, completion: completion)
         }
-        trackProcessing()
-    }
-
-    /// Mirrors the model's processing state onto the panel edge; observation fires once, so it
-    /// re-registers and defers the read until the mutation has landed.
-    private func trackProcessing() {
-        withObservationTracking {
-            _ = model.state
-        } onChange: { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                self.trackProcessing()
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.panel?.setProcessing(self.model.state == .loading)
-                }
-            }
-        }
     }
 
     /// Invalidates the previous operation, then captures the selection before showing anything.
@@ -297,11 +279,11 @@ final class PanelController {
     }
 
     /// The panel's own keys, run from its event monitor: copy the result, write it back, or
-    /// dismiss. Esc stops an in-flight request first, which is what the footer hint promises.
+    /// dismiss. Esc closes and cancels an in-flight request.
     func run(_ command: FloatingPanel.Command) {
         switch command {
         case .cancel:
-            if model.state == .loading { stop() } else { close() }
+            close()
         case .copy:
             copyResult()
         case .replace:
@@ -324,7 +306,6 @@ final class PanelController {
     private func show() {
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        panel.setProcessing(model.state == .loading)
         panel.show(anchor: anchor())
     }
 

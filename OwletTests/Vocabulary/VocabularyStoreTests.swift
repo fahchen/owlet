@@ -269,6 +269,27 @@ struct CollectionActionTests {
             polishBefore: nil, polishAfter: nil)
     }
 
+    @Test func learningMembershipTogglesImmediatelyWithoutModelRequests() throws {
+        let store = try makeStore()
+        let client = ModelClient(transport: { _ in
+            Issue.record("Toggling a recommendation must not call the model")
+            throw URLError(.unsupportedURL)
+        })
+        let action = CollectionAction(store: store, client: client, config: { nil })
+        let other = try store.collect(VocabularyDraft(expression: "別の語", language: "ja", context: "別の語"))
+        #expect(action.setCollected(true, draft: draft(), meaning: "跟进"))
+        #expect(try store.entry(language: "en", expression: "follow up")?.meaning == "跟进")
+        // Reopening the panel uses the same stored membership; selecting again never duplicates it.
+        #expect(action.setCollected(true, draft: draft(), meaning: "跟进"))
+        #expect(try store.entries().count == 2)
+        #expect(action.setCollected(false, draft: draft(), meaning: "跟进"))
+        #expect(try store.entry(language: "en", expression: "follow up") == nil)
+        #expect(try store.entries().map(\.expression) == [other.expression])
+        #expect(action.setCollected(true, draft: draft(), meaning: "跟进"))
+        #expect(try store.entries().count == 2)
+        #expect(action.task == nil)
+    }
+
     @Test func failedMeaningRequestKeepsTheEntryAndRetryFillsIt() async throws {
         let store = try makeStore()
         let calls = Mutex(0)

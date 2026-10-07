@@ -33,14 +33,8 @@ struct PanelControllerTests {
         private(set) var releases = 0
         private(set) var shows = 0
         private(set) var closes = 0
-        /// Every processing change the controller pushed to the panel edge, in order.
-        private(set) var processing: [Bool] = []
         override func show(anchor: PanelPlacement.Anchor) { shows += 1 }
         override func releaseKeyboard() { releases += 1 }
-        override func setProcessing(_ active: Bool) {
-            processing.append(active)
-            super.setProcessing(active)
-        }
         override func close() {
             closes += 1
             super.close()
@@ -436,40 +430,32 @@ struct PanelControllerTests {
         #expect(panel.model.state == .idle)
     }
 
-    /// The panel keeps the system glass defaults and casts a shadow that follows the glass: the
-    /// window's shape comes from a container masked to the glass's own corner radius, which is what
-    /// stops the window server from shadowing a rectangle around rounded glass.
-    @Test func shapesItsShadowLikeTheGlass() async throws {
+    /// Separate native surfaces are hosted on a transparent window, so their gaps stay clear.
+    @Test func hostsContentWithoutAnOuterGlassSurface() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
         panel.processSelection()
         let window = try #require(panel.panel)
-        let shape = try #require(window.contentView)
-        let glass = try #require(shape.subviews.first as? NSGlassEffectView)
-        #expect(glass.cornerRadius == NSGlassEffectView().cornerRadius)
-        #expect(glass.style == NSGlassEffectView().style)
-        #expect(window.hasShadow)
-        #expect(shape.layer?.cornerRadius == glass.cornerRadius)
-        #expect(shape.layer?.masksToBounds == true)
-        #expect(glass.frame == shape.bounds)
+        #expect(!window.isOpaque)
+        #expect(window.backgroundColor == .clear)
+        #expect(!window.hasShadow)
+        #expect(window.contentView != nil)
+        #expect(!(window.contentView is NSGlassEffectView))
         panel.close()
     }
 
-    /// Becoming key hands the responder to SwiftUI's key view proxy, which focuses the first
-    /// control; the panel takes it back, so it opens with nothing focused, and Tab still reaches
-    /// the controls afterwards.
-    @Test func opensWithNothingFocusedButTabStillReachesTheControls() async throws {
+    /// Opening clears automatic focus; explicit key-view traversal can still reach the controls
+    /// without depending on event dispatch while the screen is locked.
+    @Test func opensWithNothingFocusedButTraversalStillReachesTheControls() async throws {
         let (panel, _) = makePanel(realWindow: true)
         panel.read = { $0(.failure(.unreadable)) }
         panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.firstResponder === window)
-        let tab = try #require(
-            NSEvent.keyEvent(
-                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
-                windowNumber: window.windowNumber, context: nil, characters: "\t",
-                charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48))
-        window.keyDown(with: tab)
+        await settle()
+        window.recalculateKeyViewLoop()
+        window.selectNextKeyView(nil)
+        await settle()
         #expect(window.firstResponder !== window)
         panel.close()
     }
@@ -488,7 +474,6 @@ struct PanelControllerTests {
         panel.read = { $0(.failure(.unreadable)) }
         panel.processSelection()
         let window = try #require(panel.panel)
-        #expect(window.contentView?.subviews.first is NSGlassEffectView)
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()
@@ -520,8 +505,8 @@ struct PanelControllerTests {
         // stays true when the panel's width changes and the screen clamp moves it.
         // The panel sits below the selection and inside the screen. The exact frame depends on the
         // live mouse location, and its arithmetic belongs to PanelPlacementTests; the resize is
-        // eased, so give it the animation's duration before reading the frame.
-        try? await Task.sleep(for: .milliseconds(300))
+        // spring animated, so allow it to settle before reading the frame.
+        try? await Task.sleep(for: .milliseconds(600))
         #expect(window.frame.maxY <= rect.minY)
         #expect(window.frame.minX >= visible.minX)
         #expect(window.frame.maxX <= visible.maxX)
@@ -532,74 +517,21 @@ struct PanelControllerTests {
         gate.release()
     }
 
-    /// The edge is an accent ring: a conic sweep clipped to the panel outline, glowing inward.
-    @Test func processingEdgeIsAnAccentRingThatGlows() async throws {
-        let (panel, _) = makePanel(realWindow: true)
-        panel.read = { $0(.failure(.unreadable)) }
-        panel.processSelection()
-        let window = try #require(panel.panel)
-        let surface = try #require(window.contentView as? PanelSurface)
-        surface.layout()
-        #expect(surface.sheen.type == .conic)
-        #expect(surface.sheen.colors?.count == 5)
-        #expect(surface.edge.shadowOpacity > 0)
-        #expect(surface.edge.shadowPath != nil)
-        panel.close()
-    }
-
-    /// The edge breathes for exactly as long as a request runs, and never affects the panel frame.
-    @Test func processingEdgeBreathesOnlyWhileProcessing() async throws {
-        let (panel, _) = makePanel(realWindow: true)
-        panel.read = { $0(.failure(.unreadable)) }
-        panel.processSelection()
-        let window = try #require(panel.panel)
-        let surface = try #require(window.contentView as? PanelSurface)
-        let frame = window.frame
-        window.prefersReducedMotion = { false }
-        window.setProcessing(true)
-        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) != nil)
-        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) != nil)
-        #expect(surface.edge.opacity == ProcessingEdge.brightOpacity)
-        #expect(window.frame == frame)
-        window.setProcessing(false)
-        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
-        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) == nil)
-        #expect(surface.edge.opacity == 0)
-        panel.close()
-    }
-
-    /// Reduce Motion stops the pulse but keeps the mark visible, so status never rests on motion.
-    @Test func reduceMotionHoldsTheProcessingEdgeSteady() async throws {
-        let (panel, _) = makePanel(realWindow: true)
-        panel.read = { $0(.failure(.unreadable)) }
-        panel.processSelection()
-        let window = try #require(panel.panel)
-        let surface = try #require(window.contentView as? PanelSurface)
-        window.prefersReducedMotion = { true }
-        window.setProcessing(true)
-        #expect(surface.edge.animation(forKey: FloatingPanel.breatheKey) == nil)
-        #expect(surface.sheen.animation(forKey: FloatingPanel.sweepKey) == nil)
-        #expect(surface.edge.opacity == ProcessingEdge.steadyOpacity)
-        #expect(surface.edge.opacity > 0)
-        panel.close()
-    }
-
-    @Test func processingEdgeOpacityKeepsTheMarkVisibleUnderReduceMotion() {
-        #expect(ProcessingEdge.steadyOpacity > 0)
-        #expect(ProcessingEdge.opacity(reduceMotion: true, bright: false) == ProcessingEdge.steadyOpacity)
-        #expect(ProcessingEdge.opacity(reduceMotion: true, bright: true) == ProcessingEdge.steadyOpacity)
-        #expect(ProcessingEdge.opacity(reduceMotion: false, bright: false) == ProcessingEdge.dimOpacity)
-        #expect(ProcessingEdge.opacity(reduceMotion: false, bright: true) == ProcessingEdge.brightOpacity)
-        #expect(ProcessingEdge.dimOpacity < ProcessingEdge.brightOpacity)
-    }
-
-    /// The controller pushes the loading state to the panel edge and clears it when the result lands.
-    @Test func processingEdgeFollowsTheRequest() async {
-        let (panel, _, stub) = recordingPanel()
+    /// Escape invalidates the active request and closes instead of leaving a cancelled notice.
+    @Test func escapeClosesAndCancelsProcessing() async {
+        let gate = Gate()
+        let (panel, writes, stub) = recordingPanel(gate: gate)
         panel.processSelection()
         await settle()
-        #expect(stub.processing.first == true)
-        #expect(stub.processing.last == false)
-        panel.close()
+        #expect(panel.model.state == .loading)
+        panel.run(.cancel)
+        #expect(stub.closes == 1)
+        #expect(panel.notice == nil)
+        #expect(panel.model.state == .idle)
+        #expect(!panel.expanded)
+        gate.release()
+        await settle()
+        #expect(writes.texts.isEmpty)
+        #expect(!panel.expanded)
     }
 }

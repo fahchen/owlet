@@ -72,8 +72,14 @@ final class VocabularyStore {
     }
 
     func delete(_ items: [VocabularyEntry]) throws {
-        for item in items { context.delete(item) }
-        try context.save()
+        do {
+            for item in items { context.delete(item) }
+            try context.save()
+        } catch {
+            // Keep membership unchanged when a deletion cannot be persisted.
+            context.rollback()
+            throw error
+        }
     }
 
     func save() throws {

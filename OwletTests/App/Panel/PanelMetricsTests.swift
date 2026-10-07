@@ -21,9 +21,40 @@ struct PanelMetricsTests {
     /// panel's height.
     @Test func bothSurfacesAreTheSameWidth() {
         let compact = size(CompactProcessingView(summary: "Hello there", status: "翻译中…", stop: {}))
-        let notice = size(CompactNoticeView(message: "未能读取到文字") { Button("手动输入") {} })
+        let notice = size(CompactNoticeView(message: "未能读取到文字"))
         #expect(compact.width == PanelMetrics.width)
         #expect(notice.width == PanelMetrics.width)
         #expect(compact.width == notice.width)
+        #expect(compact.height == 110)
+        let failed = size(
+            CompactNoticeView(message: "连接失败", summary: "Hello", retry: {}, close: {}))
+        #expect(failed.width == compact.width)
+        #expect(failed.height == 110)
     }
+    @Test func segmentedActionKeepsImageAndTextAndInvokesTheChosenAction() throws {
+        var calls = 0
+        let host = NSHostingController(
+            rootView: PanelSegmentedControl(items: [
+                .init(title: "翻译中…", symbol: "translate", action: {}),
+                .init(title: "", symbol: "xmark", action: { calls += 1 }, accessibilityLabel: "取消处理"),
+            ]))
+        host.view.layoutSubtreeIfNeeded()
+        func find(_ view: NSView) -> NSSegmentedControl? {
+            if let control = view as? NSSegmentedControl { return control }
+            return view.subviews.lazy.compactMap(find).first
+        }
+        let control = try #require(find(host.view))
+        #expect(control.trackingMode == .momentary)
+        #expect(control.segmentDistribution == .fit)
+        #expect(control.label(forSegment: 0) == "翻译中…")
+        #expect(control.image(forSegment: 0) != nil)
+        #expect(control.width(forSegment: 1) == 36)
+        #expect(control.subviews.compactMap { $0 as? NSBox }.contains { $0.boxType == .separator })
+        // Momentary selection exists only during native tracking; simulate that selection for dispatch.
+        control.trackingMode = .selectOne
+        control.selectedSegment = 1
+        control.sendAction(control.action, to: control.target)
+        #expect(calls == 1)
+    }
+
 }

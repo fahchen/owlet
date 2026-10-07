@@ -255,6 +255,8 @@ T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt
 
 ### 原生 panel 隔离预览
 
+完整流程、失败尝试与证据边界见 [Panel 调试、测试与截图](panel-debugging-and-testing.md)。
+
 `python3 scripts/panel-preview.py` 使用固定选区与模拟模型，绕过系统权限请求，生词本仅在内存；主 app 的配置不变。⌘1–⌘5 切换处理中、缺配置、连接失败、成功、学习五态。
 
 `python3 scripts/panel-preview.py --live` 从进程环境读取 `DEEPSEEK_API_KEY` 进行真实联调，密钥不落盘、不输出。`--background /绝对路径/背景.png` 可为玻璃截图提供窗口内对照背景；默认不附带或修改系统壁纸。
@@ -263,7 +265,7 @@ T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt
 
 T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。
 
-预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收。窗口未激活时系统按钮会显示非活跃颜色。
+预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五个主状态及收藏／取消收藏两态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收。窗口未激活时系统按钮会显示非活跃颜色。
 
 T44：结果展开使用 SwiftUI spring 与 NSAnimationContext.animate(.spring)，窗口与内容均从顶部展开；学习行 HStack 居中，结果／学习底部动作距右边及底边24pt。
 

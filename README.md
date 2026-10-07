@@ -8,6 +8,7 @@ macOS 26+ 翻译、润色与个人生词本。
 - [BDD 行为规格](spec/README.md)
 - [视觉与交互规则](spec/DESIGN.md)
 - [Liquid Glass 组件对照](docs/liquid-glass-components.md)
+- [Panel 调试、测试与截图](docs/panel-debugging-and-testing.md)
 - [未实现功能清单](docs/unimplemented-features.md)
 - [实现计划](tasks/plan.md)
 - [任务清单](tasks/todo.md)

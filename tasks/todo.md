@@ -881,7 +881,7 @@ T41：将浮窗源码和对应测试置于 `App/Panel/`，提取文字处理模�
 
 验收：独立原文条与状态条、上下原文／结果及左右结果／学习、逐条收藏、关闭取消、原生玻璃；app 主界面不改。验证：format/check、原生浮窗状态检查。
 
-T42：已核对指定画板实例与 master；组合动作采用原生 Segmented Control，独立动作采用 glass／borderless Button。mise run format、mise run check 与 mise run dev 均通过；锁屏导致原生五态视觉复核未完成。
+T42：已核对指定画板实例与 master；组合动作采用原生 Segmented Control，独立动作采用 glass／borderless Button。mise run format、mise run check 与 mise run dev 均通过；初期 computer use 受锁屏阻断；后续已通过系统窗口截图导出各态，hover、按下与完整视觉验收仍未完成。
 
 T42 二次视觉核对：按指定实例读出正文 17/22、图标 13 Medium 与 36pt 按钮，修正直角、独立页脚挤压与分段标签丢图标。已用隔离选区／权限和环境变量 DeepSeek Key 验证真实翻译；真实学习响应未过结构校验，按错误态处理。原生玻璃已在同背景预览中核对，但默认系统圆角与 Figma 34pt 仍有差异，尚未作为完全视觉对齐验收。
 
@@ -904,3 +904,7 @@ T44：窗口与内容使用同一原生 spring；初次展示及减少动态效�
 T45：学习布局采用原生 spring；词条整行通过持久化词库判断选中，点击立即收藏／删除，不弹确认；存储失败保留原状态。新增无模型调用的反复切换、去重、其他词条保留回归，format/check 通过。
 
 T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下内缩24pt；窗口截图核对完整文本与末行对齐。底部原生 glass 按钮的活跃材质与 hover 视觉复核仍待完成。
+
+## T46：沉淀 panel 调试与测试流程（已完成）
+
+记录 Figma 组件核对、隔离预览、七态系统截图、真实模型联调、失败尝试与未验收项；用户确认的设计倾向归入 spec/DESIGN.md；README 与组件表已链接。验证：文档链接及 git diff --check。见 `docs/panel-debugging-and-testing.md`。

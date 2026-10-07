@@ -90,7 +90,7 @@
 
 ## T42：panel 原生设计实现（待视觉复核）
 
-指定画板组件映射与 SwiftUI 实现已落地，format/check/dev 通过；已解锁并核对同背景原生玻璃，继续确认系统默认圆角与 Figma 34pt 的差异及五态最终验收。主 app 不改。
+指定画板组件映射与 SwiftUI 实现已落地，format/check/dev 通过；已通过系统窗口截图核对同背景原生玻璃与七态；继续确认系统默认圆角与 Figma 34pt 的差异、真实 hover／按下及动画验收。主 app 不改。
 
 ## T43：浮窗玻璃效果设置（已实现）
 
@@ -99,3 +99,5 @@
 T44 已实现：panel 请求结束以原生 spring 展开，学习图标垂直居中，底部动作距边缘24pt；format/check 通过。
 
 T45 已实现：学习布局 spring 过渡与词条即时收藏切换；隔离存储回归及全量检查通过。
+
+T46 已完成：panel 调试、测试及证据边界记录于 `docs/panel-debugging-and-testing.md`。

@@ -15,6 +15,7 @@ Feature: 快捷入口与浮窗
   Rule: 浮窗支持键盘操作及问题恢复
     Scenario: 键盘关闭浮窗
       Given 文本处理浮窗已打开
+      And 当前没有打开查词卡
       When 用户按下 Esc
       Then 浮窗关闭
 

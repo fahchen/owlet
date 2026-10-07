@@ -90,6 +90,61 @@
           }
         }
       }
+    },
+    "lookup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "language",
+        "definition_language",
+        "meaning",
+        "lemma",
+        "pronunciation",
+        "part_of_speech"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "definition_language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "meaning": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lemma": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "pronunciation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "part_of_speech": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
     }
   }
 }

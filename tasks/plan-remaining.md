@@ -101,3 +101,11 @@ T44 已实现：panel 请求结束以原生 spring 展开，学习图标垂直�
 T45 已实现：学习布局 spring 过渡与词条即时收藏切换；隔离存储回归及全量检查通过。
 
 T46 已完成：panel 调试、测试及证据边界记录于 `docs/panel-debugging-and-testing.md`。
+
+## 阅读查词卡第一步（2026-10-07）
+
+T47 设计与规格同步已完成，功能仍未实现。正式依据为 [查词规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [lookup 契约](../spec/llm/contract.md#阅读查词已确认待实现)。
+
+剩余执行顺序：**T48 浮窗选区完整路径 → T49 单击／悬停 → T50 其余只读区域 → T51 学习行及完整回归**。各步范围、验收及验证见 [todo.md](todo.md)，依赖见 [plan.md](plan.md)。
+
+首项须先取得原生控件、选区／焦点、辅助功能、语音可用性及长度边界的证据；不把现有截图或文档检查记为查词验收。完成五区域、不误收藏／写回及失败／竞态回归后才可关闭 T47。第二步另行讨论。

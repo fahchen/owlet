@@ -194,16 +194,22 @@ extension View {
         safeAreaInset(edge: .top, spacing: 0) { PanelDragBand(height: PanelMetrics.contentInset) }
             // Outside the insets, so the fade spans the panel's edges rather than the safe area,
             // which would fade the first and last lines at rest.
-            .mask {
-                VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: PanelMetrics.contentInset)
-                    Color.black
-                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                        .frame(height: PanelMetrics.contentInset)
-                }
+            .panelEdgeFade()
+    }
+
+    /// Fades scrolling content out over the top and bottom inset, with no material, so the glass
+    /// stays bright where the text passes under the padding.
+    func panelEdgeFade() -> some View {
+        mask {
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                    .frame(height: PanelMetrics.contentInset)
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: PanelMetrics.contentInset)
             }
-            .scrollEdgeEffectHidden(true, for: .vertical)
+        }
+        .scrollEdgeEffectHidden(true, for: .vertical)
     }
 
     /// Bottom padding inside scroll content: the inset, plus, beside the floating buttons, room to

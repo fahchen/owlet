@@ -219,6 +219,12 @@ extension SettingsStore {
         targetMapping(in: defaults).target(forSource: autoSource(for: text, in: defaults))
     }
 
+    /// The target a newly chosen source carries over: its mapping row, so switching the source moves
+    /// the target with it, and 自动 for an automatic source. The user can still change the target after.
+    static func target(followingSource source: String, in defaults: UserDefaults = .standard) -> String {
+        source.isEmpty ? "" : targetMapping(in: defaults).target(forSource: source)
+    }
+
     /// The target a request should use: an explicit choice wins, otherwise 自动 decides.
     static func resolvedTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
         pinnedTarget(in: defaults) ?? autoTarget(for: text, in: defaults)

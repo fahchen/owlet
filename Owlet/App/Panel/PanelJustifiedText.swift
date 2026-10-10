@@ -23,7 +23,8 @@ struct PanelJustifiedText: NSViewRepresentable {
             string: text,
             attributes: [
                 .font: Self.font,
-                .foregroundColor: NSColor.labelColor,
+                // Not labelColor: on glass it draws vibrant and reads lighter than the source beside it.
+                .foregroundColor: NSColor.textColor,
                 .paragraphStyle: paragraph,
             ])
     }

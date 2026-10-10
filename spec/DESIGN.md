@@ -62,7 +62,7 @@
 
 中性浅色界面，玫瑰粉作为品牌强调色，用于白天阅读与工作沟通中短暂唤起的语言工具。保留系统字体、紧凑布局与 Liquid Glass 材质。
 
-- 文本处理页是单列：原文与译文始终上下堆叠（实现为单个 `VStack`）。响应式的左右并排未实现，见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。
+- 文本处理页：原文与结果在一张玻璃卡片中左右并排，内容区窄于 600pt 时上下排列。
 - 译文仅比原文大 1px：浮动面板原文 12px、译文 13px；应用窗口原文 16px、译文 17px。润色结果沿用同一层级。
 - 浮窗宽 560px，紧凑条 430px；应用窗口默认 1080 × 690，最小 760 × 500。
 - 复制与替换只输出译文。「逐句对照／切换显示方式」未实现，见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。

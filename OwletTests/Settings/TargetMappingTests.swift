@@ -36,6 +36,15 @@ struct TargetMappingTests {
         #expect(SettingsStore.autoTarget(for: "   ", in: defaults) == "zh-Hans")
     }
 
+    @Test func aChosenSourceCarriesItsMappedTarget() {
+        SettingsStore.setTargetMapping(
+            TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)
+        #expect(SettingsStore.target(followingSource: "en", in: defaults) == "ja")
+        #expect(SettingsStore.target(followingSource: "fr", in: defaults) == "zh-Hans")
+        // An automatic source leaves the target automatic, so the mapping keeps deciding per text.
+        #expect(SettingsStore.target(followingSource: "", in: defaults) == "")
+    }
+
     @Test func aPinnedLanguageOverridesTheMapping() {
         SettingsStore.setTargetMapping(
             TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans"), in: defaults)

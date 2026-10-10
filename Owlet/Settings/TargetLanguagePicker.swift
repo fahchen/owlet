@@ -15,9 +15,13 @@ struct TargetLanguagePicker: View {
                 Text($0.name).tag($0.tag)
             }
         }
-        .pickerStyle(.menu)
         .labelsHidden()
         .fixedSize()
+    }
+
+    /// The chosen language's name, for a control that shows only the current choice.
+    var title: String {
+        pinnedTarget.isEmpty ? autoTitle : LanguageCatalog.name(for: pinnedTarget)
     }
 
     private var autoTitle: String {

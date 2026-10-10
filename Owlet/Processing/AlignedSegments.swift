@@ -15,9 +15,11 @@ struct AlignedSegments: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(segment.source)
                         .font(.system(size: sourceSize))
+                        .fontWeight(PanelMetrics.sourceWeight)
                         .lineSpacing(lineSpacing)
                     Text(segment.target)
                         .font(.system(size: targetSize))
+                        .fontWeight(PanelMetrics.textWeight)
                         .lineSpacing(lineSpacing)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

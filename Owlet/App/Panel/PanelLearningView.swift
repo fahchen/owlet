@@ -9,6 +9,8 @@ struct PanelLearningView: View {
     /// The panel's height when learning opened; the column keeps it within its own range and only
     /// shrinks below it when the items need less, so the switch never dips and grows back.
     var preferredHeight: CGFloat = 0
+    /// False in the main window, where the column fills the card instead of fitting three to five items.
+    var fitsRows = true
     @Query private var entries: [VocabularyEntry]
     @State private var attempted = false
     @State private var hovered: Int?
@@ -29,7 +31,7 @@ struct PanelLearningView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .frame(height: columnHeight)
+        .frame(height: fitsRows ? columnHeight : nil)
         .onAppear { requestLearning() }
         .onChange(of: learning.isExpanded) { _, expanded in
             if expanded { learning.generate(for: request) }

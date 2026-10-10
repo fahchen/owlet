@@ -1,54 +1,32 @@
 import SwiftUI
 
+/// The 翻译 and 润色 pages: one glass card with the source on the left and the result on the right,
+/// switched by the toolbar's operation control. 学习 shows the result beside its learning items.
 struct TextProcessingView: View {
     @Bindable var model: TextProcessingModel
     let openSettings: () -> Void
     let collection: CollectionAction
-    let openNotebook: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var learning = LearningModel()
-    @State private var contentWidth: CGFloat = 0
+    /// Set by 返回: keeps an auto-requested result from reopening the learning column.
+    @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode = TranslationDisplayMode.sectioned
 
     var body: some View {
-        pageContent
-            .onGeometryChange(for: CGFloat.self) {
-                $0.size.width
-            } action: {
-                contentWidth = $0
-            }
-            .padding(24)
-            .navigationTitle("")
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("处理方式", selection: $model.operation) {
-                        ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(isBusy)
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    if isBusy {
-                        Button("取消", systemImage: "stop.fill", action: model.cancel)
-                            .labelStyle(.iconOnly)
-                            .help("停止处理")
-                    } else {
-                        Button(model.operation.title, systemImage: model.operation.symbol) {
-                            model.process(to: resolvedTarget)
-                        }
-                        .buttonStyle(.glassProminent)
-                        .labelStyle(.iconOnly)
-                        .disabled(model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .help("\(model.operation.title)文本 ⌘↩")
-                    }
-                }
-            }
+        // The space offered, not the card's own size: the columns are sized from it, so measuring the
+        // card would feed their widths back into it and keep it from ever shrinking with the window.
+        GeometryReader { card(in: $0.size) }
+            .padding(PanelMetrics.contentInset)
+            .navigationTitle(model.operation.title)
+            .toolbar { toolbar }
             .onChange(of: model.operation) { _, _ in reprocessForCurrentOptions() }
             .onChange(of: pinnedTarget) { _, _ in reprocessForCurrentOptions() }
-            .onChange(of: pinnedSource) { _, _ in reprocessForCurrentOptions() }
+            // The source only picks the target, so it moves the target, and that change reprocesses.
+            .onChange(of: pinnedSource) { _, source in
+                pinnedTarget = SettingsStore.target(followingSource: source)
+            }
             .onChange(of: model.input) { _, _ in learning.reset() }
             .onChange(of: model.state) { _, state in
                 if state == .loading { learning.reset() }
@@ -56,174 +34,265 @@ struct TextProcessingView: View {
                     learning.generateIfAutoRequested(for: request)
                 }
             }
+            // A reset starts a new result, whose learning may open on its own again.
+            .onChange(of: learning.state) { _, state in
+                if state == .idle { learningDismissed = false }
+            }
     }
 
-    @ViewBuilder private var pageContent: some View {
-        if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
-            workspace
-        } else {
-            // Both editors and learning must remain reachable at the window's minimum height.
-            ScrollView { workspace }
-        }
-    }
-
-    private var workspace: some View {
-        VStack(spacing: 16) {
-            layout
-            GroupBox {
-                if let request = LearningRequest.from(model) {
-                    LearningView(
-                        learning: learning, request: request, collection: collection,
-                        openNotebook: openNotebook)
-                } else {
-                    DisclosureGroup {
-                        Text("完成翻译或润色后，即可学习词汇与表达。")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Label("学习", systemImage: "lightbulb.fill")
-                            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-                    }
-                    .disabled(true)
-                    .help("完成翻译或润色后可用")
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Picker("处理方式", selection: $model.operation) {
+                ForEach(Operation.allCases, id: \.self) { operation in
+                    Image(nsImage: segmentSymbol(operation)).tag(operation)
                 }
             }
-            .glassEffect(.regular, in: ContainerRelativeShape())
-            .padding(.top, 8)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .disabled(isBusy)
         }
+        // Polish keeps the source language, so it only offers that one.
+        ToolbarItem(placement: .primaryAction) {
+            let picker = SourceLanguagePicker(text: model.input, pinnedSource: $pinnedSource)
+            languageMenu(picker.title, picker)
+        }
+        if model.operation == .translate {
+            ToolbarItem(placement: .primaryAction) {
+                Image(systemName: "chevron.forward.2")
+                    .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .primaryAction) {
+                let picker = TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
+                languageMenu(picker.title, picker)
+            }
+        }
+    }
+
+    /// The selected operation's symbol in its own color, the others in the label color, as designed.
+    /// A segmented picker draws every symbol as a template, so each is a pre-colored image.
+    private func segmentSymbol(_ operation: Operation) -> NSImage {
+        let tint: NSColor = operation == .polish ? .systemGreen : .systemBlue
+        return PanelSegmentedControl.content(
+            of: .init(
+                title: "", symbol: operation.symbol, action: {}, accessibilityLabel: operation.title,
+                tint: model.operation == operation ? tint : nil),
+            font: nil)
+    }
+
+    /// A pull-down that is as wide as the current choice; a pop-up button is as wide as its longest.
+    private func languageMenu(_ title: String, _ picker: some View) -> some View {
+        Menu {
+            picker.pickerStyle(.inline)
+        } label: {
+            // The design's pop-up indicator, on a pull-down that hugs its label.
+            HStack(spacing: 4) {
+                Text(title)
+                Image(systemName: "chevron.up.chevron.down").imageScale(.small)
+            }
+        }
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
+    private func card(in size: CGSize) -> some View {
+        let sideBySide = ProcessingLayout.choose(width: size.width) == .sideBySide
+        let axis: Axis = sideBySide ? .horizontal : .vertical
+        let column = max(((sideBySide ? size.width : size.height) - 1) / 2, 0)
+        let columns = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
+        return ZStack(alignment: .bottomTrailing) {
+            // Three slots on one axis, as learning opens: the source shrinks to nothing, the result
+            // moves into its place, and the learning column grows in behind it.
+            columns {
+                // The source squeezes its text as it goes; the learning column keeps its own width.
+                slot(
+                    columns {
+                        sourceColumn; divider(axis)
+                    }, length: column + 1, shown: !showsLearning, axis: axis, squeezes: true)
+                resultColumn.frame(width: sideBySide ? column : nil, height: sideBySide ? nil : column)
+                if let request = LearningRequest.from(model) {
+                    slot(
+                        columns {
+                            divider(axis)
+                            PanelLearningView(
+                                learning: learning, request: request, collection: collection, fitsRows: false)
+                        }, length: column + 1, shown: showsLearning, axis: axis)
+                }
+            }
+            actions
+                .padding(.trailing, PanelMetrics.contentInset)
+                .padding(.bottom, PanelMetrics.contentInset)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: showsLearning)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: PanelMetrics.cornerRadius))
+    }
+
+    /// A column that opens and closes along the axis. A squeezing column rewraps its text as it
+    /// narrows; otherwise the content keeps the full length and the slot clips it.
+    private func slot(
+        _ content: some View, length: CGFloat, shown: Bool, axis: Axis, squeezes: Bool = false
+    ) -> some View {
+        let horizontal = axis == .horizontal
+        let full: CGFloat? = squeezes ? nil : length
+        return
+            content
+            .frame(width: horizontal ? full : nil, height: horizontal ? nil : full)
+            .frame(
+                width: horizontal ? (shown ? length : 0) : nil, height: horizontal ? nil : (shown ? length : 0),
+                alignment: .topLeading
+            )
+            .clipped()
+            .opacity(shown ? 1 : 0)
+    }
+
+    /// Inset along its length only; each column keeps its own inset from it.
+    private func divider(_ axis: Axis) -> some View {
+        Divider().padding(axis == .horizontal ? .vertical : .horizontal, PanelMetrics.contentInset)
+    }
+
+    private var sourceColumn: some View {
+        TextEditor(text: $model.input)
+            .textEditorStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
+            .lineSpacing(2)
+            .accessibilityLabel("原文")
+            .overlay(alignment: .topLeading) {
+                if model.input.isEmpty {
+                    // The page has no submit button; the placeholder names the shortcut instead.
+                    Text("输入或粘贴文字，⌘↩ \(model.operation.title)")
+                        .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 5)
+                        .allowsHitTesting(false)
+                }
+            }
+            // As on the panel: the text rests clear of the edges and scrolls under them, fading out.
+            .safeAreaPadding(.vertical, PanelMetrics.contentInset)
+            .panelEdgeFade()
+            // The editor insets its text by 5pt itself, so the text lines up with the result's.
+            .padding(.horizontal, PanelMetrics.contentInset - 5)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder private var resultColumn: some View {
+        // Loading and errors sit centered in the column, as the learning column's own states do.
+        switch model.state {
+        case .loading:
+            Text("\(model.operation.title)中…")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failure(let message):
+            failure(message, action: "服务设置")
+        case .missingConfig:
+            failure("模型服务未配置", action: "配置服务")
+        case .idle, .success:
+            resultScroll
+        }
+    }
+
+    private func failure(_ message: String, action: String) -> some View {
+        VStack(spacing: 8) {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+                .multilineTextAlignment(.center)
+            Button(action, systemImage: "gearshape", action: openSettings).buttonStyle(.plain)
+        }
+        .padding(.horizontal, PanelMetrics.contentInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var resultScroll: some View {
+        ScrollView {
+            result
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, PanelMetrics.contentInset)
+                // Beside the learning column the buttons sit on the right, so this side needs no room.
+                .panelBottomPadding(besideActions: !showsLearning)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .panelEdgeBands()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder private var result: some View {
+        if case .success(let text) = model.state {
+            if displayMode == .aligned, !model.segments.isEmpty {
+                AlignedSegments(
+                    segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
+                    targetSize: PanelMetrics.textSize, lineSpacing: 4, pairSpacing: 12)
+            } else {
+                PanelJustifiedText(text: text)
+            }
+        }
+    }
+
+    /// Hugs the buttons, so the text beside them keeps its own clicks.
+    private var actions: some View {
+        HStack(spacing: 8) {
+            // Runs the current text again: after an edit it is a new request, the old result's cache gone.
+            if !isBusy, !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                CardButton(
+                    title: "重新\(model.operation.title)", symbol: "arrow.clockwise",
+                    help: "重新\(model.operation.title) ⌘↩"
+                ) {
+                    model.process(to: resolvedTarget)
+                }
+            }
+            if isBusy {
+                CardButton(title: "取消处理", symbol: "xmark", help: "取消处理", action: model.cancel)
+            }
+            if showsLearning {
+                CardButton(title: "返回", symbol: "chevron.left", help: "返回结果") {
+                    learning.isExpanded = false
+                    learningDismissed = true
+                }
+            } else if LearningRequest.from(model) != nil {
+                CardButton(title: "学习", symbol: "lamp.desk", help: "展开学习表达") {
+                    learning.isExpanded = true
+                }
+            }
+            if case .success(let text) = model.state {
+                CardButton(title: "复制结果", symbol: "document.on.document", help: "复制结果 ⌘⇧C") {
+                    Clipboard.copy(text)
+                }
+            }
+        }
+    }
+
+    private var showsLearning: Bool {
+        LearningRequest.from(model) != nil
+            && (learning.isExpanded || (learning.state != .idle && !learningDismissed))
     }
 
     private var isBusy: Bool { model.state == .loading }
     private var resolvedTarget: String { SettingsStore.resolvedTarget(for: model.input) }
-    private var result: String? {
-        if case .success(let text) = model.state { return text }
-        return nil
-    }
 
     private func reprocessForCurrentOptions() {
         learning.reset()
         if model.shouldReprocessOnOptionChange { model.process(to: resolvedTarget) }
     }
-
-    @ViewBuilder private var layout: some View {
-        if ProcessingLayout.choose(width: contentWidth) == .sideBySide {
-            HSplitView {
-                sourcePane.frame(minWidth: 280)
-                resultPane.frame(minWidth: 280)
-            }
-            .padding(.top, 1)
-        } else {
-            VStack(spacing: 16) {
-                sourcePane; resultPane
-            }
-        }
-    }
-
-    private var sourcePane: some View {
-        GroupBox {
-            VStack(spacing: 12) {
-                HStack {
-                    Text("原文").font(.headline)
-                    Spacer(minLength: 8)
-                    SourceLanguagePicker(text: model.input, pinnedSource: $pinnedSource)
-                        .opacity(model.operation == .translate ? 1 : 0)
-                        .allowsHitTesting(model.operation == .translate)
-                        .disabled(model.operation != .translate)
-                        .accessibilityHidden(model.operation != .translate)
-                }
-                TextEditor(text: $model.input)
-                    .textEditorStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .font(.system(size: 17))
-                    .accessibilityLabel("原文")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                HStack {
-                    Text("\(model.input.count) 字符").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("清空原文", systemImage: "trash") {
-                        model.cancel()
-                        model.input = ""
-                        model.process(to: resolvedTarget)
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.glass)
-                    .help("清空原文")
-                    .disabled(model.input.isEmpty)
-                }
-            }
-            .padding(16)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .frame(minHeight: 260)
-        .glassEffect(.regular, in: ContainerRelativeShape())
-    }
-
-    private var resultPane: some View {
-        GroupBox {
-            VStack(spacing: 12) {
-                HStack {
-                    Text(model.operation == .translate ? "译文" : "结果").font(.headline)
-                    Spacer(minLength: 8)
-                    TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
-                        .opacity(model.operation == .translate ? 1 : 0)
-                        .allowsHitTesting(model.operation == .translate)
-                        .disabled(model.operation != .translate)
-                        .accessibilityHidden(model.operation != .translate)
-                }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if isBusy {
-                            ProgressView("\(model.operation.title)中…")
-                        } else if let result {
-                            if displayMode == .aligned, !model.segments.isEmpty {
-                                AlignedSegments(
-                                    segments: model.segments, sourceSize: 16, targetSize: 17,
-                                    lineSpacing: 7, pairSpacing: 14)
-                            } else {
-                                Text(result).font(.system(size: 18)).lineSpacing(8).textSelection(.enabled)
-                            }
-                        }
-                        status
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                HStack {
-                    Spacer()
-                    Button("复制结果", systemImage: "doc.on.doc") {
-                        if let result { Clipboard.copy(result) }
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.glass)
-                    .help("复制结果 ⌘⇧C")
-                    .disabled(result == nil || isBusy)
-                }
-            }
-            .padding(16)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .frame(minHeight: 260)
-        .glassEffect(.regular, in: ContainerRelativeShape())
-    }
-
-    @ViewBuilder private var status: some View {
-        switch model.state {
-        case .failure(let message): StatusNote(message: message, action: "服务设置", perform: openSettings)
-        case .missingConfig: StatusNote(message: "模型服务未配置", action: "配置服务", perform: openSettings)
-        default: EmptyView()
-        }
-    }
 }
 
-private struct StatusNote: View {
-    let message: String
-    let action: String
-    let perform: () -> Void
+/// The card's 36pt round glass action, as on the panel.
+private struct CardButton: View {
+    let title: String
+    let symbol: String
+    let help: String
+    let action: () -> Void
 
     var body: some View {
-        HStack {
-            Label(message, systemImage: "exclamationmark.triangle")
-            Spacer(minLength: 0)
-            Button(action, action: perform).buttonStyle(.glass)
-        }
+        Button(action: action) { Label(title, systemImage: symbol).foregroundStyle(.primary) }
+            .labelStyle(.iconOnly)
+            .font(.system(size: 13, weight: .medium))
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.extraLarge)
+            .buttonSizing(.flexible)
+            .frame(width: 36, height: 36)
+            .help(help)
     }
 }

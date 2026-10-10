@@ -45,6 +45,7 @@ struct ExpandedPanelContent: View {
         TextField("原文", text: $model.input, axis: .vertical)
             .textFieldStyle(.plain)
             .font(.system(size: PanelMetrics.sourceTextSize))
+            .fontWeight(PanelMetrics.sourceWeight)
             .lineSpacing(2)
     }
 

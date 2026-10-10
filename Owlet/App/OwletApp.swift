@@ -29,7 +29,7 @@ struct OwletApp: App {
             .modelContainer(collection.store.container)
             .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowToolbarStyle(.unified)
         .defaultSize(width: 1080, height: 690)
         .commands {
             CommandGroup(replacing: .saveItem) { CloseWindowButton() }
@@ -85,8 +85,7 @@ private struct MainView: View {
             switch page {
             case .processing:
                 TextProcessingView(
-                    model: translation, openSettings: openModelSettings, collection: collection,
-                    openNotebook: { page = .vocabulary })
+                    model: translation, openSettings: openModelSettings, collection: collection)
             case .vocabulary:
                 VocabularyView(collection: collection, openProcessing: { page = .processing })
             case .history:

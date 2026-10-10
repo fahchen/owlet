@@ -18,6 +18,8 @@ enum PanelMetrics {
     static let textSize: CGFloat = 16
     static let sourceTextSize: CGFloat = 15
     static let textWeight: Font.Weight = .medium
+    /// The source stays lighter than the result it was turned into.
+    static let sourceWeight: Font.Weight = .regular
     /// Transparent window margin around the glass, so its shadow fades out instead of being cut
     /// at the window edge.
     static let shadowMargin: CGFloat = 24
@@ -69,7 +71,7 @@ struct PanelSourceBar: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(summary.replacing(/\s+/, with: " "))
-                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight))
+                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)

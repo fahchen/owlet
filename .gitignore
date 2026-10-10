@@ -7,3 +7,4 @@ xcuserdata/
 Owlet.xcodeproj/
 .build/
 dist/
+Signing.local.xcconfig

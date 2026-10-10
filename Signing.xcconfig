@@ -1,0 +1,11 @@
+// Ad-hoc by default, so CI and machines without a certificate still build.
+// An ad-hoc signature changes with every build, and macOS then treats Owlet as a new app and
+// asks for Accessibility again. To keep the grant, put a stable identity in the ignored
+// Signing.local.xcconfig, for example:
+//
+//   CODE_SIGN_IDENTITY = Apple Development
+//   DEVELOPMENT_TEAM = <your team id>
+//   CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+
+#include? "Signing.local.xcconfig"

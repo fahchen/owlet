@@ -11,7 +11,10 @@ settings:
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
-    CODE_SIGN_IDENTITY: "-"
+# Signing lives in an xcconfig so a machine with a certificate can override it locally.
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
 targets:
   Owlet:
     type: application

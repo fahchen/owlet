@@ -46,8 +46,9 @@ struct PanelMetricsTests {
         let control = try #require(find(host.view))
         #expect(control.trackingMode == .momentary)
         #expect(control.segmentDistribution == .fit)
-        #expect(control.label(forSegment: 0) == "翻译中…")
-        #expect(control.image(forSegment: 0) != nil)
+        // The title is drawn into the segment image, so it keeps its color in the inactive panel.
+        #expect(control.image(forSegment: 0)?.accessibilityDescription == "翻译中…")
+        #expect(control.image(forSegment: 0)?.isTemplate == false)
         #expect(control.width(forSegment: 1) == 36)
         #expect(control.subviews.compactMap { $0 as? NSBox }.contains { $0.boxType == .separator })
         // Momentary selection exists only during native tracking; simulate that selection for dispatch.

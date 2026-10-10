@@ -22,10 +22,6 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// While a write-back is in flight the panel lets go of the keyboard without dismissing itself:
     /// the keystroke has to reach the app underneath, and the panel has to survive to report a miss.
     var suspendsDismissal = false
-    /// Injectable so placement tests can disable the resize animation.
-    var prefersReducedMotion: () -> Bool = {
-        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-    }
     private var anchor = PanelPlacement.Anchor.topCenter(nil)
     /// Set while the panel moves itself, so only user drags reach `onDrag`.
     private var placing = false
@@ -115,7 +111,7 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
 
     /// Closes when a click landed outside the glass; a click on the panel is the user acting on it.
     func dismissIfOutside(_ screenPoint: NSPoint) {
-        guard isVisible, !suspendsDismissal, Self.dismisses(screenPoint, from: frame) else { return }
+        guard isVisible, !suspendsDismissal, Self.dismisses(screenPoint, from: glassFrame) else { return }
         close()
     }
 
@@ -130,9 +126,12 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         mouseMonitor = nil
     }
 
+    /// The window minus its transparent shadow margin: what the user sees as the panel.
+    var glassFrame: NSRect { frame.insetBy(dx: PanelMetrics.shadowMargin, dy: PanelMetrics.shadowMargin) }
+
     func windowDidMove(_ notification: Notification) {
         guard !placing else { return }
-        let topCenter = NSPoint(x: frame.midX, y: frame.maxY)
+        let topCenter = NSPoint(x: glassFrame.midX, y: glassFrame.maxY)
         anchor = .topCenter(topCenter)
         onDrag(topCenter)
     }
@@ -157,40 +156,36 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         place(size: size)
     }
 
+    /// Places the glass, not the window, so the anchor and the screen clamp ignore the shadow margin.
     private func place(size: NSSize) {
+        let margin = PanelMetrics.shadowMargin
+        let glass = NSSize(width: max(size.width - 2 * margin, 0), height: max(size.height - 2 * margin, 0))
         let screen = anchor.reference.flatMap { point in
             NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
         }
         guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
             // No screen to place on: keep the current top-center so the panel still expands downward.
-            let top = NSPoint(x: frame.midX, y: frame.maxY)
+            let top = NSPoint(x: glassFrame.midX, y: glassFrame.maxY)
             grow(
                 to: NSRect(
-                    x: top.x - size.width / 2, y: top.y - size.height, width: size.width,
-                    height: size.height))
+                    x: top.x - glass.width / 2, y: top.y - glass.height, width: glass.width,
+                    height: glass.height
+                ).insetBy(dx: -margin, dy: -margin))
             invalidateShadow()
             return
         }
-        grow(to: PanelPlacement.frame(size: size, anchor: anchor, within: visible))
+        grow(to: PanelPlacement.frame(size: glass, anchor: anchor, within: visible).insetBy(dx: -margin, dy: -margin))
         // The shape changed with the size, so the shadow has to be recomputed from it.
         invalidateShadow()
     }
 
-    /// The panel grows taller when the compact strip becomes the expanded panel, so the window is
-    /// resized with the same native spring as its content; Reduce Motion takes the direct path.
+    /// Resizes the transparent window in one step; the glass inside animates its own growth, so a
+    /// second, window-level animation would only make the two fight and the content shake.
+    // ponytail: a shrink also snaps, clipping the glass for one animation; defer it if one shows.
     private func grow(to rect: NSRect) {
-        // The animation's own frames move the window, so placement stays flagged for its whole
-        // duration; otherwise a mid-animation frame is mistaken for a drag and saved as the anchor.
+        // Setting the frame reports a move, which must not be mistaken for a drag and saved.
         placing = true
-        guard isVisible, !prefersReducedMotion() else {
-            setFrame(rect, display: true)
-            placing = false
-            return
-        }
-        NSAnimationContext.animate(.spring(duration: 0.36, bounce: 0.12)) {
-            animator().setFrame(rect, display: true)
-        } completion: { [weak self] in
-            self?.placing = false
-        }
+        setFrame(rect, display: true)
+        placing = false
     }
 }

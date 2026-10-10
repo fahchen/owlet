@@ -222,6 +222,28 @@ struct PanelControllerTests {
         panel.close()
     }
 
+    /// The panel translates the trimmed text, and the write-back restores the selection's indent and
+    /// trailing newline around the result.
+    @Test func writeBackKeepsTheSelectionsEdgeWhitespace() async {
+        let (panel, writes) = makePanel()
+        let padded = Selection(text: "  Hello\n", element: AXUIElementCreateApplication(1), app: nil, range: range)
+        panel.read = { $0(.success(padded)) }
+        panel.processSelection(replace: true)
+        for _ in 0..<40 where writes.texts.isEmpty { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(writes.texts == ["  T:Hello\n"])
+    }
+
+    /// A failed read clears the previous text, so the notice never sits beside a stale selection.
+    @Test func failedReadClearsThePreviousText() async {
+        let (panel, _) = makePanel()
+        panel.model.input = "Earlier text"
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.processSelection()
+        #expect(panel.notice == .unreadable)
+        #expect(panel.model.input.isEmpty)
+        panel.close()
+    }
+
     @Test func lateReadAfterCloseIsIgnored() async {
         let (panel, writes) = makePanel()
         let reads = deferredReads(panel)
@@ -464,13 +486,6 @@ struct PanelControllerTests {
     @Test func dragSavesFixedAnchor() async throws {
         let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
         let (panel, _) = makePanel(defaults: defaults, realWindow: true)
-        // Reduce Motion snaps the resize instead of easing it, so the panel has finished placing itself
-        // before the move below; while the ease runs the move is (correctly) ignored as placement.
-        panel.makeWindow = { view in
-            let window = FloatingPanel(rootView: view)
-            window.prefersReducedMotion = { true }
-            return window
-        }
         panel.read = { $0(.failure(.unreadable)) }
         panel.processSelection()
         let window = try #require(panel.panel)
@@ -479,7 +494,7 @@ struct PanelControllerTests {
         await settle()
         #expect(
             SettingsStore.panelFixedAnchor(in: defaults)
-                == NSPoint(x: window.frame.midX, y: window.frame.maxY))
+                == NSPoint(x: window.glassFrame.midX, y: window.glassFrame.maxY))
         panel.close()
     }
 
@@ -507,9 +522,9 @@ struct PanelControllerTests {
         // live mouse location, and its arithmetic belongs to PanelPlacementTests; the resize is
         // spring animated, so allow it to settle before reading the frame.
         try? await Task.sleep(for: .milliseconds(600))
-        #expect(window.frame.maxY <= rect.minY)
-        #expect(window.frame.minX >= visible.minX)
-        #expect(window.frame.maxX <= visible.maxX)
+        #expect(window.glassFrame.maxY <= rect.minY)
+        #expect(window.glassFrame.minX >= visible.minX)
+        #expect(window.glassFrame.maxX <= visible.maxX)
         window.setFrameOrigin(NSPoint(x: window.frame.minX + 40, y: window.frame.minY - 30))
         await settle()
         #expect(SettingsStore.panelFixedAnchor(in: defaults) == nil)

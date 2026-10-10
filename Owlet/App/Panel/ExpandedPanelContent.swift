@@ -28,9 +28,8 @@ struct ExpandedPanelContent: View {
             status
         }
         .padding(.horizontal, PanelMetrics.contentInset)
-        .padding(.top, 24)
-        .padding(.bottom, 24)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .fontWeight(PanelMetrics.textWeight)
         // A learning result describes one specific result, so changing the operation discards it,
         // and a finished result collapses the source field back into the pairs.
         .onChange(of: model.operation) { _, _ in
@@ -42,13 +41,11 @@ struct ExpandedPanelContent: View {
     }
 
     private var sourceEditor: some View {
-        TextEditor(text: $model.input)
-            .accessibilityLabel("原文")
-            .scrollContentBackground(.hidden)
-            .font(.system(size: 17, weight: .regular))
+        // A vertical TextField hugs its text, so the gap above the divider matches the one below it.
+        TextField("原文", text: $model.input, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.system(size: PanelMetrics.sourceTextSize))
             .lineSpacing(2)
-            .frame(height: 66)
-
     }
 
     /// Only a finished result has pairs to group; a run in progress still shows the source field.
@@ -72,7 +69,8 @@ struct ExpandedPanelContent: View {
             if case .success(let text) = model.state {
                 if showsAlignedPairs {
                     AlignedSegments(
-                        segments: model.segments, sourceSize: 17, targetSize: 17,
+                        segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
+                        targetSize: PanelMetrics.textSize,
                         lineSpacing: 4, pairSpacing: 12)
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
@@ -84,7 +82,7 @@ struct ExpandedPanelContent: View {
                         .frame(maxWidth: .infinity)
                 } else {
                     Text(text)
-                        .font(.system(size: 17, weight: .regular))
+                        .font(.system(size: PanelMetrics.textSize))
                         .lineSpacing(2)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -92,7 +90,7 @@ struct ExpandedPanelContent: View {
 
             } else {
                 Text(model.input)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.system(size: PanelMetrics.textSize))
                     .lineSpacing(2)
                     .lineLimit(2)
                     .redacted(reason: .placeholder)
@@ -109,7 +107,8 @@ struct ExpandedPanelContent: View {
                 tint: notice == .cancelled ? .secondary : .red
             ) {
                 Text(notice.message)
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.system(size: PanelMetrics.textSize))
+                    .foregroundStyle(notice == .cancelled ? Color.primary : Color.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 GlassEffectContainer {
                     Button(notice.actionTitle) { recover(notice) }.buttonStyle(.glass)

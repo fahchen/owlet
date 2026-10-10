@@ -3,22 +3,59 @@ import SwiftUI
 
 struct PanelRootView: View {
     let controller: PanelController
-    @Namespace private var panelTransition
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
+
+    /// The expanded panel's own height, which the surface grows to. The surface needs it as an
+    /// explicit, animated height: a surface that only hugged the panel would snap to its full size.
+    @State private var expandedHeight: CGFloat = 0
+
+    /// One glass surface carries the source bar and then the expanded panel, so expanding grows
+    /// it in place; nil while only a notice capsule shows.
+    private var surfaceHeight: CGFloat? {
+        if controller.expanded { return max(expandedHeight, PanelMetrics.sourceBarHeight) }
+        return controller.model.input.isEmpty ? nil : PanelMetrics.sourceBarHeight
+    }
 
     var body: some View {
-        Group {
-            if controller.expanded {
-                expandedView
-                    .matchedGeometryEffect(id: "panel", in: panelTransition, anchor: .top)
-                    .transition(.opacity)
-            } else {
-                compact
-                    .matchedGeometryEffect(id: "panel", in: panelTransition, anchor: .top)
-                    .transition(.opacity)
+        let spring: Animation? = reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12)
+        VStack(spacing: 12) {
+            if let surfaceHeight {
+                // Top-aligned: the surface keeps its top edge and grows down; only its content
+                // cross-fades from the bar to the panel.
+                ZStack(alignment: .top) {
+                    if controller.expanded {
+                        expandedView
+                            .onGeometryChange(for: CGFloat.self, of: \.size.height) { expandedHeight = $0 }
+                            .transition(.opacity)
+                    } else {
+                        sourceBar.background(PanelGlassEffect.compactTint).transition(.opacity)
+                    }
+                }
+                .panelSurface(
+                    glassEffect.glass,
+                    height: surfaceHeight)
+            }
+            if !controller.expanded {
+                compact.transition(.opacity)
             }
         }
-        .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: controller.expanded)
+        .frame(width: PanelMetrics.width)
+        .animation(spring, value: controller.expanded)
+        .animation(spring, value: surfaceHeight)
+        .padding(PanelMetrics.shadowMargin)
+        // Pinned to the window's top. Without a zero minimum the frame never gets shorter than its
+        // content, so for the frame before the window grows the taller content is centered in the
+        // old window and the panel drops, then springs back up.
+        .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The source bar for the current compact state, drawn on the shared surface.
+    private var sourceBar: some View {
+        let processing = controller.notice == nil || controller.notice == .translating
+        return PanelSourceBar(
+            summary: controller.model.input, retry: processing ? nil : compactRetry, close: controller.close,
+            drawsGlass: false)
     }
 
     private var expandedView: some View {
@@ -48,7 +85,7 @@ struct PanelRootView: View {
             CompactProcessingView(
                 summary: controller.model.input,
                 status: controller.replacing ? "翻译并替换…" : "\(controller.model.operation.title)中…",
-                stop: controller.stop, close: controller.close)
+                stop: controller.stop, close: controller.close, showsBar: false)
         case let notice?:
             CompactNoticeView(
                 message: notice.message, summary: controller.model.input,
@@ -59,7 +96,8 @@ struct PanelRootView: View {
                 actionTitle: statusRetries(notice) ? "重试" : notice.actionTitle,
                 actionSymbol: statusRetries(notice) ? "arrow.clockwise" : "gearshape",
                 recover: { recover(notice) },
-                action: statusRetries(notice) ? compactRetry : nil)
+                action: statusRetries(notice) ? compactRetry : nil,
+                isError: notice != .cancelled, showsBar: false)
         }
     }
 

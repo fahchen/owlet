@@ -12,6 +12,8 @@ parser.add_argument('--live', action='store_true', help='Use DEEPSEEK_API_KEY fo
 parser.add_argument('--background', type=Path, help='Optional local backdrop for glass screenshots')
 parser.add_argument('--screenshots', type=Path, help='Export panel states and collection toggle screenshots, then exit')
 parser.add_argument('--active', action='store_true', help='Render native controls in active appearance for comparison')
+parser.add_argument('--transition', type=Path,
+                    help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
 args = parser.parse_args()
 if args.live and not os.environ.get('DEEPSEEK_API_KEY'):
     parser.error('DEEPSEEK_API_KEY is not set')
@@ -37,6 +39,8 @@ if args.active:
     environment['OWLET_PREVIEW_ACTIVE'] = '1'
 if args.screenshots:
     environment['OWLET_PREVIEW_SCREENSHOTS'] = str(args.screenshots.resolve())
+if args.transition:
+    environment['OWLET_PREVIEW_TRANSITION'] = str(args.transition.resolve())
 if args.background:
     environment['OWLET_PREVIEW_BACKGROUND'] = str(args.background.resolve())
 subprocess.run([str(executable), *(['--live'] if args.live else [])], env=environment, check=True)

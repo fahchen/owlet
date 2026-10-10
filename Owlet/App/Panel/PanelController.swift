@@ -125,6 +125,8 @@ final class PanelController {
         guard id == requestID, readingID == id else { return }
         model.operation = operation
         autoReplace = replace
+        // The previous text is not what the user selected now, so it must not sit beside this notice.
+        model.input = ""
         if expanded { model.fail(Notice.unreadable.message) }
         notice = .unreadable
         show()
@@ -142,12 +144,15 @@ final class PanelController {
         switch result {
         case .success(let selection):
             self.selection = selection
-            model.input = selection.text
+            // Edge whitespace is layout in the other app, not text to translate; a write-back puts it back.
+            model.input = selection.text.trimmingCharacters(in: .whitespacesAndNewlines)
             processCurrentText()
         case .failure(.permission):
+            model.input = ""
             if expanded { model.fail(Notice.permission.message) }
             notice = .permission
         case .failure(.unreadable), .failure(.secure):
+            model.input = ""
             if expanded { model.fail(Notice.unreadable.message) }
             notice = .unreadable
         }
@@ -237,6 +242,14 @@ final class PanelController {
         Task { [weak self] in await self?.performReplace(text) }
     }
 
+    /// `text` wrapped in the leading and trailing whitespace of `original`, so replacing an indented
+    /// line or one that ends in a newline keeps the surrounding layout.
+    static func keepingEdges(of original: String, around text: String) -> String {
+        let leading = original.prefix(while: \.isWhitespace)
+        let trailing = original.reversed().prefix(while: \.isWhitespace).reversed()
+        return leading + text.trimmingCharacters(in: .whitespacesAndNewlines) + String(trailing)
+    }
+
     /// A paste lands asynchronously — the app takes the keystroke and applies it later — so the
     /// outcome decides what the user sees rather than the call itself.
     @discardableResult
@@ -250,7 +263,7 @@ final class PanelController {
         // panel steps aside first; a miss comes back with the result to copy, a hit closes it.
         panel?.suspendsDismissal = true
         panel?.releaseKeyboard()
-        let outcome = await write(selection, text)
+        let outcome = await write(selection, Self.keepingEdges(of: selection.text, around: text))
         panel?.suspendsDismissal = false
         if let refusal = Self.refusal(outcome) {
             writebackRefusal = refusal

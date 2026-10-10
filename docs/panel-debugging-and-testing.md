@@ -48,7 +48,12 @@ python3 scripts/panel-preview.py --screenshots /tmp/owlet-panel-states --backgro
 
 # 仅对照系统控件的活跃外观
 python3 scripts/panel-preview.py --screenshots /tmp/owlet-panel-active --active
+
+# 录制真实 PanelController／FloatingPanel 从翻译中到结果的过渡（.mov，约 4 秒）
+python3 scripts/panel-preview.py --transition /tmp/owlet-panel-transition.mov
 ```
+
+过渡录制走生产展开路径，模拟模型延迟 1.5 秒返回；用 `ffmpeg -i <mov> -vf fps=30 f%03d.png` 拆帧逐帧检查。录制进程独立结束，主线程不等待它，否则动画会被阻塞。
 
 交互预览使用 ⌘1–⌘5 切换：处理中、未配置模型、连接失败、成功、学习。预览窗口固定1030×550pt，截图实际像素随屏幕缩放变化。
 

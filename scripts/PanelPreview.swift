@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import SwiftUI
 import SwiftData
 
@@ -13,41 +14,48 @@ import SwiftData
     static let client = live ? ModelClient(capture: .off) : fixtureClient
     static let defaults = UserDefaults(suiteName: "dev.fahchen.owlet.panel-preview")!
     static let fixtureClient = ModelClient(
+        transport: fixtureTransport, promptForOperation: { _ in "Preview" }, capture: .off)
+    /// The fixture answer after a pause, so the transition recording sees 翻译中 before the result.
+    static let slowClient = ModelClient(
         transport: { request in
-            let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
-            let messages = body["messages"] as! [[String: String]]
-            let isLearning = messages[0]["content"]!.contains("key items")
-            let content: [String: Any] =
-                isLearning
-                ? [
-                    "items": [
-                        [
-                            "text": "deliberate", "language": "en", "kind": "word", "meaning": "仔细斟酌、深思熟虑。",
-                            "context":
-                                "we meticulously deliberate context, nuance, and emotion in every language pairing.",
-                        ],
-                        [
-                            "text": "refine", "language": "en", "kind": "word", "meaning": "反复推敲，使表达更精准。",
-                            "context": "we refine each expression for maximum naturalness.",
-                        ],
-                    ]
-                ]
-                : [
-                    "source_language": "zh-Hans", "target_language": "en",
-                    "segments": [
-                        [
-                            "source": source,
-                            "target":
-                                "\"Tui Qiao\" (deliberation) is not just an ancient literary allusion, but the ultimate pursuit of precise translation. Much like ancient poets weighing every character, we meticulously deliberate context, nuance, and emotion in every language pairing. Instead of stilted literal conversion, we refine each expression for maximum naturalness, making every cross-language exchange both perfectly accurate and beautifully articulate.",
-                        ]
+            try await Task.sleep(for: .seconds(1.5))
+            return try await fixtureTransport(request)
+        }, promptForOperation: { _ in "Preview" }, capture: .off)
+    nonisolated static let fixtureTransport: Transport = { request in
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        let messages = body["messages"] as! [[String: String]]
+        let isLearning = messages[0]["content"]!.contains("key items")
+        let content: [String: Any] =
+            isLearning
+            ? [
+                "items": [
+                    [
+                        "text": "deliberate", "language": "en", "kind": "word", "meaning": "仔细斟酌、深思熟虑。",
+                        "context":
+                            "we meticulously deliberate context, nuance, and emotion in every language pairing.",
+                    ],
+                    [
+                        "text": "refine", "language": "en", "kind": "word", "meaning": "反复推敲，使表达更精准。",
+                        "context": "we refine each expression for maximum naturalness.",
                     ],
                 ]
-            let serialized = String(decoding: try JSONSerialization.data(withJSONObject: content), as: UTF8.self)
-            let data = try JSONSerialization.data(withJSONObject: [
-                "choices": [["message": ["content": serialized], "finish_reason": "stop"]]
-            ])
-            return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
-        }, promptForOperation: { _ in "Preview" }, capture: .off)
+            ]
+            : [
+                "source_language": "zh-Hans", "target_language": "en",
+                "segments": [
+                    [
+                        "source": source,
+                        "target":
+                            "\"Tui Qiao\" (deliberation) is not just an ancient literary allusion, but the ultimate pursuit of precise translation. Much like ancient poets weighing every character, we meticulously deliberate context, nuance, and emotion in every language pairing. Instead of stilted literal conversion, we refine each expression for maximum naturalness, making every cross-language exchange both perfectly accurate and beautifully articulate.",
+                    ]
+                ],
+            ]
+        let serialized = String(decoding: try JSONSerialization.data(withJSONObject: content), as: UTF8.self)
+        let data = try JSONSerialization.data(withJSONObject: [
+            "choices": [["message": ["content": serialized], "finish_reason": "stop"]]
+        ])
+        return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
     static let model = TextProcessingModel(client: client, config: { config })
     static let learning: LearningModel = {
         let learning = LearningModel(client: client, config: { config })
@@ -93,7 +101,9 @@ struct PreviewView: View {
                     ExpandedPanel(
                         model: PreviewFixtures.model, replace: nil, copy: { _ in },
                         collection: PreviewFixtures.collection, openNotebook: {}, notice: nil, recover: { _ in },
-                        retry: {}, cancel: {}, openSettings: {}, close: {}, learning: PreviewFixtures.learning)
+                        retry: {}, cancel: {}, openSettings: {}, close: {}, learning: PreviewFixtures.learning
+                    )
+                    .panelSurface(.regular)
                 }
             }
         }
@@ -127,6 +137,11 @@ final class PreviewPanel: NSPanel {
     @MainActor static func main() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_TRANSITION"] {
+            recordTransition(to: output)
+            app.run()
+            return
+        }
         let window = PreviewPanel(
             contentRect: NSRect(x: 100, y: 100, width: 1030, height: 550), styleMask: [.borderless], backing: .buffered,
             defer: false)
@@ -207,5 +222,35 @@ final class PreviewPanel: NSPanel {
             }
         }
         app.run()
+    }
+
+    /// Runs the production path, PanelController and FloatingPanel, from 翻译中 to the result, and
+    /// records the panel's screen region as a movie. The recorder exits on its own; nothing on the
+    /// main thread waits for it, so the panel keeps animating while it records.
+    @MainActor static func recordTransition(to output: String) {
+        let model = TextProcessingModel(client: PreviewFixtures.slowClient, config: { PreviewFixtures.config })
+        // The fixture answers in English, so the target is pinned to match; the suite is the preview's own.
+        let defaults = UserDefaults(suiteName: "dev.fahchen.owlet.panel-preview.transition")!
+        defaults.set("en", forKey: SettingsStore.pinnedTargetKey)
+        let controller = PanelController(model: model, defaults: defaults)
+        let selection = Selection(
+            text: PreviewFixtures.source, element: AXUIElementCreateApplication(getpid()), app: nil, range: nil)
+        controller.read = { $0(.success(selection)) }
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        controller.processSelection()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let window = controller.panel, let screen = window.screen ?? NSScreen.main else { exit(1) }
+            let top = Int(NSScreen.screens[0].frame.maxY - window.frame.maxY)
+            let capture = Process()
+            capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            capture.arguments = [
+                "-x", "-v", "-V", "4",
+                "-R\(Int(window.frame.minX)),\(top),\(Int(window.frame.width)),\(Int(min(560, screen.frame.height)))",
+                output,
+            ]
+            capture.terminationHandler = { process in exit(process.terminationStatus) }
+            do { try capture.run() } catch { exit(1) }
+        }
     }
 }

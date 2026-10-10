@@ -7,6 +7,10 @@ struct PanelJustifiedText: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSTextField {
         let label = NSTextField(wrappingLabelWithString: "")
+        // A click starts selection in the field editor, which falls back to the plain `font` and
+        // drops the paragraph style unless the attributes are kept and the font matches.
+        label.allowsEditingTextAttributes = true
+        label.font = Self.font
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }
@@ -18,11 +22,13 @@ struct PanelJustifiedText: NSViewRepresentable {
         label.attributedStringValue = NSAttributedString(
             string: text,
             attributes: [
-                .font: NSFont.systemFont(ofSize: 17, weight: .regular),
+                .font: Self.font,
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: paragraph,
             ])
     }
+
+    private static let font = NSFont.systemFont(ofSize: PanelMetrics.textSize, weight: .medium)
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextField, context: Context) -> CGSize? {
         guard let width = proposal.width else { return nil }

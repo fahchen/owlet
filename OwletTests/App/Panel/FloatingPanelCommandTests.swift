@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// The panel's keys, checked without a window: only these three combinations are claimed.
+/// The panel's keys, checked without a window: only these combinations are claimed.
 @MainActor
 struct FloatingPanelCommandTests {
     func event(_ keyCode: UInt16, _ flags: NSEvent.ModifierFlags) -> NSEvent {
@@ -18,8 +18,12 @@ struct FloatingPanelCommandTests {
         #expect(FloatingPanel.command(for: event(76, .command)) == .replace)
     }
 
-    @Test func commandShiftCCopies() {
-        #expect(FloatingPanel.command(for: event(8, [.command, .shift])) == .copy)
+    @Test func commandCCopies() {
+        #expect(FloatingPanel.command(for: event(8, .command)) == .copy)
+    }
+
+    @Test func commandRRunsAgain() {
+        #expect(FloatingPanel.command(for: event(15, .command)) == .retry)
     }
 
     @Test func plainEscapeCancels() {
@@ -29,7 +33,7 @@ struct FloatingPanelCommandTests {
     /// Anything else belongs to the panel's text field or to nothing at all.
     @Test func everyOtherKeyIsLeftAlone() {
         #expect(FloatingPanel.command(for: event(36, [])) == nil)
-        #expect(FloatingPanel.command(for: event(8, .command)) == nil)
+        #expect(FloatingPanel.command(for: event(8, [.command, .shift])) == nil)
         #expect(FloatingPanel.command(for: event(53, .command)) == nil)
         #expect(FloatingPanel.command(for: event(0, .command)) == nil)
         #expect(FloatingPanel.command(for: event(53, [.command, .shift])) == nil)

@@ -36,8 +36,11 @@ struct OwletApp: App {
             // A toolbar item is not the only place a command may live: the toolbar can be hidden or
             // customized away, so the page's two actions are menu commands as well, and the menu items
             // are what own the shortcuts.
-            CommandGroup(after: .newItem) { SubmitTextButton(translation: translation) }
-            CommandGroup(after: .pasteboard) { CopyResultButton(translation: translation) }
+            CommandGroup(after: .newItem) {
+                SubmitTextButton(translation: translation)
+                OperationButtons(translation: translation, page: $page)
+            }
+            CommandGroup(replacing: .pasteboard) { PasteboardButtons() }
             SidebarCommands()
         }
         // A real settings window: the scene is what puts 设置… and ⌘, in the App menu, and SwiftUI
@@ -94,7 +97,6 @@ private struct MainView: View {
                     openProcessing: { page = .processing })
             }
         }
-        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .frame(minWidth: 760, minHeight: 500)
         .task { history.observe(translation) }
     }
@@ -160,23 +162,51 @@ private struct SubmitTextButton: View {
     }
 }
 
-/// 复制结果 (⌘⇧C) in the Edit menu: the result is not the selection, so it gets its own item rather
-/// than borrowing the system Copy.
-private struct CopyResultButton: View {
+/// 翻译 (⌘1) and 润色 (⌘2): switch the main page's operation, bringing the page up if another is showing.
+private struct OperationButtons: View {
     let translation: TextProcessingModel
+    @Binding var page: MainView.Page
 
     var body: some View {
-        Button("复制结果") {
-            guard case .success(let text) = translation.state else { return }
-            Clipboard.copy(text)
+        ForEach([(Operation.translate, KeyHint.translateMode), (.polish, .polishMode)], id: \.0) { operation, key in
+            Button("\(operation.title)模式") {
+                page = .processing
+                translation.operation = operation
+            }
+            .keyboardShortcut(key.shortcut)
+            .disabled(translation.state == .loading)
         }
-        .keyboardShortcut("c", modifiers: [.command, .shift])
-        .disabled(!hasResult)
+    }
+}
+
+/// The Edit menu's pasteboard commands. 拷贝 (⌘C) copies selected text as always; with nothing
+/// selected it copies what the page offers — the result, a record's result, an expression — so the
+/// one key does both, and the page's copy button only has to name it.
+private struct PasteboardButtons: View {
+    @FocusedValue(\.copyText) private var copyText
+
+    var body: some View {
+        Button("剪切") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+            .keyboardShortcut("x")
+        Button("拷贝") {
+            if hasTextSelection {
+                NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+            } else if let copyText {
+                Clipboard.copy(copyText)
+            }
+        }
+        .keyboardShortcut(KeyHint.copy.shortcut)
+        Button("粘贴") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
+            .keyboardShortcut("v")
+        Button("全选") { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
+            .keyboardShortcut("a")
     }
 
-    private var hasResult: Bool {
-        if case .success = translation.state { return true }
-        return false
+    // ponytail: only an AppKit text view's selection counts; a selection in SwiftUI selectable Text
+    // (逐句对照) is not seen, so ⌘C there copies the whole result. Route through the responder chain's
+    // validation if that matters.
+    private var hasTextSelection: Bool {
+        (NSApp.keyWindow?.firstResponder as? NSTextView).map { $0.selectedRange().length > 0 } ?? false
     }
 }
 
@@ -191,6 +221,7 @@ private struct ProcessingAction {
         case .translate: panel.processSelection()
         case .translateReplace: panel.processSelection(replace: true)
         case .polish: panel.processSelection(.polish)
+        case .polishReplace: panel.processSelection(.polish, replace: true)
         }
     }
 }
@@ -248,8 +279,11 @@ private struct MenuContent: View {
             NSApp.activate()
             openWindow(id: "main")
         }
+        // The recorded combination is the item's key equivalent, so the menu right-aligns it in its
+        // own column; the hot key still does the work, the menu only shows it.
         ForEach(ShortcutAction.allCases, id: \.self) { action in
             Button(title(for: action)) { perform(action) }
+                .keyboardShortcut(shortcuts.shortcuts[action]?.menuShortcut)
         }
         // The settings window manages itself, so this only has to open it; ⌘, lives in the App menu.
         Button("设置…") { openSettings() }
@@ -257,10 +291,10 @@ private struct MenuContent: View {
         Button("退出 Owlet") { NSApp.terminate(nil) }
     }
 
-    /// Shows the recorded shortcut beside the action it already runs, or just the action name when
-    /// unset, so the menu bar extra stays a set of commands instead of a hollow "not set" prompt.
+    /// The action's name; a combination the menu cannot show as a key equivalent is written after it,
+    /// and an unset one adds nothing, so the menu never shows a hollow "not set" prompt.
     private func title(for action: ShortcutAction) -> String {
-        guard let shortcut = shortcuts.shortcuts[action] else { return action.title }
+        guard let shortcut = shortcuts.shortcuts[action], shortcut.menuShortcut == nil else { return action.title }
         return "\(action.title)：\(shortcut.displayString)"
     }
 }

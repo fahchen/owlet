@@ -24,101 +24,70 @@ struct VocabularyView: View {
     }
 
     var body: some View {
-        HSplitView {
-            List(selection: $selection) {
-                Text("\(filtered.count) 个表达")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-                    .selectionDisabled()
-                    .listRowSeparator(.hidden)
-                ForEach(filtered) { entry in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(entry.expression).font(.headline).lineLimit(1)
-                        Text(entry.meaning.isEmpty ? "尚无中文释义" : entry.meaning)
-                            .foregroundStyle(.secondary).lineLimit(1)
-                        Text("\(LanguageDisplay.localizedName(for: entry.language)) · \(entry.contexts.count) 个语境")
-                            .font(.caption).foregroundStyle(.secondary)
+        page
+            .navigationTitle("生词本")
+            .focusedSceneValue(\.copyText, selectedEntry?.expression)
+            // The count lives under the title, so the list starts with its first row.
+            .navigationSubtitle("\(filtered.count) 个表达")
+            .searchable(text: $search, placement: .toolbar, prompt: "搜索表达或释义")
+            .toolbar { toolbar }
+            .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
+                selection.formIntersection(ids)
+                if selection.isEmpty, let first = ids.first { selection = [first] }
+            }
+            .confirmationDialog(
+                "删除所选 \(selection.count) 个表达？", isPresented: $confirmingDelete, titleVisibility: .visible
+            ) {
+                Button("删除", role: .destructive) { deleteSelected() }
+                Button("取消", role: .cancel) {}
+            }
+            .alert(
+                "操作失败",
+                isPresented: Binding(
+                    get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+            ) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+    }
+
+    /// The list beside the selected expression, or a single empty state when nothing matches.
+    @ViewBuilder private var page: some View {
+        if filtered.isEmpty {
+            emptyState
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            WorkspaceSplit {
+                List(selection: $selection) {
+                    ForEach(filtered) { entry in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.expression)
+                                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight))
+                                .lineLimit(1)
+                            Text(entry.meaning.isEmpty ? "尚无中文释义" : entry.meaning)
+                                .foregroundStyle(.secondary).lineLimit(1)
+                            Text("\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 6)
+                        .tag(entry.persistentModelID)
                     }
-                    .padding(.vertical, 12)
-                    .tag(entry.persistentModelID)
+                }
+                .workspaceList()
+            } detail: { _ in
+                if let entry = selectedEntry {
+                    VocabularyDetail(entry: entry, collection: collection)
+                } else if selection.count > 1 {
+                    ContentUnavailableView(
+                        "已选择 \(selection.count) 个表达", systemImage: "checkmark.circle",
+                        description: Text("可使用工具栏删除所选内容。"))
+                } else {
+                    ContentUnavailableView(
+                        "选择一个表达", systemImage: "sidebar.left",
+                        description: Text("在左侧列表中选择内容以查看详情。"))
                 }
             }
-            .listStyle(.inset)
-            .contentMargins(.top, 0, for: .scrollContent)
-            .frame(minWidth: 200, idealWidth: 280, maxWidth: 380)
-            if let entry = selectedEntry {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Text("\(LanguageDisplay.localizedName(for: entry.language)) · \(entry.contexts.count) 个语境")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text(entry.expression).font(.title).textSelection(.enabled)
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("释义").font(.headline)
-                            GroupBox {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text(entry.meaning.isEmpty ? "尚无中文释义" : entry.meaning)
-                                        .textSelection(.enabled)
-                                    if entry.meaning.isEmpty {
-                                        MissingMeaningView(entry: entry, collection: collection)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("原句语境").font(.headline)
-                            ForEach(entry.contexts) { context in
-                                GroupBox {
-                                    VocabularyContextView(context: context)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                        }
-                    }
-                    .padding(24)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else if selection.count > 1 {
-                ContentUnavailableView(
-                    "已选择 \(selection.count) 个表达", systemImage: "checkmark.circle",
-                    description: Text("可使用工具栏删除所选内容。")
-                )
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else if !filtered.isEmpty {
-                ContentUnavailableView(
-                    "选择一个表达", systemImage: "sidebar.left",
-                    description: Text("在左侧列表中选择内容以查看详情。")
-                )
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                emptyState
-                    .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        // Keep the native divider inside the content safe area, below the unified toolbar.
-        .padding(.top, 1)
-        .navigationTitle("")
-        .searchable(text: $search, placement: .toolbar, prompt: "搜索表达或释义")
-        .toolbar { toolbar }
-        .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
-            selection.formIntersection(ids)
-            if selection.isEmpty, let first = ids.first { selection = [first] }
-        }
-        .confirmationDialog("删除所选 \(selection.count) 个表达？", isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("删除", role: .destructive) { deleteSelected() }
-            Button("取消", role: .cancel) {}
-        }
-        .alert(
-            "操作失败",
-            isPresented: Binding(
-                get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
-        ) {
-            Button("好", role: .cancel) {}
-        } message: {
-            Text(errorMessage ?? "")
         }
     }
 
@@ -128,20 +97,22 @@ struct VocabularyView: View {
                 Picker("筛选语言", selection: $language) {
                     Text("全部语言").tag("")
                     ForEach(VocabularyFilter.languages(in: entries), id: \.self) { tag in
-                        Text(LanguageDisplay.localizedName(for: tag)).tag(tag)
+                        Text(LanguageCatalog.name(for: tag)).tag(tag)
                     }
                 }
                 .pickerStyle(.inline)
             } label: {
                 Label("筛选语言", systemImage: "line.3.horizontal.decrease")
             }
-            .labelStyle(.iconOnly).help("筛选语言")
+            .labelStyle(.iconOnly).hoverTip("筛选语言")
         }
         ToolbarItemGroup(placement: .principal) {
             Button("上一条", systemImage: "chevron.up") { if let previous { selection = [previous] } }
-                .labelStyle(.iconOnly).help("上一条").disabled(previous == nil)
+                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
+                .disabled(previous == nil)
             Button("下一条", systemImage: "chevron.down") { if let next { selection = [next] } }
-                .labelStyle(.iconOnly).help("下一条").disabled(next == nil)
+                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
+                .disabled(next == nil)
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItemGroup(placement: .primaryAction) {
@@ -150,7 +121,8 @@ struct VocabularyView: View {
             } label: {
                 Label("删除", systemImage: "trash")
             }
-            .labelStyle(.iconOnly).disabled(selection.isEmpty).help("删除所选内容")
+            .labelStyle(.iconOnly).disabled(selection.isEmpty)
+            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "删除所选内容")
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         DefaultToolbarItem(kind: .search, placement: .primaryAction)
@@ -166,7 +138,7 @@ struct VocabularyView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(entries.isEmpty ? "生词本为空" : "无匹配结果", systemImage: "book.closed")
+            Label(entries.isEmpty ? "生词本为空" : "无匹配结果", systemImage: "books.vertical")
         } description: {
             Text(entries.isEmpty ? "在学习区选择表达，即可加入生词本。" : "试试其他搜索词或筛选条件。")
         } actions: {
@@ -187,5 +159,54 @@ struct VocabularyView: View {
             selection = []
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
+    }
+}
+
+/// One expression: the expression itself, its meaning reading heavier than the
+/// sentences it was collected from, and each sentence below a quiet heading.
+private struct VocabularyDetail: View {
+    let entry: VocabularyEntry
+    let collection: CollectionAction
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(
+                        "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境 · 收藏于 \(HistoryTime.display(entry.createdAt))"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                    Text(entry.expression)
+                        .font(.system(size: 22, weight: .semibold))
+                        .textSelection(.enabled)
+                    if entry.meaning.isEmpty {
+                        MissingMeaningView(entry: entry, collection: collection)
+                    } else {
+                        Text(entry.meaning)
+                            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.textWeight))
+                            .lineSpacing(2)
+                            .textSelection(.enabled)
+                    }
+                    Divider().padding(.vertical, 4)
+                    Text("原句语境").font(.caption).foregroundStyle(.secondary)
+                    ForEach(entry.contexts) { context in
+                        VocabularyContextView(context: context)
+                            .padding(.bottom, 8)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // A reading column: long lines stop at 640pt instead of running across a wide window.
+                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, PanelMetrics.contentInset)
+                .padding(.horizontal, 32)
+                .panelBottomPadding()
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            CardButton(title: "复制表达", symbol: "document.on.document", key: .copy, bindsKey: false) {
+                Clipboard.copy(entry.expression)
+            }
+            .padding([.trailing, .bottom], PanelMetrics.contentInset)
+        }
     }
 }

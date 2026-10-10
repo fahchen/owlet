@@ -12,6 +12,7 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     enum Command {
         case replace
         case copy
+        case retry
         case cancel
     }
 
@@ -78,15 +79,22 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         stopWatchingMouse()
     }
 
-    /// ⌘↩ replaces, ⌘⇧C copies, Esc dismisses; every other key stays with the panel's controls.
-    /// Return and keypad Enter both count, so a full keyboard reaches replace either way.
+    /// ⌘↩ replaces, ⌘C copies, ⌘R runs again, Esc dismisses; every other key stays with the
+    /// panel's controls. Return and keypad Enter both count, so a full keyboard reaches replace
+    /// either way. The combinations are `KeyHint`'s panel keys.
     static func command(for event: NSEvent) -> Command? {
         switch (event.keyCode, event.modifierFlags.intersection(.deviceIndependentFlagsMask)) {
         case (36, .command), (76, .command): .replace
-        case (8, [.command, .shift]): .copy
+        case (8, .command): .copy
+        case (15, .command): .retry
         case (53, []): .cancel
         default: nil
         }
+    }
+
+    /// Whether the focused text holds a selection, which ⌘C copies instead of the result.
+    private var hasTextSelection: Bool {
+        (firstResponder as? NSTextView).map { $0.selectedRange().length > 0 } ?? false
     }
 
     /// Consumes the keys this panel claims, so they never reach a text field behind them.
@@ -95,6 +103,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
             guard let self, event.window === self, let command = Self.command(for: event) else {
                 return event
             }
+            // ⌘C copies the selected text when there is some; only with nothing selected is it the result.
+            if command == .copy, hasTextSelection { return event }
             onCommand(command)
             return nil
         }

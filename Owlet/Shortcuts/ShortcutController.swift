@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import SwiftUI
 
 /// A key combination stored as a Carbon key code plus Carbon modifier flags.
 struct Shortcut: Codable, Equatable, Sendable {
@@ -35,6 +36,18 @@ struct Shortcut: Codable, Equatable, Sendable {
         if modifiers & UInt32(cmdKey) != 0 { s += "⌘" }
         return s + (keyLabel ?? "#\(keyCode)")
     }
+
+    /// The same combination as a menu key equivalent, so a menu prints it in its own right-aligned
+    /// column; nil when the recorded key is not a single character a menu can show.
+    var menuShortcut: KeyboardShortcut? {
+        guard let label = keyLabel, label.count == 1, let character = label.lowercased().first else { return nil }
+        var flags: SwiftUI.EventModifiers = []
+        if modifiers & UInt32(controlKey) != 0 { flags.insert(.control) }
+        if modifiers & UInt32(optionKey) != 0 { flags.insert(.option) }
+        if modifiers & UInt32(shiftKey) != 0 { flags.insert(.shift) }
+        if modifiers & UInt32(cmdKey) != 0 { flags.insert(.command) }
+        return KeyboardShortcut(KeyEquivalent(character), modifiers: flags)
+    }
 }
 
 /// Global shortcut actions; the raw value doubles as the Carbon hot key id.
@@ -42,12 +55,14 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
     case translate = 1
     case translateReplace = 2
     case polish = 3
+    case polishReplace = 4
 
     var title: String {
         switch self {
         case .translate: "翻译"
         case .translateReplace: "翻译并替换"
         case .polish: "润色"
+        case .polishReplace: "润色并替换"
         }
     }
 
@@ -56,6 +71,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
         case .translate: SettingsStore.translateShortcutKey
         case .translateReplace: SettingsStore.translateReplaceShortcutKey
         case .polish: SettingsStore.polishShortcutKey
+        case .polishReplace: SettingsStore.polishReplaceShortcutKey
         }
     }
 }

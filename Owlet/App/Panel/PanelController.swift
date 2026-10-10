@@ -291,14 +291,17 @@ final class PanelController {
         panel?.close()
     }
 
-    /// The panel's own keys, run from its event monitor: copy the result, write it back, or
-    /// dismiss. Esc closes and cancels an in-flight request.
+    /// The panel's own keys, run from its event monitor: copy the result, write it back, run again,
+    /// or dismiss. Esc closes and cancels an in-flight request.
     func run(_ command: FloatingPanel.Command) {
         switch command {
         case .cancel:
             close()
         case .copy:
             copyResult()
+        case .retry:
+            guard model.state != .loading, !model.input.isEmpty else { return }
+            processCurrentText()
         case .replace:
             guard case .success(let text) = model.state, selection != nil else { return }
             replace(with: text)

@@ -8,19 +8,17 @@ struct MissingMeaningView: View {
     var body: some View {
         switch collection.status {
         case .filling(let filling) where filling == entry:
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text("补充中").foregroundStyle(.secondary)
-            }
+            Text("正在补充中文释义…").foregroundStyle(.secondary)
+        // As in the learning column: a red message and a plain retry.
         case .meaningFailed(let failed, let message) where failed == entry:
-            HStack(spacing: 10) {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                Button("重试") { collection.fillMeaning(for: entry) }.buttonStyle(.glass)
+            VStack(alignment: .leading, spacing: 8) {
+                Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                Button("重试", systemImage: "arrow.clockwise") { collection.fillMeaning(for: entry) }
+                    .buttonStyle(.plain)
             }
         default:
-            Button("补充中文释义") { collection.fillMeaning(for: entry) }.buttonStyle(.glass)
+            Button("补充中文释义", systemImage: "text.badge.plus") { collection.fillMeaning(for: entry) }
+                .buttonStyle(.plain)
         }
     }
 }
@@ -28,15 +26,26 @@ struct MissingMeaningView: View {
 struct VocabularyContextView: View {
     let context: VocabularyContext
 
+    /// A quote: a thin accent bar beside the sentence, and for a polish the before in gray above the
+    /// after in full color, so the change reads at a glance.
     var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            RoundedRectangle(cornerRadius: 1.5).fill(.tint).frame(width: 3)
+            content
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(context.source)
-                .font(.system(size: 14))
+                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
+                .lineSpacing(2)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let before = context.polishBefore, let after = context.polishAfter {
-                comparison(title: "润色前", text: before)
+                comparison(title: "润色前", text: before).foregroundStyle(.secondary)
                 comparison(title: "润色后", text: after)
             }
         }
@@ -44,9 +53,8 @@ struct VocabularyContextView: View {
 
     private func comparison(title: String, text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: 11)).foregroundStyle(.secondary)
-            Text(text).font(.system(size: 13)).textSelection(.enabled)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(text).font(.system(size: 14)).lineSpacing(2).textSelection(.enabled)
         }
-        .padding(.horizontal, 14)
     }
 }

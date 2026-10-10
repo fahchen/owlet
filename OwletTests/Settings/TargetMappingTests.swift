@@ -97,6 +97,14 @@ struct TargetMappingTests {
         #expect(Set(LanguageCatalog.targets.map(\.tag)).count == LanguageCatalog.targets.count)
     }
 
+    /// Each language is named in itself, not in the system language.
+    @Test func languagesAreNamedInThemselves() {
+        #expect(LanguageCatalog.name(for: "zh-Hans") == "简体中文")
+        #expect(LanguageCatalog.name(for: "zh-Hant") == "繁體中文")
+        #expect(LanguageCatalog.name(for: "en") == "English")
+        #expect(LanguageCatalog.name(for: "ja") == "日本語")
+    }
+
     /// A fresh install offers the three languages the product targets, not the whole system list.
     @Test func aFreshInstallSelectsTheProductLanguages() {
         #expect(SettingsStore.languages(in: defaults) == ["zh-Hans", "en", "ja"])

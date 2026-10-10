@@ -29,7 +29,8 @@ struct ModelSettingsPane: View {
                 Picker("服务商", selection: $provider) {
                     ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                TextField("Base URL", text: $baseURL, prompt: Text("https://api.openai.com/v1"))
+                // Verbatim, or the placeholder URL renders as a link.
+                TextField("Base URL", text: $baseURL, prompt: Text(verbatim: "https://api.openai.com/v1"))
                 SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
                     .focused($editingKey)
                     .onSubmit(commitKey)
@@ -91,13 +92,13 @@ struct ModelSettingsPane: View {
     /// the model row is.
     @ViewBuilder private var modelStatus: some View {
         if case .failed(let message) = models {
+            // As everywhere else: a red message and a plain retry.
             HStack(spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.red)
                 Spacer(minLength: 0)
-                GlassEffectContainer {
-                    Button("重试") { loadModels() }.buttonStyle(.glass)
-                }
+                Button("重试", systemImage: "arrow.clockwise") { loadModels() }
+                    .buttonStyle(.plain)
             }
         }
     }

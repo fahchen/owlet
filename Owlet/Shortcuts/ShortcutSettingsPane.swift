@@ -8,25 +8,28 @@ struct ShortcutSettingsPane: View {
     let controller: ShortcutController
     @State private var recording: ShortcutAction?
 
-    /// Prototype order: 翻译, 润色, 翻译并替换.
-    private static let order: [ShortcutAction] = [.translate, .polish, .translateReplace]
+    /// Each operation, then the same operation written straight back.
+    private static let order: [ShortcutAction] = [.translate, .polish, .translateReplace, .polishReplace]
 
     var body: some View {
         Form {
             Section {
                 ForEach(Self.order, id: \.self) { action in
                     LabeledContent(action.title) {
-                        GlassEffectContainer {
-                            HStack(spacing: 8) {
-                                ShortcutRecorder(
-                                    title: action.title, shortcut: controller.shortcuts[action],
-                                    recording: bindingFor(action)
-                                ) { controller.set($0, for: action) }
-                                Button("清除") {
+                        HStack(spacing: 4) {
+                            ShortcutRecorder(
+                                title: action.title, shortcut: controller.shortcuts[action],
+                                recording: bindingFor(action)
+                            ) { controller.set($0, for: action) }
+                            // Only a set shortcut has something to clear.
+                            if controller.shortcuts[action] != nil {
+                                Button("清除", systemImage: "xmark.circle.fill") {
                                     recording = nil
                                     controller.set(nil, for: action)
                                 }
-                                .buttonStyle(.glass)
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.secondary)
                                 .accessibilityLabel("清除\(action.title)快捷键")
                             }
                         }
@@ -37,40 +40,49 @@ struct ShortcutSettingsPane: View {
             } footer: {
                 notice
             }
-            Section {
-                ForEach(PanelKey.all, id: \.keys) { key in
-                    LabeledContent {
-                        Text(key.keys).monospacedDigit()
-                    } label: {
-                        Text(key.title)
-                        Text(key.scope)
-                    }
-                }
-            } header: {
-                Text("面板内")
-            } footer: {
-                panelKeyNotice
+            ForEach(KeyHint.groups, id: \.title) { group in
+                fixedKeys(group.title, group.keys)
             }
         }
         .formStyle(.grouped)
     }
 
-    private var panelKeyNotice: some View {
-        Text("面板打开时这些键始终生效，且不能更改；上面三个快捷键由你录制。")
-            .foregroundStyle(.secondary)
+    /// The keys the app claims itself, three to a row: listed to be learned, not recorded.
+    private func fixedKeys(_ title: String, _ keys: [KeyHint]) -> some View {
+        Section {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 24, alignment: .leading), count: 3),
+                alignment: .leading, spacing: 10
+            ) {
+                ForEach(keys, id: \.title) { key in
+                    HStack(spacing: 8) {
+                        Text(key.title).lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(key.keys).monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(.vertical, 2)
+        } header: {
+            Text(title)
+        } footer: {
+            if title == KeyHint.groups.last?.title {
+                Text("固定按键，不能更改；⌘C 在选中文字时复制所选内容。").foregroundStyle(.secondary)
+            }
+        }
     }
 
     @ViewBuilder private var notice: some View {
         Group {
             if let error = controller.registrationError {
-                Label(error, systemImage: "exclamationmark.triangle")
+                Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
             } else if recording != nil {
-                Text("按新组合键；Esc 取消，Delete 清除。")
+                Text("按新组合键；Esc 取消，Delete 清除。").foregroundStyle(.secondary)
             } else {
-                Text(" ").accessibilityHidden(true)
+                Text("点按右侧的组合键即可重新录制。").foregroundStyle(.secondary)
             }
         }
-        .foregroundStyle(.secondary)
         .accessibilityAddTraits(.updatesFrequently)
     }
 
@@ -89,13 +101,13 @@ private struct ShortcutRecorder: View {
     @State private var monitor: Any?
 
     var body: some View {
-        Group {
-            if recording {
-                Button(action: stop) { label }.buttonStyle(.glassProminent)
-            } else {
-                Button(action: start) { label }.buttonStyle(.glass)
-            }
+        // A value, not a bezel: it reads like the form's other values, and only recording is marked.
+        Button {
+            if recording { stop() } else { start() }
+        } label: {
+            label
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("录制\(title)快捷键")
         .accessibilityValue(shortcut?.displayString ?? "未设置")
         .onChange(of: recording) { _, now in if !now { removeMonitor() } }
@@ -103,9 +115,13 @@ private struct ShortcutRecorder: View {
     }
 
     private var label: some View {
-        Text(recording ? "请按快捷键…" : shortcut?.displayString ?? "未设置")
+        Text(recording ? "请按快捷键…" : shortcut?.displayString ?? "录制")
             .monospacedDigit()
-            .frame(minWidth: 70)
+            .foregroundStyle(recording || shortcut == nil ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.accentColor.opacity(recording ? 0.12 : 0), in: Capsule())
+            .contentShape(Capsule())
     }
 
     private func start() {

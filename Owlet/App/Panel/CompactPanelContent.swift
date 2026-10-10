@@ -36,6 +36,8 @@ struct CompactProcessingView: View {
     @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
     let summary: String
     let status: String
+    /// The running operation's symbol, the same one its toolbar segment and history rows show.
+    var symbol = Operation.translate.symbol
     let stop: () -> Void
     var close: (() -> Void)? = nil
     /// False when the panel root draws the source bar on its own growing surface.
@@ -47,8 +49,10 @@ struct CompactProcessingView: View {
                 PanelSourceBar(summary: summary, close: close ?? stop)
             }
             PanelSegmentedControl(items: [
-                .init(title: status, symbol: "translate", action: {}),
-                .init(title: "", symbol: "xmark", action: stop, accessibilityLabel: "取消处理"),
+                .init(title: status, symbol: symbol, action: {}),
+                .init(
+                    title: "", symbol: "xmark", action: stop, accessibilityLabel: "取消处理",
+                    key: .panelCancel),
             ])
             .fixedSize()
             .frame(height: 36)
@@ -75,11 +79,15 @@ struct PanelSourceBar: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help(summary)
+                .hoverTip(summary)
             if let retry {
                 PanelSegmentedControl(items: [
-                    .init(title: "Retry", symbol: "arrow.clockwise", action: retry),
-                    .init(title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗"),
+                    .init(
+                        title: "Retry", symbol: "arrow.clockwise", action: retry, accessibilityLabel: "重新处理",
+                        key: .panelRetry),
+                    .init(
+                        title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗",
+                        key: .panelCancel),
                 ])
                 .fixedSize()
                 .frame(height: 36)
@@ -95,7 +103,7 @@ struct PanelSourceBar: View {
                     .controlSize(.extraLarge)
                     .buttonSizing(.flexible)
                     .frame(width: 36, height: 36)
-                    .help("关闭浮窗")
+                    .hoverTip(KeyHint.panelCancel, title: "关闭浮窗")
             }
         }
         .padding(.leading, 24)
@@ -132,7 +140,11 @@ struct CompactNoticeView: View {
                     .init(title: "", symbol: actionSymbol, action: action ?? recover, accessibilityLabel: actionTitle),
                 ]
                     + (summary.isEmpty
-                        ? [.init(title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗")] : [])
+                        ? [
+                            .init(
+                                title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗",
+                                key: .panelCancel)
+                        ] : [])
             )
             .fixedSize()
             .frame(height: 36)

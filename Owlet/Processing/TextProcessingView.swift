@@ -7,7 +7,8 @@ struct TextProcessingView: View {
     let openSettings: () -> Void
     let collection: CollectionAction
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var learning = LearningModel()
+    /// Injectable, so a preview can show fixture items instead of requesting a model.
+    @State var learning = LearningModel()
     /// Set by 返回: keeps an auto-requested result from reopening the learning column.
     @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
@@ -20,6 +21,7 @@ struct TextProcessingView: View {
         GeometryReader { card(in: $0.size) }
             .padding(PanelMetrics.contentInset)
             .navigationTitle(model.operation.title)
+            .focusedSceneValue(\.copyText, resultText)
             .toolbar { toolbar }
             .onChange(of: model.operation) { _, _ in reprocessForCurrentOptions() }
             .onChange(of: pinnedTarget) { _, _ in reprocessForCurrentOptions() }
@@ -51,6 +53,9 @@ struct TextProcessingView: View {
             .labelsHidden()
             .fixedSize()
             .disabled(isBusy)
+            .hoverTip(
+                "\(KeyHint.translateMode.title) \(KeyHint.translateMode.keys)　\(KeyHint.polishMode.title)",
+                keys: KeyHint.polishMode.keys)
         }
         // Polish keeps the source language, so it only offers that one.
         ToolbarItem(placement: .primaryAction) {
@@ -74,11 +79,10 @@ struct TextProcessingView: View {
     /// The selected operation's symbol in its own color, the others in the label color, as designed.
     /// A segmented picker draws every symbol as a template, so each is a pre-colored image.
     private func segmentSymbol(_ operation: Operation) -> NSImage {
-        let tint: NSColor = operation == .polish ? .systemGreen : .systemBlue
-        return PanelSegmentedControl.content(
+        PanelSegmentedControl.content(
             of: .init(
                 title: "", symbol: operation.symbol, action: {}, accessibilityLabel: operation.title,
-                tint: model.operation == operation ? tint : nil),
+                tint: model.operation == operation ? operation.tint : nil),
             font: nil)
     }
 
@@ -127,7 +131,7 @@ struct TextProcessingView: View {
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: showsLearning)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: PanelMetrics.cornerRadius))
+        .workspaceCard()
     }
 
     /// A column that opens and closes along the axis. A squeezing column rewraps its text as it
@@ -235,28 +239,28 @@ struct TextProcessingView: View {
         HStack(spacing: 8) {
             // Runs the current text again: after an edit it is a new request, the old result's cache gone.
             if !isBusy, !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // ⌘↩ belongs to the File menu's command, which runs the same request.
                 CardButton(
-                    title: "重新\(model.operation.title)", symbol: "arrow.clockwise",
-                    help: "重新\(model.operation.title) ⌘↩"
+                    title: "重新\(model.operation.title)", symbol: "arrow.clockwise", key: .process, bindsKey: false
                 ) {
                     model.process(to: resolvedTarget)
                 }
             }
             if isBusy {
-                CardButton(title: "取消处理", symbol: "xmark", help: "取消处理", action: model.cancel)
+                CardButton(title: "取消处理", symbol: "xmark", key: .cancel, action: model.cancel)
             }
             if showsLearning {
-                CardButton(title: "返回", symbol: "chevron.left", help: "返回结果") {
+                CardButton(title: "返回", symbol: "chevron.left", key: .learn) {
                     learning.isExpanded = false
                     learningDismissed = true
                 }
             } else if LearningRequest.from(model) != nil {
-                CardButton(title: "学习", symbol: "lamp.desk", help: "展开学习表达") {
+                CardButton(title: "学习", symbol: "lamp.desk", key: .learn) {
                     learning.isExpanded = true
                 }
             }
             if case .success(let text) = model.state {
-                CardButton(title: "复制结果", symbol: "document.on.document", help: "复制结果 ⌘⇧C") {
+                CardButton(title: "复制结果", symbol: "document.on.document", key: .copy, bindsKey: false) {
                     Clipboard.copy(text)
                 }
             }
@@ -268,31 +272,16 @@ struct TextProcessingView: View {
             && (learning.isExpanded || (learning.state != .idle && !learningDismissed))
     }
 
+    private var resultText: String? {
+        guard case .success(let text) = model.state else { return nil }
+        return text
+    }
+
     private var isBusy: Bool { model.state == .loading }
     private var resolvedTarget: String { SettingsStore.resolvedTarget(for: model.input) }
 
     private func reprocessForCurrentOptions() {
         learning.reset()
         if model.shouldReprocessOnOptionChange { model.process(to: resolvedTarget) }
-    }
-}
-
-/// The card's 36pt round glass action, as on the panel.
-private struct CardButton: View {
-    let title: String
-    let symbol: String
-    let help: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) { Label(title, systemImage: symbol).foregroundStyle(.primary) }
-            .labelStyle(.iconOnly)
-            .font(.system(size: 13, weight: .medium))
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.extraLarge)
-            .buttonSizing(.flexible)
-            .frame(width: 36, height: 36)
-            .help(help)
     }
 }

@@ -11,6 +11,8 @@ struct PanelSegmentedControl: NSViewRepresentable {
         var accessibilityLabel: String? = nil
         /// Label and symbol color; nil is the regular label color.
         var tint: NSColor? = nil
+        /// The segment's key, shown with its label in the hover tip.
+        var key: KeyHint? = nil
     }
 
     let items: [Item]
@@ -18,7 +20,8 @@ struct PanelSegmentedControl: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(items: items) }
 
     func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl()
+        let control = HoverSegmentedControl()
+        control.tip = { [coordinator = context.coordinator] index in coordinator.tip(at: index) }
         control.trackingMode = .momentary
         control.segmentDistribution = .fit
         control.controlSize = .extraLarge
@@ -91,10 +94,60 @@ struct PanelSegmentedControl: NSViewRepresentable {
         var items: [Item]
         init(items: [Item]) { self.items = items }
 
+        /// The hovered segment's label and key, for the hover tip.
+        func tip(at index: Int) -> (String, String?)? {
+            guard items.indices.contains(index) else { return nil }
+            let item = items[index]
+            return (item.accessibilityLabel ?? item.title, item.key?.keys)
+        }
+
         @objc func activate(_ control: NSSegmentedControl) {
             let index = control.selectedSegment
             guard items.indices.contains(index) else { return }
             items[index].action()
         }
+    }
+}
+
+/// Reports the segment under the pointer, so each segment gets its own hover tip; the system tooltip
+/// never shows in the never-active panel. Icon-only segments are a fixed 36pt at the trailing end,
+/// and a titled one takes the rest, so the segment is found from the pointer's distance to the end.
+final class HoverSegmentedControl: NSSegmentedControl {
+    var tip: (Int) -> (String, String?)? = { _ in nil }
+    private var hovered: Int?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let x = convert(event.locationInWindow, from: nil).x
+        let fixed = (0..<segmentCount).reversed().prefix { width(forSegment: $0) > 0 }
+        var index = 0
+        var edge = bounds.maxX
+        for segment in fixed {
+            edge -= width(forSegment: segment)
+            if x >= edge {
+                index = segment
+                break
+            }
+            index = segment - 1
+        }
+        guard index != hovered else { return }
+        HoverTip.shared.cancel(owner: ObjectIdentifier(self))
+        hovered = index
+        if let (title, keys) = tip(max(index, 0)) {
+            HoverTip.shared.schedule(title, keys: keys, owner: ObjectIdentifier(self))
+        }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        hovered = nil
+        HoverTip.shared.cancel(owner: ObjectIdentifier(self))
     }
 }

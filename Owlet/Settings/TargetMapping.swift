@@ -28,10 +28,18 @@ struct LanguageOption: Hashable, Identifiable, Sendable {
 enum LanguageCatalog {
     static let targets: [LanguageOption] = options()
 
-    /// The localized name for a tag, including tags this list does not offer.
+    /// A language's own name for itself — 简体中文, English, 日本語 — so each reads the way its
+    /// speakers write it, whatever the system language. Chinese is named by script, as the contract
+    /// splits it; an unknown tag shows as itself.
     static func name(for tag: String) -> String {
-        if let known = targets.first(where: { $0.tag == tag }) { return known.name }
-        return Locale.current.localizedString(forIdentifier: tag) ?? tag
+        switch LanguageTag.key(tag) {
+        case "zh-Hans": return "简体中文"
+        case "zh-Hant": return "繁體中文"
+        default:
+            let locale = Locale(identifier: tag)
+            guard let native = locale.localizedString(forIdentifier: tag) else { return tag }
+            return native.prefix(1).uppercased(with: locale) + native.dropFirst()
+        }
     }
 
     /// The offered choices: only the languages selected in settings, in the order they were selected.
@@ -44,7 +52,7 @@ enum LanguageCatalog {
         tags.append("zh-Hant")
         // The ISO `zh` canonicalizes to `zh-Hans`, so only the traditional tag has to be added.
         return Set(tags)
-            .map { LanguageOption(tag: $0, name: Locale.current.localizedString(forIdentifier: $0) ?? $0) }
+            .map { LanguageOption(tag: $0, name: name(for: $0)) }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 }

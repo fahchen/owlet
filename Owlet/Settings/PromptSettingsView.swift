@@ -51,19 +51,12 @@ struct PromptSettingsView: View {
             HStack(spacing: 8) {
                 Text("\(operation.title) System Prompt")
                 Spacer(minLength: 0)
-                // The restore is only worth offering once there is something to restore. `.smallSquare`
-                // is the AppKit bezel this shape comes from, and it is deprecated, so the bordered
-                // small control is used instead.
+                // The restore is only worth offering once there is something to restore.
                 if customized.contains(operation) {
-                    Button {
+                    Button("恢复默认", systemImage: "arrow.uturn.backward") {
                         text.wrappedValue = defaultPrompt
-                    } label: {
-                        Label("恢复默认", systemImage: "arrow.uturn.backward")
                     }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("把内置默认填回编辑框")
+                    .buttonStyle(.borderless)
                 } else {
                     Text("默认")
                         .foregroundStyle(.secondary)

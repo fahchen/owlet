@@ -75,8 +75,9 @@ struct ExpandedPanel: View {
             // text and the learning items it floats on. The ZStack puts it bottom-trailing.
             HStack(spacing: 8) {
                 if model.state == .loading {
-                    Button(action: cancel) { Label("取消处理", systemImage: "stop").foregroundStyle(.primary) }
+                    Button(action: cancel) { Label("取消处理", systemImage: "xmark").foregroundStyle(.primary) }
                         .labelStyle(.iconOnly).buttonStyle(.glass(glassEffect.glass))
+                        .hoverTip(KeyHint.panelCancel, title: "取消处理")
                 }
                 if showsLearning {
                     Button {
@@ -88,13 +89,14 @@ struct ExpandedPanel: View {
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                     .buttonSizing(.flexible).frame(width: 36, height: 36)
-                    .help("返回结果")
+                    .keyboardShortcut(KeyHint.panelLearn.shortcut)
+                    .hoverTip(KeyHint.panelLearn, title: "返回结果")
                 } else if LearningRequest.from(model) == nil || collection == nil {
                     Button(action: close) { Label("关闭", systemImage: "xmark").foregroundStyle(.primary) }
                         .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                         .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                         .buttonSizing(.flexible).frame(width: 36, height: 36)
-                        .help("关闭浮窗")
+                        .hoverTip(KeyHint.panelCancel, title: "关闭浮窗")
                 } else {
                     Button {
                         learning.isExpanded = true
@@ -104,7 +106,8 @@ struct ExpandedPanel: View {
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                     .buttonSizing(.flexible).frame(width: 36, height: 36)
-                    .help("展开学习表达")
+                    .keyboardShortcut(KeyHint.panelLearn.shortcut)
+                    .hoverTip(KeyHint.panelLearn, title: "学习表达")
                 }
                 if case .success(let text) = model.state {
                     Button {
@@ -115,8 +118,8 @@ struct ExpandedPanel: View {
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                     .buttonSizing(.flexible).frame(width: 36, height: 36)
-                    .keyboardShortcut("c", modifiers: [.command, .shift])
-                    .help("复制结果 ⌘⇧C")
+                    // ⌘C reaches the panel's key monitor, which leaves selected text to the system copy.
+                    .hoverTip(KeyHint.panelCopy)
                 }
             }
             .padding(.trailing, PanelMetrics.contentInset)
@@ -133,6 +136,7 @@ struct ExpandedPanel: View {
                     .disabled(model.state == .loading)
             }
             Button("重新处理", systemImage: "arrow.clockwise", action: retry)
+                .keyboardShortcut(KeyHint.panelRetry.shortcut)
                 .disabled(!canRetry)
             if case .success(let text) = model.state, let replace {
                 Button("替换原选区") { replace(text) }

@@ -11,8 +11,8 @@ struct HistoryView: View {
     @State private var selection: Set<PersistentIdentifier> = []
     @State private var actionError: String?
     @State private var confirmingDelete = false
-    @State private var learning = LearningModel()
-    @State private var learningReveal = 0
+    /// Injectable, so a preview can show fixture items instead of requesting a model.
+    @State var learning = LearningModel()
 
     private var filtered: [HistoryRecord] {
         HistoryFilter.apply(records, search: search, operation: operationFilter)
@@ -27,121 +27,90 @@ struct HistoryView: View {
     }
 
     var body: some View {
-        HSplitView {
-            List(selection: $selection) {
-                Text("\(filtered.count) 条记录")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-                    .selectionDisabled()
-                    .listRowSeparator(.hidden)
-                ForEach(filtered) { record in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text(record.source).font(.headline).lineLimit(1)
-                        Text(record.result).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    .padding(.vertical, 12)
-                    .tag(record.persistentModelID)
+        page
+            .navigationTitle("历史记录")
+            .focusedSceneValue(\.copyText, selectedRecord?.result)
+            // The count lives under the title, so the list starts with its first row.
+            .navigationSubtitle("\(filtered.count) 条记录")
+            .searchable(text: $search, placement: .toolbar, prompt: "搜索原文或结果")
+            .toolbar { toolbar }
+            .safeAreaInset(edge: .top) {
+                if let message = store.lastError {
+                    HStack {
+                        Label("历史保存失败：\(message)", systemImage: "exclamationmark.triangle")
+                        Spacer()
+                        Button("关闭", systemImage: "xmark") { store.dismissError() }
+                            .labelStyle(.iconOnly).hoverTip("关闭提示")
+                    }.padding()
                 }
             }
-            .listStyle(.inset)
-            .contentMargins(.top, 0, for: .scrollContent)
-            .frame(minWidth: 200, idealWidth: 280, maxWidth: 380)
-            if let record = selectedRecord {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            Text(
-                                "\(record.operationKind.title) · \(LanguageDisplay.localizedName(for: record.language)) · \(HistoryTime.display(record.createdAt))"
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("原文").font(.headline)
-                                GroupBox {
-                                    Text(record.source).textSelection(.enabled)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
+            .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
+                selection.formIntersection(ids)
+                if selection.isEmpty, let first = ids.first { selection = [first] }
+            }
+            .onChange(of: selection) { _, _ in learning.reset() }
+            .onDisappear { learning.reset() }
+            .confirmationDialog(
+                "删除所选 \(selection.count) 条历史记录？", isPresented: $confirmingDelete, titleVisibility: .visible
+            ) {
+                Button("删除", role: .destructive) { deleteSelected() }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("生词本中的表达不受影响。")
+            }
+            .alert(
+                "操作失败",
+                isPresented: Binding(
+                    get: { actionError != nil }, set: { if !$0 { actionError = nil } })
+            ) {
+                Button("好", role: .cancel) {}
+            } message: {
+                Text(actionError ?? "")
+            }
+    }
+
+    /// The list beside the selected record, or a single empty state when nothing matches.
+    @ViewBuilder private var page: some View {
+        if filtered.isEmpty {
+            emptyState
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            WorkspaceSplit {
+                List(selection: $selection) {
+                    ForEach(filtered) { record in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: record.operationKind.symbol)
+                                    .foregroundStyle(Color(nsColor: record.operationKind.tint))
+                                Text("\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
+                                    .foregroundStyle(.secondary)
                             }
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(record.operationKind == .translate ? "译文" : "润色结果").font(.headline)
-                                GroupBox {
-                                    Text(record.result).textSelection(.enabled)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                            GroupBox {
-                                LearningView(
-                                    learning: learning, request: learningRequest(record),
-                                    collection: collection, openNotebook: nil
-                                )
-                                .id(record.persistentModelID)
-                            }
-                            .id("learning")
+                            .font(.caption)
+                            // The result reads first, as in the panel; its source stays lighter below it.
+                            Text(record.result)
+                                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight))
+                                .lineLimit(2)
+                            Text(record.source).foregroundStyle(.secondary).lineLimit(1)
                         }
-                        .padding(24)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .onChange(of: learningReveal) { _, _ in
-                        proxy.scrollTo("learning", anchor: .top)
+                        .padding(.vertical, 6)
+                        .tag(record.persistentModelID)
                     }
                 }
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else if selection.count > 1 {
-                ContentUnavailableView(
-                    "已选择 \(selection.count) 条历史记录", systemImage: "checkmark.circle",
-                    description: Text("可使用工具栏删除所选内容。")
-                )
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else if !filtered.isEmpty {
-                ContentUnavailableView(
-                    "选择一个记录", systemImage: "sidebar.left",
-                    description: Text("在左侧列表中选择内容以查看详情。")
-                )
-                .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                emptyState
-                    .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+                .workspaceList()
+            } detail: { _ in
+                if let record = selectedRecord {
+                    HistoryDetail(record: record, learning: learning, collection: collection)
+                        .id(record.persistentModelID)
+                } else if selection.count > 1 {
+                    ContentUnavailableView(
+                        "已选择 \(selection.count) 条历史记录", systemImage: "checkmark.circle",
+                        description: Text("可使用工具栏删除所选内容。"))
+                } else {
+                    ContentUnavailableView(
+                        "选择一个记录", systemImage: "sidebar.left",
+                        description: Text("在左侧列表中选择内容以查看详情。"))
+                }
             }
-        }
-        // Keep the native divider inside the content safe area, below the unified toolbar.
-        .padding(.top, 1)
-        .navigationTitle("")
-        .searchable(text: $search, placement: .toolbar, prompt: "搜索原文或结果")
-        .toolbar { toolbar }
-        .safeAreaInset(edge: .top) {
-            if let message = store.lastError {
-                HStack {
-                    Label("历史保存失败：\(message)", systemImage: "exclamationmark.triangle")
-                    Spacer()
-                    Button("关闭", systemImage: "xmark") { store.dismissError() }
-                        .labelStyle(.iconOnly).help("关闭提示")
-                }.padding()
-            }
-        }
-        .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
-            selection.formIntersection(ids)
-            if selection.isEmpty, let first = ids.first { selection = [first] }
-        }
-        .onChange(of: selection) { _, _ in learning.reset() }
-        .onDisappear { learning.reset() }
-        .confirmationDialog("删除所选 \(selection.count) 条历史记录？", isPresented: $confirmingDelete, titleVisibility: .visible)
-        {
-            Button("删除", role: .destructive) { deleteSelected() }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("生词本中的表达不受影响。")
-        }
-        .alert(
-            "操作失败",
-            isPresented: Binding(
-                get: { actionError != nil }, set: { if !$0 { actionError = nil } })
-        ) {
-            Button("好", role: .cancel) {}
-        } message: {
-            Text(actionError ?? "")
         }
     }
 
@@ -158,40 +127,28 @@ struct HistoryView: View {
             } label: {
                 Label("筛选类型", systemImage: "line.3.horizontal.decrease")
             }
-            .labelStyle(.iconOnly).help("筛选类型")
+            .labelStyle(.iconOnly).hoverTip("筛选类型")
         }
         ToolbarItemGroup(placement: .principal) {
             Button("上一条", systemImage: "chevron.up") { if let previous { selection = [previous] } }
-                .labelStyle(.iconOnly).help("上一条").disabled(previous == nil)
+                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
+                .disabled(previous == nil)
             Button("下一条", systemImage: "chevron.down") { if let next { selection = [next] } }
-                .labelStyle(.iconOnly).help("下一条").disabled(next == nil)
+                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
+                .disabled(next == nil)
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                guard let record = selectedRecord else { return }
-                learning.isExpanded = true
-                learning.generate(for: learningRequest(record))
-                learningReveal += 1
-            } label: {
-                Label("学习", systemImage: "lightbulb.fill")
-            }
-            .labelStyle(.iconOnly).disabled(selectedRecord == nil).help("学习词汇与表达")
             Button {
                 confirmingDelete = true
             } label: {
                 Label("删除", systemImage: "trash")
             }
-            .labelStyle(.iconOnly).disabled(selection.isEmpty).help("删除所选内容")
+            .labelStyle(.iconOnly).disabled(selection.isEmpty)
+            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "删除所选内容")
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         DefaultToolbarItem(kind: .search, placement: .primaryAction)
-    }
-
-    private func learningRequest(_ record: HistoryRecord) -> LearningRequest {
-        LearningRequest(
-            text: record.source, operation: record.operationKind, targetLanguage: record.language,
-            result: record.result, claimAutoRequest: { false })
     }
 
     private var previous: PersistentIdentifier? {
@@ -225,6 +182,95 @@ struct HistoryView: View {
             selection = []
             actionError = nil
         } catch { actionError = error.localizedDescription }
+    }
+}
+
+/// One record: the source, then the result that reads heavier, in one scrolling column. 学习 keeps
+/// the learned sentence in view: the source and its divider collapse, the result rides up, and a
+/// second divider and the learning items grow in below it. 返回 reverses it.
+private struct HistoryDetail: View {
+    let record: HistoryRecord
+    @Bindable var learning: LearningModel
+    let collection: CollectionAction
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Negative until measured, so the first frame shows the source at its own height.
+    @State private var sourceHeight: CGFloat = -1
+    @State private var learningHeight: CGFloat = -1
+
+    var body: some View {
+        let spring: Animation? = reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12)
+        ZStack(alignment: .bottomTrailing) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(
+                        "\(record.operationKind.title) · \(LanguageCatalog.name(for: record.language)) · \(HistoryTime.display(record.createdAt))"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.bottom, 12)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(record.source)
+                            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
+                            .lineSpacing(2)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Divider()
+                    }
+                    .padding(.bottom, 12)
+                    .collapsing(shown: !learning.isExpanded, height: $sourceHeight)
+                    PanelJustifiedText(text: record.result)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Divider()
+                        // Only once opened: a closed list would show its disclosure row.
+                        PanelLearningView(
+                            learning: learning, request: request, collection: collection, showsDisclosure: false,
+                            fitsRows: false, inline: true)
+                    }
+                    .padding(.top, 12)
+                    .collapsing(shown: learning.isExpanded, height: $learningHeight)
+                }
+                // A reading column: long lines stop at 640pt instead of running across a wide window.
+                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, PanelMetrics.contentInset)
+                .padding(.horizontal, 32)
+                .panelBottomPadding()
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            HStack(spacing: 8) {
+                if learning.isExpanded {
+                    CardButton(title: "返回", symbol: "chevron.left", key: .learn) { learning.isExpanded = false }
+                } else {
+                    CardButton(title: "学习", symbol: "lamp.desk", key: .learn) { learning.isExpanded = true }
+                }
+                CardButton(title: "复制结果", symbol: "document.on.document", key: .copy, bindsKey: false) {
+                    Clipboard.copy(record.result)
+                }
+            }
+            .padding([.trailing, .bottom], PanelMetrics.contentInset)
+        }
+        .animation(spring, value: learning.isExpanded)
+        // The items arrive after the list opens, so its height keeps growing with them.
+        .animation(spring, value: learningHeight)
+        .onDisappear { learning.reset() }
+    }
+
+    private var request: LearningRequest {
+        LearningRequest(
+            text: record.source, operation: record.operationKind, targetLanguage: record.language,
+            result: record.result, claimAutoRequest: { false })
+    }
+}
+
+extension View {
+    /// Opens and closes to the content's own measured height. A number, never nil, so the change
+    /// interpolates instead of jumping; the content keeps its height and the clip reveals it.
+    fileprivate func collapsing(shown: Bool, height: Binding<CGFloat>) -> some View {
+        fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { height.wrappedValue = $0 }
+            .frame(height: shown ? (height.wrappedValue < 0 ? nil : height.wrappedValue) : 0, alignment: .top)
+            .clipped()
+            // Selectable text draws past a clip, so it fades out quickly as it goes.
+            .opacity(shown ? 1 : 0)
     }
 }
 

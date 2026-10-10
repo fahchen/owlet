@@ -15,6 +15,7 @@ struct LanguageSettingsView: View {
                 LabeledContent(LanguageCatalog.name(for: tag)) {
                     Button("删除", systemImage: "trash") { remove(tag) }
                         .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
                         .disabled(languages.count <= 1)
                         .accessibilityLabel("移除\(LanguageCatalog.name(for: tag))")
                 }

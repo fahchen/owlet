@@ -11,6 +11,9 @@ struct PanelLearningView: View {
     var preferredHeight: CGFloat = 0
     /// False in the main window, where the column fills the card instead of fitting three to five items.
     var fitsRows = true
+    /// True inside a page's own scroll view: the items lie in its flow, with no scroll view or edge
+    /// bands of their own, and the waiting states take a fixed height instead of the whole column.
+    var inline = false
     @Query private var entries: [VocabularyEntry]
     @State private var attempted = false
     @State private var hovered: Int?
@@ -19,6 +22,8 @@ struct PanelLearningView: View {
     /// Item height before one is measured: a one-line expression over a one-line meaning.
     private static let estimatedRowHeight: CGFloat = 50
     private static let rowSpacing: CGFloat = 4
+    /// The inline loading and failure states: room for the message, centered, before items arrive.
+    private static let inlineStateHeight: CGFloat = 160
 
     var body: some View {
         Group {
@@ -69,6 +74,7 @@ struct PanelLearningView: View {
             Text("正在整理值得学习的表达…")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(height: inline ? Self.inlineStateHeight : nil)
                 .padding(.horizontal, PanelMetrics.contentInset)
         case .failure(let message):
             VStack(spacing: 8) {
@@ -81,49 +87,56 @@ struct PanelLearningView: View {
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(height: inline ? Self.inlineStateHeight : nil)
             .padding(.horizontal, PanelMetrics.contentInset)
         case .success(let items) where items.isEmpty:
             Text("这次没有额外推荐。")
                 .foregroundStyle(.secondary)
                 .padding(PanelMetrics.contentInset)
+        case .success(let items) where inline:
+            rows(items)
         case .success(let items):
             ScrollView {
-                VStack(alignment: .leading, spacing: Self.rowSpacing) {
-                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                        Button {
-                            toggleCollection(item)
-                        } label: {
-                            HStack(alignment: .center, spacing: 12) {
-                                Image(systemName: isCollected(item) ? "bookmark.fill" : "bookmark")
-                                    .foregroundStyle(isCollected(item) ? Color.accentColor : Color.primary)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.text).font(.body).foregroundStyle(.primary)
-                                    Text(item.meaning).font(.caption).foregroundStyle(.secondary)
-                                }
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(LearningRowStyle(hovered: hovered == index))
-                        .onHover { hovered = $0 ? index : (hovered == index ? nil : hovered) }
-                        .accessibilityValue(isCollected(item) ? "已收藏" : "未收藏")
-                        .help(isCollected(item) ? "取消收藏" : "加入生词本")
-                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { rowHeights[index] = $0 }
-                    }
-                    // Only a failed save is reported: a success already shows as the filled bookmark.
-                    if attempted, case .saveFailed(let message) = collection.status {
-                        Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
-                    }
-                }
-                // Inside the scroll view, so the edge bands span the whole column.
-                .padding(.horizontal, PanelMetrics.contentInset)
-                .panelBottomPadding()
+                rows(items)
+                    // Inside the scroll view, so the edge bands span the whole column.
+                    .padding(.horizontal, PanelMetrics.contentInset)
+                    .panelBottomPadding()
             }
             .scrollBounceBehavior(.basedOnSize)
             .panelEdgeBands()
+        }
+    }
+
+    private func rows(_ items: [LearningResult.Item]) -> some View {
+        VStack(alignment: .leading, spacing: Self.rowSpacing) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                Button {
+                    toggleCollection(item)
+                } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        Image(systemName: isCollected(item) ? "bookmark.fill" : "bookmark")
+                            .foregroundStyle(isCollected(item) ? Color.accentColor : Color.primary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.text).font(.body).foregroundStyle(.primary)
+                            Text(item.meaning).font(.caption).foregroundStyle(.secondary)
+                        }
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(LearningRowStyle(hovered: hovered == index))
+                .onHover { hovered = $0 ? index : (hovered == index ? nil : hovered) }
+                .accessibilityValue(isCollected(item) ? "已收藏" : "未收藏")
+                .hoverTip(isCollected(item) ? "取消收藏" : "加入生词本")
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { rowHeights[index] = $0 }
+            }
+            // Only a failed save is reported: a success already shows as the filled bookmark.
+            if attempted, case .saveFailed(let message) = collection.status {
+                Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+            }
         }
     }
 

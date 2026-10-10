@@ -1,3 +1,5 @@
+import AppKit
+
 /// Text processing operation: translation to a target language, or polishing in place.
 enum Operation: String, CaseIterable, Sendable {
     case translate
@@ -15,6 +17,14 @@ enum Operation: String, CaseIterable, Sendable {
         switch self {
         case .translate: "translate"
         case .polish: "wand.and.sparkles"
+        }
+    }
+
+    /// The operation's own color: its selected toolbar symbol and its history marker.
+    var tint: NSColor {
+        switch self {
+        case .translate: .systemBlue
+        case .polish: .systemGreen
         }
     }
 

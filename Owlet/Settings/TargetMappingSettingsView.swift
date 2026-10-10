@@ -25,7 +25,8 @@ struct TargetMappingSettingsView: View {
             ForEach($rows) { $row in
                 mappingRow($row)
             }
-            Button("添加映射", action: addRow)
+            Button("添加映射", systemImage: "plus", action: addRow)
+                .buttonStyle(.borderless)
                 .disabled(rows.count >= options.count)
         } header: {
             Text("翻译目标语言")
@@ -49,8 +50,9 @@ struct TargetMappingSettingsView: View {
                 ForEach(sourceOptions(for: row.wrappedValue)) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
-            Image(systemName: "arrow.right")
-                .foregroundStyle(.secondary)
+            // The toolbar's source → target mark.
+            Image(systemName: "chevron.forward.2")
+                .foregroundStyle(.tint)
                 .accessibilityHidden(true)
             Picker("目标语言", selection: row.target) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
@@ -59,6 +61,7 @@ struct TargetMappingSettingsView: View {
             Spacer(minLength: 12)
             Button("删除", systemImage: "trash") { remove(row.wrappedValue.id) }
                 .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
                 .accessibilityLabel("删除\(LanguageCatalog.name(for: row.wrappedValue.source))的映射")
         }
     }

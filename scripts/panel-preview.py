@@ -14,6 +14,8 @@ parser.add_argument('--screenshots', type=Path, help='Export panel states and co
 parser.add_argument('--active', action='store_true', help='Render native controls in active appearance for comparison')
 parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
+parser.add_argument('--panel', action='store_true', help='Open the real floating panel through PanelController')
+parser.add_argument('--no-voice', action='store_true', help='Stand in for a Mac without a system voice')
 args = parser.parse_args()
 if args.live and not os.environ.get('DEEPSEEK_API_KEY'):
     parser.error('DEEPSEEK_API_KEY is not set')
@@ -41,6 +43,9 @@ if args.screenshots:
     environment['OWLET_PREVIEW_SCREENSHOTS'] = str(args.screenshots.resolve())
 if args.transition:
     environment['OWLET_PREVIEW_TRANSITION'] = str(args.transition.resolve())
+if args.no_voice:
+    environment['OWLET_PREVIEW_NO_VOICE'] = '1'
 if args.background:
     environment['OWLET_PREVIEW_BACKGROUND'] = str(args.background.resolve())
-subprocess.run([str(executable), *(['--live'] if args.live else [])], env=environment, check=True)
+flags = [*(['--live'] if args.live else []), *(['--panel'] if args.panel else [])]
+subprocess.run([str(executable), *flags], env=environment, check=True)

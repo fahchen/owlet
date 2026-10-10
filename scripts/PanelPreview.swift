@@ -25,6 +25,9 @@ import SwiftData
         let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
         let messages = body["messages"] as! [[String: String]]
         let isLearning = messages[0]["content"]!.contains("key items")
+        if messages[0]["content"]!.contains("Explain the text a reader selected") {
+            return try lookupFixture(system: messages[0]["content"]!, data: messages[1]["content"]!, url: request.url!)
+        }
         let content: [String: Any] =
             isLearning
             ? [
@@ -56,7 +59,41 @@ import SwiftData
         ])
         return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
+    /// Lookups answer after a pause so loading is visible. "literary" breaks the lookup contract the
+    /// first time only, so the failure and 重试 paths can be driven by hand.
+    nonisolated(unsafe) static var failedOnce = false
+    nonisolated static func lookupFixture(system: String, data: String, url: URL) throws -> (Data, URLResponse) {
+        Thread.sleep(forTimeInterval: 1.2)
+        let query = try JSONSerialization.jsonObject(with: Data(data.utf8)) as! [String: Any]
+        let text = query["text"] as! String
+        let sentence = query["is_sentence"] as! Bool
+        let definition = system.components(separatedBy: "definition_language is ")[1].components(separatedBy: ".")[0]
+        let content: String
+        if text == "literary", !failedOnce {
+            failedOnce = true
+            content = "not json"
+        } else {
+            let answer: [String: Any] = [
+                "text": text, "language": query["language"] ?? NSNull(), "definition_language": definition,
+                "meaning": query["context"] is NSNull
+                    ? "（预览）「\(text)」的一般含义。" : "（预览）「\(text)」在这句话中的意思。",
+                "lemma": text == "weighing" ? "weigh" : NSNull(),
+                "pronunciation": sentence ? NSNull() : "/ˈpriːvjuː/",
+                "part_of_speech": sentence ? NSNull() : "词",
+            ]
+            content = String(decoding: try JSONSerialization.data(withJSONObject: answer), as: UTF8.self)
+        }
+        let body = try JSONSerialization.data(withJSONObject: [
+            "choices": [["message": ["content": content], "finish_reason": "stop"]]
+        ])
+        return (body, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
     static let model = TextProcessingModel(client: client, config: { config })
+    /// OWLET_PREVIEW_NO_VOICE stands in for a Mac without the voice, without touching system voices.
+    static let lookups = LookupPresenter(
+        store: LookupStore(client: client, config: { config }),
+        speech: ProcessInfo.processInfo.environment["OWLET_PREVIEW_NO_VOICE"] == "1"
+            ? LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}) : .live)
     static let learning: LearningModel = {
         let learning = LearningModel(client: client, config: { config })
         learning.autoRequest = { _ in false }
@@ -101,7 +138,10 @@ struct PreviewView: View {
                     ExpandedPanel(
                         model: PreviewFixtures.model, replace: nil, copy: { _ in },
                         collection: PreviewFixtures.collection, openNotebook: {}, notice: nil, recover: { _ in },
-                        retry: {}, cancel: {}, openSettings: {}, close: {}, learning: PreviewFixtures.learning
+                        retry: {}, cancel: {}, openSettings: {}, close: {}, lookups: PreviewFixtures.lookups,
+                        lookupOrigin: PreviewFixtures.model.languages.map {
+                            .result(of: .translate, languages: $0, mapping: TargetMapping(targets: [:], fallback: "zh-Hans"))
+                        }, learning: PreviewFixtures.learning
                     )
                     .panelSurface(.regular)
                 }
@@ -134,8 +174,32 @@ final class PreviewPanel: NSPanel {
 }
 
 @main struct PreviewApp {
+    /// Keeps the real panel controller alive for `--panel`.
+    @MainActor static var panel: PanelController?
+
     @MainActor static func main() {
         let app = NSApplication.shared
+        if ProcessInfo.processInfo.arguments.contains("--panel") {
+            // The real controller and FloatingPanel, as the shortcut opens them: an accessory app
+            // with a non-activating panel, so focus, Esc and outside clicks behave as in Owlet.
+            app.setActivationPolicy(.accessory)
+            // The fixture answers in English; pin it in the preview's own suite, not Owlet's.
+            SettingsStore.setPinnedTarget("en", in: PreviewFixtures.defaults)
+            let controller = PanelController(
+                model: PreviewFixtures.model, defaults: PreviewFixtures.defaults, lookups: PreviewFixtures.lookups)
+            controller.read = { completion in
+                completion(
+                    .success(
+                        Selection(
+                            text: PreviewFixtures.source, element: AXUIElementCreateSystemWide(), app: nil,
+                            range: nil)))
+            }
+            controller.collection = PreviewFixtures.collection
+            panel = controller
+            DispatchQueue.main.async { controller.processSelection() }
+            app.run()
+            return
+        }
         app.setActivationPolicy(.regular)
         if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_TRANSITION"] {
             recordTransition(to: output)

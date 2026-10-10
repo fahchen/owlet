@@ -220,6 +220,81 @@ struct ModelClient: Sendable {
         return request
     }
 
+    /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
+    /// app's snapshot, so the model is only trusted for the explanation itself.
+    func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
+        let request = try makeLookupRequest(query, config: config)
+        let capture = capture
+        let records = capture.isEnabled()
+        var response: String?
+        var failure: String?
+        defer {
+            if records {
+                let exchange = DebugExchange(
+                    title: "查词 · \(query.definitionLanguage)",
+                    request: Self.prettyPrintedBody(request), submitted: query.text,
+                    response: response, failure: failure)
+                let record = capture.record
+                Task { await record(exchange) }
+            }
+        }
+        do {
+            let content = try decodedContent(try await send(request))
+            response = content
+            return try LookupResult.parse(content, query: query)
+        } catch {
+            failure = (error as? ModelError)?.message ?? error.localizedDescription
+            throw error
+        }
+    }
+
+    func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
+        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let pronunciation =
+            query.pronunciation.map { "Use \($0) for pronunciation." }
+            ?? "Use kana for Japanese, pinyin for Chinese and IPA for other languages."
+        let system = """
+            Explain the text a reader selected. With a context, explain only what it means in that \
+            context, adding usage only when needed; do not list other senses. With a null context, \
+            give the general meaning. Write meaning and part_of_speech in \(query.definitionLanguage).
+            Respond with one json object with keys text, language, definition_language, meaning, \
+            lemma, pronunciation, part_of_speech. text must equal the selected text exactly. \
+            language is the BCP 47 tag of the text, or null if unknown\
+            \(query.language.map { "; it is \($0)" } ?? ""). definition_language is \
+            \(query.definitionLanguage). lemma is the dictionary form only when it applies and is \
+            certain, else null. \(pronunciation) Use null for any field that does not apply or is \
+            uncertain. When is_sentence is true, pronunciation and part_of_speech must be null. \
+            Example json: {"text":"running","language":"en","definition_language":"zh-Hans",\
+            "meaning":"在这句话中指正在跑步。","lemma":"run","pronunciation":"ˈrʌnɪŋ",\
+            "part_of_speech":"动词"}
+            """
+        let responseFormat: [String: Any] =
+            !config.provider.supportsJSONSchema
+            ? ["type": "json_object"]
+            : [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "lookup", "strict": true, "schema": LookupResult.providerSchema,
+                ],
+            ]
+        let payload = try JSONSerialization.data(
+            withJSONObject: [
+                "text": query.text, "context": query.context as Any? ?? NSNull(),
+                "selection_start": query.offset as Any? ?? NSNull(),
+                "language": query.language as Any? ?? NSNull(), "is_sentence": query.isSentence,
+            ], options: .sortedKeys)
+        let body = requestBody(
+            messages: [
+                ["role": "system", "content": system],
+                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
+            ], responseFormat: responseFormat, config: config)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
     /// Lists model ids from the OpenAI-style `GET /models` endpoint.
     func listModels(baseURL: URL, apiKey: String) async throws -> [String] {
         var request = URLRequest(url: baseURL.appending(path: "models"))

@@ -8,7 +8,7 @@
 - [术语](glossary.md)：统一概念。
 - `processing/features/`：翻译、润色、快捷入口与替换。
 - `learning/features/`：独立开关、临时展开与推荐收藏。
-- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.feature) 已确认待实现。
+- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.feature) 浮窗选区查询已实现（T48），单击／悬停与其余区域待实现。
 - `history/features/`：保存、查看、搜索与删除历史；按天分组、关联从该记录收藏的词条。
 - `settings/features/`：自填模型服务配置、自定义 Prompt、按源语言决定翻译目标，以及按语言配置读音体系。
 - [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
@@ -19,7 +19,7 @@
 - [释义语言决策](learning/decisions/BDR-0005-definition-language.md)：释义跟随本次翻译目标语言，润色按目标映射查原文语言；语言随条目保存。
 - [按需补充决策](vocabulary/decisions/BDR-0006-on-demand-enrichment.md)：读音与词性在详情按需补充；「补充缺失」只填空、单项「重新生成」只覆盖该项；整句不标；读音体系按语言设置。
 - [历史作为学习本决策](history/decisions/BDR-0007-history-as-learning-log.md)：收藏记录来源入口与原文所在 App；历史按天分组、可按有收藏与来源 App 筛选、详情关联收藏词条。
-- [阅读查词决策](vocabulary/decisions/BDR-0008-reading-word-lookup.md)：只读正文单击、选区工具栏／右键查询；学习行保留点击收藏，跨句旧释义标来源，手动系统发音，查询不入库。已确认待实现，尚无原生截图与交互验证；讨论记录见 [意图文档](../docs/intent/word-lookup.md)。
+- [阅读查词决策](vocabulary/decisions/BDR-0008-reading-word-lookup.md)：只读正文单击、选区工具栏／右键查询；学习行保留点击收藏，跨句旧释义标来源，手动系统发音，查询不入库。浮窗选区查询已实现（T48），单击／悬停与其余区域待实现；讨论记录见 [意图文档](../docs/intent/word-lookup.md)。
 
 Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。`tasks/plan.md` 与 `tasks/todo.md` 负责实现顺序；技术选型不作为领域场景。
 
@@ -46,4 +46,4 @@ Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认
 | 手动收藏、生词本 | T07、T08 |
 | 学习推荐 | T09 |
 | 重复表达追加语境 | T10 |
-| 阅读查词第一步（已确认待实现） | T47 |
+| 阅读查词第一步（部分实现） | T47–T51 |

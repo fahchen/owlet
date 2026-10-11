@@ -10,10 +10,10 @@
 
 | 功能 | `spec/product.md` 章节 | 提案画面（未实现） | 任务 |
 | --- | --- | --- | --- |
-| 阅读查词第一步：解释、读音与手动系统发音 | 阅读中查词（第一步，部分实现） | 浮窗选区路径已原生验收；单击、悬停及其余四类区域未实现 | T49–T51 |
+| 阅读查词第一步：解释、读音与手动系统发音 | 阅读中查词（第一步，部分实现） | 浮窗选区、单击与悬停已原生验收；其余四类区域未实现 | T50–T51 |
 | 复习／间隔重复／掌握度 | 首版不做（另见 个人生词本） | — | 首版不做 |
 
-查词第一步已交付浮窗结果的选区路径（选区工具栏、右键「查询所选」、Return、辅助功能动作，卡片、复用、重试与系统发音），见 [正式行为规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [意图记录](intent/word-lookup.md)。保留可编辑原文与学习行点击收藏，查询通过只读正文单击或选区工具栏／右键触发；跨句旧释义标明来源，不自动重查，也不写入生词本。单击查词、悬停反馈、文本处理页／生词本／历史详情与学习行尚未接入；不计入已退役 `design/` 的截图状态、分区或提案数。
+查词第一步已交付浮窗结果的选区路径（选区工具栏、右键「查询所选」、Return、辅助功能动作，卡片、复用、重试与系统发音），见 [正式行为规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [意图记录](intent/word-lookup.md)。保留可编辑原文与学习行点击收藏，查询通过只读正文单击或选区工具栏／右键触发；跨句旧释义标明来源，不自动重查，也不写入生词本。文本处理页／生词本／历史详情与学习行尚未接入；不计入已退役 `design/` 的截图状态、分区或提案数。
 
 其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用写回成功直接关闭浮窗，该画面保留旧布局但不再对应实现（原型未加徽标）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
 

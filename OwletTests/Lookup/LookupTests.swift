@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Foundation
+import NaturalLanguage
 import SwiftData
 import Synchronization
 import Testing
@@ -474,5 +475,45 @@ final class LookupTransport: Sendable {
         #expect(try vocabulary.entries().isEmpty)
         #expect(model.input == "Hello")
         #expect(transport.count == 1)
+    }
+}
+
+/// Single-click hits use the system word tokenizer; whitespace and punctuation hit nothing.
+@MainActor @Suite struct LookupWordHitTests {
+    func word(at character: String, occurrence: Int = 0, in text: String) -> String? {
+        let tokenizer = NLTokenizer(unit: .word)
+        tokenizer.string = text
+        var search = text.startIndex..<text.endIndex
+        var found = text.range(of: character, range: search)
+        for _ in 0..<occurrence {
+            search = found!.upperBound..<text.endIndex
+            found = text.range(of: character, range: search)
+        }
+        let index = NSRange(found!, in: text).location
+        return LookupTextView.word(at: index, in: text, tokenizer: tokenizer).map {
+            (text as NSString).substring(with: $0)
+        }
+    }
+
+    @Test func englishWordsAndTheGapsBetweenThem() {
+        let text = "\"Tui Qiao\" is not just an ancient allusion."
+        #expect(word(at: "ncie", in: text) == "ancient")
+        #expect(word(at: " ", in: text) == nil)
+        #expect(word(at: "\"", in: text) == nil)
+        #expect(word(at: ".", in: text) == nil)
+    }
+
+    @Test func japaneseUsesTheSystemSegmentation() {
+        let text = "「推敲」は古い文学の故事である。"
+        #expect(word(at: "翻", in: "正確な翻訳の最高") == "翻訳")
+        #expect(word(at: "文", in: text) == "文学")
+        #expect(word(at: "「", in: text) == nil)
+        #expect(word(at: "。", in: text) == nil)
+    }
+
+    @Test func chineseUsesTheSystemSegmentation() {
+        let text = "推敲不仅是古老的文学典故，也是精准翻译的最高境界。"
+        #expect(word(at: "典", in: text) == "典故")
+        #expect(word(at: "，", in: text) == nil)
     }
 }

@@ -93,7 +93,7 @@
 - 一次显示一张卡片；切换查询、关闭卡片或离开页面后，旧响应不得覆盖新卡片或重新弹卡。支持键盘与 VoiceOver 查询；Esc 先关闭卡片并恢复正文焦点。
 - 查词不收藏、不覆写已有生词本释义；查询输入框、写回生词本、查询历史与外部词典服务留待第二步。
 
-行为详见 [查词规格](vocabulary/features/word-lookup.feature) 与 [查词决策 BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.md)。浮窗结果的选区查询已实现并原生验收（T48）；单击、悬停及其余区域按 T49–T51 推进。
+行为详见 [查词规格](vocabulary/features/word-lookup.feature) 与 [查词决策 BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.md)。浮窗结果的选区、单击与悬停查询已实现并原生验收（T48–T49）；其余区域按 T50–T51 推进。
 
 ## 历史记录
 

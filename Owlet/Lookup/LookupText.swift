@@ -1,9 +1,11 @@
 import AppKit
+import NaturalLanguage
 import SwiftUI
 
 /// Read-only reading text that can be looked up. A native text view keeps drag and double-click
 /// selection, ⌘C and the system menu; a settled selection offers 查询 and nothing is requested
-/// until the user picks it from the toolbar, the menu, Return or the accessibility action.
+/// until the user picks it from the toolbar, the menu, Return or the accessibility action. A
+/// single click on a word looks that word up, and hovering one previews it.
 struct LookupText: NSViewRepresentable {
     let text: String
     var size: CGFloat = 17
@@ -68,6 +70,104 @@ final class LookupTextView: NSTextView {
     weak var presenter: LookupPresenter?
     /// Size, weight, line spacing and alignment last applied, so an unchanged update leaves the selection.
     var style: [CGFloat] = []
+    /// The single-click lookup waiting out the double-click interval.
+    private var pendingClick: Task<Void, Never>?
+    /// The word under the pointer, tinted until the pointer leaves it.
+    private var hovered: NSRange?
+    private let words = NLTokenizer(unit: .word)
+
+    /// Hover tints the word with the selection color at reduced strength (DESIGN 封闭例外): the
+    /// same color as a selection, so it reads as "this can be picked", but clearly weaker.
+    static let hoverOpacity: CGFloat = 0.3
+
+    /// A click is a lookup only once the double-click interval passes without a second click, so
+    /// double-click word selection, drag selection and copy keep working.
+    override func mouseDown(with event: NSEvent) {
+        pendingClick?.cancel()
+        pendingClick = nil
+        setHover(nil)
+        let point = convert(event.locationInWindow, from: nil)
+        // NSTextView tracks the whole gesture here and returns on mouse up.
+        super.mouseDown(with: event)
+        guard event.clickCount == 1, selectedRange().length == 0, origin != nil,
+            let word = word(at: point)
+        else { return }
+        pendingClick = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
+            guard !Task.isCancelled, let self, self.selectedRange().length == 0,
+                let origin = self.origin,
+                case .success(let query) = LookupQuery.make(selection: word, in: self.string, origin: origin)
+            else { return }
+            self.presenter?.lookUp(query, at: self.rect(for: word), in: self)
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas where area.owner === self { removeTrackingArea(area) }
+        // The panel never activates Owlet, so hover has to track while the app is inactive.
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        // Cursor rects do not apply while Owlet is inactive, which the panel always leaves it.
+        NSCursor.iBeam.set()
+        guard origin != nil else { return }
+        let word = word(at: convert(event.locationInWindow, from: nil))
+        // A selection already shows its own highlight; hover never stacks on it.
+        setHover(word.flatMap { NSIntersectionRange($0, selectedRange()).length == 0 ? $0 : nil })
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        setHover(nil)
+    }
+
+    /// A temporary attribute is drawn by the layout manager without changing layout.
+    private func setHover(_ range: NSRange?) {
+        guard range != hovered, let layout = layoutManager else { return }
+        if let hovered { layout.removeTemporaryAttribute(.backgroundColor, forCharacterRange: hovered) }
+        hovered = range
+        if let range {
+            layout.addTemporaryAttribute(
+                .backgroundColor,
+                value: NSColor.selectedTextBackgroundColor.withAlphaComponent(Self.hoverOpacity),
+                forCharacterRange: range)
+        }
+    }
+
+    /// The word whose glyph is actually under `point`: the nearest glyph is not enough, so empty
+    /// space after a line, between lines or past the text hits nothing.
+    func word(at point: NSPoint) -> NSRange? {
+        guard let layout = layoutManager, let container = textContainer, !string.isEmpty else {
+            return nil
+        }
+        let local = NSPoint(x: point.x - textContainerOrigin.x, y: point.y - textContainerOrigin.y)
+        let glyph = layout.glyphIndex(for: local, in: container)
+        guard glyph < layout.numberOfGlyphs,
+            layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+                .contains(local)
+        else { return nil }
+        if words.string != string { words.string = string }
+        return Self.word(at: layout.characterIndexForGlyph(at: glyph), in: string, tokenizer: words)
+    }
+
+    /// The system word around a character; whitespace and punctuation are not part of any word,
+    /// so a click on them looks nothing up instead of a neighbour.
+    static func word(at index: Int, in text: String, tokenizer: NLTokenizer) -> NSRange? {
+        guard let position = Range(NSRange(location: index, length: 1), in: text)?.lowerBound else {
+            return nil
+        }
+        let token = tokenizer.tokenRange(at: position)
+        guard token.contains(position),
+            text[position].unicodeScalars.contains(where: CharacterSet.alphanumerics.contains)
+        else { return nil }
+        return NSRange(token, in: text)
+    }
 
     /// The selection as a lookup, or why it cannot be one; nil when nothing is selected.
     var selectedQuery: Result<LookupQuery, LookupQuery.Refusal>? {

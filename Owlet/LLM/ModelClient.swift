@@ -74,30 +74,9 @@ struct ModelClient: Sendable {
         let target = operation == .translate ? targetLanguage : nil
         let request = try makeRequest(
             text: text, operation: operation, targetLanguage: target, config: config)
-        let capture = capture
-        let records = capture.isEnabled()
-        var response: String?
-        var failure: String?
-        // The record is handed off, not awaited: diagnostics must never delay or fail a request.
-        defer {
-            if records {
-                let exchange = DebugExchange(
-                    title: Self.debugTitle(operation: operation, target: target),
-                    request: Self.prettyPrintedBody(request), submitted: text, response: response,
-                    failure: failure)
-                let record = capture.record
-                Task { await record(exchange) }
-            }
-        }
-        do {
-            let data = try await send(request)
-            let content = try decodedContent(data)
-            response = content
-            return try TranslationResult.parse(content, submitted: text, targetLanguage: target)
-        } catch {
-            failure = (error as? ModelError)?.message ?? error.localizedDescription
-            throw error
-        }
+        return try await perform(
+            request, title: Self.debugTitle(operation: operation, target: target), submitted: text,
+            parse: { try TranslationResult.parse($0, submitted: text, targetLanguage: target) })
     }
 
     /// Names what was asked for, so a debug entry reads without opening it.
@@ -157,8 +136,9 @@ struct ModelClient: Sendable {
                 ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
             ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let data = try await send(request)
-        return try LearningResult.item(try decodedContent(data), expression: expression).meaning
+        return try await perform(
+            request, title: "补释义", submitted: expression,
+            parse: { try LearningResult.item($0, expression: expression).meaning })
     }
 
     /// Runs the optional learning request as its own call, so a failure here can only ever affect the
@@ -170,8 +150,8 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        let data = try await send(request)
-        return try LearningResult.parse(try decodedContent(data))
+        return try await perform(
+            request, title: "学习推荐", submitted: text, parse: { try LearningResult.parse($0) })
     }
 
     /// Builds the separate learning request: the same behavior prompt as the main request plus the
@@ -224,28 +204,9 @@ struct ModelClient: Sendable {
     /// app's snapshot, so the model is only trusted for the explanation itself.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
-        let capture = capture
-        let records = capture.isEnabled()
-        var response: String?
-        var failure: String?
-        defer {
-            if records {
-                let exchange = DebugExchange(
-                    title: "查词 · \(query.definitionLanguage)",
-                    request: Self.prettyPrintedBody(request), submitted: query.text,
-                    response: response, failure: failure)
-                let record = capture.record
-                Task { await record(exchange) }
-            }
-        }
-        do {
-            let content = try decodedContent(try await send(request))
-            response = content
-            return try LookupResult.parse(content, query: query)
-        } catch {
-            failure = (error as? ModelError)?.message ?? error.localizedDescription
-            throw error
-        }
+        return try await perform(
+            request, title: "查词 · \(query.definitionLanguage)", submitted: query.text,
+            parse: { try LookupResult.parse($0, query: query) })
     }
 
     func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
@@ -318,6 +279,36 @@ struct ModelClient: Sendable {
             !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw ModelError.emptyResponse }
         return content
+    }
+
+    /// Sends one request and hands the finished exchange to the debug capture whatever the outcome,
+    /// then parses the decoded content. Every request type goes through here so none is silently
+    /// left off the debug page.
+    private func perform<T>(
+        _ request: URLRequest, title: String, submitted: String, parse: (String) throws -> T
+    ) async throws -> T {
+        let capture = capture
+        let records = capture.isEnabled()
+        var response: String?
+        var failure: String?
+        // The record is handed off, not awaited: diagnostics must never delay or fail a request.
+        defer {
+            if records {
+                let exchange = DebugExchange(
+                    title: title, request: Self.prettyPrintedBody(request), submitted: submitted,
+                    response: response, failure: failure)
+                let record = capture.record
+                Task { await record(exchange) }
+            }
+        }
+        do {
+            let content = try decodedContent(try await send(request))
+            response = content
+            return try parse(content)
+        } catch {
+            failure = (error as? ModelError)?.message ?? error.localizedDescription
+            throw error
+        }
     }
 
     /// The shared chat body: model, messages and response format, plus the reasoning effort only when

@@ -119,6 +119,45 @@ struct DebugLogTests {
         #expect(box.exchanges.isEmpty)
     }
 
+    /// The learning recommendations are a request of their own, so they must appear on the debug page
+    /// like the main request does.
+    @Test func aLearningRequestIsRecorded() async {
+        let box = Box()
+        var client = ModelClient(
+            transport: stub(
+                body: chatBody(
+                    #"{"items":[{"text":"Hello","language":"en","kind":"word","meaning":"你好","context":"Hello"}]}"#)))
+        client.capture = DebugCapture(
+            isEnabled: { true }, record: { box.exchanges.append($0) })
+        _ = try? await client.learning(
+            text: "Hello", operation: .translate, targetLanguage: "zh-Hans", result: "你好",
+            config: testConfig)
+        await settle(box)
+        #expect(box.exchanges.count == 1)
+        #expect(box.exchanges.first?.title == "学习推荐")
+        #expect(box.exchanges.first?.request.contains("original") == true)
+        #expect(box.exchanges.first?.response?.contains("items") == true)
+    }
+
+    /// The on-demand meaning fill is a request of its own, so it must appear on the debug page too.
+    @Test func aMeaningFillIsRecorded() async {
+        let box = Box()
+        var client = ModelClient(
+            transport: stub(
+                body: chatBody(
+                    #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进","context":"follow up"}]}"#
+                )))
+        client.capture = DebugCapture(
+            isEnabled: { true }, record: { box.exchanges.append($0) })
+        _ = try? await client.fillMeaning(
+            expression: "follow up", language: "en", context: "follow up", config: testConfig)
+        await settle(box)
+        #expect(box.exchanges.count == 1)
+        #expect(box.exchanges.first?.title == "补释义")
+        #expect(box.exchanges.first?.request.contains("expression") == true)
+        #expect(box.exchanges.first?.response?.contains("items") == true)
+    }
+
     /// The record is handed off from a detached task, so the assertion waits for it.
     private func settle(_ box: Box) async {
         for _ in 0..<200 where box.exchanges.isEmpty { await Task.yield() }

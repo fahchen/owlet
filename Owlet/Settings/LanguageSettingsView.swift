@@ -17,7 +17,7 @@ struct LanguageSettingsView: View {
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                         .disabled(languages.count <= 1)
-                        .accessibilityLabel(L10n.shared.string("Remove \(LanguageCatalog.name(for: tag))"))
+                        .accessibilityLabel(L10n.shared.string("Remove %@", LanguageCatalog.name(for: tag)))
                 }
             }
             Picker(L10n.shared.string("Add Language"), selection: $pending) {

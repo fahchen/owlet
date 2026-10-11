@@ -65,7 +65,7 @@ struct TargetMappingSettingsView: View {
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
                 .accessibilityLabel(
-                    L10n.shared.string("Remove the mapping for \(LanguageCatalog.name(for: row.wrappedValue.source))"))
+                    L10n.shared.string("Remove the mapping for %@", LanguageCatalog.name(for: row.wrappedValue.source)))
         }
     }
 

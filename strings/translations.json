@@ -79,6 +79,11 @@
     "zh-Hans": "（请求体不可读）",
     "zh-Hant": "（請求內容無法讀取）"
   },
+  "API Key": {
+    "ja": "API キー",
+    "zh-Hans": "API 密钥",
+    "zh-Hant": "API 金鑰"
+  },
   "Add Language": {
     "ja": "言語を追加",
     "zh-Hans": "添加语言",
@@ -143,6 +148,11 @@
     "ja": "結果に戻る",
     "zh-Hans": "返回结果",
     "zh-Hant": "返回結果"
+  },
+  "Base URL": {
+    "ja": "ベース URL",
+    "zh-Hans": "基础 URL",
+    "zh-Hant": "基礎 URL"
   },
   "Before Polish": {
     "ja": "推敲前",
@@ -468,6 +478,11 @@
     "ja": "この文脈で再検索",
     "zh-Hans": "按当前语境重查",
     "zh-Hant": "按當前語境重查"
+  },
+  "Look Up · %@": {
+    "ja": "語の検索 · %@",
+    "zh-Hans": "查词 · %@",
+    "zh-Hant": "查詞 · %@"
   },
   "Looking up": {
     "ja": "検索中",
@@ -948,6 +963,11 @@
     "ja": "学習表現",
     "zh-Hans": "学习表达",
     "zh-Hant": "學習表達"
+  },
+  "Study Expressions (corrected)": {
+    "ja": "学習表現（訂正）",
+    "zh-Hans": "学习表达（纠正）",
+    "zh-Hant": "學習表達（糾正）"
   },
   "Submitted Text": {
     "ja": "送信した原文",

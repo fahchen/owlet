@@ -79,6 +79,37 @@ import Testing
         #expect(wrong.isEmpty, "占位符与键不一致：\(wrong.sorted().joined(separator: "、"))")
     }
 
+    /// A `LocalizedStringResource` interpolated into a `String` prints its own description — the whole
+    /// `LocalizedStringResource(key: "…", defaultValue: …)` — so a resource must never be turned into
+    /// text that way. The result only shows at runtime, which is why this reads the sources.
+    @Test func noResourceIsInterpolatedIntoAString() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Owlet")
+        let files =
+            FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        #expect(!files.isEmpty, "找不到源码目录：\(root.path)")
+
+        // The shape to catch, verbatim: a string interpolation whose expression ends in `.title` or
+        // another resource property. Written as plain substrings so it cannot be misread as a regex.
+        let resourceProperties = [".title", ".progress", ".retry", ".placeholder", ".prompt"]
+        var offenders: [String] = []
+        for file in files {
+            let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: .newlines)
+            for (index, line) in lines.enumerated() where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
+                guard let open = line.range(of: "\\(") else { continue }
+                let rest = line[open.upperBound...]
+                guard let close = rest.firstIndex(of: ")") else { continue }
+                let expression = rest[..<close]
+                if resourceProperties.contains(where: { expression.hasSuffix($0) }) {
+                    offenders.append("\(file.lastPathComponent):\(index + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "资源被当作字符串插值：\(offenders.joined(separator: "、"))")
+    }
+
     /// The source value is the key itself, so an entry that says otherwise would show a raw key.
     @Test func theSourceLanguageEqualsTheKey() throws {
         let catalog = try catalog()

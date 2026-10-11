@@ -100,7 +100,7 @@ private struct MainView: View {
             // A sidebar List allows an empty selection; ignore it so a row stays highlighted.
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 // The main page needs no group title: it is what the app is for.
-                Label(L10n.shared.string("Translate &amp; Polish"), systemImage: "translate").tag(Page.processing)
+                Label(L10n.shared.string("Translate & Polish"), systemImage: "translate").tag(Page.processing)
                 Section(L10n.shared.string("My Collection")) {
                     Label(L10n.shared.string("Notebook"), systemImage: "books.vertical").tag(Page.vocabulary)
                     Label(L10n.shared.string("History"), systemImage: "clock").tag(Page.history)
@@ -178,7 +178,7 @@ private struct SubmitTextButton: View {
     let translation: TextProcessingModel
 
     var body: some View {
-        Button(L10n.shared.string("\(translation.operation.title) Text")) {
+        Button(L10n.shared.string("%@ Text", translation.operation.name)) {
             translation.process(to: SettingsStore.resolvedTarget(for: translation.input))
         }
         .keyboardShortcut(.return, modifiers: .command)
@@ -193,7 +193,7 @@ private struct OperationButtons: View {
 
     var body: some View {
         ForEach([(Operation.translate, KeyHint.translateMode), (.polish, .polishMode)], id: \.0) { operation, key in
-            Button(L10n.shared.string("\(operation.title) Mode")) {
+            Button(L10n.shared.string("%@ Mode", operation.name)) {
                 page = .processing
                 translation.operation = operation
             }

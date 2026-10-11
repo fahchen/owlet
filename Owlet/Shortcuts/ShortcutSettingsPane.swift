@@ -30,7 +30,7 @@ struct ShortcutSettingsPane: View {
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)
                                 .foregroundStyle(.secondary)
-                                .accessibilityLabel(L10n.shared.string("Clear the \(action.title) shortcut"))
+                                .accessibilityLabel(L10n.shared.string("Clear the %@ shortcut", action.name))
                             }
                         }
                     }
@@ -41,7 +41,7 @@ struct ShortcutSettingsPane: View {
                 notice
             }
             ForEach(KeyHint.groups, id: \.title) { group in
-                fixedKeys(L10n.shared.string("\(group.title)"), group.keys)
+                fixedKeys(L10n.shared.string(group.title), group.keys)
             }
         }
         .formStyle(.grouped)
@@ -56,7 +56,7 @@ struct ShortcutSettingsPane: View {
             ) {
                 ForEach(keys, id: \.title) { key in
                     HStack(spacing: 8) {
-                        Text(LocalizedStringKey(key.title)).lineLimit(1)
+                        Text(L10n.shared.string(key.title)).lineLimit(1)
                         Spacer(minLength: 4)
                         Text(key.keys).monospacedDigit().foregroundStyle(.secondary)
                     }
@@ -113,7 +113,7 @@ private struct ShortcutRecorder: View {
             label
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(L10n.shared.string("Record the \(title) shortcut"))
+        .accessibilityLabel(L10n.shared.string("Record the %@ shortcut", title))
         .accessibilityValue(shortcut?.displayString ?? "Not set")
         .onChange(of: recording) { _, now in if !now { removeMonitor() } }
         .onDisappear(perform: stop)

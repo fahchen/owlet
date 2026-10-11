@@ -66,6 +66,9 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
         }
     }
 
+    /// The action's name in the chosen language, resolved when it is shown.
+    var name: String { L10n.shared.string(title.key) }
+
     var defaultsKey: String {
         switch self {
         case .translate: SettingsStore.translateShortcutKey
@@ -107,8 +110,8 @@ final class ShortcutController {
     /// Saves (or clears with nil) and re-registers. On conflict or failure nothing is saved.
     func set(_ shortcut: Shortcut?, for action: ShortcutAction) {
         if let shortcut, let other = conflict(shortcut, for: action) {
-            registrationError = String(
-                localized: "That combination is already used for “\(other.title)”; choose another.")
+            registrationError = L10n.shared.string(
+                "That combination is already used for “%@”; choose another.", other.name)
             return
         }
         let previous = shortcuts[action]
@@ -142,7 +145,7 @@ final class ShortcutController {
             let status = RegisterEventHotKey(
                 shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
             guard status == noErr, let ref else {
-                registrationError = L10n.shared.string("Registering the shortcut failed (\(status)).")
+                registrationError = L10n.shared.string("Registering the shortcut failed (%@).", status)
                 ok = false
                 continue
             }

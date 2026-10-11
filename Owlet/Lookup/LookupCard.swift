@@ -169,7 +169,7 @@ struct LookupCard: View {
         let message: String? =
             switch entry {
             case .loading?: "Looking up"
-            case .failure(let message)?: L10n.shared.string("Lookup failed: \(message)")
+            case .failure(let message)?: L10n.shared.string("Lookup failed: %@", message)
             case .success(let result)?: result.meaning
             case nil: nil
             }

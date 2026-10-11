@@ -21,9 +21,9 @@ enum ModelError: Error, Equatable {
     var message: String {
         switch self {
         case .network(let detail):
-            L10n.shared.string("Network error: \(detail)")
+            L10n.shared.string("Network error: %@", detail)
         case .unauthorized: L10n.shared.string("Authentication failed. Check the API key.")
-        case .http(let code): L10n.shared.string("The service returned HTTP \(code).")
+        case .http(let code): L10n.shared.string("The service returned HTTP %lld.", code)
         case .emptyResponse: L10n.shared.string("The service returned empty content.")
         case .format:
             String(
@@ -35,7 +35,8 @@ enum ModelError: Error, Equatable {
                     "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
             )
         case .targetMismatch(let requested, let returned):
-            L10n.shared.string("The reply is in \(returned), which does not match the requested \(requested).")
+            L10n.shared.string(
+                "The reply is in %@, which does not match the requested %@.", returned, requested)
         case .truncated: L10n.shared.string("The result was cut off for being too long.")
         case .refused: L10n.shared.string("The service refused to process this text.")
         }
@@ -345,7 +346,7 @@ struct ModelClient: Sendable {
             let correction = try makeLookupRequest(
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
-                correction, query: query, title: L10n.shared.string("\(title) (corrected)"))
+                correction, query: query, title: L10n.shared.string("%@ (corrected)", title))
             {
             case .success(let result): return result
             case .failure(let retried): throw retried.error

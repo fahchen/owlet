@@ -38,7 +38,7 @@ struct HistoryView: View {
                 if let message = store.lastError {
                     HStack {
                         Label(
-                            L10n.shared.string("Could not save history: \(message)"),
+                            L10n.shared.string("Could not save history: %@", message),
                             systemImage: "exclamationmark.triangle")
                         Spacer()
                         Button(L10n.shared.string("Off"), systemImage: "xmark") { store.dismissError() }
@@ -87,7 +87,8 @@ struct HistoryView: View {
                                     .foregroundStyle(Color(nsColor: record.operationKind.tint))
                                 Text(
                                     L10n.shared.string(
-                                        "\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
+                                        "%@ · %@", record.operationKind.name,
+                                        HistoryTime.display(record.createdAt))
                                 )
                                 .foregroundStyle(.secondary)
                             }
@@ -214,7 +215,10 @@ private struct HistoryDetail: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(
-                        "\(record.operationKind.title) · \(LanguageCatalog.name(for: record.language)) · \(HistoryTime.display(record.createdAt))"
+                        L10n.shared.string(
+                            "%@ · %@ · %@", record.operationKind.name,
+                            LanguageCatalog.name(for: record.language),
+                            HistoryTime.display(record.createdAt))
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.bottom, 12)

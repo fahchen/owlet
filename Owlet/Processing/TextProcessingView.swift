@@ -54,8 +54,7 @@ struct TextProcessingView: View {
             .fixedSize()
             .disabled(isBusy)
             .hoverTip(
-                "\(KeyHint.translateMode.title) \(KeyHint.translateMode.keys)　\(KeyHint.polishMode.title)",
-                keys: KeyHint.polishMode.keys)
+                verbatim: KeyHint.translateMode.tooltip + "　" + KeyHint.polishMode.tooltip)
         }
         // Polish keeps the source language, so it only offers that one.
         ToolbarItem(placement: .primaryAction) {
@@ -82,7 +81,7 @@ struct TextProcessingView: View {
         PanelSegmentedControl.content(
             of: .init(
                 title: "", symbol: operation.symbol, action: {},
-                accessibilityLabel: L10n.shared.string("\(operation.title)"),
+                accessibilityLabel: operation.name,
                 tint: model.operation == operation ? operation.tint : nil),
             font: nil)
     }

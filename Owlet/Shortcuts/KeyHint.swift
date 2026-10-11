@@ -19,7 +19,7 @@ struct KeyHint: Equatable, Sendable {
 
     /// The tooltip: what the button does, then its key. The name is a catalog key, resolved here
     /// because a `String` is what the hover view shows.
-    var tooltip: String { "\(L10n.shared.string("\(title)")) \(keys)" }
+    var tooltip: String { L10n.shared.string(title) + " " + keys }
 
     private static func glyph(_ key: KeyEquivalent) -> String {
         switch key {
@@ -63,7 +63,7 @@ extension KeyHint {
     /// The 快捷键 page's groups, by where the keys work.
     static let groups: [(title: String, keys: [KeyHint])] = [
         ("Panel", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel, lookUp]),
-        ("Translate &amp; Polish", [process, translateMode, polishMode, cancel, learn, copy]),
+        ("Translate & Polish", [process, translateMode, polishMode, cancel, learn, copy]),
         ("Notebook and History", [previous, next, delete, copy, learn]),
     ]
 }

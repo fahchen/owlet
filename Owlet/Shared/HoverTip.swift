@@ -126,7 +126,13 @@ extension View {
 
     /// A tip naming one of the app's fixed keys, whose title is itself a catalog key.
     func hoverTip(_ key: KeyHint, title: LocalizedStringResource? = nil) -> some View {
-        hoverTip(label: { Text(title ?? "\(key.title)") }, keys: title == nil ? key.keys : nil)
+        hoverTip(
+            label: {
+                // `title` is a resource and `key.title` is a catalog key, so the lookup happens here
+                // rather than at the call site — and never by interpolating a resource into a String.
+                Text(verbatim: L10n.shared.string(title?.key ?? key.title))
+            },
+            keys: title == nil ? key.keys : nil)
     }
 
     /// A tip whose text is runtime content — the source a panel is showing — rather than interface

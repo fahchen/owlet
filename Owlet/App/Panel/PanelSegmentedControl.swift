@@ -100,7 +100,7 @@ struct PanelSegmentedControl: NSViewRepresentable {
             let item = items[index]
             // The label is a catalog key written at the call site, resolved here because the tip is a
             // String by the time AppKit asks for it.
-            return (L10n.shared.string("\(item.accessibilityLabel ?? item.title)"), item.key?.keys)
+            return (item.accessibilityLabel ?? item.title, item.key?.keys)
         }
 
         @objc func activate(_ control: NSSegmentedControl) {

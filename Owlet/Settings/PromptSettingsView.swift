@@ -41,7 +41,7 @@ struct PromptSettingsView: View {
                 .lineSpacing(3)
                 .frame(minHeight: 120)
                 .focused($focused, equals: operation)
-                .accessibilityLabel(L10n.shared.string("\(operation.title) System Prompt"))
+                .accessibilityLabel(L10n.shared.string("%@ System Prompt", operation.name))
             if invalid == operation {
                 Text(L10n.shared.string("The content cannot be empty; this change was not applied."))
                     .font(.system(size: 11))
@@ -49,7 +49,7 @@ struct PromptSettingsView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                Text(L10n.shared.string("\(operation.title) System Prompt"))
+                Text(L10n.shared.string("%@ System Prompt", operation.name))
                 Spacer(minLength: 0)
                 // The restore is only worth offering once there is something to restore.
                 if customized.contains(operation) {

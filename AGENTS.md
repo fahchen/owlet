@@ -9,7 +9,10 @@ mise run check    # lint + 生成工程 + 测试；pre-commit 与 CI 都跑它
 mise run format   # swift-format 就地格式化，改完 Swift 先跑再 check
 mise run dev      # 构建并重启本机 Owlet
 mise run prod     # Release 通用二进制，校验后打包到 dist/
+scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/derived（可选）
 ```
+
+`mise run check` 会把编译产物写进 `~/Library/Developer/Xcode/DerivedData`；要求临时文件不出仓库时用 `scripts/local-check.sh`（`lint`／`test`／默认两者），它只多一个 `-derivedDataPath`。
 
 **判断结果看退出码，不要 grep 日志。** `xcodebuild` 的失败行长成 `Failing tests:` /
 `** TEST FAILED **`，用小写 `error:` 过滤会漏掉，把红的当绿的。

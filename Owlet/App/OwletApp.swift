@@ -316,7 +316,8 @@ private struct MenuContent: View {
     /// The action's name; a combination the menu cannot show as a key equivalent is written after it,
     /// and an unset one adds nothing, so the menu never shows a hollow "not set" prompt.
     private func title(for action: ShortcutAction) -> String {
-        guard let shortcut = shortcuts.shortcuts[action], shortcut.menuShortcut == nil else { return action.title }
-        return "\(action.title)：\(shortcut.displayString)"
+        let name = String(localized: action.title)
+        guard let shortcut = shortcuts.shortcuts[action], shortcut.menuShortcut == nil else { return name }
+        return "\(name)：\(shortcut.displayString)"
     }
 }

@@ -28,17 +28,31 @@ struct LanguageOption: Hashable, Identifiable, Sendable {
 enum LanguageCatalog {
     static let targets: [LanguageOption] = options()
 
-    /// A language's own name for itself — 简体中文, English, 日本語 — so each reads the way its
-    /// speakers write it, whatever the system language. Chinese is named by script, as the contract
-    /// splits it; an unknown tag shows as itself.
+    /// What to call a language in the interface, in the interface's own language: the catalog carries
+    /// the languages this app deals with, and anything else falls back to the system's name for itself
+    /// — there are hundreds and they cannot all be translated here.
     static func name(for tag: String) -> String {
+        let known = localizedName(for: tag)
+        if let known { return known }
+        let locale = Locale(identifier: tag)
+        guard let native = locale.localizedString(forIdentifier: tag) else { return tag }
+        return native.prefix(1).uppercased(with: locale) + native.dropFirst()
+    }
+
+    /// The translated name, or nil when the catalog does not carry this language. Chinese is named by
+    /// script, as the contract splits it.
+    private static func localizedName(for tag: String) -> String? {
         switch LanguageTag.key(tag) {
-        case "zh-Hans": return "简体中文"
-        case "zh-Hant": return "繁體中文"
-        default:
-            let locale = Locale(identifier: tag)
-            guard let native = locale.localizedString(forIdentifier: tag) else { return tag }
-            return native.prefix(1).uppercased(with: locale) + native.dropFirst()
+        case "zh-Hans": return String(localized: "简体中文")
+        case "zh-Hant": return String(localized: "繁體中文")
+        case "en": return String(localized: "英语")
+        case "ja": return String(localized: "日语")
+        case "ko": return String(localized: "韩语")
+        case "fr": return String(localized: "法语")
+        case "de": return String(localized: "德语")
+        case "es": return String(localized: "西班牙语")
+        case "ru": return String(localized: "俄语")
+        default: return nil
         }
     }
 

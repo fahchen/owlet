@@ -1,10 +1,11 @@
 import Foundation
+import SwiftUI
 import Security
 
 enum Provider: String, CaseIterable, Sendable {
     case openAICompatible, deepSeek
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .openAICompatible: "OpenAI Compatible"
         case .deepSeek: "DeepSeek"
@@ -36,7 +37,7 @@ enum EffortLevel: String, CaseIterable, Sendable {
     case high = "high"
     case max = "max"
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .automatic: "自动（服务商默认）"
         case .off: "关闭"
@@ -145,7 +146,7 @@ enum TranslationDisplayMode: String, CaseIterable, Sendable {
     case sectioned
     case aligned
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .sectioned: "原文／译文分区"
         case .aligned: "逐句对照"
@@ -289,7 +290,7 @@ extension SettingsStore {
 enum PanelPosition: String, CaseIterable, Sendable {
     case fixed, followSelection
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .fixed: "固定位置"
         case .followSelection: "跟随选区"

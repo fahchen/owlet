@@ -36,10 +36,15 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// A language names itself, so its own readers recognise it: 简体中文, 繁體中文, English, 日本語.
-    var title: LocalizedStringResource {
+    /// What the picker shows for this choice.
+    ///
+    /// A language names itself — 简体中文, 繁體中文, English, 日本語 — because the picker's whole job is
+    /// to be readable *before* the interface is switched to it; naming them in the current interface
+    /// language would be the one place that cannot be read until too late. "Follow the system" is the
+    /// exception: it is not a language, so it does come from the catalog.
+    var title: String {
         switch self {
-        case .system: "跟随系统"
+        case .system: String(localized: "跟随系统")
         case .simplifiedChinese: "简体中文"
         case .traditionalChinese: "繁體中文"
         case .english: "English"

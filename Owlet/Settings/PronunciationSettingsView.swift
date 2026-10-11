@@ -9,7 +9,7 @@ enum PronunciationSystem: String, CaseIterable, Sendable {
     case pinyin
     case zhuyin
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .ipa: "IPA"
         case .kana: "假名"
@@ -68,7 +68,9 @@ struct PronunciationSettingsView: View {
                         ForEach(options, id: \.self) { Text($0.title).tag($0) }
                     }
                 } else {
-                    LabeledContent(LanguageCatalog.name(for: tag), value: options[0].title)
+                    // The value is a resource; `LabeledContent` needs a string on both sides.
+                    LabeledContent(
+                        LanguageCatalog.name(for: tag), value: String(localized: options[0].title))
                 }
             }
         } header: {

@@ -15,10 +15,10 @@ struct ShortcutSettingsPane: View {
         Form {
             Section {
                 ForEach(Self.order, id: \.self) { action in
-                    LabeledContent(action.title) {
+                    LabeledContent(String(localized: action.title)) {
                         HStack(spacing: 4) {
                             ShortcutRecorder(
-                                title: action.title, shortcut: controller.shortcuts[action],
+                                title: String(localized: action.title), shortcut: controller.shortcuts[action],
                                 recording: bindingFor(action)
                             ) { controller.set($0, for: action) }
                             // Only a set shortcut has something to clear.
@@ -30,7 +30,7 @@ struct ShortcutSettingsPane: View {
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)
                                 .foregroundStyle(.secondary)
-                                .accessibilityLabel("清除\(action.title)快捷键")
+                                .accessibilityLabel(String(localized: "清除\(action.title)快捷键"))
                             }
                         }
                     }

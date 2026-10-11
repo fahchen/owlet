@@ -57,7 +57,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
     case polish = 3
     case polishReplace = 4
 
-    var title: String {
+    var title: LocalizedStringResource {
         switch self {
         case .translate: "翻译"
         case .translateReplace: "翻译并替换"

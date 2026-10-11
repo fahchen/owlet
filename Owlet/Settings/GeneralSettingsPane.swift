@@ -20,7 +20,8 @@ struct GeneralSettingsPane: View {
         Form {
             Section {
                 Picker("界面语言", selection: languageBinding) {
-                    ForEach(AppLanguage.selectable) { Text($0.title).tag($0) }
+                    // Verbatim: a language's own name must not be looked up in the catalog.
+                    ForEach(AppLanguage.selectable) { Text(verbatim: $0.title).tag($0) }
                 }
             } footer: {
                 Text("改动在下次启动 Owlet 后生效。")

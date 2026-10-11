@@ -97,12 +97,30 @@ struct TargetMappingTests {
         #expect(Set(LanguageCatalog.targets.map(\.tag)).count == LanguageCatalog.targets.count)
     }
 
-    /// Each language is named in itself, not in the system language.
-    @Test func languagesAreNamedInThemselves() {
-        #expect(LanguageCatalog.name(for: "zh-Hans") == "简体中文")
-        #expect(LanguageCatalog.name(for: "zh-Hant") == "繁體中文")
-        #expect(LanguageCatalog.name(for: "en") == "English")
-        #expect(LanguageCatalog.name(for: "ja") == "日本語")
+    /// A language name follows the interface language, like everything else. It used to be the
+    /// language's own name regardless of the interface; with a translated interface "日本語" reads as
+    /// a foreign word to someone using the English app.
+    ///
+    /// The interface-language picker in settings is the deliberate exception, and names each language
+    /// in itself so it can be recognised before the interface is switched.
+    @Test func languagesAreNamedInTheInterfaceLanguage() {
+        #expect(LanguageCatalog.name(for: "zh-Hans") == String(localized: "简体中文"))
+        #expect(LanguageCatalog.name(for: "zh-Hant") == String(localized: "繁體中文"))
+        #expect(LanguageCatalog.name(for: "en") == String(localized: "英语"))
+        #expect(LanguageCatalog.name(for: "ja") == String(localized: "日语"))
+        // A language the catalog does not carry falls back to the system's own name for it.
+        #expect(!LanguageCatalog.name(for: "is").isEmpty)
+    }
+
+    /// Recognising a language before switching to it needs it named in itself, and printed verbatim so
+    /// the catalog cannot translate it.
+    @Test func theInterfaceLanguagePickerNamesEachLanguageInItself() {
+        #expect(AppLanguage.simplifiedChinese.title == "简体中文")
+        #expect(AppLanguage.traditionalChinese.title == "繁體中文")
+        #expect(AppLanguage.english.title == "English")
+        #expect(AppLanguage.japanese.title == "日本語")
+        // "Follow the system" is not a language, so it does follow the interface.
+        #expect(AppLanguage.system.title == String(localized: "跟随系统"))
     }
 
     /// A fresh install offers the three languages the product targets, not the whole system list.

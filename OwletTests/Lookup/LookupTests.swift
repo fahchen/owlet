@@ -582,6 +582,23 @@ final class LookupTransport: Sendable {
         #expect(query.offset == 14)
     }
 
+    @Test func aNewSelectionClearsTheOldOneInTheWindow() {
+        let presenter = LookupPresenter(
+            store: LookupStore(config: { nil }, defaults: lookupDefaults),
+            speech: LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}))
+        let first = LookupTextView(usingTextLayoutManager: false)
+        let second = LookupTextView(usingTextLayoutManager: false)
+        for view in [first, second] {
+            view.string = "target contract"
+            view.origin = english
+            view.presenter = presenter
+        }
+        first.setSelectedRange(NSRange(location: 7, length: 8))
+        second.setSelectedRange(NSRange(location: 0, length: 6))
+        #expect(first.selectedRange().length == 0)
+        #expect(second.selectedRange().length == 6)
+    }
+
     @Test func leavingTheWindowClosesThatTextsCard() async throws {
         let presenter = LookupPresenter(
             store: LookupStore(config: { nil }, defaults: lookupDefaults),

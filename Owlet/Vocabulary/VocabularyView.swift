@@ -168,6 +168,15 @@ private struct VocabularyDetail: View {
     let entry: VocabularyEntry
     let collection: CollectionAction
 
+    /// The meaning is text in its own language (BDR-0005's recorded one, Simplified Chinese for
+    /// now), so a word in it is explained the way a source in that language is: through the mapping.
+    private var meaningOrigin: LookupOrigin {
+        let language = entry.lookupOrigin.definitionLanguage
+        return LookupOrigin(
+            language: language,
+            definitionLanguage: SettingsStore.targetMapping().target(forSource: LanguageTag.key(language)))
+    }
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             ScrollView {
@@ -182,10 +191,9 @@ private struct VocabularyDetail: View {
                     if entry.meaning.isEmpty {
                         MissingMeaningView(entry: entry, collection: collection)
                     } else {
-                        Text(entry.meaning)
-                            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.textWeight))
-                            .lineSpacing(2)
-                            .textSelection(.enabled)
+                        LookupText(
+                            text: entry.meaning, size: PanelMetrics.textSize, weight: .medium, label: "释义",
+                            origin: meaningOrigin)
                     }
                     Divider().padding(.vertical, 4)
                     Text("原句语境").font(.caption).foregroundStyle(.secondary)

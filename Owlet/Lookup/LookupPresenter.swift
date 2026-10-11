@@ -17,6 +17,9 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     let speech: LookupSpeech
     private var popover: NSPopover?
     private weak var anchor: NSView?
+    /// The text holding this window's selection; a new selection elsewhere clears it, so a window
+    /// never shows two selections, the older one gray.
+    private weak var selectionOwner: NSTextView?
 
     init(store: LookupStore, speech: LookupSpeech = .live) {
         self.store = store
@@ -30,6 +33,14 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         _ query: Result<LookupQuery, LookupQuery.Refusal>, at rect: NSRect, in view: NSView?
     ) {
         present(.toolbar(query), at: rect, in: view)
+    }
+
+    /// A new selection in `view` takes over from any other text in the window.
+    func selectionTaken(by view: NSTextView) {
+        if let old = selectionOwner, old !== view {
+            old.setSelectedRange(NSRange(location: old.selectedRange().location, length: 0))
+        }
+        selectionOwner = view
     }
 
     /// The selection went away, so its toolbar cannot query it any more. A card stays.

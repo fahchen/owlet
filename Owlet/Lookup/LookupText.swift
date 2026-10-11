@@ -256,6 +256,7 @@ final class LookupTextView: NSTextView {
     ) {
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
         guard !stillSelecting, let presenter else { return }
+        if selectedRange().length > 0 { presenter.selectionTaken(by: self) }
         if let query = selectedQuery {
             presenter.showToolbar(query, at: rect(for: selectedRange()), in: self)
         } else {

@@ -23,7 +23,7 @@ struct ShortcutSettingsPane: View {
                             ) { controller.set($0, for: action) }
                             // Only a set shortcut has something to clear.
                             if controller.shortcuts[action] != nil {
-                                Button("Clear", systemImage: "xmark.circle.fill") {
+                                Button(L10n.shared.string("Clear"), systemImage: "xmark.circle.fill") {
                                     recording = nil
                                     controller.set(nil, for: action)
                                 }

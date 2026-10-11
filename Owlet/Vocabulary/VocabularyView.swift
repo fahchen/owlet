@@ -29,7 +29,9 @@ struct VocabularyView: View {
             .focusedSceneValue(\.copyText, selectedEntry?.expression)
             // The count lives under the title, so the list starts with its first row.
             .navigationSubtitle("\(filtered.count) expressions")
-            .searchable(text: $search, placement: .toolbar, prompt: "Search expressions or meanings")
+            .searchable(
+                text: $search, placement: .toolbar, prompt: L10n.shared.string("Search expressions or meanings")
+            )
             .toolbar { toolbar }
             .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
                 selection.formIntersection(ids)
@@ -39,15 +41,15 @@ struct VocabularyView: View {
                 "Delete the \(selection.count) selected expressions?", isPresented: $confirmingDelete,
                 titleVisibility: .visible
             ) {
-                Button("Delete", role: .destructive) { deleteSelected() }
-                Button("Cancel", role: .cancel) {}
+                Button(L10n.shared.string("Delete"), role: .destructive) { deleteSelected() }
+                Button(L10n.shared.string("Cancel"), role: .cancel) {}
             }
             .alert(
                 "Operation failed",
                 isPresented: Binding(
                     get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
             ) {
-                Button("OK", role: .cancel) {}
+                Button(L10n.shared.string("OK"), role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
             }
@@ -98,7 +100,7 @@ struct VocabularyView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
-                Picker("Filter by Language", selection: $language) {
+                Picker(L10n.shared.string("Filter by Language"), selection: $language) {
                     Text(L10n.shared.string("All Languages")).tag("")
                     ForEach(VocabularyFilter.languages(in: entries), id: \.self) { tag in
                         Text(LanguageCatalog.name(for: tag)).tag(tag)
@@ -106,15 +108,17 @@ struct VocabularyView: View {
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Filter by Language", systemImage: "line.3.horizontal.decrease")
+                Label(L10n.shared.string("Filter by Language"), systemImage: "line.3.horizontal.decrease")
             }
             .labelStyle(.iconOnly).hoverTip("Filter by Language")
         }
         ToolbarItemGroup(placement: .principal) {
-            Button("Previous", systemImage: "chevron.up") { if let previous { selection = [previous] } }
-                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
-                .disabled(previous == nil)
-            Button("Next", systemImage: "chevron.down") { if let next { selection = [next] } }
+            Button(L10n.shared.string("Previous"), systemImage: "chevron.up") {
+                if let previous { selection = [previous] }
+            }
+            .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
+            .disabled(previous == nil)
+            Button(L10n.shared.string("Next"), systemImage: "chevron.down") { if let next { selection = [next] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
                 .disabled(next == nil)
         }
@@ -123,7 +127,7 @@ struct VocabularyView: View {
             Button {
                 confirmingDelete = true
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(L10n.shared.string("Delete"), systemImage: "trash")
             }
             .labelStyle(.iconOnly).disabled(selection.isEmpty)
             .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "Delete Selected")
@@ -150,7 +154,7 @@ struct VocabularyView: View {
                     : "Try another search or filter.")
         } actions: {
             if entries.isEmpty {
-                Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
+                Button(L10n.shared.string("Go to Translate"), action: openProcessing).buttonStyle(.glass)
             } else {
                 Button(L10n.shared.string("Clear Filters")) {
                     search = ""; language = ""

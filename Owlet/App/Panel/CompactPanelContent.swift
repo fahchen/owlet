@@ -51,7 +51,7 @@ struct CompactProcessingView: View {
             PanelSegmentedControl(items: [
                 .init(title: status, symbol: symbol, action: {}),
                 .init(
-                    title: "", symbol: "xmark", action: stop, accessibilityLabel: "Cancel",
+                    title: "", symbol: "xmark", action: stop, accessibilityLabel: L10n.shared.string("Cancel"),
                     key: .panelCancel),
             ])
             .fixedSize()
@@ -83,10 +83,12 @@ struct PanelSourceBar: View {
             if let retry {
                 PanelSegmentedControl(items: [
                     .init(
-                        title: "Retry", symbol: "arrow.clockwise", action: retry, accessibilityLabel: "Try Again",
+                        title: "Retry", symbol: "arrow.clockwise", action: retry,
+                        accessibilityLabel: L10n.shared.string("Try Again"),
                         key: .panelRetry),
                     .init(
-                        title: "", symbol: "xmark", action: close, accessibilityLabel: "Close Panel",
+                        title: "", symbol: "xmark", action: close,
+                        accessibilityLabel: L10n.shared.string("Close Panel"),
                         key: .panelCancel),
                 ])
                 .fixedSize()
@@ -95,15 +97,17 @@ struct PanelSourceBar: View {
                 .glassEffect(glassEffect.glass)
 
             } else {
-                Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 13, weight: .medium))
-                    .buttonStyle(.glass(glassEffect.glass))
-                    .buttonBorderShape(.circle)
-                    .controlSize(.extraLarge)
-                    .buttonSizing(.flexible)
-                    .frame(width: 36, height: 36)
-                    .hoverTip(KeyHint.panelCancel, title: "Close Panel")
+                Button(action: close) {
+                    Label(L10n.shared.string("Off"), systemImage: "xmark").foregroundStyle(.primary)
+                }
+                .labelStyle(.iconOnly)
+                .font(.system(size: 13, weight: .medium))
+                .buttonStyle(.glass(glassEffect.glass))
+                .buttonBorderShape(.circle)
+                .controlSize(.extraLarge)
+                .buttonSizing(.flexible)
+                .frame(width: 36, height: 36)
+                .hoverTip(KeyHint.panelCancel, title: "Close Panel")
             }
         }
         .padding(.leading, 24)
@@ -142,7 +146,8 @@ struct CompactNoticeView: View {
                     + (summary.isEmpty
                         ? [
                             .init(
-                                title: "", symbol: "xmark", action: close, accessibilityLabel: "Close Panel",
+                                title: "", symbol: "xmark", action: close,
+                                accessibilityLabel: L10n.shared.string("Close Panel"),
                                 key: .panelCancel)
                         ] : [])
             )

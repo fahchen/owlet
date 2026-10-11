@@ -19,30 +19,30 @@ struct GeneralSettingsPane: View {
     var body: some View {
         Form {
             Section {
-                Picker("Interface Language", selection: languageBinding) {
+                Picker(L10n.shared.string("Interface Language"), selection: languageBinding) {
                     ForEach(AppLanguage.selectable) { Text(verbatim: $0.title).tag($0) }
                 }
             }
             Section(L10n.shared.string("Text")) {
-                Picker("Translation Display", selection: $displayMode) {
+                Picker(L10n.shared.string("Translation Display"), selection: $displayMode) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
             Section(L10n.shared.string("Study")) {
-                Toggle("Request study expressions after translating", isOn: $translateLearning)
-                Toggle("Request study expressions after polishing", isOn: $polishLearning)
+                Toggle(L10n.shared.string("Request study expressions after translating"), isOn: $translateLearning)
+                Toggle(L10n.shared.string("Request study expressions after polishing"), isOn: $polishLearning)
             }
             Section(L10n.shared.string("Panel")) {
-                Picker("Glass Effect", selection: $panelGlassEffect) {
+                Picker(L10n.shared.string("Glass Effect"), selection: $panelGlassEffect) {
                     ForEach(PanelGlassEffect.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
 
-                Picker("Panel Position", selection: $panelPosition) {
+                Picker(L10n.shared.string("Panel Position"), selection: $panelPosition) {
                     ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
             Section {
-                Toggle("Show the Debug Page", isOn: debugSwitch)
+                Toggle(L10n.shared.string("Show the Debug Page"), isOn: debugSwitch)
             } header: {
                 Text(L10n.shared.string("Debug"))
             } footer: {

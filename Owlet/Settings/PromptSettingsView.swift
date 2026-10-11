@@ -53,7 +53,7 @@ struct PromptSettingsView: View {
                 Spacer(minLength: 0)
                 // The restore is only worth offering once there is something to restore.
                 if customized.contains(operation) {
-                    Button("Restore Default", systemImage: "arrow.uturn.backward") {
+                    Button(L10n.shared.string("Restore Default"), systemImage: "arrow.uturn.backward") {
                         text.wrappedValue = defaultPrompt
                     }
                     .buttonStyle(.borderless)

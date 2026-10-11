@@ -13,14 +13,14 @@ struct LanguageSettingsView: View {
         Section {
             ForEach(languages, id: \.self) { tag in
                 LabeledContent(LanguageCatalog.name(for: tag)) {
-                    Button("Delete", systemImage: "trash") { remove(tag) }
+                    Button(L10n.shared.string("Delete"), systemImage: "trash") { remove(tag) }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                         .disabled(languages.count <= 1)
                         .accessibilityLabel(L10n.shared.string("Remove \(LanguageCatalog.name(for: tag))"))
                 }
             }
-            Picker("Add Language", selection: $pending) {
+            Picker(L10n.shared.string("Add Language"), selection: $pending) {
                 Text(L10n.shared.string("Choose a language to add")).tag("")
                 ForEach(available) { Text($0.name).tag($0.tag) }
             }

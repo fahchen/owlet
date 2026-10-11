@@ -9,7 +9,7 @@ struct TargetLanguagePicker: View {
     @Binding var pinnedTarget: String
 
     var body: some View {
-        Picker("Target Language", selection: $pinnedTarget) {
+        Picker(L10n.shared.string("Target Language"), selection: $pinnedTarget) {
             Text(autoTitle).tag("")
             ForEach(LanguageCatalog.options(for: SettingsStore.languages())) {
                 Text($0.name).tag($0.tag)

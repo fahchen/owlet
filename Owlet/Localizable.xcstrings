@@ -245,19 +245,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 件の文脈"
+            "value": "%@ · %@ 件の文脈"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 个语境"
+            "value": "%@ · %@ 个语境"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 個語境"
+            "value": "%@ · %@ 個語境"
           }
         }
       }
@@ -274,19 +274,48 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 件の文脈 · %@ に保存"
+            "value": "%@ · %@ 件の文脈 · %@ に保存"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 个语境 · 收藏于 %@"
+            "value": "%@ · %@ 个语境 · 收藏于 %@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld 個語境 · 收藏於 %@"
+            "value": "%@ · %@ 個語境 · 收藏於 %@"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@"
           }
         }
       }

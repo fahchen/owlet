@@ -26,12 +26,13 @@ struct ModelSettingsPane: View {
     var body: some View {
         Form {
             Section {
-                Picker("Provider", selection: $provider) {
+                Picker(L10n.shared.string("Provider"), selection: $provider) {
                     ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 // Verbatim, or the placeholder URL renders as a link.
-                TextField("Base URL", text: $baseURL, prompt: Text(verbatim: "https://api.openai.com/v1"))
-                SecureField("API Key", text: $apiKey, prompt: Text(L10n.shared.string("sk-…")))
+                TextField(
+                    L10n.shared.string("Base URL"), text: $baseURL, prompt: Text(verbatim: "https://api.openai.com/v1"))
+                SecureField(L10n.shared.string("API Key"), text: $apiKey, prompt: Text(L10n.shared.string("sk-…")))
                     .focused($editingKey)
                     .onSubmit(commitKey)
                     .onChange(of: editingKey) { _, editing in
@@ -45,7 +46,7 @@ struct ModelSettingsPane: View {
             Section(L10n.shared.string("Model")) {
                 modelField
                 modelStatus
-                Picker("Reasoning Effort", selection: $effort) {
+                Picker(L10n.shared.string("Reasoning Effort"), selection: $effort) {
                     ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
@@ -71,7 +72,7 @@ struct ModelSettingsPane: View {
         if provider == .deepSeek {
             // The row keeps the same control whatever the list is doing, instead of turning the name
             // into a loading field.
-            Picker("Model Name", selection: $model) {
+            Picker(L10n.shared.string("Model Name"), selection: $model) {
                 ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
             }
         } else {
@@ -99,7 +100,7 @@ struct ModelSettingsPane: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                 Spacer(minLength: 0)
-                Button("Retry", systemImage: "arrow.clockwise") { loadModels() }
+                Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") { loadModels() }
                     .buttonStyle(.plain)
             }
         }

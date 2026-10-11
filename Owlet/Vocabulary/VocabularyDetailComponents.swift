@@ -13,12 +13,16 @@ struct MissingMeaningView: View {
         case .meaningFailed(let failed, let message) where failed == entry:
             VStack(alignment: .leading, spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
-                Button("Retry", systemImage: "arrow.clockwise") { collection.fillMeaning(for: entry) }
-                    .buttonStyle(.plain)
+                Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") {
+                    collection.fillMeaning(for: entry)
+                }
+                .buttonStyle(.plain)
             }
         default:
-            Button("Fill In Meaning", systemImage: "text.badge.plus") { collection.fillMeaning(for: entry) }
-                .buttonStyle(.plain)
+            Button(L10n.shared.string("Fill In Meaning"), systemImage: "text.badge.plus") {
+                collection.fillMeaning(for: entry)
+            }
+            .buttonStyle(.plain)
         }
     }
 }

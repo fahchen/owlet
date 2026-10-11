@@ -55,6 +55,30 @@ import Testing
         #expect(missing.isEmpty, "缺少翻译：\(missing.sorted().joined(separator: "、"))")
     }
 
+    /// A translation must use the same format specifiers as the key it belongs to: the app formats the
+    /// translated text with the arguments the key's placeholders stand for, so a translation that says
+    /// `%lld` where the key says `%@` is handed the wrong type — which Xcode reports as a warning and
+    /// which `String(format:)` then renders wrongly.
+    @Test func everyTranslationUsesTheKeysFormatSpecifiers() throws {
+        let catalog = try catalog()
+        let strings = try #require(catalog["strings"] as? [String: Any])
+        let specifier = /%(?:\d+\$)?(@|lld|ld|d|s|\.\df)/
+        func specifiers(in text: String) -> [String] {
+            text.matches(of: specifier).map { String($0.output.1) }
+        }
+        var wrong: [String] = []
+        for (key, raw) in strings {
+            let localizations = (raw as? [String: Any])?["localizations"] as? [String: Any] ?? [:]
+            let expected = specifiers(in: key)
+            for language in ["zh-Hans", "zh-Hant", "ja"] {
+                let unit = (localizations[language] as? [String: Any])?["stringUnit"] as? [String: Any]
+                guard let value = unit?["value"] as? String else { continue }
+                if specifiers(in: value) != expected { wrong.append("\(language) \(key)") }
+            }
+        }
+        #expect(wrong.isEmpty, "占位符与键不一致：\(wrong.sorted().joined(separator: "、"))")
+    }
+
     /// The source value is the key itself, so an entry that says otherwise would show a raw key.
     @Test func theSourceLanguageEqualsTheKey() throws {
         let catalog = try catalog()

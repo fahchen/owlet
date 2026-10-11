@@ -43,7 +43,7 @@ struct ExpandedPanelContent: View {
 
     private var sourceEditor: some View {
         // A vertical TextField hugs its text, so the gap above the divider matches the one below it.
-        TextField("Source", text: $model.input, axis: .vertical)
+        TextField(L10n.shared.string("Source"), text: $model.input, axis: .vertical)
             .textFieldStyle(.plain)
             .font(.system(size: PanelMetrics.sourceTextSize))
             .fontWeight(PanelMetrics.sourceWeight)

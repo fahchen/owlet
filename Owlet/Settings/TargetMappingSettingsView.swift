@@ -19,13 +19,13 @@ struct TargetMappingSettingsView: View {
 
     var body: some View {
         Section {
-            Picker("Fallback Target", selection: $fallbackTarget) {
+            Picker(L10n.shared.string("Fallback Target"), selection: $fallbackTarget) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
             ForEach($rows) { $row in
                 mappingRow($row)
             }
-            Button("Add Mapping", systemImage: "plus", action: addRow)
+            Button(L10n.shared.string("Add Mapping"), systemImage: "plus", action: addRow)
                 .buttonStyle(.borderless)
                 .disabled(rows.count >= options.count)
         } header: {
@@ -48,7 +48,7 @@ struct TargetMappingSettingsView: View {
     /// the table cannot end up with two targets for one language.
     private func mappingRow(_ row: Binding<Row>) -> some View {
         HStack(spacing: 10) {
-            Picker("Source Language", selection: row.source) {
+            Picker(L10n.shared.string("Source Language"), selection: row.source) {
                 ForEach(sourceOptions(for: row.wrappedValue)) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
@@ -56,12 +56,12 @@ struct TargetMappingSettingsView: View {
             Image(systemName: "chevron.forward.2")
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
-            Picker("Target Language", selection: row.target) {
+            Picker(L10n.shared.string("Target Language"), selection: row.target) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
             Spacer(minLength: 12)
-            Button("Delete", systemImage: "trash") { remove(row.wrappedValue.id) }
+            Button(L10n.shared.string("Delete"), systemImage: "trash") { remove(row.wrappedValue.id) }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
                 .accessibilityLabel(

@@ -76,16 +76,18 @@ struct ExpandedPanel: View {
             // text and the learning items it floats on. The ZStack puts it bottom-trailing.
             HStack(spacing: 8) {
                 if model.state == .loading {
-                    Button(action: cancel) { Label("Cancel", systemImage: "xmark").foregroundStyle(.primary) }
-                        .labelStyle(.iconOnly).buttonStyle(.glass(glassEffect.glass))
-                        .hoverTip(KeyHint.panelCancel, title: "Cancel")
+                    Button(action: cancel) {
+                        Label(L10n.shared.string("Cancel"), systemImage: "xmark").foregroundStyle(.primary)
+                    }
+                    .labelStyle(.iconOnly).buttonStyle(.glass(glassEffect.glass))
+                    .hoverTip(KeyHint.panelCancel, title: "Cancel")
                 }
                 if showsLearning {
                     Button {
                         learning.isExpanded = false
                         learningDismissed = true
                     } label: {
-                        Label("Back", systemImage: "chevron.left").foregroundStyle(.primary)
+                        Label(L10n.shared.string("Back"), systemImage: "chevron.left").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
@@ -93,16 +95,18 @@ struct ExpandedPanel: View {
                     .keyboardShortcut(KeyHint.panelLearn.shortcut)
                     .hoverTip(KeyHint.panelLearn, title: "Back to Result")
                 } else if LearningRequest.from(model) == nil || collection == nil {
-                    Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
-                        .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
-                        .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
-                        .buttonSizing(.flexible).frame(width: 36, height: 36)
-                        .hoverTip(KeyHint.panelCancel, title: "Close Panel")
+                    Button(action: close) {
+                        Label(L10n.shared.string("Off"), systemImage: "xmark").foregroundStyle(.primary)
+                    }
+                    .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
+                    .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
+                    .buttonSizing(.flexible).frame(width: 36, height: 36)
+                    .hoverTip(KeyHint.panelCancel, title: "Close Panel")
                 } else {
                     Button {
                         learning.isExpanded = true
                     } label: {
-                        Label("Study", systemImage: "lamp.desk").foregroundStyle(.primary)
+                        Label(L10n.shared.string("Study"), systemImage: "lamp.desk").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
@@ -114,7 +118,7 @@ struct ExpandedPanel: View {
                     Button {
                         copy(text)
                     } label: {
-                        Label("Copy", systemImage: "document.on.document").foregroundStyle(.primary)
+                        Label(L10n.shared.string("Copy"), systemImage: "document.on.document").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
@@ -127,7 +131,7 @@ struct ExpandedPanel: View {
             .padding(.bottom, PanelMetrics.contentInset)
         }
         .contextMenu {
-            Picker("Shortcuts", selection: $model.operation) {
+            Picker(L10n.shared.string("Shortcuts"), selection: $model.operation) {
                 ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             .onChange(of: model.operation) { _, _ in if canRetry { retry() } }
@@ -136,15 +140,15 @@ struct ExpandedPanel: View {
                 TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
                     .disabled(model.state == .loading)
             }
-            Button("Try Again", systemImage: "arrow.clockwise", action: retry)
+            Button(L10n.shared.string("Try Again"), systemImage: "arrow.clockwise", action: retry)
                 .keyboardShortcut(KeyHint.panelRetry.shortcut)
                 .disabled(!canRetry)
             if case .success(let text) = model.state, let replace {
                 Button(L10n.shared.string("Replace Selection")) { replace(text) }
                     .keyboardShortcut(.return, modifiers: .command)
             }
-            Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
-            Button("Settings", systemImage: "gearshape", action: openSettings)
+            Button(action: close) { Label(L10n.shared.string("Off"), systemImage: "xmark").foregroundStyle(.primary) }
+            Button(L10n.shared.string("Settings"), systemImage: "gearshape", action: openSettings)
         }
         // No glass of its own: the panel root's surface draws it, the same surface the source bar
         // sat on, so expanding grows that surface instead of replacing it.

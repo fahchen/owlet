@@ -50,7 +50,7 @@ struct LookupCard: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 if shown.source != query, let context = shown.source.context {
-                    Label("This meaning comes from another sentence", systemImage: "text.quote")
+                    Label(L10n.shared.string("This meaning comes from another sentence"), systemImage: "text.quote")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                     Text(context)
@@ -59,7 +59,7 @@ struct LookupCard: View {
                         .lineLimit(3)
                         .textSelection(.enabled)
                 } else if query.context == nil {
-                    Label("No source sentence", systemImage: "info.circle")
+                    Label(L10n.shared.string("No source sentence"), systemImage: "info.circle")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
@@ -150,13 +150,15 @@ struct LookupCard: View {
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Retry", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
+                Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") { presenter.requestCurrent() }
                     .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity)
         case nil where shown != nil:
-            Button("Look Up in This Sentence", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
-                .buttonStyle(.plain)
+            Button(L10n.shared.string("Look Up in This Sentence"), systemImage: "arrow.clockwise") {
+                presenter.requestCurrent()
+            }
+            .buttonStyle(.plain)
         default:
             EmptyView()
         }

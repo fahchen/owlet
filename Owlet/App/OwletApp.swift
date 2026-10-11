@@ -100,10 +100,10 @@ private struct MainView: View {
             // A sidebar List allows an empty selection; ignore it so a row stays highlighted.
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 // The main page needs no group title: it is what the app is for.
-                Label("Translate &amp; Polish", systemImage: "translate").tag(Page.processing)
+                Label(L10n.shared.string("Translate &amp; Polish"), systemImage: "translate").tag(Page.processing)
                 Section(L10n.shared.string("My Collection")) {
-                    Label("Notebook", systemImage: "books.vertical").tag(Page.vocabulary)
-                    Label("History", systemImage: "clock").tag(Page.history)
+                    Label(L10n.shared.string("Notebook"), systemImage: "books.vertical").tag(Page.vocabulary)
+                    Label(L10n.shared.string("History"), systemImage: "clock").tag(Page.history)
                 }
             }
             .listStyle(.sidebar)

@@ -32,14 +32,16 @@ struct HistoryView: View {
             .focusedSceneValue(\.copyText, selectedRecord?.result)
             // The count lives under the title, so the list starts with its first row.
             .navigationSubtitle("\(filtered.count) records")
-            .searchable(text: $search, placement: .toolbar, prompt: "Search source or result")
+            .searchable(text: $search, placement: .toolbar, prompt: L10n.shared.string("Search source or result"))
             .toolbar { toolbar }
             .safeAreaInset(edge: .top) {
                 if let message = store.lastError {
                     HStack {
-                        Label("Could not save history: \(message)", systemImage: "exclamationmark.triangle")
+                        Label(
+                            L10n.shared.string("Could not save history: \(message)"),
+                            systemImage: "exclamationmark.triangle")
                         Spacer()
-                        Button("Off", systemImage: "xmark") { store.dismissError() }
+                        Button(L10n.shared.string("Off"), systemImage: "xmark") { store.dismissError() }
                             .labelStyle(.iconOnly).hoverTip("Dismiss")
                     }.padding()
                 }
@@ -54,8 +56,8 @@ struct HistoryView: View {
                 "Delete the \(selection.count) selected records?", isPresented: $confirmingDelete,
                 titleVisibility: .visible
             ) {
-                Button("Delete", role: .destructive) { deleteSelected() }
-                Button("Cancel", role: .cancel) {}
+                Button(L10n.shared.string("Delete"), role: .destructive) { deleteSelected() }
+                Button(L10n.shared.string("Cancel"), role: .cancel) {}
             } message: {
                 Text(L10n.shared.string("Expressions in the notebook are not affected."))
             }
@@ -64,7 +66,7 @@ struct HistoryView: View {
                 isPresented: Binding(
                     get: { actionError != nil }, set: { if !$0 { actionError = nil } })
             ) {
-                Button("OK", role: .cancel) {}
+                Button(L10n.shared.string("OK"), role: .cancel) {}
             } message: {
                 Text(actionError ?? "")
             }
@@ -121,7 +123,7 @@ struct HistoryView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
-                Picker("Filter by Type", selection: $operationFilter) {
+                Picker(L10n.shared.string("Filter by Type"), selection: $operationFilter) {
                     Text(L10n.shared.string("All Types")).tag(Operation?.none)
                     ForEach(Operation.allCases, id: \.self) { operation in
                         Text(operation.title).tag(Operation?.some(operation))
@@ -129,15 +131,17 @@ struct HistoryView: View {
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Filter by Type", systemImage: "line.3.horizontal.decrease")
+                Label(L10n.shared.string("Filter by Type"), systemImage: "line.3.horizontal.decrease")
             }
             .labelStyle(.iconOnly).hoverTip("Filter by Type")
         }
         ToolbarItemGroup(placement: .principal) {
-            Button("Previous", systemImage: "chevron.up") { if let previous { selection = [previous] } }
-                .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
-                .disabled(previous == nil)
-            Button("Next", systemImage: "chevron.down") { if let next { selection = [next] } }
+            Button(L10n.shared.string("Previous"), systemImage: "chevron.up") {
+                if let previous { selection = [previous] }
+            }
+            .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
+            .disabled(previous == nil)
+            Button(L10n.shared.string("Next"), systemImage: "chevron.down") { if let next { selection = [next] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
                 .disabled(next == nil)
         }
@@ -146,7 +150,7 @@ struct HistoryView: View {
             Button {
                 confirmingDelete = true
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(L10n.shared.string("Delete"), systemImage: "trash")
             }
             .labelStyle(.iconOnly).disabled(selection.isEmpty)
             .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "Delete Selected")
@@ -173,7 +177,7 @@ struct HistoryView: View {
                     : "Try another search or filter.")
         } actions: {
             if records.isEmpty {
-                Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
+                Button(L10n.shared.string("Go to Translate"), action: openProcessing).buttonStyle(.glass)
             } else {
                 Button(L10n.shared.string("Clear Filters")) {
                     search = ""; operationFilter = nil

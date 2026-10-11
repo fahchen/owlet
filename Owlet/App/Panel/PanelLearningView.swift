@@ -81,7 +81,7 @@ struct PanelLearningView: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
-                Button("Retry", systemImage: "arrow.clockwise") {
+                Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") {
                     learning.retry(for: request)
                 }
                 .buttonStyle(.plain)

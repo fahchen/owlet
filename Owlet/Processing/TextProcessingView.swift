@@ -44,7 +44,7 @@ struct TextProcessingView: View {
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            Picker("Operation", selection: $model.operation) {
+            Picker(L10n.shared.string("Operation"), selection: $model.operation) {
                 ForEach(Operation.allCases, id: \.self) { operation in
                     Image(nsImage: segmentSymbol(operation)).tag(operation)
                 }

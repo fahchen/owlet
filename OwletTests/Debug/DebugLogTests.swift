@@ -142,7 +142,7 @@ struct DebugLogTests {
             config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == "Study Expressions")
+        #expect(box.exchanges.first?.title == L10n.shared.string("Study Expressions"))
         #expect(box.exchanges.first?.request.contains("original") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }
@@ -162,7 +162,7 @@ struct DebugLogTests {
             definitionLocale: "zh-Hans", config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == "Fill In Meaning")
+        #expect(box.exchanges.first?.title == L10n.shared.string("Fill In Meaning"))
         #expect(box.exchanges.first?.request.contains("expression") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }

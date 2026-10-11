@@ -43,7 +43,8 @@ extension KeyHint {
     static let panelRetry = KeyHint(title: "重新处理", key: "r", modifiers: .command)
     static let panelLearn = KeyHint(title: "学习 / 返回", key: "l", modifiers: .command)
     static let panelCancel = KeyHint(title: "停止处理 / 关闭", key: .escape, modifiers: [])
-    /// Read-only reading text claims Return on a selection; `LookupTextView.keyDown` handles it.
+    /// Read-only reading text claims Return on a selection; `LookupTextView.keyDown` handles it,
+    /// and the 快捷键 page lists it.
     static let lookUp = KeyHint(title: "查询所选", key: .return, modifiers: [])
 
     // The main window.

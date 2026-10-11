@@ -139,27 +139,22 @@ private struct LookupPopoverContent: View {
 
     var body: some View {
         switch presenter.mode {
+        // The popover is the toolbar's surface, so the action inside carries no bezel of its own; its
+        // title says what it does, so it needs no hover tip either.
         case .toolbar(.success)?:
             Button {
                 presenter.confirmToolbar()
             } label: {
                 Label("查询", systemImage: "character.book.closed").foregroundStyle(.primary)
             }
-            .buttonStyle(.glass)
-            .hoverTip(KeyHint.lookUp)
-            .padding(8)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         case .toolbar(.failure(let refusal))?:
-            HStack(spacing: 8) {
-                Button {
-                } label: {
-                    Label("查询", systemImage: "character.book.closed")
-                }
-                .buttonStyle(.glass)
-                .disabled(true)
-                Text(refusal.message).font(.system(size: 13)).foregroundStyle(.secondary)
-            }
-            .padding(8)
-            .accessibilityElement(children: .combine)
+            Label(refusal.message, systemImage: "character.book.closed")
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
         case .card(let query, let other)?:
             LookupCard(presenter: presenter, query: query, other: other)
         case nil:

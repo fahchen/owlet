@@ -167,7 +167,7 @@ struct TextProcessingView: View {
             .overlay(alignment: .topLeading) {
                 if model.input.isEmpty {
                     // The page has no submit button; the placeholder names the shortcut instead.
-                    Text(model.operation.placeholder)
+                    Text(L10n.shared.string(model.operation.placeholder.key))
                         .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)
@@ -186,7 +186,7 @@ struct TextProcessingView: View {
         // Loading and errors sit centered in the column, as the learning column's own states do.
         switch model.state {
         case .loading:
-            Text(model.operation.progress)
+            Text(L10n.shared.string(model.operation.progress.key))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failure(let message, let kind):

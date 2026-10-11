@@ -36,6 +36,13 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The language to actually read text in: this choice, or the best match for the system's own
+    /// preference when the choice is to follow it. `locale` alone is nil for `.system`, which would
+    /// otherwise fall back to the source language and show English on a Japanese or Chinese system.
+    var resolvedLocale: String {
+        locale ?? Self.pick(from: Locale.preferredLanguages)?.locale ?? "en"
+    }
+
     /// What the picker shows for this choice.
     ///
     /// A language names itself — 简体中文, 繁體中文, English, 日本語 — because the picker's whole job is

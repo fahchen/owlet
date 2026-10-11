@@ -26,13 +26,12 @@ enum ModelError: Error, Equatable {
         case .http(let code): L10n.shared.string("The service returned HTTP %lld.", code)
         case .emptyResponse: L10n.shared.string("The service returned empty content.")
         case .format:
-            String(
-                localized:
-                    "The reply does not match the agreed structure: a missing field, a wrong type, or empty content.")
+            L10n.shared.string(
+                "The reply does not match the agreed structure: a missing field, a wrong type, or empty content."
+            )
         case .sourceMismatch:
-            String(
-                localized:
-                    "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
+            L10n.shared.string(
+                "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
             )
         case .targetMismatch(let requested, let returned):
             L10n.shared.string(

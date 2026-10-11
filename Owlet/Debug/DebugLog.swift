@@ -35,12 +35,9 @@ struct DebugExchange: Identifiable, Sendable {
         let index =
             zip(returned, wanted).enumerated().first { $0.element.0 != $0.element.1 }?.offset
             ?? min(returned.count, wanted.count)
-        return String(
-            localized: """
-                首个差异在第 \(index) 个字符：
-                返回 …\(Self.snippet(of: returned, around: index))…
-                提交 …\(Self.snippet(of: wanted, around: index))…
-                """)
+        return L10n.shared.string(
+            "The first difference is at character %lld:\nreturned …%@…\nsubmitted …%@…",
+            index, Self.snippet(of: returned, around: index), Self.snippet(of: wanted, around: index))
     }
 
     /// One line of the captured text, for a collapsed row: a list row must not grow with the text.

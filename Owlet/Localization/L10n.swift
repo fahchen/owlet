@@ -28,15 +28,15 @@ final class L10n: @unchecked Sendable {
         let chosen = AppLanguage.resolve(
             saved: UserDefaults.standard.string(forKey: SettingsStore.appLanguageKey),
             preferred: Locale.preferredLanguages)
-        language = chosen.locale ?? Self.sourceLanguage
-        bundle = Self.bundle(for: chosen.locale) ?? .main
+        language = chosen.resolvedLocale
+        bundle = Self.bundle(for: chosen.resolvedLocale) ?? .main
     }
 
     /// Switches the language; the revision bump is what redraws the interface.
     func use(_ choice: AppLanguage) {
         lock.withLock {
-            language = choice.locale ?? Self.sourceLanguage
-            bundle = Self.bundle(for: choice.locale) ?? .main
+            language = choice.resolvedLocale
+            bundle = Self.bundle(for: choice.resolvedLocale) ?? .main
         }
         revision &+= 1
     }

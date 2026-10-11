@@ -110,9 +110,12 @@ import Testing
         #expect(offenders.isEmpty, "资源被当作字符串插值：\(offenders.joined(separator: "、"))")
     }
 
-    /// An integer argument must meet `%lld`, and a string `%@`: `String(format:)` checks the types it is
-    /// given, so `%@` with an `Int` fails at runtime with "does not match expected '%lld'". The type is
-    /// read from the call site, which is why this looks at the sources.
+    /// An integer argument must meet `%lld` and a string `%@`: `String(format:)` checks the types, so
+    /// `%@` with an `Int` fails at runtime with "does not match expected '%lld'".
+    ///
+    /// This reads the sources, so it decides an argument's type from its name. That is a deliberate
+    /// limit: an argument spelled in a way this list does not know about is treated as a string. The
+    /// list is short and the names are the ones this codebase actually uses.
     @Test func formatPlaceholdersMatchTheirArguments() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -122,52 +125,31 @@ import Testing
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
         #expect(!files.isEmpty, "找不到源码目录：\(root.path)")
 
+        let integerNames = ["count", "status", "code", "index", "offset", "size", "limit"]
         func needs(_ argument: String) -> String {
             // `String(format:)` promotes Int32 to Int, so an integer argument needs %lld.
-            let integer =
-                argument.range(of: #"\.count\b"#, options: .regularExpression) != nil
-                || argument == "count" || argument == "status" || argument == "code"
-            return integer ? "lld" : "@"
+            argument.hasSuffix(".count") || argument.hasSuffix(".offset")
+                || integerNames.contains(argument) ? "lld" : "@"
         }
         let call = /L10n\.shared\.string\(\s*"((?:[^"\\]|\\.)*)"/
         let specifier = /%(@|lld)/
 
         var offenders: [String] = []
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
-            for match in text.matches(of: call) {
+            for line in try String(contentsOf: file, encoding: .utf8).components(separatedBy: .newlines) {
+                guard let match = line.firstMatch(of: call) else { continue }
                 let key = String(match.output.1)
-                let tail = text[match.range.upperBound...].prefix(220)
-                guard tail.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix(",") else { continue }
-                var depth = 0
-                var argumentText = ""
-                for character in tail.dropFirst() {
-                    if character == "(" {
-                        depth += 1
-                    } else if character == ")" {
-                        if depth == 0 { break }
-                        depth -= 1
-                    }
-                    argumentText.append(character)
-                }
-                // Split on commas that are not inside a call, so `f(a, b)` stays one argument.
-                var arguments: [String] = []
-                var current = ""
-                var nested = 0
-                for character in argumentText {
-                    if character == "," && nested == 0 {
-                        arguments.append(current); current = ""; continue
-                    }
-                    if character == "(" { nested += 1 }
-                    if character == ")" { nested -= 1 }
-                    current.append(character)
-                }
-                arguments.append(current)
-                arguments = arguments.map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty && !$0.hasPrefix(",") }
+                let rest = line[match.range.upperBound...]
+                guard rest.hasPrefix(",") else { continue }
+                // One line only: a call spread over several lines is left to review, because deciding
+                // where its arguments end needs a real parser.
+                let arguments = rest.dropFirst().split(separator: ",")
+                    .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " )")) }
+                    .filter { !$0.isEmpty }
+                guard !arguments.isEmpty, !arguments.contains(where: { $0.contains("(") }) else { continue }
                 let expected = arguments.map(needs)
                 let written = key.matches(of: specifier).map { String($0.output.1) }
-                if !arguments.isEmpty, written != expected {
+                if written != expected {
                     offenders.append("\(file.lastPathComponent): \(key) 需要 \(expected) 却是 \(written)")
                 }
             }

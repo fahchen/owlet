@@ -66,7 +66,7 @@ struct ExpandedPanelContent: View {
     private var resultSection: some View {
         VStack(alignment: .leading, spacing: 7) {
             if model.state == .loading {
-                ProgressView(model.operation.progress).controlSize(.small)
+                ProgressView(L10n.shared.string(model.operation.progress.key)).controlSize(.small)
             }
             if case .success(let text) = model.state {
                 if showsAlignedPairs {

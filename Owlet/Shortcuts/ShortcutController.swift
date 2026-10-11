@@ -119,8 +119,8 @@ final class ShortcutController {
         guard register() || shortcut == nil else {
             shortcuts[action] = previous
             register()
-            registrationError = String(
-                localized: "The system or another app already uses that combination; choose another.")
+            registrationError = L10n.shared.string(
+                "The system or another app already uses that combination; choose another.")
             return
         }
         SettingsStore.setShortcut(shortcut, forKey: action.defaultsKey, in: defaults)

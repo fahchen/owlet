@@ -21,16 +21,23 @@ enum ModelError: Error, Equatable {
     var message: String {
         switch self {
         case .network(let detail):
-            String(localized: "网络错误：\(detail)")
-        case .unauthorized: String(localized: "认证失败，请检查 API Key。")
-        case .http(let code): String(localized: "服务返回 HTTP \(code)。")
-        case .emptyResponse: String(localized: "服务返回了空内容。")
-        case .format: String(localized: "返回的结构不符合约定：字段缺失、类型不对或内容为空。")
-        case .sourceMismatch: String(localized: "返回的原文与提交的内容不一致，配对无法信任。")
+            String(localized: "Network error: \(detail)")
+        case .unauthorized: String(localized: "Authentication failed. Check the API key.")
+        case .http(let code): String(localized: "The service returned HTTP \(code).")
+        case .emptyResponse: String(localized: "The service returned empty content.")
+        case .format:
+            String(
+                localized:
+                    "The reply does not match the agreed structure: a missing field, a wrong type, or empty content.")
+        case .sourceMismatch:
+            String(
+                localized:
+                    "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
+            )
         case .targetMismatch(let requested, let returned):
-            String(localized: "返回的目标语言是 \(returned)，与请求的 \(requested) 不一致。")
-        case .truncated: String(localized: "结果过长被截断。")
-        case .refused: String(localized: "服务拒绝处理这段文本。")
+            String(localized: "The reply is in \(returned), which does not match the requested \(requested).")
+        case .truncated: String(localized: "The result was cut off for being too long.")
+        case .refused: String(localized: "The service refused to process this text.")
         }
     }
 
@@ -127,7 +134,7 @@ struct ModelClient: Sendable {
             let pretty = try? JSONSerialization.data(
                 withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
             let text = String(data: pretty, encoding: .utf8)
-        else { return "（请求体不可读）" }
+        else { return "(the request body is unreadable)" }
         return text
     }
 
@@ -179,7 +186,7 @@ struct ModelClient: Sendable {
             ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return try await perform(
-            request, title: "补释义", submitted: expression,
+            request, title: "Fill In Meaning", submitted: expression,
             parse: { try LearningResult.item($0, expression: expression).meaning })
     }
 
@@ -196,7 +203,7 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        switch try await attempt(request, title: "学习推荐", submitted: text) {
+        switch try await attempt(request, title: "Study Expressions", submitted: text) {
         case .success(let items):
             return items
         case .failure(let error):
@@ -211,7 +218,9 @@ struct ModelClient: Sendable {
             let correction = try makeLearningRequest(
                 text: text, operation: operation, targetLanguage: targetLanguage, result: result,
                 config: config, correcting: error.content, reasons: reasons)
-            switch try await attempt(correction, title: "学习推荐（纠正）", submitted: text) {
+            switch try await attempt(
+                correction, title: String(localized: "Study Expressions (corrected)"), submitted: text)
+            {
             case .success(let items): return items
             case .failure(let retried): throw retried.error
             }
@@ -328,7 +337,7 @@ struct ModelClient: Sendable {
     /// breaks it usually has a fixable answer, not a bad one.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
-        let title = "查词 · \(query.definitionLanguage)"
+        let title = "Look Up · \(query.definitionLanguage)"
         switch try await attemptLookup(request, query: query, title: title) {
         case .success(let result):
             return result
@@ -342,7 +351,7 @@ struct ModelClient: Sendable {
             let correction = try makeLookupRequest(
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
-                correction, query: query, title: "\(title)（纠正）")
+                correction, query: query, title: String(localized: "\(title) (corrected)"))
             {
             case .success(let result): return result
             case .failure(let retried): throw retried.error

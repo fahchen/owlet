@@ -23,20 +23,20 @@ struct ShortcutSettingsPane: View {
                             ) { controller.set($0, for: action) }
                             // Only a set shortcut has something to clear.
                             if controller.shortcuts[action] != nil {
-                                Button("清除", systemImage: "xmark.circle.fill") {
+                                Button("Clear", systemImage: "xmark.circle.fill") {
                                     recording = nil
                                     controller.set(nil, for: action)
                                 }
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)
                                 .foregroundStyle(.secondary)
-                                .accessibilityLabel(String(localized: "清除\(action.title)快捷键"))
+                                .accessibilityLabel(String(localized: "Clear the \(action.title) shortcut"))
                             }
                         }
                     }
                 }
             } header: {
-                Text("全局")
+                Text("Global")
             } footer: {
                 notice
             }
@@ -68,7 +68,8 @@ struct ShortcutSettingsPane: View {
             Text(title)
         } footer: {
             if title == KeyHint.groups.last?.title {
-                Text("固定按键，不能更改；⌘C 在选中文字时复制所选内容。").foregroundStyle(.secondary)
+                Text("Fixed keys that cannot be changed; ⌘C copies the selection when there is one.").foregroundStyle(
+                    .secondary)
             }
         }
     }
@@ -78,9 +79,9 @@ struct ShortcutSettingsPane: View {
             if let error = controller.registrationError {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
             } else if recording != nil {
-                Text("按新组合键；Esc 取消，Delete 清除。").foregroundStyle(.secondary)
+                Text("Press the new combination; Esc cancels, Delete clears.").foregroundStyle(.secondary)
             } else {
-                Text("点按右侧的组合键即可重新录制。").foregroundStyle(.secondary)
+                Text("Click the combination on the right to record it again.").foregroundStyle(.secondary)
             }
         }
         .accessibilityAddTraits(.updatesFrequently)
@@ -108,14 +109,14 @@ private struct ShortcutRecorder: View {
             label
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("录制\(title)快捷键")
-        .accessibilityValue(shortcut?.displayString ?? "未设置")
+        .accessibilityLabel("Record the \(title) shortcut")
+        .accessibilityValue(shortcut?.displayString ?? "Not set")
         .onChange(of: recording) { _, now in if !now { removeMonitor() } }
         .onDisappear(perform: stop)
     }
 
     private var label: some View {
-        Text(recording ? "请按快捷键…" : shortcut?.displayString ?? "录制")
+        Text(recording ? "Press the shortcut…" : shortcut?.displayString ?? "Record")
             .monospacedDigit()
             .foregroundStyle(recording || shortcut == nil ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             .padding(.horizontal, 8)

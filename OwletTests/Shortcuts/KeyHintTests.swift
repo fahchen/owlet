@@ -33,6 +33,6 @@ struct KeyHintTests {
 
     /// Esc stops a run before it closes the panel, so its row has to name both outcomes.
     @Test func escapeRowNamesBothOutcomes() {
-        #expect(KeyHint.panelCancel.title == "停止处理 / 关闭")
+        #expect(KeyHint.panelCancel.title == "Stop / Close")
     }
 }

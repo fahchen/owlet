@@ -9,7 +9,7 @@ struct TargetLanguagePicker: View {
     @Binding var pinnedTarget: String
 
     var body: some View {
-        Picker("目标语言", selection: $pinnedTarget) {
+        Picker("Target Language", selection: $pinnedTarget) {
             Text(autoTitle).tag("")
             ForEach(LanguageCatalog.options(for: SettingsStore.languages())) {
                 Text($0.name).tag($0.tag)
@@ -25,6 +25,6 @@ struct TargetLanguagePicker: View {
     }
 
     private var autoTitle: String {
-        "自动（\(LanguageCatalog.name(for: SettingsStore.autoTarget(for: text)))）"
+        "Automatic (\(LanguageCatalog.name(for: SettingsStore.autoTarget(for: text))))"
     }
 }

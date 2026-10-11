@@ -26,7 +26,7 @@ struct ModelSettingsPane: View {
     var body: some View {
         Form {
             Section {
-                Picker("服务商", selection: $provider) {
+                Picker("Provider", selection: $provider) {
                     ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 // Verbatim, or the placeholder URL renders as a link.
@@ -38,14 +38,14 @@ struct ModelSettingsPane: View {
                         if !editing { commitKey() }
                     }
             } header: {
-                Text("服务")
+                Text("Service")
             } footer: {
-                Text("API Key 存在钥匙串里；离开输入框后生效。")
+                Text("The API key is kept in the keychain, and applies when the field loses focus.")
             }
-            Section("模型") {
+            Section("Model") {
                 modelField
                 modelStatus
-                Picker("思考强度", selection: $effort) {
+                Picker("Reasoning Effort", selection: $effort) {
                     ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
@@ -71,11 +71,11 @@ struct ModelSettingsPane: View {
         if provider == .deepSeek {
             // The row keeps the same control whatever the list is doing, instead of turning the name
             // into a loading field.
-            Picker("模型名称", selection: $model) {
+            Picker("Model Name", selection: $model) {
                 ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
             }
         } else {
-            TextField("模型名称", text: $model, prompt: Text("填写服务商提供的模型名称"))
+            TextField("Model Name", text: $model, prompt: Text("Enter the model name the provider gives you"))
         }
     }
 
@@ -97,7 +97,7 @@ struct ModelSettingsPane: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                 Spacer(minLength: 0)
-                Button("重试", systemImage: "arrow.clockwise") { loadModels() }
+                Button("Retry", systemImage: "arrow.clockwise") { loadModels() }
                     .buttonStyle(.plain)
             }
         }

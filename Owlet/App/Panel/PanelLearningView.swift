@@ -30,7 +30,7 @@ struct PanelLearningView: View {
             if learning.isExpanded || learning.state != .idle {
                 content
             } else if showsDisclosure {
-                DisclosureGroup("学习表达", isExpanded: $learning.isExpanded) {
+                DisclosureGroup("Study Expressions", isExpanded: $learning.isExpanded) {
                     content
                 }
             }
@@ -71,7 +71,7 @@ struct PanelLearningView: View {
     @ViewBuilder private var content: some View {
         switch learning.state {
         case .idle, .loading:
-            Text("正在整理值得学习的表达…")
+            Text("Finding useful expressions…")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(height: inline ? Self.inlineStateHeight : nil)
@@ -81,7 +81,7 @@ struct PanelLearningView: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
-                Button("重试", systemImage: "arrow.clockwise") {
+                Button("Retry", systemImage: "arrow.clockwise") {
                     learning.retry(for: request)
                 }
                 .buttonStyle(.plain)
@@ -90,7 +90,7 @@ struct PanelLearningView: View {
             .frame(height: inline ? Self.inlineStateHeight : nil)
             .padding(.horizontal, PanelMetrics.contentInset)
         case .success(let items) where items.isEmpty:
-            Text("这次没有额外推荐。")
+            Text("Nothing more to suggest.")
                 .foregroundStyle(.secondary)
                 .padding(PanelMetrics.contentInset)
         case .success(let items) where inline:
@@ -121,11 +121,11 @@ struct PanelLearningView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(item.text)
-                    .accessibilityValue(isCollected(item) ? "已收藏" : "未收藏")
-                    .accessibilityHint(isCollected(item) ? "取消收藏" : "加入生词本")
+                    .accessibilityValue(isCollected(item) ? "Saved" : "Not saved")
+                    .accessibilityHint(isCollected(item) ? "Remove from Notebook" : "Add to Notebook")
                     VStack(alignment: .leading, spacing: 4) {
                         LookupText(
-                            text: item.text, size: NSFont.systemFontSize, lineSpacing: 0, label: "学习表达",
+                            text: item.text, size: NSFont.systemFontSize, lineSpacing: 0, label: "Study Expressions",
                             origin: lookupOrigin(item), sentence: item.context,
                             onPlainClick: { toggleCollection(item) })
                         Text(item.meaning).font(.caption).foregroundStyle(.secondary)
@@ -140,7 +140,7 @@ struct PanelLearningView: View {
                 .background(.quaternary.opacity(hovered == index ? 1 : 0), in: RoundedRectangle(cornerRadius: 8))
                 .onTapGesture { toggleCollection(item) }
                 .onHover { hovered = $0 ? index : (hovered == index ? nil : hovered) }
-                .hoverTip(isCollected(item) ? "取消收藏" : "加入生词本")
+                .hoverTip(isCollected(item) ? "Remove from Notebook" : "Add to Notebook")
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { rowHeights[index] = $0 }
             }
             // Only a failed save is reported: a success already shows as the filled bookmark.

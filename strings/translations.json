@@ -146,8 +146,8 @@
   },
   "Cancel": {
     "ja": "キャンセル",
-    "zh-Hans": "取消处理",
-    "zh-Hant": "取消處理"
+    "zh-Hans": "取消",
+    "zh-Hant": "取消"
   },
   "Cancelled": {
     "ja": "キャンセルしました",
@@ -201,7 +201,7 @@
   },
   "Copy": {
     "ja": "コピー",
-    "zh-Hans": "拷贝",
+    "zh-Hans": "复制",
     "zh-Hant": "拷貝"
   },
   "Copy Expression": {
@@ -285,9 +285,9 @@
     "zh-Hant": "編輯原文"
   },
   "English": {
-    "ja": "英語",
-    "zh-Hans": "英语",
-    "zh-Hant": "英語"
+    "ja": "English",
+    "zh-Hans": "English",
+    "zh-Hant": "English"
   },
   "Enter Text": {
     "ja": "手入力",
@@ -871,8 +871,8 @@
   },
   "Shortcuts": {
     "ja": "ショートカット",
-    "zh-Hans": "快捷键",
-    "zh-Hant": "快速鍵"
+    "zh-Hans": "快捷操作",
+    "zh-Hant": "快速操作"
   },
   "Show the Debug Page": {
     "ja": "デバッグページを表示",
@@ -1089,7 +1089,7 @@
     "zh-Hans": "翻译",
     "zh-Hant": "翻譯"
   },
-  "Translate &amp; Polish": {
+  "Translate & Polish": {
     "ja": "翻訳と推敲",
     "zh-Hans": "翻译与润色",
     "zh-Hant": "翻譯與潤色"

@@ -9,7 +9,7 @@ struct SourceLanguagePicker: View {
     @Binding var pinnedSource: String
 
     var body: some View {
-        Picker("源语言", selection: $pinnedSource) {
+        Picker("Source Language", selection: $pinnedSource) {
             Text(autoTitle).tag("")
             ForEach(LanguageCatalog.options(for: SettingsStore.languages())) {
                 Text($0.name).tag($0.tag)
@@ -25,7 +25,7 @@ struct SourceLanguagePicker: View {
     }
 
     private var autoTitle: String {
-        guard let source = SettingsStore.autoSource(for: text) else { return "自动（未识别）" }
-        return "自动（\(LanguageCatalog.name(for: source))）"
+        guard let source = SettingsStore.autoSource(for: text) else { return "Automatic (not detected)" }
+        return "Automatic (\(LanguageCatalog.name(for: source)))"
     }
 }

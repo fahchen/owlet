@@ -12,10 +12,10 @@ enum PronunciationSystem: String, CaseIterable, Sendable {
     var title: LocalizedStringResource {
         switch self {
         case .ipa: "IPA"
-        case .kana: "假名"
-        case .romaji: "罗马字"
-        case .pinyin: "拼音"
-        case .zhuyin: "注音"
+        case .kana: "Kana"
+        case .romaji: "Romaji"
+        case .pinyin: "Pinyin"
+        case .zhuyin: "Zhuyin"
         }
     }
 
@@ -74,9 +74,11 @@ struct PronunciationSettingsView: View {
                 }
             }
         } header: {
-            Text("读音体系")
+            Text("Reading Notation")
         } footer: {
-            Text("用于生词本补充读音与阅读查词；改动只影响之后的请求。")
+            Text(
+                "Used when filling in a reading or looking a word up while reading; a change affects later requests only."
+            )
         }
         .onAppear { reload() }
         .onChange(of: languages) { _, _ in reload() }

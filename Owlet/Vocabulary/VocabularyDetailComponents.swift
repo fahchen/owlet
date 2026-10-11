@@ -8,16 +8,16 @@ struct MissingMeaningView: View {
     var body: some View {
         switch collection.status {
         case .filling(let filling) where filling == entry:
-            Text("正在补充中文释义…").foregroundStyle(.secondary)
+            Text("Filling in the meaning…").foregroundStyle(.secondary)
         // As in the learning column: a red message and a plain retry.
         case .meaningFailed(let failed, let message) where failed == entry:
             VStack(alignment: .leading, spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
-                Button("重试", systemImage: "arrow.clockwise") { collection.fillMeaning(for: entry) }
+                Button("Retry", systemImage: "arrow.clockwise") { collection.fillMeaning(for: entry) }
                     .buttonStyle(.plain)
             }
         default:
-            Button("补充中文释义", systemImage: "text.badge.plus") { collection.fillMeaning(for: entry) }
+            Button("Fill In Meaning", systemImage: "text.badge.plus") { collection.fillMeaning(for: entry) }
                 .buttonStyle(.plain)
         }
     }
@@ -47,13 +47,13 @@ struct VocabularyContextView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
             LookupText(
-                text: context.source, size: PanelMetrics.sourceTextSize, label: "原句语境", origin: origin
+                text: context.source, size: PanelMetrics.sourceTextSize, label: "Source Sentence", origin: origin
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if let before = context.polishBefore, let after = context.polishAfter {
-                comparison(title: "润色前", text: before, secondary: true)
-                comparison(title: "润色后", text: after)
+                comparison(title: "Before Polish", text: before, secondary: true)
+                comparison(title: "After Polish", text: after)
             }
         }
     }

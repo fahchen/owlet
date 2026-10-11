@@ -19,37 +19,36 @@ struct GeneralSettingsPane: View {
     var body: some View {
         Form {
             Section {
-                Picker("界面语言", selection: languageBinding) {
-                    // Verbatim: a language's own name must not be looked up in the catalog.
+                Picker("Interface Language", selection: languageBinding) {
                     ForEach(AppLanguage.selectable) { Text(verbatim: $0.title).tag($0) }
                 }
             } footer: {
-                Text("改动在下次启动 Owlet 后生效。")
+                Text("Takes effect the next time Owlet starts.")
             }
-            Section("文本处理") {
-                Picker("翻译显示方式", selection: $displayMode) {
+            Section("Text") {
+                Picker("Translation Display", selection: $displayMode) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
-            Section("学习") {
-                Toggle("翻译后自动请求学习表达", isOn: $translateLearning)
-                Toggle("润色后自动请求学习表达", isOn: $polishLearning)
+            Section("Study") {
+                Toggle("Request study expressions after translating", isOn: $translateLearning)
+                Toggle("Request study expressions after polishing", isOn: $polishLearning)
             }
-            Section("浮窗") {
-                Picker("玻璃效果", selection: $panelGlassEffect) {
+            Section("Panel") {
+                Picker("Glass Effect", selection: $panelGlassEffect) {
                     ForEach(PanelGlassEffect.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
 
-                Picker("浮窗位置", selection: $panelPosition) {
+                Picker("Panel Position", selection: $panelPosition) {
                     ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
             Section {
-                Toggle("显示调试页", isOn: debugSwitch)
+                Toggle("Show the Debug Page", isOn: debugSwitch)
             } header: {
-                Text("调试")
+                Text("Debug")
             } footer: {
-                Text("在设置里显示「调试」页，记录最近几次模型请求与返回。")
+                Text("Show the Debug page in settings, which keeps the last few model requests and replies.")
             }
         }
         .formStyle(.grouped)

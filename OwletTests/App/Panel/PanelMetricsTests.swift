@@ -35,8 +35,8 @@ struct PanelMetricsTests {
         var calls = 0
         let host = NSHostingController(
             rootView: PanelSegmentedControl(items: [
-                .init(title: "翻译中…", symbol: "translate", action: {}),
-                .init(title: "", symbol: "xmark", action: { calls += 1 }, accessibilityLabel: "取消处理"),
+                .init(title: "Translating…", symbol: "translate", action: {}),
+                .init(title: "", symbol: "xmark", action: { calls += 1 }, accessibilityLabel: "Cancel"),
             ]))
         host.view.layoutSubtreeIfNeeded()
         func find(_ view: NSView) -> NSSegmentedControl? {
@@ -47,7 +47,9 @@ struct PanelMetricsTests {
         #expect(control.trackingMode == .momentary)
         #expect(control.segmentDistribution == .fit)
         // The title is drawn into the segment image, so it keeps its color in the inactive panel.
-        #expect(control.image(forSegment: 0)?.accessibilityDescription == "翻译中…")
+        // Compared as the key rather than through `String(localized:)`: the test bundle and the app
+        // resolve different languages, so a localized lookup is not a reliable expectation here.
+        #expect(control.image(forSegment: 0)?.accessibilityDescription == "Translating…")
         #expect(control.image(forSegment: 0)?.isTemplate == false)
         #expect(control.width(forSegment: 1) == 36)
         #expect(control.subviews.compactMap { $0 as? NSBox }.contains { $0.boxType == .separator })

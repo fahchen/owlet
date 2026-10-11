@@ -76,45 +76,45 @@ struct ExpandedPanel: View {
             // text and the learning items it floats on. The ZStack puts it bottom-trailing.
             HStack(spacing: 8) {
                 if model.state == .loading {
-                    Button(action: cancel) { Label("取消处理", systemImage: "xmark").foregroundStyle(.primary) }
+                    Button(action: cancel) { Label("Cancel", systemImage: "xmark").foregroundStyle(.primary) }
                         .labelStyle(.iconOnly).buttonStyle(.glass(glassEffect.glass))
-                        .hoverTip(KeyHint.panelCancel, title: "取消处理")
+                        .hoverTip(KeyHint.panelCancel, title: "Cancel")
                 }
                 if showsLearning {
                     Button {
                         learning.isExpanded = false
                         learningDismissed = true
                     } label: {
-                        Label("返回", systemImage: "chevron.left").foregroundStyle(.primary)
+                        Label("Back", systemImage: "chevron.left").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                     .buttonSizing(.flexible).frame(width: 36, height: 36)
                     .keyboardShortcut(KeyHint.panelLearn.shortcut)
-                    .hoverTip(KeyHint.panelLearn, title: "返回结果")
+                    .hoverTip(KeyHint.panelLearn, title: "Back to Result")
                 } else if LearningRequest.from(model) == nil || collection == nil {
-                    Button(action: close) { Label("关闭", systemImage: "xmark").foregroundStyle(.primary) }
+                    Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
                         .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                         .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                         .buttonSizing(.flexible).frame(width: 36, height: 36)
-                        .hoverTip(KeyHint.panelCancel, title: "关闭浮窗")
+                        .hoverTip(KeyHint.panelCancel, title: "Close Panel")
                 } else {
                     Button {
                         learning.isExpanded = true
                     } label: {
-                        Label("学习", systemImage: "lamp.desk").foregroundStyle(.primary)
+                        Label("Study", systemImage: "lamp.desk").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
                     .buttonSizing(.flexible).frame(width: 36, height: 36)
                     .keyboardShortcut(KeyHint.panelLearn.shortcut)
-                    .hoverTip(KeyHint.panelLearn, title: "学习表达")
+                    .hoverTip(KeyHint.panelLearn, title: "Study Expressions")
                 }
                 if case .success(let text) = model.state {
                     Button {
                         copy(text)
                     } label: {
-                        Label("复制", systemImage: "document.on.document").foregroundStyle(.primary)
+                        Label("Copy", systemImage: "document.on.document").foregroundStyle(.primary)
                     }
                     .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
@@ -127,7 +127,7 @@ struct ExpandedPanel: View {
             .padding(.bottom, PanelMetrics.contentInset)
         }
         .contextMenu {
-            Picker("快捷操作", selection: $model.operation) {
+            Picker("Shortcuts", selection: $model.operation) {
                 ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             .onChange(of: model.operation) { _, _ in if canRetry { retry() } }
@@ -136,15 +136,15 @@ struct ExpandedPanel: View {
                 TargetLanguagePicker(text: model.input, pinnedTarget: $pinnedTarget)
                     .disabled(model.state == .loading)
             }
-            Button("重新处理", systemImage: "arrow.clockwise", action: retry)
+            Button("Try Again", systemImage: "arrow.clockwise", action: retry)
                 .keyboardShortcut(KeyHint.panelRetry.shortcut)
                 .disabled(!canRetry)
             if case .success(let text) = model.state, let replace {
-                Button("替换原选区") { replace(text) }
+                Button("Replace Selection") { replace(text) }
                     .keyboardShortcut(.return, modifiers: .command)
             }
-            Button(action: close) { Label("关闭", systemImage: "xmark").foregroundStyle(.primary) }
-            Button("设置", systemImage: "gearshape", action: openSettings)
+            Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
+            Button("Settings", systemImage: "gearshape", action: openSettings)
         }
         // No glass of its own: the panel root's surface draws it, the same surface the source bar
         // sat on, so expanding grows that surface instead of replacing it.

@@ -28,19 +28,19 @@ struct HistoryView: View {
 
     var body: some View {
         page
-            .navigationTitle("历史记录")
+            .navigationTitle("History")
             .focusedSceneValue(\.copyText, selectedRecord?.result)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle("\(filtered.count) 条记录")
-            .searchable(text: $search, placement: .toolbar, prompt: "搜索原文或结果")
+            .navigationSubtitle("\(filtered.count) records")
+            .searchable(text: $search, placement: .toolbar, prompt: "Search source or result")
             .toolbar { toolbar }
             .safeAreaInset(edge: .top) {
                 if let message = store.lastError {
                     HStack {
-                        Label("历史保存失败：\(message)", systemImage: "exclamationmark.triangle")
+                        Label("Could not save history: \(message)", systemImage: "exclamationmark.triangle")
                         Spacer()
-                        Button("关闭", systemImage: "xmark") { store.dismissError() }
-                            .labelStyle(.iconOnly).hoverTip("关闭提示")
+                        Button("Off", systemImage: "xmark") { store.dismissError() }
+                            .labelStyle(.iconOnly).hoverTip("Dismiss")
                     }.padding()
                 }
             }
@@ -51,19 +51,20 @@ struct HistoryView: View {
             .onChange(of: selection) { _, _ in learning.reset() }
             .onDisappear { learning.reset() }
             .confirmationDialog(
-                "删除所选 \(selection.count) 条历史记录？", isPresented: $confirmingDelete, titleVisibility: .visible
+                "Delete the \(selection.count) selected records?", isPresented: $confirmingDelete,
+                titleVisibility: .visible
             ) {
-                Button("删除", role: .destructive) { deleteSelected() }
-                Button("取消", role: .cancel) {}
+                Button("Delete", role: .destructive) { deleteSelected() }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("生词本中的表达不受影响。")
+                Text("Expressions in the notebook are not affected.")
             }
             .alert(
-                "操作失败",
+                "Operation failed",
                 isPresented: Binding(
                     get: { actionError != nil }, set: { if !$0 { actionError = nil } })
             ) {
-                Button("好", role: .cancel) {}
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(actionError ?? "")
             }
@@ -103,12 +104,12 @@ struct HistoryView: View {
                         .id(record.persistentModelID)
                 } else if selection.count > 1 {
                     ContentUnavailableView(
-                        "已选择 \(selection.count) 条历史记录", systemImage: "checkmark.circle",
-                        description: Text("可使用工具栏删除所选内容。"))
+                        "\(selection.count) records selected", systemImage: "checkmark.circle",
+                        description: Text("Use the toolbar to delete the selection."))
                 } else {
                     ContentUnavailableView(
-                        "选择一个记录", systemImage: "sidebar.left",
-                        description: Text("在左侧列表中选择内容以查看详情。"))
+                        "Select a record", systemImage: "sidebar.left",
+                        description: Text("Select something in the list to see its details."))
                 }
             }
         }
@@ -117,23 +118,23 @@ struct HistoryView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
-                Picker("筛选类型", selection: $operationFilter) {
-                    Text("全部类型").tag(Operation?.none)
+                Picker("Filter by Type", selection: $operationFilter) {
+                    Text("All Types").tag(Operation?.none)
                     ForEach(Operation.allCases, id: \.self) { operation in
                         Text(operation.title).tag(Operation?.some(operation))
                     }
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("筛选类型", systemImage: "line.3.horizontal.decrease")
+                Label("Filter by Type", systemImage: "line.3.horizontal.decrease")
             }
-            .labelStyle(.iconOnly).hoverTip("筛选类型")
+            .labelStyle(.iconOnly).hoverTip("Filter by Type")
         }
         ToolbarItemGroup(placement: .principal) {
-            Button("上一条", systemImage: "chevron.up") { if let previous { selection = [previous] } }
+            Button("Previous", systemImage: "chevron.up") { if let previous { selection = [previous] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
                 .disabled(previous == nil)
-            Button("下一条", systemImage: "chevron.down") { if let next { selection = [next] } }
+            Button("Next", systemImage: "chevron.down") { if let next { selection = [next] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
                 .disabled(next == nil)
         }
@@ -142,10 +143,10 @@ struct HistoryView: View {
             Button {
                 confirmingDelete = true
             } label: {
-                Label("删除", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
             .labelStyle(.iconOnly).disabled(selection.isEmpty)
-            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "删除所选内容")
+            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "Delete Selected")
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         DefaultToolbarItem(kind: .search, placement: .primaryAction)
@@ -161,14 +162,17 @@ struct HistoryView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(records.isEmpty ? "暂无历史记录" : "无匹配结果", systemImage: "clock")
+            Label(records.isEmpty ? "No History Yet" : "No Matches", systemImage: "clock")
         } description: {
-            Text(records.isEmpty ? "成功的翻译与润色会自动记录在这里。" : "试试其他搜索词或筛选条件。")
+            Text(
+                records.isEmpty
+                    ? "Translations and polishes you run are recorded here automatically."
+                    : "Try another search or filter.")
         } actions: {
             if records.isEmpty {
-                Button("前往翻译", action: openProcessing).buttonStyle(.glass)
+                Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
             } else {
-                Button("清除筛选") {
+                Button("Clear Filters") {
                     search = ""; operationFilter = nil
                 }.buttonStyle(.glass)
             }
@@ -209,7 +213,7 @@ private struct HistoryDetail: View {
                     .padding(.bottom, 12)
                     VStack(alignment: .leading, spacing: 12) {
                         LookupText(
-                            text: record.source, size: PanelMetrics.textSize, label: "原文",
+                            text: record.source, size: PanelMetrics.textSize, label: "Source",
                             origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).source
                         )
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -240,11 +244,11 @@ private struct HistoryDetail: View {
             .scrollBounceBehavior(.basedOnSize)
             HStack(spacing: 8) {
                 if learning.isExpanded {
-                    CardButton(title: "返回", symbol: "chevron.left", key: .learn) { learning.isExpanded = false }
+                    CardButton(title: "Back", symbol: "chevron.left", key: .learn) { learning.isExpanded = false }
                 } else {
-                    CardButton(title: "学习", symbol: "lamp.desk", key: .learn) { learning.isExpanded = true }
+                    CardButton(title: "Study", symbol: "lamp.desk", key: .learn) { learning.isExpanded = true }
                 }
-                CardButton(title: "复制结果", symbol: "document.on.document", key: .copy, bindsKey: false) {
+                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
                     Clipboard.copy(record.result)
                 }
             }
@@ -281,8 +285,8 @@ enum HistoryTime {
     static func display(_ date: Date) -> String {
         let calendar = Calendar.current
         let time = date.formatted(date: .omitted, time: .shortened)
-        if calendar.isDateInToday(date) { return "今天 \(time)" }
-        if calendar.isDateInYesterday(date) { return "昨天 \(time)" }
+        if calendar.isDateInToday(date) { return "Today \(time)" }
+        if calendar.isDateInYesterday(date) { return "Yesterday \(time)" }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
 }

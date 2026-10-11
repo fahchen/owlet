@@ -21,11 +21,11 @@ struct DebugLogTests {
     /// The API key travels in a header, so a copied report must not carry it.
     @Test func theReportCarriesTheExchangeButNotTheKey() {
         let exchange = DebugExchange(
-            title: "翻译 · zh-Hant", request: #"{"model":"m"}"#, submitted: "お世話になっております。",
+            title: "Translate · zh-Hant", request: #"{"model":"m"}"#, submitted: "お世話になっております。",
             response: #"{"source_language":"ja"}"#, failure: ModelError.format.message,
             failureKind: .contract)
         let report = exchange.report
-        #expect(report.contains("翻译 · zh-Hant"))
+        #expect(report.contains("Translate · zh-Hant"))
         #expect(report.contains(ModelError.format.message))
         #expect(report.contains("お世話になっております。"))
         #expect(report.contains(#"{"model":"m"}"#))
@@ -75,7 +75,7 @@ struct DebugLogTests {
         await settle(box)
         #expect(box.exchanges.count == 1)
         // The title is the operation's own localized name, so it follows the interface language.
-        #expect(box.exchanges.first?.title == "\(String(localized: "翻译")) · zh-Hans")
+        #expect(box.exchanges.first?.title == "\(String(localized: "Translate")) · zh-Hans")
         #expect(box.exchanges.first?.failure == nil)
         #expect(box.exchanges.first?.request.contains("zh-Hans") == true)
         #expect(box.exchanges.first?.response?.contains("source_language") == true)
@@ -141,7 +141,7 @@ struct DebugLogTests {
             config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == String(localized: "学习推荐"))
+        #expect(box.exchanges.first?.title == "Study Expressions")
         #expect(box.exchanges.first?.request.contains("original") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }
@@ -161,7 +161,7 @@ struct DebugLogTests {
             definitionLocale: "zh-Hans", config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == String(localized: "补释义"))
+        #expect(box.exchanges.first?.title == "Fill In Meaning")
         #expect(box.exchanges.first?.request.contains("expression") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }

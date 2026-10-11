@@ -50,7 +50,7 @@ struct LookupCard: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 if shown.source != query, let context = shown.source.context {
-                    Label("这条释义来自另一句", systemImage: "text.quote")
+                    Label("This meaning comes from another sentence", systemImage: "text.quote")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                     Text(context)
@@ -59,7 +59,7 @@ struct LookupCard: View {
                         .lineLimit(3)
                         .textSelection(.enabled)
                 } else if query.context == nil {
-                    Label("无原句语境", systemImage: "info.circle")
+                    Label("No source sentence", systemImage: "info.circle")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
@@ -86,12 +86,12 @@ struct LookupCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 6) {
                 if let shown, canCollect { collectButton(shown.result) }
-                CardButton(title: "发音", symbol: "speaker.wave.2") {
+                CardButton(title: "Speak", symbol: "speaker.wave.2") {
                     if let voiceLanguage { presenter.speak(query.text, language: voiceLanguage) }
                 }
                 .disabled(!canSpeak)
-                .accessibilityHint(canSpeak ? "" : "暂无系统语音")
-                .hoverTip(canSpeak ? "发音" : "暂无系统语音")
+                .accessibilityHint(canSpeak ? "" : "No system voice available")
+                .hoverTip(canSpeak ? "Speak" : "No system voice available")
             }
         }
     }
@@ -101,7 +101,7 @@ struct LookupCard: View {
     /// and the entry keeps the meaning the lookup already paid for.
     private func collectButton(_ result: LookupResult) -> some View {
         CardGlassButton(
-            title: isCollected ? "已收藏" : "加入生词本",
+            title: isCollected ? "Saved" : "Add to Notebook",
             symbol: isCollected ? "bookmark.fill" : "bookmark",
             tint: isCollected ? Color.accentColor : Color.primary
         ) {
@@ -111,8 +111,8 @@ struct LookupCard: View {
                 query: query.language == nil ? stampedLanguageQuery(language) : query,
                 result: result)
         }
-        .accessibilityValue(isCollected ? "已收藏" : "未收藏")
-        .accessibilityHint(isCollected ? "取消收藏" : "加入生词本")
+        .accessibilityValue(isCollected ? "Saved" : "Not saved")
+        .accessibilityHint(isCollected ? "Remove from Notebook" : "Add to Notebook")
     }
 
     /// The lookup can identify the language the reading area did not know; the notebook keys on it, so
@@ -141,7 +141,7 @@ struct LookupCard: View {
     @ViewBuilder private var status: some View {
         switch current {
         case .loading?:
-            Text(shown == nil ? "查询中…" : "正在按当前语境重查…")
+            Text(shown == nil ? "Looking up…" : "Looking up again in this sentence…")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
         case .failure(let message)?:
@@ -150,12 +150,12 @@ struct LookupCard: View {
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("重试", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
+                Button("Retry", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
                     .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity)
         case nil where shown != nil:
-            Button("按当前语境重查", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
+            Button("Look Up in This Sentence", systemImage: "arrow.clockwise") { presenter.requestCurrent() }
                 .buttonStyle(.plain)
         default:
             EmptyView()
@@ -166,8 +166,8 @@ struct LookupCard: View {
     private func announce(_ entry: LookupStore.Entry?) {
         let message: String? =
             switch entry {
-            case .loading?: "正在查询"
-            case .failure(let message)?: "查询失败：\(message)"
+            case .loading?: "Looking up"
+            case .failure(let message)?: String(localized: "Lookup failed: \(message)")
             case .success(let result)?: result.meaning
             case nil: nil
             }

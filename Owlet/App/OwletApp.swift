@@ -98,10 +98,10 @@ private struct MainView: View {
             // A sidebar List allows an empty selection; ignore it so a row stays highlighted.
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 // The main page needs no group title: it is what the app is for.
-                Label("翻译与润色", systemImage: "translate").tag(Page.processing)
-                Section("我的积累") {
-                    Label("生词本", systemImage: "books.vertical").tag(Page.vocabulary)
-                    Label("历史记录", systemImage: "clock").tag(Page.history)
+                Label("Translate &amp; Polish", systemImage: "translate").tag(Page.processing)
+                Section("My Collection") {
+                    Label("Notebook", systemImage: "books.vertical").tag(Page.vocabulary)
+                    Label("History", systemImage: "clock").tag(Page.history)
                 }
             }
             .listStyle(.sidebar)
@@ -165,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// only adds the system Close to a File menu it creates for a document scene, so the command is ours.
 private struct CloseWindowButton: View {
     var body: some View {
-        Button("关闭窗口") { NSApp.keyWindow?.performClose(nil) }
+        Button("Close Window") { NSApp.keyWindow?.performClose(nil) }
             .keyboardShortcut("w", modifiers: .command)
     }
 }
@@ -176,7 +176,7 @@ private struct SubmitTextButton: View {
     let translation: TextProcessingModel
 
     var body: some View {
-        Button("\(translation.operation.title)文本") {
+        Button("\(translation.operation.title) Text") {
             translation.process(to: SettingsStore.resolvedTarget(for: translation.input))
         }
         .keyboardShortcut(.return, modifiers: .command)
@@ -191,7 +191,7 @@ private struct OperationButtons: View {
 
     var body: some View {
         ForEach([(Operation.translate, KeyHint.translateMode), (.polish, .polishMode)], id: \.0) { operation, key in
-            Button("\(operation.title)模式") {
+            Button("\(operation.title) Mode") {
                 page = .processing
                 translation.operation = operation
             }
@@ -208,9 +208,9 @@ private struct PasteboardButtons: View {
     @FocusedValue(\.copyText) private var copyText
 
     var body: some View {
-        Button("剪切") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+        Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
             .keyboardShortcut("x")
-        Button("拷贝") {
+        Button("Copy") {
             if hasTextSelection {
                 NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
             } else if let copyText {
@@ -218,9 +218,9 @@ private struct PasteboardButtons: View {
             }
         }
         .keyboardShortcut(KeyHint.copy.shortcut)
-        Button("粘贴") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
+        Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
             .keyboardShortcut("v")
-        Button("全选") { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
+        Button("Select All") { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
             .keyboardShortcut("a")
     }
 
@@ -297,7 +297,7 @@ private struct MenuContent: View {
 
     var body: some View {
         let perform = ProcessingAction(panel: panel)
-        Button("打开 Owlet") {
+        Button("Open Owlet") {
             NSApp.activate()
             openWindow(id: "main")
         }
@@ -308,9 +308,9 @@ private struct MenuContent: View {
                 .keyboardShortcut(shortcuts.shortcuts[action]?.menuShortcut)
         }
         // The settings window manages itself, so this only has to open it; ⌘, lives in the App menu.
-        Button("设置…") { openSettings() }
+        Button("Settings…") { openSettings() }
         Divider()
-        Button("退出 Owlet") { NSApp.terminate(nil) }
+        Button("Quit Owlet") { NSApp.terminate(nil) }
     }
 
     /// The action's name; a combination the menu cannot show as a key equivalent is written after it,

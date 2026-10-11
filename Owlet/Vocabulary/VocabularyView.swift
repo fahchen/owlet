@@ -25,28 +25,29 @@ struct VocabularyView: View {
 
     var body: some View {
         page
-            .navigationTitle("生词本")
+            .navigationTitle("Notebook")
             .focusedSceneValue(\.copyText, selectedEntry?.expression)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle("\(filtered.count) 个表达")
-            .searchable(text: $search, placement: .toolbar, prompt: "搜索表达或释义")
+            .navigationSubtitle("\(filtered.count) expressions")
+            .searchable(text: $search, placement: .toolbar, prompt: "Search expressions or meanings")
             .toolbar { toolbar }
             .onChange(of: filtered.map(\.persistentModelID), initial: true) { _, ids in
                 selection.formIntersection(ids)
                 if selection.isEmpty, let first = ids.first { selection = [first] }
             }
             .confirmationDialog(
-                "删除所选 \(selection.count) 个表达？", isPresented: $confirmingDelete, titleVisibility: .visible
+                "Delete the \(selection.count) selected expressions?", isPresented: $confirmingDelete,
+                titleVisibility: .visible
             ) {
-                Button("删除", role: .destructive) { deleteSelected() }
-                Button("取消", role: .cancel) {}
+                Button("Delete", role: .destructive) { deleteSelected() }
+                Button("Cancel", role: .cancel) {}
             }
             .alert(
-                "操作失败",
+                "Operation failed",
                 isPresented: Binding(
                     get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
             ) {
-                Button("好", role: .cancel) {}
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
             }
@@ -65,9 +66,9 @@ struct VocabularyView: View {
                             Text(entry.expression)
                                 .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight))
                                 .lineLimit(1)
-                            Text(entry.meaning.isEmpty ? "尚无中文释义" : entry.meaning)
+                            Text(entry.meaning.isEmpty ? "No meaning yet" : entry.meaning)
                                 .foregroundStyle(.secondary).lineLimit(1)
-                            Text("\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境")
+                            Text("\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 6)
@@ -80,12 +81,12 @@ struct VocabularyView: View {
                     VocabularyDetail(entry: entry, collection: collection)
                 } else if selection.count > 1 {
                     ContentUnavailableView(
-                        "已选择 \(selection.count) 个表达", systemImage: "checkmark.circle",
-                        description: Text("可使用工具栏删除所选内容。"))
+                        "\(selection.count) expressions selected", systemImage: "checkmark.circle",
+                        description: Text("Use the toolbar to delete the selection."))
                 } else {
                     ContentUnavailableView(
-                        "选择一个表达", systemImage: "sidebar.left",
-                        description: Text("在左侧列表中选择内容以查看详情。"))
+                        "Select an expression", systemImage: "sidebar.left",
+                        description: Text("Select something in the list to see its details."))
                 }
             }
         }
@@ -94,23 +95,23 @@ struct VocabularyView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
-                Picker("筛选语言", selection: $language) {
-                    Text("全部语言").tag("")
+                Picker("Filter by Language", selection: $language) {
+                    Text("All Languages").tag("")
                     ForEach(VocabularyFilter.languages(in: entries), id: \.self) { tag in
                         Text(LanguageCatalog.name(for: tag)).tag(tag)
                     }
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("筛选语言", systemImage: "line.3.horizontal.decrease")
+                Label("Filter by Language", systemImage: "line.3.horizontal.decrease")
             }
-            .labelStyle(.iconOnly).hoverTip("筛选语言")
+            .labelStyle(.iconOnly).hoverTip("Filter by Language")
         }
         ToolbarItemGroup(placement: .principal) {
-            Button("上一条", systemImage: "chevron.up") { if let previous { selection = [previous] } }
+            Button("Previous", systemImage: "chevron.up") { if let previous { selection = [previous] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.previous.shortcut).hoverTip(KeyHint.previous)
                 .disabled(previous == nil)
-            Button("下一条", systemImage: "chevron.down") { if let next { selection = [next] } }
+            Button("Next", systemImage: "chevron.down") { if let next { selection = [next] } }
                 .labelStyle(.iconOnly).keyboardShortcut(KeyHint.next.shortcut).hoverTip(KeyHint.next)
                 .disabled(next == nil)
         }
@@ -119,10 +120,10 @@ struct VocabularyView: View {
             Button {
                 confirmingDelete = true
             } label: {
-                Label("删除", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
             .labelStyle(.iconOnly).disabled(selection.isEmpty)
-            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "删除所选内容")
+            .keyboardShortcut(KeyHint.delete.shortcut).hoverTip(KeyHint.delete, title: "Delete Selected")
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         DefaultToolbarItem(kind: .search, placement: .primaryAction)
@@ -138,14 +139,17 @@ struct VocabularyView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(entries.isEmpty ? "生词本为空" : "无匹配结果", systemImage: "books.vertical")
+            Label(entries.isEmpty ? "The notebook is empty" : "No Matches", systemImage: "books.vertical")
         } description: {
-            Text(entries.isEmpty ? "在学习区选择表达，即可加入生词本。" : "试试其他搜索词或筛选条件。")
+            Text(
+                entries.isEmpty
+                    ? "Pick an expression in the study list to add it to the notebook."
+                    : "Try another search or filter.")
         } actions: {
             if entries.isEmpty {
-                Button("前往翻译", action: openProcessing).buttonStyle(.glass)
+                Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
             } else {
-                Button("清除筛选") {
+                Button("Clear Filters") {
                     search = ""; language = ""
                 }.buttonStyle(.glass)
             }
@@ -182,13 +186,13 @@ private struct VocabularyDetail: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(
-                        "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境 · 收藏于 \(HistoryTime.display(entry.createdAt))"
+                        "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts · saved \(HistoryTime.display(entry.createdAt))"
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     // The entry's own form has no source sentence, so a lookup in it asks for the
                     // general meaning instead of passing the form off as its own context.
                     LookupText(
-                        text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "表达",
+                        text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "Expression",
                         origin: entry.lookupOrigin, hasSentence: false)
                     // The dictionary form the recommendation supplied, secondary to the collected form
                     // and only when it says something new (BDR-0009).
@@ -202,11 +206,11 @@ private struct VocabularyDetail: View {
                         MissingMeaningView(entry: entry, collection: collection)
                     } else {
                         LookupText(
-                            text: entry.meaning, size: PanelMetrics.textSize, weight: .medium, label: "释义",
+                            text: entry.meaning, size: PanelMetrics.textSize, weight: .medium, label: "Meaning",
                             origin: meaningOrigin)
                     }
                     Divider().padding(.vertical, 4)
-                    Text("原句语境").font(.caption).foregroundStyle(.secondary)
+                    Text("Source Sentence").font(.caption).foregroundStyle(.secondary)
                     ForEach(entry.contexts) { context in
                         VocabularyContextView(
                             context: context,
@@ -226,7 +230,7 @@ private struct VocabularyDetail: View {
                 .panelBottomPadding()
             }
             .scrollBounceBehavior(.basedOnSize)
-            CardButton(title: "复制表达", symbol: "document.on.document", key: .copy, bindsKey: false) {
+            CardButton(title: "Copy Expression", symbol: "document.on.document", key: .copy, bindsKey: false) {
                 Clipboard.copy(entry.expression)
             }
             .padding([.trailing, .bottom], PanelMetrics.contentInset)

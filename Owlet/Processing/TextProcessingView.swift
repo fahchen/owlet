@@ -44,7 +44,7 @@ struct TextProcessingView: View {
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            Picker("处理方式", selection: $model.operation) {
+            Picker("Operation", selection: $model.operation) {
                 ForEach(Operation.allCases, id: \.self) { operation in
                     Image(nsImage: segmentSymbol(operation)).tag(operation)
                 }
@@ -164,7 +164,7 @@ struct TextProcessingView: View {
             .scrollContentBackground(.hidden)
             .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
             .lineSpacing(2)
-            .accessibilityLabel("原文")
+            .accessibilityLabel("Source")
             .overlay(alignment: .topLeading) {
                 if model.input.isEmpty {
                     // The page has no submit button; the placeholder names the shortcut instead.
@@ -191,9 +191,11 @@ struct TextProcessingView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failure(let message, let kind):
-            failure(message, action: kind == .contract ? "提示词设置" : "服务设置")
+            failure(message, action: kind == .contract ? "Prompt Settings" : "Service Settings")
         case .missingConfig:
-            failure("模型服务未配置", action: "配置服务")
+            failure(
+                String(localized: "The model service is not configured"),
+                action: String(localized: "Configure Service"))
         case .idle, .success:
             resultScroll
         }
@@ -257,20 +259,20 @@ struct TextProcessingView: View {
                 }
             }
             if isBusy {
-                CardButton(title: "取消处理", symbol: "xmark", key: .cancel, action: model.cancel)
+                CardButton(title: "Cancel", symbol: "xmark", key: .cancel, action: model.cancel)
             }
             if showsLearning {
-                CardButton(title: "返回", symbol: "chevron.left", key: .learn) {
+                CardButton(title: "Back", symbol: "chevron.left", key: .learn) {
                     learning.isExpanded = false
                     learningDismissed = true
                 }
             } else if LearningRequest.from(model) != nil {
-                CardButton(title: "学习", symbol: "lamp.desk", key: .learn) {
+                CardButton(title: "Study", symbol: "lamp.desk", key: .learn) {
                     learning.isExpanded = true
                 }
             }
             if case .success(let text) = model.state {
-                CardButton(title: "复制结果", symbol: "document.on.document", key: .copy, bindsKey: false) {
+                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
                     Clipboard.copy(text)
                 }
             }

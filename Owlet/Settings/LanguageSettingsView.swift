@@ -13,15 +13,15 @@ struct LanguageSettingsView: View {
         Section {
             ForEach(languages, id: \.self) { tag in
                 LabeledContent(LanguageCatalog.name(for: tag)) {
-                    Button("删除", systemImage: "trash") { remove(tag) }
+                    Button("Delete", systemImage: "trash") { remove(tag) }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                         .disabled(languages.count <= 1)
-                        .accessibilityLabel("移除\(LanguageCatalog.name(for: tag))")
+                        .accessibilityLabel("Remove \(LanguageCatalog.name(for: tag))")
                 }
             }
-            Picker("添加语言", selection: $pending) {
-                Text("选择要添加的语言").tag("")
+            Picker("Add Language", selection: $pending) {
+                Text("Choose a language to add").tag("")
                 ForEach(available) { Text($0.name).tag($0.tag) }
             }
             .onChange(of: pending) { _, tag in
@@ -30,9 +30,10 @@ struct LanguageSettingsView: View {
                 pending = ""
             }
         } header: {
-            Text("语言")
+            Text("Languages")
         } footer: {
-            Text("只有这里选中的语言会出现在目标语言、兜底目标和映射表里；至少保留一种。")
+            Text(
+                "Only the languages chosen here appear in the target, the fallback and the mapping; keep at least one.")
         }
         .onAppear { languages = SettingsStore.languages() }
     }

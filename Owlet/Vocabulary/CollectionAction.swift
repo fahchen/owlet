@@ -127,7 +127,7 @@ final class CollectionAction {
     func setCollected(_ selected: Bool, query: LookupQuery, result: LookupResult) -> Bool {
         let draft = VocabularyDraft.from(query, result: result)
         guard !draft.language.isEmpty else {
-            status = .saveFailed("未能确定这段文字的语言")
+            status = .saveFailed("Could not determine the language of this text")
             return false
         }
         if selected {
@@ -157,7 +157,7 @@ final class CollectionAction {
     /// Runs or retries the meaning request for an entry that has none yet.
     func fillMeaning(for entry: VocabularyEntry) {
         guard let config = config() else {
-            status = .meaningFailed(entry, "模型服务未配置")
+            status = .meaningFailed(entry, "The model service is not configured")
             return
         }
         task?.cancel()

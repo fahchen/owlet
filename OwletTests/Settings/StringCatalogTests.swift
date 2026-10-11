@@ -22,9 +22,10 @@ import Testing
         return try #require(object as? [String: Any])
     }
 
-    @Test func theSourceLanguageIsTheOneTheAppIsWrittenIn() throws {
+    /// English is the source language, so a key is the English text and Chinese is a translation.
+    @Test func theSourceLanguageIsEnglish() throws {
         let catalog = try catalog()
-        #expect(catalog["sourceLanguage"] as? String == "zh-Hans")
+        #expect(catalog["sourceLanguage"] as? String == "en")
     }
 
     @Test func everyEntryCarriesEverySupportedLanguage() throws {
@@ -54,15 +55,14 @@ import Testing
         #expect(missing.isEmpty, "缺少翻译：\(missing.sorted().joined(separator: "、"))")
     }
 
-    /// The source string is its own key, so an entry that does not say so would show a raw key when
-    /// the app runs in its own language.
+    /// The source value is the key itself, so an entry that says otherwise would show a raw key.
     @Test func theSourceLanguageEqualsTheKey() throws {
         let catalog = try catalog()
         let strings = try #require(catalog["strings"] as? [String: Any])
         var wrong: [String] = []
         for (key, raw) in strings {
             let localizations = (raw as? [String: Any])?["localizations"] as? [String: Any]
-            let unit = (localizations?["zh-Hans"] as? [String: Any])?["stringUnit"] as? [String: Any]
+            let unit = (localizations?["en"] as? [String: Any])?["stringUnit"] as? [String: Any]
             if unit?["value"] as? String != key { wrong.append(key) }
         }
         #expect(wrong.isEmpty, "源语言与 key 不一致：\(wrong.sorted().joined(separator: "、"))")

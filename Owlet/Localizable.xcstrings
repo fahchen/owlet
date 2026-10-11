@@ -860,13 +860,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消处理"
+            "value": "取消"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消處理"
+            "value": "取消"
           }
         }
       }
@@ -1179,7 +1179,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拷贝"
+            "value": "复制"
           }
         },
         "zh-Hant": {
@@ -1666,19 +1666,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "英語"
+            "value": "English"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "英语"
+            "value": "English"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "英語"
+            "value": "English"
           }
         }
       }
@@ -5065,13 +5065,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "快捷键"
+            "value": "快捷操作"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "快速鍵"
+            "value": "快速操作"
           }
         }
       }
@@ -6323,13 +6323,13 @@
         }
       }
     },
-    "Translate &amp; Polish": {
+    "Translate & Polish": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Translate &amp; Polish"
+            "value": "Translate & Polish"
           }
         },
         "ja": {

@@ -88,7 +88,7 @@ struct PanelRootView: View {
             CompactProcessingView(
                 summary: controller.model.input,
                 status: controller.replacing
-                    ? String(localized: "翻译并替换中…")
+                    ? String(localized: "Translating and replacing…")
                     : String(localized: controller.model.operation.progress),
                 symbol: controller.model.operation.symbol, stop: controller.stop, close: controller.close,
                 showsBar: false)
@@ -99,7 +99,7 @@ struct PanelRootView: View {
                 symbol: notice == .missingConfig
                     ? "lock.trianglebadge.exclamationmark"
                     : statusRetries(notice) ? "network.slash" : "exclamationmark.triangle",
-                actionTitle: statusRetries(notice) ? "重试" : notice.actionTitle,
+                actionTitle: statusRetries(notice) ? "Retry" : notice.actionTitle,
                 actionSymbol: statusRetries(notice) ? "arrow.clockwise" : "gearshape",
                 recover: { recover(notice) },
                 action: statusRetries(notice) ? compactRetry : nil,

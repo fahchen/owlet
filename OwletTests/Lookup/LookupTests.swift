@@ -182,7 +182,7 @@ func lookupReply(
         await #expect(throws: ModelError.format) { try await client.lookup(bank, config: testConfig) }
         try await Task.sleep(for: .milliseconds(50))
         let exchange = try #require(captured.withLock { $0.first })
-        #expect(exchange.title == "查词 · zh-Hans")
+        #expect(exchange.title == "Look Up · zh-Hans")
         #expect(exchange.response == "not json")
         #expect(!exchange.request.contains("sk-test"))
     }
@@ -343,7 +343,7 @@ final class LookupTransport: Sendable {
         let store = store(transport, config: nil)
         let query = store.stamped(river)
         store.open(query)
-        #expect(store.entries[query] == .failure("模型服务未配置"))
+        #expect(store.entries[query] == .failure(String(localized: "The model service is not configured")))
         #expect(transport.count == 0)
     }
 

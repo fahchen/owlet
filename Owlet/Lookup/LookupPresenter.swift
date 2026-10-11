@@ -163,7 +163,7 @@ private struct LookupPopoverContent: View {
             Button {
                 presenter.confirmToolbar()
             } label: {
-                Label("查询", systemImage: "character.book.closed").foregroundStyle(.primary)
+                Label("Look Up", systemImage: "character.book.closed").foregroundStyle(.primary)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 14)

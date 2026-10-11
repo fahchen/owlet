@@ -57,7 +57,7 @@ final class LookupStore {
     func request(_ query: LookupQuery) {
         guard entries[query] != .loading else { return }
         guard let config = config() else {
-            store(.failure("模型服务未配置"), for: query)
+            store(.failure(String(localized: "The model service is not configured")), for: query)
             return
         }
         store(.loading, for: query)

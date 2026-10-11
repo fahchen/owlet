@@ -51,7 +51,7 @@ struct CompactProcessingView: View {
             PanelSegmentedControl(items: [
                 .init(title: status, symbol: symbol, action: {}),
                 .init(
-                    title: "", symbol: "xmark", action: stop, accessibilityLabel: "取消处理",
+                    title: "", symbol: "xmark", action: stop, accessibilityLabel: "Cancel",
                     key: .panelCancel),
             ])
             .fixedSize()
@@ -83,10 +83,10 @@ struct PanelSourceBar: View {
             if let retry {
                 PanelSegmentedControl(items: [
                     .init(
-                        title: "Retry", symbol: "arrow.clockwise", action: retry, accessibilityLabel: "重新处理",
+                        title: "Retry", symbol: "arrow.clockwise", action: retry, accessibilityLabel: "Try Again",
                         key: .panelRetry),
                     .init(
-                        title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗",
+                        title: "", symbol: "xmark", action: close, accessibilityLabel: "Close Panel",
                         key: .panelCancel),
                 ])
                 .fixedSize()
@@ -95,7 +95,7 @@ struct PanelSourceBar: View {
                 .glassEffect(glassEffect.glass)
 
             } else {
-                Button(action: close) { Label("关闭", systemImage: "xmark").foregroundStyle(.primary) }
+                Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }
                     .labelStyle(.iconOnly)
                     .font(.system(size: 13, weight: .medium))
                     .buttonStyle(.glass(glassEffect.glass))
@@ -103,7 +103,7 @@ struct PanelSourceBar: View {
                     .controlSize(.extraLarge)
                     .buttonSizing(.flexible)
                     .frame(width: 36, height: 36)
-                    .hoverTip(KeyHint.panelCancel, title: "关闭浮窗")
+                    .hoverTip(KeyHint.panelCancel, title: "Close Panel")
             }
         }
         .padding(.leading, 24)
@@ -121,7 +121,7 @@ struct CompactNoticeView: View {
     var retry: (() -> Void)? = nil
     var close: () -> Void = {}
     var symbol = "exclamationmark.triangle"
-    var actionTitle = "设置"
+    var actionTitle = String(localized: "Settings")
     var actionSymbol = "gearshape"
     var recover: () -> Void = {}
     var action: (() -> Void)? = nil
@@ -142,7 +142,7 @@ struct CompactNoticeView: View {
                     + (summary.isEmpty
                         ? [
                             .init(
-                                title: "", symbol: "xmark", action: close, accessibilityLabel: "关闭浮窗",
+                                title: "", symbol: "xmark", action: close, accessibilityLabel: "Close Panel",
                                 key: .panelCancel)
                         ] : [])
             )

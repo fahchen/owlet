@@ -40,30 +40,30 @@ struct KeyHint: Equatable, Sendable {
 extension KeyHint {
     // The floating panel. `FloatingPanel.command(for:)` claims replace, copy, retry and Esc from its
     // own key monitor; 学习 is the learning button's shortcut.
-    static let panelReplace = KeyHint(title: "替换", key: .return, modifiers: .command)
-    static let panelCopy = KeyHint(title: "复制结果", key: "c", modifiers: .command)
-    static let panelRetry = KeyHint(title: "重新处理", key: "r", modifiers: .command)
-    static let panelLearn = KeyHint(title: "学习 / 返回", key: "l", modifiers: .command)
-    static let panelCancel = KeyHint(title: "停止处理 / 关闭", key: .escape, modifiers: [])
+    static let panelReplace = KeyHint(title: "Replace", key: .return, modifiers: .command)
+    static let panelCopy = KeyHint(title: "Copy Result", key: "c", modifiers: .command)
+    static let panelRetry = KeyHint(title: "Try Again", key: "r", modifiers: .command)
+    static let panelLearn = KeyHint(title: "Study / Back", key: "l", modifiers: .command)
+    static let panelCancel = KeyHint(title: "Stop / Close", key: .escape, modifiers: [])
     /// Read-only reading text claims Return on a selection; `LookupTextView.keyDown` handles it,
     /// and the 快捷键 page lists it.
-    static let lookUp = KeyHint(title: "查询所选", key: .return, modifiers: [])
+    static let lookUp = KeyHint(title: "Look Up Selection", key: .return, modifiers: [])
 
     // The main window.
-    static let process = KeyHint(title: "处理", key: .return, modifiers: .command)
-    static let translateMode = KeyHint(title: "翻译", key: "1", modifiers: .command)
-    static let polishMode = KeyHint(title: "润色", key: "2", modifiers: .command)
-    static let cancel = KeyHint(title: "取消处理", key: ".", modifiers: .command)
-    static let learn = KeyHint(title: "学习 / 返回", key: "l", modifiers: .command)
-    static let copy = KeyHint(title: "复制", key: "c", modifiers: .command)
-    static let previous = KeyHint(title: "上一条", key: .upArrow, modifiers: .command)
-    static let next = KeyHint(title: "下一条", key: .downArrow, modifiers: .command)
-    static let delete = KeyHint(title: "删除", key: .delete, modifiers: .command)
+    static let process = KeyHint(title: "Process", key: .return, modifiers: .command)
+    static let translateMode = KeyHint(title: "Translate", key: "1", modifiers: .command)
+    static let polishMode = KeyHint(title: "Polish", key: "2", modifiers: .command)
+    static let cancel = KeyHint(title: "Cancel", key: ".", modifiers: .command)
+    static let learn = KeyHint(title: "Study / Back", key: "l", modifiers: .command)
+    static let copy = KeyHint(title: "Copy", key: "c", modifiers: .command)
+    static let previous = KeyHint(title: "Previous", key: .upArrow, modifiers: .command)
+    static let next = KeyHint(title: "Next", key: .downArrow, modifiers: .command)
+    static let delete = KeyHint(title: "Delete", key: .delete, modifiers: .command)
 
     /// The 快捷键 page's groups, by where the keys work.
     static let groups: [(title: String, keys: [KeyHint])] = [
-        ("浮窗", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel, lookUp]),
-        ("翻译与润色", [process, translateMode, polishMode, cancel, learn, copy]),
-        ("生词本与历史记录", [previous, next, delete, copy, learn]),
+        ("Panel", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel, lookUp]),
+        ("Translate &amp; Polish", [process, translateMode, polishMode, cancel, learn, copy]),
+        ("Notebook and History", [previous, next, delete, copy, learn]),
     ]
 }

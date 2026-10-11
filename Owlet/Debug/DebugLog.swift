@@ -5,7 +5,7 @@ import Foundation
 struct DebugExchange: Identifiable, Sendable {
     let id = UUID()
     var date = Date()
-    /// "翻译 · zh-Hant" / "润色", naming what was asked for.
+    /// "翻译 · zh-Hant" / "Polish", naming what was asked for.
     var title: String
     /// The request body exactly as sent, pretty printed. The API key travels in a header, so it is
     /// not in here.
@@ -50,12 +50,12 @@ struct DebugExchange: Identifiable, Sendable {
 
     /// The plain text a one-click copy puts on the pasteboard.
     var report: String {
-        var lines = ["# \(title)", String(localized: "时间：\(date.formatted(date: .numeric, time: .standard))")]
-        if let failure { lines.append(String(localized: "失败原因：\(failure)")) }
-        if let sourceDivergence { lines.append(String(localized: "原文差异：\n\(sourceDivergence)")) }
-        lines.append(String(localized: "\n## 请求体\n\(request)"))
-        if let response { lines.append(String(localized: "\n## 模型原始返回\n\(response)")) }
-        lines.append(String(localized: "\n## 提交原文\n\(submitted)"))
+        var lines = ["# \(title)", String(localized: "Time: \(date.formatted(date: .numeric, time: .standard))")]
+        if let failure { lines.append(String(localized: "Failure: \(failure)")) }
+        if let sourceDivergence { lines.append(String(localized: "Source difference:\n\(sourceDivergence)")) }
+        lines.append(String(localized: "\n## Request body\n\(request)"))
+        if let response { lines.append(String(localized: "\n## Model raw reply\n\(response)")) }
+        lines.append(String(localized: "\n## Submitted text\n\(submitted)"))
         return lines.joined(separator: "\n")
     }
 

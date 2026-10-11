@@ -52,8 +52,8 @@ struct LookupQuery: Hashable, Sendable {
 
         var message: String {
             switch self {
-            case .empty: "所选内容没有可查询的文字"
-            case .tooLong: "所选超过 \(LookupQuery.maxText) 字，请缩短后查询"
+            case .empty: "The selection has no text to look up"
+            case .tooLong: "The selection is longer than \(LookupQuery.maxText) characters; shorten it to look it up"
             }
         }
     }

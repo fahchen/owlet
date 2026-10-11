@@ -6,8 +6,8 @@ enum PanelGlassEffect: String, CaseIterable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .transparent: "更透明"
-        case .contrast: "更高对比度"
+        case .transparent: "More Transparent"
+        case .contrast: "Higher Contrast"
         }
     }
 

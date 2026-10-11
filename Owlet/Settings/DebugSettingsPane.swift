@@ -13,8 +13,8 @@ struct DebugSettingsPane: View {
         Group {
             if log.exchanges.isEmpty {
                 ContentUnavailableView(
-                    "还没有记录", systemImage: "ladybug",
-                    description: Text("发一次翻译或润色后会出现在这里。"))
+                    "Nothing recorded yet", systemImage: "ladybug",
+                    description: Text("Run a translation or a polish and it appears here."))
             } else {
                 // `List(_:)` over the identified collection: no explicit `ForEach` needed.
                 List(log.exchanges) { exchange in
@@ -64,10 +64,10 @@ struct DebugSettingsPane: View {
                     .font(.system(size: 11, design: .monospaced))
                     .textSelection(.enabled)
             }
-            block("提交原文", exchange.submitted)
-            block("模型原始返回", exchange.response ?? "—")
-            block("请求体", exchange.request)
-            Button("复制这条记录") { Clipboard.copy(exchange.report) }
+            block("Submitted Text", exchange.submitted)
+            block("Model Raw Reply", exchange.response ?? "—")
+            block("Request Body", exchange.request)
+            Button("Copy This Record") { Clipboard.copy(exchange.report) }
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)

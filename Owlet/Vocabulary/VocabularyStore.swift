@@ -165,8 +165,8 @@ enum VocabularyError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .emptyExpression: "没有可收藏的内容"
-        case .duplicateExpression: "同语言下已存在相同的表达"
+        case .emptyExpression: "There is nothing to save"
+        case .duplicateExpression: "An expression with the same text already exists in this language"
         }
     }
 }

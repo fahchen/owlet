@@ -43,7 +43,7 @@ struct ExpandedPanelContent: View {
 
     private var sourceEditor: some View {
         // A vertical TextField hugs its text, so the gap above the divider matches the one below it.
-        TextField("原文", text: $model.input, axis: .vertical)
+        TextField("Source", text: $model.input, axis: .vertical)
             .textFieldStyle(.plain)
             .font(.system(size: PanelMetrics.sourceTextSize))
             .fontWeight(PanelMetrics.sourceWeight)
@@ -80,7 +80,7 @@ struct ExpandedPanelContent: View {
                         targetOrigin: lookupOrigin)
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
-                        Button(editingSource ? "收起原文" : "编辑原文") { editingSource.toggle() }
+                        Button(editingSource ? "Hide Source" : "Edit Source") { editingSource.toggle() }
                             .buttonStyle(.glass)
                     }
                 } else {
@@ -99,7 +99,7 @@ struct ExpandedPanelContent: View {
                     .lineLimit(2)
                     .redacted(reason: .placeholder)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("正在生成结果")
+                    .accessibilityLabel("Generating the result")
             }
         }
     }

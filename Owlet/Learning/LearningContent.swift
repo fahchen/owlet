@@ -126,7 +126,7 @@ final class LearningModel {
 
     private func send(_ request: LearningRequest) {
         guard let config = config() else {
-            state = .failure("模型服务未配置")
+            state = .failure(String(localized: "The model service is not configured"))
             return
         }
         task?.cancel()

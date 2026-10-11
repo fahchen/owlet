@@ -15,7 +15,7 @@ struct LookupText: NSViewRepresentable {
     /// Secondary text, such as a polish's 润色前, which reads quieter than what replaced it.
     var secondary = false
     /// What the text is, for VoiceOver.
-    var label = "结果"
+    var label = String(localized: "Result")
     /// nil keeps the text selectable without offering a lookup.
     let origin: LookupOrigin?
     /// The sentence this text was taken from; a selection in the text is looked up inside it.
@@ -305,7 +305,7 @@ final class LookupTextView: NSTextView {
         let menu = super.menu(for: event) ?? NSMenu()
         guard selectedQuery != nil else { return menu }
         let item = NSMenuItem(
-            title: "查询所选", action: #selector(lookUpSelection(_:)), keyEquivalent: "")
+            title: "Look Up Selection", action: #selector(lookUpSelection(_:)), keyEquivalent: "")
         item.target = self
         menu.insertItem(item, at: 0)
         menu.insertItem(.separator(), at: 1)
@@ -333,7 +333,7 @@ final class LookupTextView: NSTextView {
     override func accessibilityCustomActions() -> [NSAccessibilityCustomAction]? {
         guard case .success? = selectedQuery else { return super.accessibilityCustomActions() }
         return [
-            NSAccessibilityCustomAction(name: "查询所选") { [weak self] in
+            NSAccessibilityCustomAction(name: "Look Up Selection") { [weak self] in
                 self?.lookUpSelection(nil)
                 return true
             }

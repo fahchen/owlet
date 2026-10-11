@@ -59,10 +59,10 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .translate: "翻译"
-        case .translateReplace: "翻译并替换"
-        case .polish: "润色"
-        case .polishReplace: "润色并替换"
+        case .translate: "Translate"
+        case .translateReplace: "Translate and Replace"
+        case .polish: "Polish"
+        case .polishReplace: "Polish and Replace"
         }
     }
 
@@ -107,7 +107,8 @@ final class ShortcutController {
     /// Saves (or clears with nil) and re-registers. On conflict or failure nothing is saved.
     func set(_ shortcut: Shortcut?, for action: ShortcutAction) {
         if let shortcut, let other = conflict(shortcut, for: action) {
-            registrationError = String(localized: "该组合已用于“\(other.title)”，请换一个。")
+            registrationError = String(
+                localized: "That combination is already used for “\(other.title)”; choose another.")
             return
         }
         let previous = shortcuts[action]
@@ -115,7 +116,8 @@ final class ShortcutController {
         guard register() || shortcut == nil else {
             shortcuts[action] = previous
             register()
-            registrationError = String(localized: "该组合已被系统或其他应用占用，请换一个。")
+            registrationError = String(
+                localized: "The system or another app already uses that combination; choose another.")
             return
         }
         SettingsStore.setShortcut(shortcut, forKey: action.defaultsKey, in: defaults)
@@ -140,7 +142,7 @@ final class ShortcutController {
             let status = RegisterEventHotKey(
                 shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
             guard status == noErr, let ref else {
-                registrationError = String(localized: "快捷键注册失败（\(status)）。")
+                registrationError = String(localized: "Registering the shortcut failed (\(status)).")
                 ok = false
                 continue
             }

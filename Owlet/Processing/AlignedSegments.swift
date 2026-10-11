@@ -17,7 +17,7 @@ struct AlignedSegments: View {
             ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                 VStack(alignment: .leading, spacing: 3) {
                     LookupText(
-                        text: segment.source, size: sourceSize, lineSpacing: lineSpacing, label: "原文",
+                        text: segment.source, size: sourceSize, lineSpacing: lineSpacing, label: "Source",
                         origin: sourceOrigin)
                     LookupText(
                         text: segment.target, size: targetSize, weight: .medium, lineSpacing: lineSpacing,

@@ -39,12 +39,12 @@ enum EffortLevel: String, CaseIterable, Sendable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .automatic: "自动（服务商默认）"
-        case .off: "关闭"
-        case .low: "低"
-        case .medium: "中"
-        case .high: "高"
-        case .max: "最高"
+        case .automatic: "Automatic (the provider's default)"
+        case .off: "Off"
+        case .low: "Low"
+        case .medium: "Medium"
+        case .high: "High"
+        case .max: "Highest"
         }
     }
 }
@@ -148,8 +148,8 @@ enum TranslationDisplayMode: String, CaseIterable, Sendable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .sectioned: "原文／译文分区"
-        case .aligned: "逐句对照"
+        case .sectioned: "Source / Result Sections"
+        case .aligned: "Sentence by Sentence"
         }
     }
 
@@ -292,8 +292,8 @@ enum PanelPosition: String, CaseIterable, Sendable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .fixed: "固定位置"
-        case .followSelection: "跟随选区"
+        case .fixed: "Fixed Position"
+        case .followSelection: "Follow the Selection"
         }
     }
 }

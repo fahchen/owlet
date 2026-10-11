@@ -43,7 +43,7 @@ struct PromptSettingsView: View {
                 .focused($focused, equals: operation)
                 .accessibilityLabel("\(operation.title) System Prompt")
             if invalid == operation {
-                Text("内容不能为空；这次改动没有生效。")
+                Text("The content cannot be empty; this change was not applied.")
                     .font(.system(size: 11))
                     .foregroundStyle(.red)
             }
@@ -53,12 +53,12 @@ struct PromptSettingsView: View {
                 Spacer(minLength: 0)
                 // The restore is only worth offering once there is something to restore.
                 if customized.contains(operation) {
-                    Button("恢复默认", systemImage: "arrow.uturn.backward") {
+                    Button("Restore Default", systemImage: "arrow.uturn.backward") {
                         text.wrappedValue = defaultPrompt
                     }
                     .buttonStyle(.borderless)
                 } else {
-                    Text("默认")
+                    Text("Default")
                         .foregroundStyle(.secondary)
                 }
             }

@@ -44,11 +44,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     /// exception: it is not a language, so it does come from the catalog.
     var title: String {
         switch self {
-        case .system: String(localized: "跟随系统")
-        case .simplifiedChinese: "简体中文"
-        case .traditionalChinese: "繁體中文"
-        case .english: "English"
-        case .japanese: "日本語"
+        case .system: String(localized: "Follow System")
+        default:
+            // The system already knows a language's own name for itself, so no name is written here —
+            // which also keeps the sources free of the scripts the catalog is supposed to hold.
+            Locale(identifier: locale ?? "en").localizedString(forIdentifier: locale ?? "en")
+                ?? locale ?? "en"
         }
     }
 

@@ -19,19 +19,21 @@ struct TargetMappingSettingsView: View {
 
     var body: some View {
         Section {
-            Picker("兜底目标", selection: $fallbackTarget) {
+            Picker("Fallback Target", selection: $fallbackTarget) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
             ForEach($rows) { $row in
                 mappingRow($row)
             }
-            Button("添加映射", systemImage: "plus", action: addRow)
+            Button("Add Mapping", systemImage: "plus", action: addRow)
                 .buttonStyle(.borderless)
                 .disabled(rows.count >= options.count)
         } header: {
-            Text("翻译目标语言")
+            Text("Translation Target")
         } footer: {
-            Text("源语言由原文自动识别。未识别出源语言、或源语言没有对应行时使用兜底目标；一个源语言只保留一条映射。")
+            Text(
+                "The source is detected from the text. The fallback is used when it cannot be detected or has no row; one source keeps one mapping."
+            )
         }
         .onAppear(perform: load)
         // A language leaving the selection also leaves the table, so the rows are read again.
@@ -46,7 +48,7 @@ struct TargetMappingSettingsView: View {
     /// the table cannot end up with two targets for one language.
     private func mappingRow(_ row: Binding<Row>) -> some View {
         HStack(spacing: 10) {
-            Picker("源语言", selection: row.source) {
+            Picker("Source Language", selection: row.source) {
                 ForEach(sourceOptions(for: row.wrappedValue)) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
@@ -54,15 +56,15 @@ struct TargetMappingSettingsView: View {
             Image(systemName: "chevron.forward.2")
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
-            Picker("目标语言", selection: row.target) {
+            Picker("Target Language", selection: row.target) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
             .labelsHidden()
             Spacer(minLength: 12)
-            Button("删除", systemImage: "trash") { remove(row.wrappedValue.id) }
+            Button("Delete", systemImage: "trash") { remove(row.wrappedValue.id) }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
-                .accessibilityLabel("删除\(LanguageCatalog.name(for: row.wrappedValue.source))的映射")
+                .accessibilityLabel("Remove the mapping for \(LanguageCatalog.name(for: row.wrappedValue.source))")
         }
     }
 

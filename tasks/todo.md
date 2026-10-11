@@ -1081,12 +1081,16 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 
 未验证：真实 `deepseek-flash` 在查词上的纠正效果——仍缺「查词 · zh-Hans」的原始返回。
 
-## T58：发音不再空拆音频队列（部分修，含一条环境观察）
+## T58：发音停止的无谓拆队列（已修）；音频噪声确认非应用成因
 
-2026-10-11 用户点发音后 console 出现两条：`AudioQueue underflow #4: injecting silence … refills=316` 与 `AVAudioBuffer.mm:291 mBuffers[0].mDataByteSize (0) should be non-zero`。
+2026-10-11 用户点发音后 console 出现四条：`layoutSubtreeIfNeeded` 警告、`AddInstanceForFactory: No factory registered`、`AUCrashHandler.mm:126 invalidated`、`AVAudioBuffer.mm:291 mBuffers[0].mDataByteSize (0) should be non-zero`，以及 `AudioQueue underflow #N: injecting silence …`。
 
-已修的是第一条的成因：`LookupSpeech.live` 的 `stop()` 无条件 `stopSpeaking(at: .immediate)`，而卡片关闭、切换查询、打开卡片都会调用它——**即使一次都没播过**。对一个静音的合成器做立即停止就是立刻拆掉它的音频队列，队列报 underflow、框架再记一个 0 字节缓冲。现在 `LiveSpeech` 用 delegate 回调（`didStart`／`didFinish`／`didCancel`）记住「真的有声音在播」，`stop()` 无事可做时直接返回；顺带把「每次调用都枚举全部已安装语音」改为按语言缓存。
+**已修**：`LookupSpeech.live` 的 `stop()` 原本无条件 `stopSpeaking(at: .immediate)`，而卡片关闭、切换查询、打开卡片都会调用它——一次都没播过也一样。对静音合成器做立即停止就是立刻拆掉它的音频队列。现在 `LiveSpeech` 用 delegate 回调（`didStart`／`didFinish`／`didCancel`）记住「真的有声音在播」，无事可做时直接返回；顺带把每次调用都枚举全部已安装语音改为按语言缓存。`mise run check` 退出码 0。
 
-验证：`mise run check` 退出码 0（332 项测试通过）。预览里加了临时钩子实测：静音 stop 两次、连点六次发音、打断正在播的语音——本机 console 都没有再出现 `AudioQueue underflow`。
+**未能归因、且已确认不是应用造成的**：
 
-**未修、也无法在本机复现**：`AVAudioBuffer.mm:291` 那条 0 字节缓冲。它只在用户真机点发音时出现，我的预览钩子（静音 stop、快速连点、打断播放）都复现不出；同一份 console 里还有 `AddInstanceForFactory: No factory registered for id <CFUUID …>` 与 `AUCrashHandler.mm:126 invalidated`，都是音频硬件／驱动层的记录，不是应用入队的缓冲——应用代码里没有任何地方自己创建或入队 `AVAudioBuffer`，只有 `AVSpeechSynthesizer.speak`。结论：框架／设备侧的噪声，应用这层没有可改的余地；若真机上伴随可听卡顿，下一步是换掉系统 TTS（例如自带音频会话配置）或接受它。
+- 独立探针（`.build/audio-probe.swift`，直接用 `AVSpeechSynthesizer`，同一台机器、同一个 API）跑三段——正常播完、播 0.4 秒后 `.immediate` 打断、播 0.4 秒后 `.word` 打断——**一条噪声都没有**。预览钩子（静音 stop、连点六次发音、打断播放）同样复现不出。
+- 静止的对照事实：修复后用户仍看到 `AudioQueue underflow #1 … minInFlight=3 … refills=58`——`minInFlight` 大于 0 表示队列里始终有在途缓冲，这不是「没人喂数据」，而是设备在播报一次缓冲区欠载。日志里同时出现的 `AddInstanceForFactory`／`AUCrashHandler.mm`／`AVAudioBuffer.mm` 全是 CoreAudio 的设备与音频单元层记录，应用代码不创建也不入队任何 `AVAudioBuffer`，只调用 `AVSpeechSynthesizer.speak`。
+- 结论：这些是 coreaudiod 与音频设备层的记录（蓝牙耳机、采样率切换、设备睡眠唤醒是常见诱因）。应用这层没有可改的余地；先确认输出设备再谈下一步（换系统 TTS 或显式配置 `AVAudioSession` 都是有代价的决定）。
+
+**顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式，都是测试／预览路径。用户 console 里出现它，说明当时跑的是预览而非 app。

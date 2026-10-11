@@ -1074,4 +1074,8 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] 查词卡收藏按钮与发音按钮同形：都是 `CardGlassButton`（`.glass`、圆形边框、36pt、13pt 字形），不再各写一份；已收藏用强调色。
 - [x] 学习推荐不设条目上限。
 
-验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupRetryTests` 三条（漏可空键被纠正且第二次请求带回了原回复与缺键说明、第二次仍错只请求两次、传输失败只请求一次）；学习侧三条同规则回归。未验证：真实 `deepseek-flash` 在查词上的纠正效果——仍缺「查词 · zh-Hans」的原始返回。
+验证：`mise run format`、lint 与 generate 通过；`xcodebuild … CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual test` 退出码 0，328 项测试通过。新增 `LookupRetryTests` 三条（漏可空键被纠正且第二次请求带回了原回复与缺键说明、第二次仍错只请求两次、传输失败只请求一次）、`LookupCollectionTests.aStoredWordReadsAsCollectedWhenTheCardReopens`，学习侧三条同规则回归。
+
+**本会话末的环境限制**：`mise run check` 的 test 步骤在本 shell 里失败于 `Command CodeSign failed`——`Signing.local.xcconfig` 用 `Apple Development` 证书，而非交互 shell 无法解锁钥匙串（`security find-identity` 能看到该证书，但读不到私钥）。同一条命令加 `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual` 即通过。这是环境问题，不是代码问题；交互终端里的 `mise run check` 不受影响（交接文档 2026-10-11 已记录同一现象）。
+
+未验证：真实 `deepseek-flash` 在查词上的纠正效果——仍缺「查词 · zh-Hans」的原始返回。

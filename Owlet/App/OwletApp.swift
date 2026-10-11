@@ -74,11 +74,16 @@ struct OwletApp: App {
                 .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
         MenuBarExtra {
+            // A separate scene: without this it is built once and keeps the launch language, so its
+            // menu and label would not follow a language change.
             MenuContent(shortcuts: shortcuts, panel: panel, page: $page)
+                .id(L10n.shared.revision)
         } label: {
             MenuBarLabel(
                 shortcuts: shortcuts, panel: panel, page: $page,
-                collection: collection, history: history, promptFocus: $promptFocus)
+                collection: collection, history: history, promptFocus: $promptFocus
+            )
+            .id(L10n.shared.revision)
         }
     }
 }

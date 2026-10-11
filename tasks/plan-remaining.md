@@ -104,8 +104,8 @@ T46 已完成：panel 调试、测试及证据边界记录于 `docs/panel-debugg
 
 ## 阅读查词卡第一步（2026-10-07）
 
-T47 设计与规格同步已完成，功能仍未实现。正式依据为 [查词规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [lookup 契约](../spec/llm/contract.md#阅读查词)。
+T47 已按 T48–T51 实现并逐步原生验收（2026-10-11，提交 90090e7、f4e2e79、7cc0220、b583e86 及 T51），剩系统语音发声、真实 VoiceOver 与真实安装版三项待最终验收。正式依据为 [查词规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [lookup 契约](../spec/llm/contract.md#阅读查词)。
 
 剩余执行顺序：**T48 浮窗选区完整路径 → T49 单击／悬停 → T50 其余只读区域 → T51 学习行及完整回归**。各步范围、验收及验证见 [todo.md](todo.md)，依赖见 [plan.md](plan.md)。
 
-T48 已实现浮窗选区路径并完成原生验收（证据见 todo.md）；T49–T51 待实现。首项须先取得原生控件、选区／焦点、辅助功能、语音可用性及长度边界的证据；不把现有截图或文档检查记为查词验收。完成五区域、不误收藏／写回及失败／竞态回归后才可关闭 T47。第二步另行讨论。
+T48–T51 均已实现，证据见 todo.md。首项须先取得原生控件、选区／焦点、辅助功能、语音可用性及长度边界的证据；不把现有截图或文档检查记为查词验收。完成五区域、不误收藏／写回及失败／竞态回归后才可关闭 T47。第二步另行讨论。

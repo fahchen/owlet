@@ -570,6 +570,18 @@ final class LookupTransport: Sendable {
         #expect(try vocabulary.entries().count == 1)
     }
 
+    @Test func aLearningExpressionIsLookedUpInsideItsSentence() throws {
+        let view = LookupTextView(usingTextLayoutManager: false)
+        view.string = "follow up"
+        view.origin = english
+        view.sentence = "I will follow up tomorrow."
+        view.setSelectedRange(NSRange(location: 7, length: 2))
+        let query = try #require(try view.selectedQuery?.get())
+        #expect(query.text == "up")
+        #expect(query.context == "I will follow up tomorrow.")
+        #expect(query.offset == 14)
+    }
+
     @Test func leavingTheWindowClosesThatTextsCard() async throws {
         let presenter = LookupPresenter(
             store: LookupStore(config: { nil }, defaults: lookupDefaults),

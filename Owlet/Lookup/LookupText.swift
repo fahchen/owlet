@@ -18,6 +18,11 @@ struct LookupText: NSViewRepresentable {
     var label = "结果"
     /// nil keeps the text selectable without offering a lookup.
     let origin: LookupOrigin?
+    /// The sentence this text was taken from; a selection in the text is looked up inside it.
+    var sentence: String? = nil
+    /// Set on a learning row: a plain click is the row's own action (collect) instead of a lookup,
+    /// and the text gets no hover, so selection is its only lookup entry.
+    var onPlainClick: (() -> Void)? = nil
     @Environment(\.lookups) private var presenter
 
     func makeNSView(context: Context) -> LookupTextView {
@@ -37,6 +42,8 @@ struct LookupText: NSViewRepresentable {
     func updateNSView(_ view: LookupTextView, context: Context) {
         view.origin = presenter == nil ? nil : origin
         view.presenter = presenter
+        view.sentence = sentence
+        view.onPlainClick = onPlainClick
         view.setAccessibilityLabel(label)
         let style: [CGFloat] = [size, weight.rawValue, lineSpacing, justified ? 1 : 0, secondary ? 1 : 0]
         guard view.string != text || view.style != style else { return }
@@ -72,6 +79,8 @@ struct LookupText: NSViewRepresentable {
 final class LookupTextView: NSTextView {
     var origin: LookupOrigin?
     weak var presenter: LookupPresenter?
+    var sentence: String?
+    var onPlainClick: (() -> Void)?
     /// Size, weight, line spacing and alignment last applied, so an unchanged update leaves the selection.
     var style: [CGFloat] = []
     /// The single-click lookup waiting out the double-click interval.
@@ -106,9 +115,17 @@ final class LookupTextView: NSTextView {
         let point = convert(event.locationInWindow, from: nil)
         // NSTextView tracks the whole gesture here and returns on mouse up.
         super.mouseDown(with: event)
-        guard event.clickCount == 1, selectedRange().length == 0, origin != nil,
-            let word = word(at: point)
-        else { return }
+        guard event.clickCount == 1, selectedRange().length == 0 else { return }
+        if let onPlainClick {
+            // Waits out a double-click too, so selecting a word never also collects it.
+            pendingClick = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
+                guard !Task.isCancelled, self?.selectedRange().length == 0 else { return }
+                onPlainClick()
+            }
+            return
+        }
+        guard origin != nil, let word = word(at: point) else { return }
         pendingClick = Task { [weak self] in
             try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
             guard !Task.isCancelled, let self, self.selectedRange().length == 0,
@@ -133,7 +150,7 @@ final class LookupTextView: NSTextView {
         super.mouseMoved(with: event)
         // Cursor rects do not apply while Owlet is inactive, which the panel always leaves it.
         NSCursor.iBeam.set()
-        guard origin != nil else { return }
+        guard origin != nil, onPlainClick == nil else { return }
         let word = word(at: convert(event.locationInWindow, from: nil))
         // A selection already shows its own highlight; hover never stacks on it.
         setHover(word.flatMap { NSIntersectionRange($0, selectedRange()).length == 0 ? $0 : nil })
@@ -190,6 +207,14 @@ final class LookupTextView: NSTextView {
     var selectedQuery: Result<LookupQuery, LookupQuery.Refusal>? {
         let range = selectedRange()
         guard range.length > 0, let origin else { return nil }
+        // Inside its source sentence when the text is a phrase taken from one, so the explanation
+        // is the meaning there rather than the phrase on its own.
+        if let sentence, let within = sentence.range(of: string) {
+            let base = NSRange(within, in: sentence).location
+            return LookupQuery.make(
+                selection: NSRange(location: base + range.location, length: range.length), in: sentence,
+                origin: origin)
+        }
         return LookupQuery.make(selection: range, in: string, origin: origin)
     }
 

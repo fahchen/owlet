@@ -113,3 +113,7 @@ T48–T51 均已实现，证据见 todo.md。首项须先取得原生控件、�
 ## T52 与 T53（已实现）
 
 T52 按用户要求把查词快路径改为 ⌘ 单击，并给出 ⌘ 悬停提示与手形光标；T53 按 [BDR-0009](../spec/learning/decisions/BDR-0009-learning-lemma.md) 给学习契约加可空 `lemma`，修掉日语推荐因「字典形 vs 活用形」被判 `.format` 的缺陷，同时把 BDR-0005 的释义语言随条目保存落实。验收与验证见 [todo.md](todo.md)。T53 未验证项：真实 DeepSeek 返回 `lemma` 的稳定性。
+
+## T54 与 T55（已实现）
+
+T54 修掉查词分支首轮审阅的三个缺陷（语境语言归因、「无原句语境」可达、重试重盖章）；T55 按用户要求与 [BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md) 让查词卡可显式把当前词加入生词本，保存本次语境与释义且不另发请求，查词本身仍不自动入库。验收与验证见 [todo.md](todo.md)。T55 未验证项：真实窗口观感与真实模型入库结果。

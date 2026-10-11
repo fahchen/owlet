@@ -97,6 +97,49 @@ final class CollectionAction {
         }
     }
 
+    /// Whether the notebook already holds this language and expression; the lookup card mirrors the
+    /// stored membership, including entries collected anywhere else. An unknown language is never a
+    /// stored entry, so nothing is ever keyed under an empty tag.
+    func isCollected(language: String, expression: String) -> Bool {
+        guard !language.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        return
+            (try? store.entry(
+                language: language,
+                expression: expression.trimmingCharacters(in: .whitespacesAndNewlines))) != nil
+    }
+
+    /// The lookup card's own toggle: adding saves what the lookup already answered, and removing
+    /// deletes the entry exactly as the learning rows do. A failed save or delete leaves the stored
+    /// membership alone, so the card's state still reflects the notebook.
+    @discardableResult
+    func setCollected(_ selected: Bool, query: LookupQuery, result: LookupResult) -> Bool {
+        let draft = VocabularyDraft.from(query, result: result)
+        guard !draft.language.isEmpty else {
+            status = .saveFailed("未能确定这段文字的语言")
+            return false
+        }
+        if selected {
+            do {
+                _ = try store.collect(draft, in: query, result: result)
+                status = .saved
+                return true
+            } catch {
+                status = .saveFailed(error.localizedDescription)
+                return false
+            }
+        }
+        if let entry = try? store.entry(language: draft.language, expression: draft.expression) {
+            do {
+                try store.delete(entry)
+            } catch {
+                status = .saveFailed(error.localizedDescription)
+                return false
+            }
+        }
+        status = .idle
+        return true
+    }
+
     /// Runs or retries the meaning request for an entry that has none yet.
     func fillMeaning(for entry: VocabularyEntry) {
         guard let config = config() else {
@@ -169,6 +212,18 @@ extension VocabularyDraft {
             polishBefore: polish ? source : nil,
             polishAfter: polish ? result : nil,
             definitionLocale: origin.definitionLanguage)
+    }
+
+    /// Builds the snapshot for adding a lookup's answer to the notebook: the queried form, the
+    /// sentence it was read in, and the language and dictionary form the lookup established.
+    static func from(_ query: LookupQuery, result: LookupResult?) -> VocabularyDraft {
+        VocabularyDraft(
+            expression: query.text,
+            language: query.lookupLanguage(from: result) ?? "",
+            context: query.context ?? "",
+            contextLanguage: query.context == nil ? nil : query.lookupLanguage(from: result),
+            lemma: result?.lemma,
+            definitionLocale: query.definitionLanguage)
     }
 
     /// Builds the snapshot for collecting from 历史详情: the result is the expression and the record's

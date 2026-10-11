@@ -15,6 +15,9 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     private(set) var mode: Mode?
     let store: LookupStore
     let speech: LookupSpeech
+    /// The notebook a card's 加入生词本 writes to; nil keeps the card read-only, which is how the
+    /// tests and previews build it.
+    var collection: CollectionAction?
     private var popover: NSPopover?
     private weak var anchor: NSView?
     /// The text holding this window's selection; a new selection elsewhere clears it, so a window

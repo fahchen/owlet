@@ -23,6 +23,19 @@ struct LookupCard: View {
 
     private var canSpeak: Bool { voiceLanguage.map(presenter.speech.canSpeak) ?? false }
 
+    /// The language the notebook would key this word under; nil keeps the entry unusable, so the
+    /// card offers no collect action rather than saving a language-less entry.
+    private var notebookLanguage: String? { query.lookupLanguage(from: shown?.result) }
+
+    private var isCollected: Bool {
+        guard let collection = presenter.collection, let language = notebookLanguage else { return false }
+        return collection.isCollected(language: language, expression: query.text)
+    }
+
+    /// Whether the card can offer 加入生词本 at all: a notebook action is wired in and the text's
+    /// language is known. Read-only usage without one keeps the card exactly as it was.
+    private var canCollect: Bool { presenter.collection != nil && notebookLanguage != nil }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
@@ -48,6 +61,7 @@ struct LookupCard: View {
                 }
             }
             status
+            actions
         }
         .padding(16)
         .frame(width: 320, alignment: .leading)
@@ -78,6 +92,37 @@ struct LookupCard: View {
                 }
             }
         }
+    }
+
+    /// 加入生词本／已收藏, the same immediate toggle and bookmark the learning rows use. It sits under
+    /// the meaning so the answer stays where the user is reading, and the entry keeps the answer.
+    @ViewBuilder private var actions: some View {
+        if let shown, canCollect {
+            Divider()
+            Button {
+                guard let language = notebookLanguage else { return }
+                presenter.collection?.setCollected(
+                    !isCollected,
+                    query: query.language == nil ? stampedLanguageQuery(language) : query,
+                    result: shown.result)
+            } label: {
+                Label(
+                    isCollected ? "已收藏" : "加入生词本",
+                    systemImage: isCollected ? "bookmark.fill" : "bookmark")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(isCollected ? Color.accentColor : Color.primary)
+            .accessibilityValue(isCollected ? "已收藏" : "未收藏")
+            .accessibilityHint(isCollected ? "取消收藏" : "加入生词本")
+        }
+    }
+
+    /// The lookup can identify the language the reading area did not know; the notebook keys on it, so
+    /// the query carries it from here on.
+    private func stampedLanguageQuery(_ language: String) -> LookupQuery {
+        var query = query
+        query.language = language
+        return query
     }
 
     /// Lemma when it differs from the queried form, then pronunciation and part of speech. The

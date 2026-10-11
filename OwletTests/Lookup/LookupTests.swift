@@ -672,3 +672,106 @@ final class LookupTransport: Sendable {
         #expect(store.entries[bank] == nil)
     }
 }
+
+/// 加入生词本 on the lookup card: the answer the query already produced becomes a notebook entry,
+/// with no second request, and the same card can undo it.
+@MainActor @Suite struct LookupCollectionTests {
+    let river = try! query("bank", in: "We sat on the bank of the river.")
+    /// A look-up whose text language the reading area does not know, so the model's answer supplies it.
+    let unknownLanguage = LookupQuery.withoutContext(
+        "推敲", origin: LookupOrigin(language: nil, definitionLanguage: "zh-Hans"))
+
+    func notebook() throws -> (CollectionAction, VocabularyStore) {
+        let store = try makeVocabularyStore()
+        return (CollectionAction(store: store, client: ModelClient(), config: { nil }), store)
+    }
+
+    @Test func addingSavesTheAnswerWithoutASecondRequest() throws {
+        let (collection, store) = try notebook()
+        let answer = try LookupResult.parse(
+            lookupReply(river, meaning: "河岸", overrides: ["lemma": "bank"]), query: river)
+
+        #expect(!collection.isCollected(language: "en", expression: "bank"))
+        #expect(collection.setCollected(true, query: river, result: answer))
+        #expect(collection.isCollected(language: "en", expression: "bank"))
+
+        let entry = try #require(try store.entries().first)
+        withExtendedLifetime(store) {
+            #expect(entry.expression == "bank")
+            #expect(entry.language == "en")
+            // The card's own meaning, its language, and the dictionary form it established.
+            #expect(entry.meaning == "河岸")
+            #expect(entry.definitionLocale == "zh-Hans")
+            #expect(entry.lemma == "bank")
+            #expect(entry.contexts.map(\.source) == ["We sat on the bank of the river."])
+            #expect(entry.contexts.first?.language == "en")
+        }
+    }
+
+    /// The reading area did not know the language; the model's answer does, and the entry is keyed
+    /// under it, so removing finds the same entry again.
+    @Test func anUnknownLanguageComesFromTheAnswer() throws {
+        let (collection, store) = try notebook()
+        let answer = try LookupResult.parse(
+            lookupReply(unknownLanguage, meaning: "反复琢磨。", overrides: ["language": "ja"]),
+            query: unknownLanguage)
+
+        #expect(collection.setCollected(true, query: unknownLanguage, result: answer))
+        let entry = try #require(try store.entries().first)
+        withExtendedLifetime(store) {
+            #expect(entry.expression == "推敲")
+            #expect(entry.language == "ja")
+        }
+        #expect(collection.isCollected(language: "ja", expression: "推敲"))
+        #expect(collection.setCollected(false, query: unknownLanguage, result: answer))
+        #expect(try store.entries().isEmpty)
+    }
+
+    /// A lookup with no source sentence has no context to store, but still keeps the answer.
+    @Test func aContextFreeLookupSavesNoContext() throws {
+        let (collection, store) = try notebook()
+        let free = LookupQuery.withoutContext("bank", origin: english)
+        let answer = try LookupResult.parse(lookupReply(free, meaning: "银行"), query: free)
+
+        #expect(collection.setCollected(true, query: free, result: answer))
+        let entry = try #require(try store.entries().first)
+        withExtendedLifetime(store) {
+            #expect(entry.meaning == "银行")
+            #expect(entry.contexts.isEmpty)
+        }
+    }
+
+    /// Collecting the same word from another sentence appends that sentence and keeps the first
+    /// meaning, which is the notebook's existing rule for a repeated expression.
+    @Test func aSecondSentenceAppendsAndKeepsTheAnswer() throws {
+        let (collection, store) = try notebook()
+        let other = try query("bank", in: "She works at the bank downtown.")
+        let first = try LookupResult.parse(lookupReply(river, meaning: "河岸"), query: river)
+        let second = try LookupResult.parse(lookupReply(other, meaning: "银行"), query: other)
+
+        #expect(collection.setCollected(true, query: river, result: first))
+        #expect(collection.setCollected(true, query: other, result: second))
+
+        let entries = try store.entries()
+        let entry = try #require(entries.first)
+        withExtendedLifetime(store) {
+            #expect(entries.count == 1)
+            #expect(entry.meaning == "河岸")
+            #expect(
+                Set(entry.contexts.map(\.source)) == [
+                    "We sat on the bank of the river.", "She works at the bank downtown.",
+                ])
+        }
+    }
+
+    /// Removing the entry from the notebook is the same toggle the learning rows use, and a lookup
+    /// that was never added is not an error.
+    @Test func removingDeletesTheEntry() throws {
+        let (collection, store) = try notebook()
+        let answer = try LookupResult.parse(lookupReply(river), query: river)
+        #expect(collection.setCollected(true, query: river, result: answer))
+        #expect(collection.setCollected(false, query: river, result: answer))
+        #expect(try store.entries().isEmpty)
+        #expect(collection.status == .idle)
+    }
+}

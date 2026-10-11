@@ -127,4 +127,8 @@ struct LookupQuery: Hashable, Sendable {
         [config.provider.rawValue, config.baseURL.absoluteString, config.model, config.effort.rawValue]
             .joined(separator: "|")
     }
+
+    /// The text's language: what the reading area knew before asking, else what the model identified.
+    /// The notebook keys an entry on language and expression, so collecting uses this one value.
+    func lookupLanguage(from result: LookupResult?) -> String? { language ?? result?.language }
 }

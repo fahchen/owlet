@@ -841,6 +841,21 @@ final class LookupTransport: Sendable {
         }
     }
 
+    /// Reopening the card for a word already in the notebook shows it as collected, which is what
+    /// makes the button's two states reachable at all.
+    @Test func aStoredWordReadsAsCollectedWhenTheCardReopens() throws {
+        let (collection, store) = try notebook()
+        let answer = try LookupResult.parse(lookupReply(river), query: river)
+        #expect(!collection.isCollected(language: "en", expression: "bank"))
+        #expect(collection.setCollected(true, query: river, result: answer))
+        #expect(collection.isCollected(language: "en", expression: "bank"))
+        // A second card for the same query, from the same notebook, still reads as collected.
+        let reopened = CollectionAction(store: store, client: ModelClient(), config: { nil })
+        #expect(reopened.isCollected(language: "en", expression: "bank"))
+        // And the word reached the notebook's own list, which is what the page shows.
+        #expect(try store.entries().map(\.expression) == ["bank"])
+    }
+
     /// Removing the entry from the notebook is the same toggle the learning rows use, and a lookup
     /// that was never added is not an error.
     @Test func removingDeletesTheEntry() throws {

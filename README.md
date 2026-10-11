@@ -34,7 +34,7 @@ mise run prod -- --team Z98NKJSF69  # 有证书后：Apple Development 签名
 
 两种签名的差别只在权限与提示：ad-hoc 的包拷到另一台 Mac 需要右键打开一次，而且**每次重编都要重新授权辅助功能**；`--team` 指定证书后签名带上 Team ID，授权一次就长期有效，但因为没有公证，首次打开仍会提示一次。用 `scp` 或 `rsync` 传，别用 AirDrop——前者不写 quarantine 标记。
 
-`project.yml` 没有设 `MARKETING_VERSION`，所以产物名字用提交号（`Owlet-<commit>-universal.zip`）；想要版本号就在 `project.yml` 里加上这个设置，脚本会自动改用它。
+版本号在 `project.yml` 的 `MARKETING_VERSION`／`CURRENT_PROJECT_VERSION`（当前 `0.1.0`／`1`），产物名字因此是 `Owlet-0.1.0-universal.zip`；发布前在这两处改一次即可，脚本从产物的 `CFBundleShortVersionString` 读取。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。
 
 ## 开发
 

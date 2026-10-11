@@ -29,6 +29,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_HARDENED_RUNTIME: YES
+        # The version users and artifacts are named by. `scripts/prod-build.sh` reads
+        # CFBundleShortVersionString from the built app, so these two are what turn a packaged name
+        # from a commit hash into a version; bump them here, in one place, when releasing.
+        MARKETING_VERSION: "0.1.0"
+        # The build number: raise it for every artifact handed out under the same version.
+        CURRENT_PROJECT_VERSION: "1"
   OwletTests:
     type: bundle.unit-test
     platform: macOS

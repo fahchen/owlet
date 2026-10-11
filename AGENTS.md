@@ -8,7 +8,7 @@ Owlet 的仓库级约定。产品行为以 `spec/` 为准，本文只说「怎�
 mise run check    # lint + 生成工程 + 测试；pre-commit 与 CI 都跑它
 mise run format   # swift-format 就地格式化，改完 Swift 先跑再 check
 mise run dev      # 构建并重启本机 Owlet
-mise run prod     # Release 通用二进制，校验后打包到 dist/
+mise run prod     # Release 通用二进制，校验后打包到 dist/（版本取自 project.yml）
 scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/derived（可选）
 ```
 
@@ -26,6 +26,10 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
   系统组件；长文本折叠用 `DisclosureGroup`；错误用 `Label(systemImage:)` + 系统红；动作行用
   `PageFooter` + `.glass` / `.glassProminent`。**不要画圆角卡片背景**。
 - 加新界面前先查 `docs/liquid-glass-components.md` 的逐屏表，并把它补进去。
+
+## 版本
+
+发版只改 `project.yml` 的 `MARKETING_VERSION`（用户看到的版本）与 `CURRENT_PROJECT_VERSION`（同一版本下每次交付递增的构建号），`scripts/prod-build.sh` 从产物的 `CFBundleShortVersionString` 读取并用于命名与打印。**不要**另建 VERSION 文件或 tag 作为第二真源。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。
 
 ## 界面语言
 

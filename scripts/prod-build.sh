@@ -122,11 +122,14 @@ if codesign -d --entitlements - "$app" 2>/dev/null | grep -q "get-task-allow"; t
   fail "a Release build carries get-task-allow, so it is signed like a debug build"
 fi
 
-signed_with="$(codesign -dv --verbose=4 "$app" 2>&1 | awk -F= '/^Authority=/{print $2; exit}')"
-team_id="$(codesign -dv --verbose=4 "$app" 2>&1 | awk -F= '/^TeamIdentifier=/{print $2; exit}')"
+# No `exit` in these awk programs: leaving early closes the pipe while codesign is still writing, and
+# with `set -o pipefail` that SIGPIPE (141) becomes the script's own exit status. Each program reads to
+# the end instead and remembers the first match it saw.
+signed_with="$(codesign -dv --verbose=4 "$app" 2>&1 | awk -F= '/^Authority=/{if (!seen) {print $2; seen=1}}')"
+team_id="$(codesign -dv --verbose=4 "$app" 2>&1 | awk -F= '/^TeamIdentifier=/{if (!team) {team=$2}} END {print team}')"
 [[ "$team_id" == "not set" ]] && team_id=""   # codesign says "not set" rather than leaving it out
-# project.yml sets no MARKETING_VERSION, so Xcode's generated Info.plist may carry no version at
-# all; the commit is then the honest label for the artifact rather than an invented number.
+# The version comes from the app itself, so `project.yml` is the only place it is written. Without
+# MARKETING_VERSION the plist carries none, and the commit becomes the honest label for the artifact.
 short_version="$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist" 2>/dev/null || true)"
 versioned=true
 [[ -n "$short_version" ]] || { short_version="$revision"; versioned=false; }

@@ -909,9 +909,9 @@ T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下�
 
 记录 Figma 组件核对、隔离预览、七态系统截图、真实模型联调、失败尝试与未验收项；用户确认的设计倾向归入 spec/DESIGN.md；README 与组件表已链接。验证：文档链接及 git diff --check。见 `docs/panel-debugging-and-testing.md`。
 
-## T47：阅读查词卡第一步（设计与规格已确认，待实现）
+## T47：阅读查词卡第一步（T48–T51 已实现，待最终验收）
 
-依据：[查词规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)、[模型契约](../spec/llm/contract.md#阅读查词已确认待实现)。讨论与备选保留在 [意图记录](../docs/intent/word-lookup.md)。Suikou 审阅结论已转为项目文档，下面 T48–T51 为执行顺序；文档完成不等于功能完成。
+依据：[查词规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)、[模型契约](../spec/llm/contract.md#阅读查词)。讨论与备选保留在 [意图记录](../docs/intent/word-lookup.md)。Suikou 审阅结论已转为项目文档，下面 T48–T51 为执行顺序；文档完成不等于功能完成。
 
 **总验收：**
 
@@ -924,7 +924,7 @@ T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下�
 
 **验证：**实现时用注入模型／语音与隔离存储覆盖契约、请求复用、竞态、失败恢复及不写回；真实原生窗口验证命中、手势、焦点、辅助功能与语音可用性。Swift 改动先 format 再 check。当前仅完成文档同步，尚无查词原生验收证据。
 
-## T48：浮窗选区查词的首个完整路径（待实现，依赖 T47）
+## T48：浮窗选区查词的首个完整路径（已实现）
 
 范围：先在浮窗只读结果接入选区工具栏／右键、局部语境快照、独立 lookup 请求及原生卡片；随首个消费者加入所需的内存复用、原形／读音、手动系统 TTS、错误恢复与关闭保护。复用现有客户端及诊断，不预建持久表、通用文本框架或未使用接口。
 
@@ -932,7 +932,16 @@ T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下�
 
 验证：注入响应覆盖有效／非法返回、相同请求合并、跨句来源与重查、失败明确重试、关闭／切换后迟到响应；隔离存储证明查询不写库，原生验证工具栏、复制、Esc 与语音缺失。完成后 format/check，记录可复现证据。
 
-## T49：只读正文单击查词与悬停提示（待实现，依赖 T48）
+T48 结果（2026-10-11）：
+
+- 实现：`Owlet/Lookup/`（快照与上限、`$defs.lookup` 校验、有界内存复用、系统 TTS、popover 与卡片、只读 `NSTextView`），`ModelClient.lookup` 复用传输、供应商格式与调试页；浮窗结果改用 `LookupText`（`PanelJustifiedText` 仍供主窗口与历史使用，T50 再替换）；Esc 经 `PanelController.run(.cancel)` 先关弹出层。
+- 上限：查询 300 字、语境 1200 字（见契约与 feature 新场景）。
+- 自动验证：`mise run format`、`mise run check` 退出码 0，296 项测试通过；`OwletTests/Lookup/LookupTests.swift` 覆盖快照／上限、契约（结构、文本、释义语言、已知语言、整句空值、调试捕获不含 Key）、同条件合并与复用、跨句来源与重查、重查失败保留旧解释、失败不自动重发、六类不兼容差异、无语境精确复用、设置变化、未配置、容量、迟到响应不覆盖／不重开、工具栏只查当前选区、切换／关闭停止发音、Esc 分层且不写回／不入库／不改原文。
+- 原生验证：`python3 scripts/panel-preview.py --panel`（真实 `PanelController`／`FloatingPanel`，非激活 accessory 应用，注入模型）以 CGEvent 合成鼠标键盘、`screencapture` 与 AX 树核对。通过：双击选词出现工具栏且不请求；工具栏不夺焦点、Shift+→ 扩选连续；工具栏／右键「查询所选」／Return 打开卡片，查询范围等于手选；加载→结果；⌘C 复制选区；Esc 先关卡片并把焦点与选区还给正文，再按 Esc 关浮窗；点击卡片不关浮窗、点击外部关浮窗；跨句旧解释标来源→重查（加载中保留旧解释）→当前句；契约失败→关闭再开不重发→重试成功；加载中关闭后不弹回；A→B 快速切换只留 B；`--no-voice` 时发音禁用并显示「暂无系统语音」；AX 暴露选中文本、自定义动作「查询所选」、加载 BusyIndicator、失败文本与重试／重查按钮，经 AX 执行该动作可打开卡片；学习双栏两端对齐保持。修正：正文改 `NSColor.textColor`（`labelColor` 在玻璃上偏灰），⌘C 由文本视图自行处理（非激活应用不经编辑菜单）。
+- 学习行可行性（为 T51）：把原生文本放进现有整行 `Button` 时，单击和拖拽都会切换收藏、文本无法选中。T51 须由文本自身区分单击（转交收藏）与拖拽，不能直接嵌入现有按钮。
+- 未验证：真实系统语音的实际发声（无法收音，只确认按钮可用与停止调用）；真实 VoiceOver 朗读与公告（仅 AX API 模拟）；深色、提高对比度下的卡片；真实 Owlet 快捷键路径与真实模型。
+
+## T49：只读正文单击查词与悬停提示（已实现）
 
 范围：在首个结果区域增加真实文字命中、系统分词、手选优先及 DESIGN 的封闭悬停例外，不改变布局与选区。
 
@@ -940,7 +949,14 @@ T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下�
 
 验证：原生窗口检查词边界、行末、换行、中日文、单击／双击／拖拽；浅深色与提高对比度核对悬停、选区及 I-beam，补必要命中／请求回归，format/check。
 
-## T50：其余只读阅读区域复用查词（待实现，依赖 T49）
+T49 结果（2026-10-11，新 main 样式）：
+
+- 实现：`LookupTextView` 单击在系统双击间隔（`NSEvent.doubleClickInterval`）内无第二次点击、且未产生选区时查询所在词；命中先要求点落在字形矩形内，再用 `NLTokenizer(.word)` 取词，空白、标点、行末与行间不命中。悬停以 `selectedTextBackgroundColor` 30% 临时属性标出命中词，与选区相交时不显示；鼠标移动时显式设 I-beam。
+- 自动验证：`LookupWordHitTests` 覆盖英文词与空格／引号／句号、日文 `翻訳`／`文学` 与括号／句号、中文 `典故` 与逗号；format/check 退出码 0。
+- 原生验证（`--panel`，合成鼠标键盘，每步先确认浮窗在场）：单击 0.25 秒时未出卡、间隔后出卡且标题为所点词；双击只选词并出工具栏、不出卡；拖拽只选区并出工具栏，⌘C 复制所选；词间空隙与行末单击不查询；日文命中 `古い`／`文学`／`翻訳`／`故事`／`吟味`，「」与、不命中；中文命中 `推敲`／`翻译`／`境界` 等系统分词；悬停只标命中词、不叠选区、I-beam，浅色／深色／高对比浅／深色截图均可见且与选区可区分（外观为进程级设置，未改系统设置）。
+- 未验证：系统「提高对比度」设置本身对玻璃的影响；真实 Owlet 路径。
+
+## T50：其余只读阅读区域复用查词（已实现）
 
 范围：文本处理页只读结果（含逐句对照）、生词本只读详情与语境、历史详情；沿用同一卡片与来源快照，不预定统一替换文本控件。
 
@@ -948,10 +964,136 @@ T45 排版修正：学习译文使用原生两端对齐文本，分隔线上下�
 
 验证：逐区域原生操作与语言／上下文快照回归，确认页面切换停止发音且旧响应不弹回；隔离数据验证不写回，format/check。
 
-## T51：学习行选区查词与完整回归（待实现，依赖 T50）
+T50 结果（2026-10-11）：
+
+- 实现：presenter 经 `EnvironmentValues.lookups` 注入，浮窗与主窗口各一个，共用应用级 `LookupStore`（跨区域精确复用）。文本处理页结果与逐句对照、生词本表达／语境／润色前后、历史原文与结果改用 `LookupText`；删除 `PanelJustifiedText`。文本视图离开窗口（切页、关窗）即关闭其工具栏或卡片，Esc 经 `cancelOperation` 先关卡片。来源：结果按 BDR-0005；逐句对照原文用原文语言、释义语言同结果；历史翻译记录原文语言未知（未存）；生词本释义语言暂为简体中文（ponytail，待 BDR-0005 按条目保存）。
+- 自动验证：format/check 退出码 0，306 项通过；新增历史／生词本来源、离窗关卡、两区域共用 store 只请求一次且不改已存条目。
+- 原生验证（`python3 scripts/panel-preview.py --main`，夹具模型与内存存储，合成鼠标键盘并先确认窗口在场）：文本处理页结果单击出卡、Esc 关卡、原文点击后输入与删除正常且不出卡；逐句对照原文（中文）与译文均可查；生词本表达出卡，语境查询加载中切到历史页后卡片关闭且不弹回；历史结果出卡，原文语言未知时发音禁用并显示「暂无系统语音」，双击出工具栏、⌘C 复制所选。
+- 未验证：真实 Owlet 数据与真实模型；生词本编辑字段（当前详情页无编辑控件）。
+
+## T51：学习行选区查词与完整回归（已实现）
 
 范围：浮窗与主窗口学习表达式的选区查询，保留整行收藏切换；完成 T47 全部区域的交互及辅助功能验收。
 
 验收：点击仍收藏／取消，拖拽、工具栏与右键查词不改变收藏；现有收藏失败处理保留。键盘与 VoiceOver 可发现查询、重试、发音与关闭动作，并获知来源及加载／失败状态。
 
 验证：隔离词库回归收藏反复切换与查询互不干扰；真实原生窗口完成五区域、焦点／Esc、复制、语音及辅助功能检查，format/check。同步实现状态与证据后才关闭 T47；第二步另立任务。
+
+T51 结果（2026-10-11）：
+
+- 实现：学习行拆成书签按钮（`.plain`，辅助功能值为已收藏／未收藏）、表达 `LookupText` 与释义；行用 `onTapGesture` 收藏并保留悬停背景。表达文字的单击在系统双击间隔后才切换收藏，双击与拖拽只选中；选区查询以该条 `context` 为语境（`LookupTextView.sentence`）。释义语言：翻译取本次目标，润色按映射。浮窗、文本处理页、历史详情的学习行都继承所在窗口的 presenter。
+- 自动验证：format/check 退出码 0，307 项通过；新增学习表达在原句内定位的回归，原有收藏切换／去重／失败回归仍通过。
+- 原生验证（默认预览窗口 ⌘5，夹具学习与内存词库）：点表达文字 0.15 秒时未切换、间隔后切换一次；点释义、行内空白、书签各即时切换；拖拽选中出工具栏、不改收藏；双击选中整词、不改收藏；经辅助功能动作查询所选，卡片按原句解释，收藏仍为未收藏；行悬停背景正常。
+
+T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处理页含逐句对照、生词本、历史详情、学习行）；选区只出工具栏，单击／工具栏／右键／Return／辅助功能动作触发；中日文系统分词；双击、拖拽、复制不误发；学习行收藏与查询互不干扰；释义语言按来源；跨句旧解释标来源并由用户重查；失败重试、同条件合并、迟到不覆盖不重开、设置改变不误命中；发音手动、切换关闭停止、无语音禁用并说明；Esc 先关卡片；不入库不写回。仍未验证、因此 T47 暂不关闭：①系统语音实际发声；②真实 VoiceOver 朗读与公告（仅 AX API 模拟）；③真实 Owlet 安装版配真实模型与真实数据；④系统「提高对比度」设置本身。
+
+## T52：查词快路径改为 ⌘ 单击（已实现）
+
+用户 2026-10-11 要求：查词由单击改为 ⌘ 单击；按住 ⌘ 时鼠标下的词显示悬停提示、光标变手形。
+
+验收：不按 ⌘ 的单击、双击、拖拽、复制回到系统文本行为且不查询；⌘ 单击立即查询所点的词，五类区域一致；学习行 ⌘ 单击只查询、不收藏，普通点击仍收藏；按下或松开 ⌘ 时不移动鼠标也即时更新提示与光标。
+
+结果：`LookupTextView` 在 ⌘ 按下的 mouseDown 中按真实命中取词并立即查询，随后自己吞掉 mouse up，免得学习行的点击手势也收藏；普通单击交还 NSTextView，不再等双击间隔。鼠标在文本内时用本地 flagsChanged 监视器跟踪 ⌘，按住时淡化选中色 30% 加手形光标，否则 I-beam 无提示。原生验证（`--panel` 与默认预览 ⌘5，合成带 ⌘ 的鼠标与 flagsChanged 事件）：不按 ⌘ 悬停为 I-beam 无提示；按下 ⌘ 不移动即出现提示与手形；按住移动提示跟随；松开即消失；普通单击不查询；⌘ 单击立即出卡；双击仍选词出工具栏；学习行 ⌘ 单击出卡且收藏不变，普通点击表达与释义照常切换收藏。format/check 通过。
+
+## T53：学习契约区分词形与原形（已实现）
+
+依据 [BDR-0009](../spec/learning/decisions/BDR-0009-learning-lemma.md)。真实 DeepSeek 调用的学习推荐稳定报 `.format`：模型返回字典形（`跳ね上がる`），语境里是活用形（`跳ね上がっている`），而本地校验要求 `text` 逐字出现在 `context` 中。
+
+范围：契约加可空 `lemma`，`text` 限定为语境中的实际词形；生词本按词形收藏、原形作次级信息；顺带把 BDR-0005 的释义语言随条目保存落实（原为 `ponytail` 占位）。
+
+验收：
+
+- [x] `$defs.learning` 的每个 item 含 `lemma`（可空字符串，列入 `required`）；`text` 必须逐字出现在 `context` 中。
+- [x] `LearningResult.parse` 接受与词形不同的 `lemma`，拒绝空白 `lemma` 与重复词形的 `lemma`；缺 `lemma` 键仍按格式错误处理。
+- [x] 学习与补释义两处 prompt 都写明分工并给出示例。
+- [x] 勾选学习推荐入库时，条目存词形，另存 `lemma` 与释义语言；同一表达再次收藏只填空、不覆盖。
+- [x] 生词本详情在表达下方次级显示不同的原形；导出带 `lemma`（`version` 升到 2）。
+- [x] 补释义沿用条目已记的释义语言，不再写死简体中文。
+
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LearningContentTests.aLemmaThatDiffersFromTheSentenceFormIsAccepted`（跳ね上がっている／跳ね上がる）与 `aCollectedRecommendationKeepsItsLemma`，`malformedPayloadsAreFormatErrors` 增两条 `lemma` 用例，导出用例断言原形与空原形。未验证：真实 DeepSeek 返回 `lemma` 的稳定性（本地校验只保证形状）。
+
+## T54：修查词分支首轮审阅的三个缺陷（已实现）
+
+来源：`codex exec review --base main` 对 `main..word-lookup` 的首轮审阅，三个 P2 均已确认是缺陷。
+
+验收：
+
+- [x] 语境语言归因：`VocabularyContext` 记自己的语言（`language`），从译文一侧收藏时语境语言取原文语言，不再套用条目语言；历史翻译记录的原文语言从未保存，留空并回退条目语言，不猜。
+- [x] 「无原句语境」可达：`LookupText` 增加 `hasSentence`，生词本表达这类没有源句的文本查询时走 `LookupQuery.withoutContext`，卡片显示「无原句语境」，不再把表达本身冒充成语境。
+- [x] 重试重盖章：`LookupPresenter.requestCurrent()` 先 `store.stamped(query)` 再请求并更新卡片，换模型或改读音体系后请求与缓存键一致，切回旧模型不会命中另一个模型的答案。
+
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupReviewFixTests`（无语境查询、空白选区拒绝、重试重盖章）与 `VocabularyDraftTests.aTranslatedResultKeepsTheSourceSentenceLanguage`。未验证：真实窗口里生词本表达的「无原句语境」卡片观感。
+
+## T55：查词卡可显式加入生词本（已实现）
+
+依据 [BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)，用户 2026-10-11 要求「查询的单词要支持可以加入生词本」。部分取代 BDR-0008 的「查词不入库」。
+
+验收：
+
+- [x] 卡片一个 `加入生词本`／`已收藏` 书签动作，点一下入库、再点一下移除，不确认、不跳页、卡片保持打开。2026-10-11 用户看过首版后要求改为图标并放到 `发音` 左侧，配色与学习行一致（`bookmark`／`bookmark.fill`，已收藏为强调色）。
+- [x] 保存内容全部来自本次查词：查询词形、本次语境、本次释义、释义语言、已知原形；不另发模型请求。
+- [x] 复用生词本既有规则：同语言同表达复用条目并追加语境，已有释义与原句不被覆盖，无语境查询不伪造原句。
+- [x] 文本语言未知（区域未提供、模型也未返回）时不提供该动作；未接入生词本时卡片保持只读。
+- [x] 取消收藏删除同一条目；保存或删除失败只更新状态，不改生词本内容。
+- [x] 浮窗与主窗口共用应用级生词本，卡片收藏后生词本页立即可见。
+
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupCollectionTests` 五条（保存释义与原形不二次请求、语言来自模型回答、无语境不存语境、另一句追加且保留原释义、取消收藏）。预览端到端（`OWLET_PREVIEW_CARD_CHECK=1 python3 scripts/panel-preview.py --panel`）走真实 `LookupPresenter` 与内存生词本：查询命中后 before=false → 加入 after=true、条目有释义与 1 条语境 → 取消 removed=false，输出 `CARD-CHECK PASS`。已用 `mise run dev` 启动应用确认可运行。未验证：本书写环境的 `screencapture` 无屏幕录制权限（`could not create image from display`），因此我无法自己截图核对卡片版式，图标与 `发音` 的并排观感需用户确认；真实模型下的入库结果同样待验。预览新增 `查词卡` 状态（菜单 ⌘6）可在不依赖 popover 的情况下查看卡片版式。
+
+## T56：学习推荐契约失败时纠正一次（已实现，待真实模型复验）
+
+2026-10-11 用户提供「学习推荐」调试页原始返回，证实失败原因与 BDR-0009 的预判不同：三条日语推荐**全部**返回字典形 `text`（`跳ね上がる`／`史上最高値をつける`／`拍車がかかる`），语境里却是活用形，三条都不通过「`text` 逐字出现在 `context`」；同时三条把 `lemma` 原样复制成 `text`，违反「不同才给原形」。即 `json_object` 下模型把 `text` 当词典形、`lemma` 当重复字段。
+
+两层修法：
+
+1. **prompt 措辞**（根因）。原示例 `take a step back` 词形等于原形，模型无从学到「`text` 抄词汇形」。把 `context`／`text`／`lemma` 三项分工拆成短句，示例换成词形≠原形的 `跳ね上がっている`／`跳ね上がる`，并写明不得给字典形、不得重复 `text`。学习与补释义两处同步。
+2. **一次纠正重试**。校验失败时不再原样重问：`LearningResult.diagnose` 指出打破的具体规则，第二次请求带上模型自己被拒的回复与这些规则，让它只改该改的地方。只纠正一次，纠正后仍不合规则照样失败；截断、拒绝、空响应与传输错误都不是契约失败，不触发重试。
+
+验收：
+
+- [x] `LearningResult.diagnose` 区分：非 JSON、顶层键不对、缺键、多键、`text`／`language`／`meaning`／`context` 空白或类型错、`kind` 非法、`text` 不在语境中、`lemma` 重复 `text`。
+- [x] 第二次请求是独立一次交换（调试页标题「学习推荐（纠正）」），带 `assistant` 原回复与用户纠正说明。
+- [x] 纠正后成功则返回结果；仍失败则抛第二次的错误；传输失败与空响应只请求一次。
+- [x] 两次提示词都不再示范「词形等于原形」的条目。
+
+验证：`mise run format`、`mise run check` 退出码 0；`LearningContentTests` 新增三条——用用户原始失败回复复现并断言第二次请求确实带回了该回复与「not in its context」规则、第二次仍错时只请求两次、传输失败只请求一次。
+
+**真实模型复验（2026-10-11 21:27，用户提供调试页返回）**：同一段日语、`deepseek-flash`、`reasoning_effort: none`，**首轮即通过**——调试页只有一条「学习推荐」、无失败原因，说明新措辞生效、纠正重试未被触发。返回 10 条逐条核对全部合规：`跳ね上がる`／`史上最高値をつける`／`拍車がかかる` 三条旧失败项现在分别是 `跳ね上がっている`（`lemma` 跳ね上がる）、`史上最高値をつけて`、`拍車がかかっている`，都在语境中；`lemma` 只在两条真正不同时给出（`跳ね上がる`、`映す`），其余为 `null`，不再复制 `text`。
+
+两处观感变化，供判断是否需要收紧：①条目数从 3 升到 10，措辞变清楚后模型更愿意多推荐（契约允许 `items: []`，但没有上限）；②这次同时推荐了中文侧的表达（`现货交易价格正在飙升`、`比期货高出五成`），与 BDR-0005「翻译场景释义=目标语言、可从任一侧收藏」一致，但读日语时是否需要中文条目属产品取舍。
+
+## T57：查词也做一次纠正重试；卡片收藏按钮改原生玻璃（已实现）
+
+用户 2026-10-11 决定：学习推荐条目不设上限（有多少返多少）；把学习那套纠正重试也接到查词；卡片上「加入词库」的按钮改成 liquid glass，与发音按钮一致。
+
+验收：
+
+- [x] 查词契约失败后用 `LookupResult.diagnose` 指出具体问题（缺键／多键、可空键该写 null、`text` 不等于选区、`definition_language` 不符、已知语言没回或回错、非空字段空白或类型错）并再请求一次。
+- [x] 可纠正的三类都触发纠正：结构不符、源文拼接不一致、目标语言不一致——用户 2026-10-11 实际撞上的是第三类。
+- [x] 只纠正一次；第二次仍不合格照原错误抛；传输、截断、拒绝、空响应不触发；连 JSON 都不是的回复不触发（没有可指出的规则）。
+- [x] 两次往返都进调试页，第二条标题为「查词 · zh-Hans（纠正）」。
+- [x] 学习与查词共用一条规则：只有能指出具体规则的回复才值得再问一次。
+- [x] 查词卡收藏按钮与发音按钮同形：都是 `CardGlassButton`（`.glass`、圆形边框、36pt、13pt 字形），不再各写一份；已收藏用强调色。
+- [x] 学习推荐不设条目上限。
+
+验证：`mise run format`、lint 与 generate 通过；`xcodebuild … CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual test` 退出码 0，328 项测试通过。新增 `LookupRetryTests` 三条（漏可空键被纠正且第二次请求带回了原回复与缺键说明、第二次仍错只请求两次、传输失败只请求一次）、`LookupCollectionTests.aStoredWordReadsAsCollectedWhenTheCardReopens`，学习侧三条同规则回归。
+
+**本会话末的环境限制**：`mise run check` 的 test 步骤在本 shell 里失败于 `Command CodeSign failed`——`Signing.local.xcconfig` 用 `Apple Development` 证书，而非交互 shell 无法解锁钥匙串（`security find-identity` 能看到该证书，但读不到私钥）。同一条命令加 `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual` 即通过。这是环境问题，不是代码问题；交互终端里的 `mise run check` 不受影响（交接文档 2026-10-11 已记录同一现象）。
+
+未验证：真实 `deepseek-flash` 在查词上的纠正效果——仍缺「查词 · zh-Hans」的原始返回。
+
+## T58：发音停止的无谓拆队列（已修）；音频噪声确认非应用成因
+
+2026-10-11 用户点发音后 console 出现四条：`layoutSubtreeIfNeeded` 警告、`AddInstanceForFactory: No factory registered`、`AUCrashHandler.mm:126 invalidated`、`AVAudioBuffer.mm:291 mBuffers[0].mDataByteSize (0) should be non-zero`，以及 `AudioQueue underflow #N: injecting silence …`。
+
+**已修**：`LookupSpeech.live` 的 `stop()` 原本无条件 `stopSpeaking(at: .immediate)`，而卡片关闭、切换查询、打开卡片都会调用它——一次都没播过也一样。对静音合成器做立即停止就是立刻拆掉它的音频队列。现在 `LiveSpeech` 用 delegate 回调（`didStart`／`didFinish`／`didCancel`）记住「真的有声音在播」，无事可做时直接返回；顺带把每次调用都枚举全部已安装语音改为按语言缓存。`mise run check` 退出码 0。
+
+**未能归因、且已确认不是应用造成的（2026-10-11 第二轮实测）**：
+
+- 用户用 Xcode Build and Run、默认扬声器、真机点发音仍看到 `AVAudioBuffer.mm:291` 与 `AudioQueue underflow #1 … minInFlight=3 … refills=58`。
+- 追加实测，全部无噪声：独立探针（直接 `AVSpeechSynthesizer`，正常播完／播 0.4 秒后 `.immediate` 打断／`.word` 打断）；按应用调用形状写的探针（静音 stop 两次 → speak → 1.2 秒后 stop），stdout 与 stderr 都为空；预览钩子（静音 stop、连点六次、打断播放）。
+- `minInFlight=3` 说明队列里**始终有在途缓冲**，不是"没人喂数据"；`refills=58` 说明它在正常补充。即设备侧一次缓冲欠载播报。
+- 日志中的 `AddInstanceForFactory: No factory registered for id <CFUUID …>`、`AUCrashHandler.mm:126 invalidated`、`AVAudioBuffer.mm:291` 全属 coreaudiod 与音频单元层。应用不创建、不配置、不入队任何 `AVAudioBuffer`，也没有 `AVAudioSession` 代码，全仓只有一句 `AVSpeechSynthesizer.speak`。
+- 结论：**这些是 CoreAudio 在新建音频单元与拆队列时的固有记录，应用这层没有可改的余地**。判据是「有没有可听的卡顿」——没有就当作已知噪声放着；有才值得换 TTS 实现或显式配置音频会话（都要评估代价）。不要再为这几条日志改应用代码。
+
+**顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式。Xcode 的 console 是累积的，用户那份日志里混着此前跑测试的输出，因此出现了这条。
+**顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式，都是测试／预览路径。用户 console 里出现它，说明当时跑的是预览而非 app。

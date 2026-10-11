@@ -110,26 +110,36 @@ struct PanelLearningView: View {
     private func rows(_ items: [LearningResult.Item]) -> some View {
         VStack(alignment: .leading, spacing: Self.rowSpacing) {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                Button {
-                    toggleCollection(item)
-                } label: {
-                    HStack(alignment: .center, spacing: 12) {
+                // Not one Button: a button would take every click and drag on the expression, so it
+                // could neither be selected nor looked up. The row still collects on a click.
+                HStack(alignment: .center, spacing: 12) {
+                    Button {
+                        toggleCollection(item)
+                    } label: {
                         Image(systemName: isCollected(item) ? "bookmark.fill" : "bookmark")
                             .foregroundStyle(isCollected(item) ? Color.accentColor : Color.primary)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.text).font(.body).foregroundStyle(.primary)
-                            Text(item.meaning).font(.caption).foregroundStyle(.secondary)
-                        }
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(item.text)
+                    .accessibilityValue(isCollected(item) ? "已收藏" : "未收藏")
+                    .accessibilityHint(isCollected(item) ? "取消收藏" : "加入生词本")
+                    VStack(alignment: .leading, spacing: 4) {
+                        LookupText(
+                            text: item.text, size: NSFont.systemFontSize, lineSpacing: 0, label: "学习表达",
+                            origin: lookupOrigin(item), sentence: item.context,
+                            onPlainClick: { toggleCollection(item) })
+                        Text(item.meaning).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(LearningRowStyle(hovered: hovered == index))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+                // The row's only feedback is its background, as before.
+                .background(.quaternary.opacity(hovered == index ? 1 : 0), in: RoundedRectangle(cornerRadius: 8))
+                .onTapGesture { toggleCollection(item) }
                 .onHover { hovered = $0 ? index : (hovered == index ? nil : hovered) }
-                .accessibilityValue(isCollected(item) ? "已收藏" : "未收藏")
                 .hoverTip(isCollected(item) ? "取消收藏" : "加入生词本")
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { rowHeights[index] = $0 }
             }
@@ -147,6 +157,16 @@ struct PanelLearningView: View {
         }
     }
 
+    /// BDR-0005 for a recommendation: a translation's is explained in this result's target, a
+    /// polish's in the mapped target of the expression's language.
+    private func lookupOrigin(_ item: LearningResult.Item) -> LookupOrigin {
+        LookupOrigin(
+            language: item.language,
+            definitionLanguage: request.operation == .translate
+                ? request.targetLanguage
+                : SettingsStore.targetMapping().target(forSource: LanguageTag.key(item.language)))
+    }
+
     private func toggleCollection(_ item: LearningResult.Item) {
         attempted = true
         let polish = request.operation == .polish
@@ -154,22 +174,10 @@ struct PanelLearningView: View {
             !isCollected(item),
             draft: VocabularyDraft(
                 expression: item.text, language: item.language, context: item.context,
+                contextLanguage: item.language,
                 polishBefore: polish ? request.text : nil,
-                polishAfter: polish ? request.result : nil),
+                polishAfter: polish ? request.result : nil,
+                lemma: item.lemma, definitionLocale: lookupOrigin(item).definitionLanguage),
             meaning: item.meaning)
-    }
-}
-
-/// The learning row's only feedback is its background: hover shows it and a press keeps it.
-/// Not borderless, which dims the label in the never-active panel, and not plain, whose press
-/// fades the whole row, background included, so a click reads as a flash.
-private struct LearningRowStyle: ButtonStyle {
-    let hovered: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                .quaternary.opacity(hovered || configuration.isPressed ? 1 : 0),
-                in: RoundedRectangle(cornerRadius: 8))
     }
 }

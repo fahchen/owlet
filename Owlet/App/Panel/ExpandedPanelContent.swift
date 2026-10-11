@@ -8,6 +8,7 @@ struct ExpandedPanelContent: View {
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
     let learning: LearningModel
+    let lookupOrigin: LookupOrigin?
     var showsSource = true
     /// The pinned target language; an empty value means 自动.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
@@ -72,21 +73,23 @@ struct ExpandedPanelContent: View {
                     AlignedSegments(
                         segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
                         targetSize: PanelMetrics.textSize,
-                        lineSpacing: 4, pairSpacing: 12)
+                        lineSpacing: 4, pairSpacing: 12,
+                        sourceOrigin: lookupOrigin.map {
+                            LookupOrigin(language: model.languages?.source, definitionLanguage: $0.definitionLanguage)
+                        },
+                        targetOrigin: lookupOrigin)
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
                         Button(editingSource ? "收起原文" : "编辑原文") { editingSource.toggle() }
                             .buttonStyle(.glass)
                     }
-                } else if !showsSource {
-                    PanelJustifiedText(text: text)
-                        .frame(maxWidth: .infinity)
                 } else {
-                    Text(text)
-                        .font(.system(size: PanelMetrics.textSize))
-                        .lineSpacing(2)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Beside learning the result is justified, as the main window's result is.
+                    LookupText(
+                        text: text, size: PanelMetrics.textSize, weight: .medium,
+                        justified: !showsSource, origin: lookupOrigin
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
             } else {

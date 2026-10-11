@@ -81,6 +81,8 @@ final class PanelController {
     var openNotebook: () -> Void = {}
     /// The notebook collect action; nil when the panel is built without one, which the tests do.
     var collection: CollectionAction?
+    /// The result's selection toolbar and lookup card; Esc closes it before the panel.
+    let lookups: LookupPresenter
 
     /// Internal read for tests that drive the real window (resign key, drag).
     private(set) var panel: FloatingPanel?
@@ -94,9 +96,13 @@ final class PanelController {
 
     private let defaults: UserDefaults
 
-    init(model: TextProcessingModel, defaults: UserDefaults = .standard) {
+    init(
+        model: TextProcessingModel, defaults: UserDefaults = .standard,
+        lookups: LookupPresenter = LookupPresenter(store: LookupStore())
+    ) {
         self.model = model
         self.defaults = defaults
+        self.lookups = lookups
         // Selection bounds cost an extra AX call, so they are read only when placement uses them.
         read = { completion in
             SelectionBridge.read(
@@ -230,6 +236,14 @@ final class PanelController {
         }
     }
 
+    /// What the result text is, for a lookup in it; nil until there is a finished result.
+    var lookupOrigin: LookupOrigin? {
+        guard case .success = model.state, let languages = model.languages else { return nil }
+        return .result(
+            of: model.operation, languages: languages,
+            mapping: SettingsStore.targetMapping(in: defaults))
+    }
+
     /// Copies the result and closes the panel: copying is a finished interaction, like a replace.
     func copyResult() {
         guard case .success(let text) = model.state else { return }
@@ -296,7 +310,8 @@ final class PanelController {
     func run(_ command: FloatingPanel.Command) {
         switch command {
         case .cancel:
-            close()
+            // Esc leaves the innermost layer first: an open toolbar or card, then the panel.
+            if !lookups.close() { close() }
         case .copy:
             copyResult()
         case .retry:
@@ -312,6 +327,7 @@ final class PanelController {
     /// invalidate even when no panel was ever shown, so a slow answer cannot open one the user
     /// already dismissed.
     private func invalidate() {
+        lookups.close(refocus: false)
         requestID += 1
         readingID = nil
         model.cancel()

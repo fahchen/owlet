@@ -104,8 +104,12 @@ struct LearningResult: Equatable {
         var kind: String
         var meaning: String
         var context: String
+        /// The dictionary form, only when it differs from `text` and is certain (BDR-0009).
+        var lemma: String?
     }
     var items: [Item]
+
+    static let keys: Set<String> = ["text", "language", "kind", "meaning", "context", "lemma"]
 
     /// Response schema sent to the provider; the constraints OpenAI strict mode rejects are
     /// enforced by `parse` instead.
@@ -120,13 +124,14 @@ struct LearningResult: Equatable {
                     "items": [
                         "type": "object",
                         "additionalProperties": false,
-                        "required": ["text", "language", "kind", "meaning", "context"],
+                        "required": ["text", "language", "kind", "meaning", "context", "lemma"],
                         "properties": [
                             "text": ["type": "string"],
                             "language": ["type": "string"],
                             "kind": ["type": "string", "enum": ["word", "phrase", "sentence"]],
                             "meaning": ["type": "string"],
                             "context": ["type": "string"],
+                            "lemma": ["type": ["string", "null"]],
                         ],
                     ],
                 ]
@@ -134,8 +139,9 @@ struct LearningResult: Equatable {
         ]
     }
 
-    /// Validates the whole learning payload: only `items`, non-blank fields, a known kind, and each
-    /// expression appearing in its own context; an empty list is valid because padding is forbidden.
+    /// Validates the whole learning payload: only `items`, non-blank fields, a known kind, each
+    /// expression appearing in its own context, and a lemma that either differs from the expression
+    /// or is null; an empty list is valid because padding is forbidden.
     static func parse(_ content: String) throws -> [Item] {
         guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -143,8 +149,7 @@ struct LearningResult: Equatable {
             let rawItems = object["items"] as? [Any]
         else { throw ModelError.format }
         return try rawItems.map { raw -> Item in
-            guard let dict = raw as? [String: Any],
-                Set(dict.keys) == ["text", "language", "kind", "meaning", "context"],
+            guard let dict = raw as? [String: Any], Set(dict.keys) == keys,
                 let text = dict["text"] as? String, !TranslationResult.isBlank(text),
                 let language = dict["language"] as? String, !TranslationResult.isBlank(language),
                 let kind = dict["kind"] as? String,
@@ -154,9 +159,92 @@ struct LearningResult: Equatable {
                 TranslationResult.normalized(context).localizedStandardContains(
                     TranslationResult.normalized(text))
             else { throw ModelError.format }
+            let lemma = try optional(dict["lemma"])
+            // Repeating the expression buys nothing; the contract asks for null instead.
+            if let lemma, TranslationResult.normalized(lemma) == TranslationResult.normalized(text) {
+                throw ModelError.format
+            }
             return Item(
-                text: text, language: language, kind: kind, meaning: meaning, context: context)
+                text: text, language: language, kind: kind, meaning: meaning, context: context,
+                lemma: lemma)
         }
+    }
+
+    /// A nullable field: null, or a non-blank string.
+    private static func optional(_ value: Any?) throws -> String? {
+        switch value {
+        case is NSNull: return nil
+        case let string as String where !TranslationResult.isBlank(string): return string
+        default: throw ModelError.format
+        }
+    }
+
+    /// Why `parse` refused, phrased as an instruction for the model — the shape a corrective retry
+    /// needs. Empty when the payload parses, and also when it does not even parse as one object: a
+    /// reply with no JSON in it has nothing to repair, so the caller only spends a round when this
+    /// names at least one rule the model can follow next time.
+    ///
+    /// The rejection reasons are named rather than counted: a model told only "invalid JSON" repeats
+    /// the same mistake, while one told which rule it broke can fix that one.
+    static func diagnose(_ content: String) -> [String] {
+        guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [] }
+        guard Set(object.keys) == ["items"] else {
+            return ["the object must have exactly the key items; it has \(object.keys.sorted())"]
+        }
+        guard let rawItems = object["items"] as? [Any] else {
+            return ["items must be an array of objects"]
+        }
+        var reasons: [String] = []
+        for raw in rawItems {
+            guard let dict = raw as? [String: Any] else {
+                reasons.append("every item must be an object")
+                continue
+            }
+            let text = dict["text"] as? String
+            if let extra = Set(dict.keys).subtracting(keys).sorted().first {
+                reasons.append("no item may have a key other than \(keys.sorted()); found \(extra)")
+            }
+            if let missing = keys.subtracting(dict.keys).sorted().first {
+                reasons.append("every item needs all of \(keys.sorted()); one is missing \(missing)")
+            }
+            for field in ["text", "language", "meaning", "context"] {
+                if let value = dict[field] as? String {
+                    if TranslationResult.isBlank(value) { reasons.append("\(field) must not be blank") }
+                } else {
+                    reasons.append("\(field) must be a non-empty string")
+                }
+            }
+            if let kind = dict["kind"] as? String {
+                if !["word", "phrase", "sentence"].contains(kind) {
+                    reasons.append("kind must be word, phrase or sentence; found \(kind)")
+                }
+            } else {
+                reasons.append("kind must be word, phrase or sentence")
+            }
+            guard let text, !TranslationResult.isBlank(text),
+                let context = dict["context"] as? String, !TranslationResult.isBlank(context)
+            else { continue }
+            if !TranslationResult.normalized(context).localizedStandardContains(
+                TranslationResult.normalized(text))
+            {
+                reasons.append(
+                    "text \(text) is not in its context, but text must be copied from the context "
+                        + "exactly as it is written there")
+            }
+            switch dict["lemma"] {
+            case is NSNull:
+                break
+            case let lemma as String where !TranslationResult.isBlank(lemma):
+                if TranslationResult.normalized(lemma) == TranslationResult.normalized(text) {
+                    reasons.append("lemma repeats text \(text), but a lemma equal to text must be null")
+                }
+            default:
+                reasons.append("lemma must be the dictionary form as a string, or null")
+            }
+        }
+        return Array(Set(reasons)).sorted()
     }
 
     /// Returns the item matching `expression`; an empty list or a mismatch is a format error so the

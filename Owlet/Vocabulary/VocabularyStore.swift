@@ -21,21 +21,81 @@ final class VocabularyStore {
         let expression = draft.expression.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !expression.isEmpty else { throw VocabularyError.emptyExpression }
         let newContext = VocabularyContext(
-            source: draft.context, polishBefore: draft.polishBefore,
-            polishAfter: draft.polishAfter)
+            source: draft.context, language: trimmed(draft.contextLanguage) ?? "",
+            polishBefore: draft.polishBefore, polishAfter: draft.polishAfter)
+        let entry = try collectedEntry(draft, expression: expression, context: newContext)
+        try save()
+        return entry
+    }
+
+    /// Saves a lookup's own snapshot: the queried form, the sentence it was read in (absent when the
+    /// lookup had no source sentence), and the answer the model already gave, so adding a word from
+    /// the lookup card never spends a second request.
+    @discardableResult
+    func collect(_ draft: VocabularyDraft, in query: LookupQuery, result: LookupResult) throws
+        -> VocabularyEntry
+    {
+        let expression = draft.expression.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !expression.isEmpty else { throw VocabularyError.emptyExpression }
+        let newContext = VocabularyContext(
+            source: query.context ?? "", language: trimmed(draft.contextLanguage) ?? "",
+            polishBefore: draft.polishBefore, polishAfter: draft.polishAfter)
+        let entry = try collectedEntry(draft, expression: expression, context: newContext)
+        let meaning = result.meaning.trimmingCharacters(in: .whitespacesAndNewlines)
+        let locale = trimmed(draft.definitionLocale) ?? ""
+        // The answer travels with the entry. The stored meaning is the user's once it exists, so a
+        // later collection never rewrites it, but a first one fills in what was missing.
+        if entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !meaning.isEmpty {
+            entry.meaning = meaning
+            entry.definitionLocale = locale
+        } else if entry.definitionLocale.isEmpty, !locale.isEmpty {
+            entry.definitionLocale = locale
+        }
+        try save()
+        return entry
+    }
+
+    /// The entry for this language and expression, appending the new context there and filling in
+    /// what is still unknown, so collecting the same expression twice never forks an entry.
+    private func collectedEntry(
+        _ draft: VocabularyDraft, expression: String, context newContext: VocabularyContext
+    ) throws -> VocabularyEntry {
         if let existing = try entry(language: draft.language, expression: expression) {
             // The same context submitted again adds nothing, and an earlier context is never replaced.
-            if !existing.contexts.contains(where: { $0.hasSameContent(as: newContext) }) {
+            var changed = false
+            // A lookup with no source sentence has none to keep, so it adds no context at all.
+            if !draft.context.isEmpty,
+                !existing.contexts.contains(where: { $0.hasSameContent(as: newContext) })
+            {
                 existing.contexts.append(newContext)
-                try context.save()
+                changed = true
             }
+            // The dictionary form and the meaning's language are only ever filled in, never corrected
+            // by a later collection of the same expression (BDR-0005, BDR-0009).
+            if existing.lemma.isEmpty, let lemma = trimmed(draft.lemma) {
+                existing.lemma = lemma
+                changed = true
+            }
+            if existing.definitionLocale.isEmpty, let locale = trimmed(draft.definitionLocale) {
+                existing.definitionLocale = locale
+                changed = true
+            }
+            if changed { try save() }
             return existing
         }
-        let entry = VocabularyEntry(expression: expression, language: draft.language)
-        entry.contexts = [newContext]
+        let entry = VocabularyEntry(
+            expression: expression, language: draft.language, lemma: trimmed(draft.lemma) ?? "",
+            definitionLocale: trimmed(draft.definitionLocale) ?? "")
+        if !draft.context.isEmpty { entry.contexts = [newContext] }
         context.insert(entry)
-        try context.save()
         return entry
+    }
+
+    /// An empty or whitespace-only optional value means the source did not know it.
+    private func trimmed(_ value: String?) -> String? {
+        value.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap {
+            $0.isEmpty ? nil : $0
+        }
     }
 
     /// Newest first, which is the order the notebook lists them in.

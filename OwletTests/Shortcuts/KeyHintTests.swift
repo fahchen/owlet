@@ -11,6 +11,7 @@ struct KeyHintTests {
         #expect(KeyHint.panelCancel.keys == "Esc")
         #expect(KeyHint.delete.keys == "⌘⌫")
         #expect(KeyHint.copy.tooltip == "复制 ⌘C")
+        #expect(KeyHint.lookUp.keys == "↩")
     }
 
     /// A cell without an action would render as a bare glyph.

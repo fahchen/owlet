@@ -43,6 +43,9 @@ extension KeyHint {
     static let panelRetry = KeyHint(title: "重新处理", key: "r", modifiers: .command)
     static let panelLearn = KeyHint(title: "学习 / 返回", key: "l", modifiers: .command)
     static let panelCancel = KeyHint(title: "停止处理 / 关闭", key: .escape, modifiers: [])
+    /// Read-only reading text claims Return on a selection; `LookupTextView.keyDown` handles it,
+    /// and the 快捷键 page lists it.
+    static let lookUp = KeyHint(title: "查询所选", key: .return, modifiers: [])
 
     // The main window.
     static let process = KeyHint(title: "处理", key: .return, modifiers: .command)
@@ -57,7 +60,7 @@ extension KeyHint {
 
     /// The 快捷键 page's groups, by where the keys work.
     static let groups: [(title: String, keys: [KeyHint])] = [
-        ("浮窗", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel]),
+        ("浮窗", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel, lookUp]),
         ("翻译与润色", [process, translateMode, polishMode, cancel, learn, copy]),
         ("生词本与历史记录", [previous, next, delete, copy, learn]),
     ]

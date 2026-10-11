@@ -44,6 +44,27 @@ enum ModelError: Error, Equatable {
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
+/// A contract failure together with the model content that produced it, so a caller can show the model
+/// what it must fix instead of asking again from scratch.
+struct ContractError: Error {
+    let error: Error
+    let content: String
+}
+
+extension ModelClient {
+    /// Whether a failure is worth one corrective round. A structure the app cannot read, a pairing that
+    /// does not reassemble, or an explanation in the wrong language all describe something the model got
+    /// wrong and can be told about. Truncation, refusal, an empty answer and transport failures cannot.
+    static func isCorrectable(_ error: ModelError) -> Bool {
+        switch error {
+        case .format, .sourceMismatch, .targetMismatch: true
+        case .network, .unauthorized, .http, .emptyResponse, .truncated, .refused: false
+        }
+    }
+
+    func isCorrectable(_ error: ModelError) -> Bool { Self.isCorrectable(error) }
+}
+
 struct ModelClient: Sendable {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
     /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
@@ -74,30 +95,9 @@ struct ModelClient: Sendable {
         let target = operation == .translate ? targetLanguage : nil
         let request = try makeRequest(
             text: text, operation: operation, targetLanguage: target, config: config)
-        let capture = capture
-        let records = capture.isEnabled()
-        var response: String?
-        var failure: String?
-        // The record is handed off, not awaited: diagnostics must never delay or fail a request.
-        defer {
-            if records {
-                let exchange = DebugExchange(
-                    title: Self.debugTitle(operation: operation, target: target),
-                    request: Self.prettyPrintedBody(request), submitted: text, response: response,
-                    failure: failure)
-                let record = capture.record
-                Task { await record(exchange) }
-            }
-        }
-        do {
-            let data = try await send(request)
-            let content = try decodedContent(data)
-            response = content
-            return try TranslationResult.parse(content, submitted: text, targetLanguage: target)
-        } catch {
-            failure = (error as? ModelError)?.message ?? error.localizedDescription
-            throw error
-        }
+        return try await perform(
+            request, title: Self.debugTitle(operation: operation, target: target), submitted: text,
+            parse: { try TranslationResult.parse($0, submitted: text, targetLanguage: target) })
     }
 
     /// Names what was asked for, so a debug entry reads without opening it.
@@ -117,26 +117,33 @@ struct ModelClient: Sendable {
         return text
     }
 
-    /// Fills in a Chinese meaning for one collected expression through the learning contract; the
-    /// caller keeps the saved entry when this throws so the user can retry.
+    /// Fills in a meaning for one collected expression through the learning contract, in the language
+    /// that entry is explained in (BDR-0005); the caller keeps the saved entry when this throws so the
+    /// user can retry.
     func fillMeaning(
-        expression: String, language: String, context: String, config: ServiceConfig
+        expression: String, language: String, context: String, definitionLocale: String,
+        config: ServiceConfig
     ) async throws -> String {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         let task = """
-            为下面这条语言学习条目给出简体中文释义。释义要说明含义和用法，保留必要的语域说明，\
-            不添加原文没有的信息。
+            为下面这条语言学习条目给出\(LanguageCatalog.name(for: definitionLocale))释义。释义要说明含义和用法，\
+            保留必要的语域说明，不添加原文没有的信息。
             """
         let system = """
             \(task)
 
-            Respond with one json object with key items (array of {text, language, kind, meaning, context}). \
-            kind is one of word, phrase, sentence. text must appear in context. Example json: \
-            {"items":[{"text":"follow up","language":"en","kind":"phrase",\
-            "meaning":"跟进，后续联系。","context":"..."}]}
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
+            kind is one of word, phrase, sentence. meaning is \(LanguageCatalog.name(for: definitionLocale)).
+            context: copied from the original, character for character.
+            text: the exact substring of that context. Give the form as it is written there — an \
+            inflected verb stays inflected. Never give the dictionary form here when the context has a \
+            different form.
+            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
+            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
+            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"}]}
             """
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema
@@ -157,12 +164,17 @@ struct ModelClient: Sendable {
                 ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
             ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let data = try await send(request)
-        return try LearningResult.item(try decodedContent(data), expression: expression).meaning
+        return try await perform(
+            request, title: "补释义", submitted: expression,
+            parse: { try LearningResult.item($0, expression: expression).meaning })
     }
 
     /// Runs the optional learning request as its own call, so a failure here can only ever affect the
     /// learning area and never the main result the caller already has.
+    ///
+    /// A reply this app cannot accept buys one corrective round: the model is shown its own answer and
+    /// which rule it broke, which is far more reliable than re-sending the same prompt and hoping. Only
+    /// one round, so a model that cannot follow the contract still fails exactly where it did.
     func learning(
         text: String, operation: Operation, targetLanguage: String, result: String,
         config: ServiceConfig
@@ -170,54 +182,255 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        let data = try await send(request)
-        return try LearningResult.parse(try decodedContent(data))
+        switch try await attempt(request, title: "学习推荐", submitted: text) {
+        case .success(let items):
+            return items
+        case .failure(let error):
+            // Only a reply that arrived but broke the contract is worth correcting; truncation,
+            // refusal, an empty answer and every transport failure stand as they are.
+            guard let asModelError = error.error as? ModelError,
+                isCorrectable(asModelError)
+            else { throw error.error }
+            // A reply with no JSON in it names no rule to follow, so it gets no second round.
+            let reasons = LearningResult.diagnose(error.content)
+            guard !reasons.isEmpty else { throw error.error }
+            let correction = try makeLearningRequest(
+                text: text, operation: operation, targetLanguage: targetLanguage, result: result,
+                config: config, correcting: error.content, reasons: reasons)
+            switch try await attempt(correction, title: "学习推荐（纠正）", submitted: text) {
+            case .success(let items): return items
+            case .failure(let retried): throw retried.error
+            }
+        }
+    }
+
+    /// Sends one request and parses it; the parse failure carries the content back, because the
+    /// corrective round has to show the model the reply it must fix. Everything else throws.
+    private func attempt(
+        _ request: URLRequest, title: String, submitted: String
+    ) async throws -> Result<[LearningResult.Item], ContractError> {
+        try await perform(request, title: title, submitted: submitted) {
+            (content: String) -> Result<[LearningResult.Item], ContractError> in
+            do {
+                return .success(try LearningResult.parse(content))
+            } catch {
+                return .failure(ContractError(error: error, content: content))
+            }
+        }
     }
 
     /// Builds the separate learning request: the same behavior prompt as the main request plus the
     /// learning task and the `$defs.learning` contract, with the original and result as data.
+    ///
+    /// With `correcting`, the same contract comes after the model's own rejected reply and the rules
+    /// it broke, so the one thing that changes between the two requests is the model's own output.
     func makeLearningRequest(
         text: String, operation: Operation, targetLanguage: String, result: String,
-        config: ServiceConfig
+        config: ServiceConfig, correcting reply: String? = nil, reasons: [String] = []
     ) throws -> URLRequest {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let meaningLanguage = LanguageCatalog.name(for: targetLanguage)
         let task =
             operation == .polish
-            ? "从这次润色的原文与结果中挑选值得学习的表达，用简体中文解释修改的原因，并区分语法错误与风格偏好。"
-            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用简体中文解释含义与用法。"
+            ? "从这次润色的原文与结果中挑选值得学习的表达，用\(meaningLanguage)解释修改的原因，并区分语法错误与风格偏好。"
+            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用\(meaningLanguage)解释含义与用法。"
         let system = """
             \(promptForOperation(operation))
 
             \(task)不强凑条目，没有值得推荐的内容时 items 为空数组。
-            Respond with one json object with key items (array of {text, language, kind, meaning, context}). \
-            kind is one of word, phrase, sentence. meaning is Simplified Chinese. context must come from \
-            the original or the result, and text must appear in context. Example json: \
-            {"items":[{"text":"take a step back","language":"en","kind":"phrase",\
-            "meaning":"退一步重新审视。","context":"Let's take a step back."}]}
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
+            kind is one of word, phrase, sentence. meaning is \(meaningLanguage).
+            context: copied from the original or the result, character for character.
+            text: the exact substring of that context. Give the form as it is written there — an \
+            inflected verb stays inflected. Never give the dictionary form here when the context has a \
+            different form.
+            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
+            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
+            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"},\
+            {"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。",\
+            "context":"Let's take a step back.","lemma":null}]}
             """
-        let responseFormat: [String: Any] =
-            !config.provider.supportsJSONSchema
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "original": text, "result": result,
+        ])
+        let user = String(decoding: payload, as: UTF8.self)
+        let messages: [[String: String]]
+        if let reply {
+            let problems =
+                reasons.isEmpty
+                ? "It does not satisfy the contract for items."
+                : "These rules were broken: " + reasons.joined(separator: "; ") + "."
+            messages = [
+                ["role": "system", "content": system],
+                [
+                    "role": "user",
+                    "content": "Original and result, as data:\n\(user)",
+                ],
+                ["role": "assistant", "content": reply],
+                [
+                    "role": "user",
+                    "content": """
+                    That reply was rejected. \(problems)
+                    Reply again with only the one json object, keeping every meaning you already \
+                    wrote and changing only what the rules require.
+                    """,
+                ],
+            ]
+        } else {
+            messages = [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
+            ]
+        }
+        let body = requestBody(
+            messages: messages, responseFormat: learningResponseFormat(config.model, config: config),
+            config: config)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    /// The learning contract as a provider accepts it: a real schema where the service supports one,
+    /// otherwise `json_object` with the shape carried by the system prompt instead.
+    private func learningResponseFormat(_ name: String, config: ServiceConfig) -> [String: Any] {
+        !config.provider.supportsJSONSchema
             ? ["type": "json_object"]
             : [
                 "type": "json_schema",
                 "json_schema": [
-                    "name": "learning", "strict": true,
-                    "schema": LearningResult.providerSchema,
+                    "name": name, "strict": true, "schema": LearningResult.providerSchema,
                 ],
             ]
-        let payload = try JSONSerialization.data(withJSONObject: [
-            "original": text, "result": result,
-        ])
-        let body = requestBody(
-            messages: [
+    }
+
+    /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
+    /// app's snapshot, so the model is only trusted for the explanation itself.
+    ///
+    /// As with learning, a reply this app cannot accept buys one corrective round naming the claims the
+    /// model got wrong. A lookup is the app's most exacting contract — seven keys, nullable ones
+    /// included, and a definition written in the language that was asked for — and a provider that
+    /// breaks it usually has a fixable answer, not a bad one.
+    func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
+        let request = try makeLookupRequest(query, config: config)
+        let title = "查词 · \(query.definitionLanguage)"
+        switch try await attemptLookup(request, query: query, title: title) {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            guard let asModelError = error.error as? ModelError, isCorrectable(asModelError) else {
+                throw error.error
+            }
+            // A reply with no JSON in it names no claim to fix, so it gets no second round.
+            let reasons = LookupResult.diagnose(error.content, query: query)
+            guard !reasons.isEmpty else { throw error.error }
+            let correction = try makeLookupRequest(
+                query, config: config, correcting: error.content, reasons: reasons)
+            switch try await attemptLookup(
+                correction, query: query, title: "\(title)（纠正）")
+            {
+            case .success(let result): return result
+            case .failure(let retried): throw retried.error
+            }
+        }
+    }
+
+    /// Sends one lookup and parses it; the parse failure carries the content back for correction.
+    private func attemptLookup(
+        _ request: URLRequest, query: LookupQuery, title: String
+    ) async throws -> Result<LookupResult, ContractError> {
+        func parsed(_ content: String) -> Result<LookupResult, ContractError> {
+            do {
+                return .success(try LookupResult.parse(content, query: query))
+            } catch {
+                return .failure(ContractError(error: error, content: content))
+            }
+        }
+        return try await perform(request, title: title, submitted: query.text, parse: parsed)
+    }
+
+    func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
+        try makeLookupRequest(query, config: config, correcting: nil, reasons: [])
+    }
+
+    /// Builds the lookup request. With `correcting`, the same data comes after the model's own rejected
+    /// reply and the claims it got wrong, so only the model's answer changes between the two requests.
+    func makeLookupRequest(
+        _ query: LookupQuery, config: ServiceConfig, correcting reply: String? = nil,
+        reasons: [String] = []
+    ) throws -> URLRequest {
+        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let pronunciation =
+            query.pronunciation.map { "Use \($0) for pronunciation." }
+            ?? "Use kana for Japanese, pinyin for Chinese and IPA for other languages."
+        let system = """
+            Explain the text a reader selected. With a context, explain only what it means in that \
+            context, adding usage only when needed; do not list other senses. With a null context, \
+            give the general meaning. Write meaning and part_of_speech in \(query.definitionLanguage).
+            Respond with one json object with keys text, language, definition_language, meaning, \
+            lemma, pronunciation, part_of_speech. Every key must be present; a field that does not \
+            apply or is uncertain is null, not missing. text must equal the selected text exactly. \
+            language is the BCP 47 tag of the text, or null if unknown\
+            \(query.language.map { "; it is \($0)" } ?? ""). definition_language is \
+            \(query.definitionLanguage). lemma is the dictionary form only when it applies and is \
+            certain, else null. \(pronunciation) Use null for any field that does not apply or is \
+            uncertain. When the text is a whole sentence, pronunciation and part_of_speech must be null. \
+            Example json: {"text":"running","language":"en","definition_language":"zh-Hans",\
+            "meaning":"在这句话中指正在跑步。","lemma":"run","pronunciation":"ˈrʌnɪŋ",\
+            "part_of_speech":"动词"}
+            """
+        let payload = try JSONSerialization.data(
+            withJSONObject: [
+                "text": query.text, "context": query.context as Any? ?? NSNull(),
+                "selection_start": query.offset as Any? ?? NSNull(),
+                "language": query.language as Any? ?? NSNull(),
+            ], options: .sortedKeys)
+        let user = String(decoding: payload, as: UTF8.self)
+        let messages: [[String: String]]
+        if let reply {
+            let problems =
+                reasons.isEmpty
+                ? "It does not satisfy the contract."
+                : "These claims were wrong: " + reasons.joined(separator: "; ") + "."
+            messages = [
                 ["role": "system", "content": system],
-                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ], responseFormat: responseFormat, config: config)
+                ["role": "user", "content": "Selected text, context and language, as data:\n\(user)"],
+                ["role": "assistant", "content": reply],
+                [
+                    "role": "user",
+                    "content": """
+                    That reply was rejected. \(problems)
+                    Reply again with only the one json object, every key present and every other \
+                    claim unchanged.
+                    """,
+                ],
+            ]
+        } else {
+            messages = [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
+            ]
+        }
+        let body = requestBody(
+            messages: messages, responseFormat: lookupResponseFormat(config: config), config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    /// The lookup contract as a provider accepts it.
+    private func lookupResponseFormat(config: ServiceConfig) -> [String: Any] {
+        !config.provider.supportsJSONSchema
+            ? ["type": "json_object"]
+            : [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "lookup", "strict": true, "schema": LookupResult.providerSchema,
+                ],
+            ]
     }
 
     /// Lists model ids from the OpenAI-style `GET /models` endpoint.
@@ -243,6 +456,36 @@ struct ModelClient: Sendable {
             !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw ModelError.emptyResponse }
         return content
+    }
+
+    /// Sends one request and hands the finished exchange to the debug capture whatever the outcome,
+    /// then parses the decoded content. Every request type goes through here so none is silently
+    /// left off the debug page.
+    private func perform<T>(
+        _ request: URLRequest, title: String, submitted: String, parse: (String) throws -> T
+    ) async throws -> T {
+        let capture = capture
+        let records = capture.isEnabled()
+        var response: String?
+        var failure: String?
+        // The record is handed off, not awaited: diagnostics must never delay or fail a request.
+        defer {
+            if records {
+                let exchange = DebugExchange(
+                    title: title, request: Self.prettyPrintedBody(request), submitted: submitted,
+                    response: response, failure: failure)
+                let record = capture.record
+                Task { await record(exchange) }
+            }
+        }
+        do {
+            let content = try decodedContent(try await send(request))
+            response = content
+            return try parse(content)
+        } catch {
+            failure = (error as? ModelError)?.message ?? error.localizedDescription
+            throw error
+        }
     }
 
     /// The shared chat body: model, messages and response format, plus the reasoning effort only when

@@ -25,6 +25,14 @@ struct MissingMeaningView: View {
 
 struct VocabularyContextView: View {
     let context: VocabularyContext
+    /// The language the sentence is written in, which is not always the entry's; a context that
+    /// never recorded one falls back to the entry's own.
+    let language: String
+    let definitionLanguage: String
+
+    var origin: LookupOrigin {
+        LookupOrigin(language: language, definitionLanguage: definitionLanguage)
+    }
 
     /// A quote: a thin accent bar beside the sentence, and for a polish the before in gray above the
     /// after in full color, so the change reads at a glance.
@@ -38,23 +46,22 @@ struct VocabularyContextView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(context.source)
-                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
-                .lineSpacing(2)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            LookupText(
+                text: context.source, size: PanelMetrics.sourceTextSize, label: "原句语境", origin: origin
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if let before = context.polishBefore, let after = context.polishAfter {
-                comparison(title: "润色前", text: before).foregroundStyle(.secondary)
+                comparison(title: "润色前", text: before, secondary: true)
                 comparison(title: "润色后", text: after)
             }
         }
     }
 
-    private func comparison(title: String, text: String) -> some View {
+    private func comparison(title: String, text: String, secondary: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(text).font(.system(size: 14)).lineSpacing(2).textSelection(.enabled)
+            LookupText(text: text, size: 14, secondary: secondary, label: title, origin: origin)
         }
     }
 }

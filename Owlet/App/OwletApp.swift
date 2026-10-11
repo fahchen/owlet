@@ -12,10 +12,28 @@ struct OwletApp: App {
         controller.start()
         return controller
     }()
-    @State private var collection = CollectionAction()
+    @State private var collection: CollectionAction
     @State private var history = HistoryRecorder()
-    @State private var panel = PanelController(
-        model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig))
+    /// One launch's lookups, shared by the panel and the main window so either reuses the other's.
+    private static let lookupStore = LookupStore()
+    @State private var mainLookups: LookupPresenter
+    @State private var panel: PanelController
+
+    init() {
+        // A card's 加入生词本 writes through the same notebook the pages use, so a word added from a
+        // lookup shows up in 生词本 immediately. The notebook, the lookups and the panel all live as
+        // long as the app does.
+        let notebook = CollectionAction()
+        _collection = State(initialValue: notebook)
+        let lookups = LookupPresenter(store: Self.lookupStore)
+        lookups.collection = notebook
+        _mainLookups = State(initialValue: lookups)
+        _panel = State(
+            initialValue: PanelController(
+                model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig),
+                lookups: lookups))
+    }
+
     @State private var page: MainView.Page = .processing
     /// One-shot focus request for the prompt editor the panel's format error points at.
     @State private var promptFocus: Operation?
@@ -27,6 +45,7 @@ struct OwletApp: App {
                 collection: collection, history: history, promptFocus: $promptFocus
             )
             .modelContainer(collection.store.container)
+            .environment(\.lookups, mainLookups)
             .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
         .windowToolbarStyle(.unified)

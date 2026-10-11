@@ -27,6 +27,26 @@ func chatBody(_ content: String, finishReason: String = "stop", refusal: String?
     return String(decoding: data, as: UTF8.self)
 }
 
+/// Fills in the `lemma` every learning item must carry, so a fixture only writes the fields its own
+/// test is about (BDR-0009). Malformed fixtures, and items that already state a lemma, pass through.
+func learningJSON(_ itemsJSON: String) -> String {
+    guard var object = try? JSONSerialization.jsonObject(with: Data(itemsJSON.utf8)) as? [String: Any],
+        let items = object["items"] as? [[String: Any]]
+    else { return itemsJSON }
+    object["items"] = items.map { item -> [String: Any] in
+        var item = item
+        if item["lemma"] == nil { item["lemma"] = NSNull() }
+        return item
+    }
+    guard let data = try? JSONSerialization.data(withJSONObject: object) else { return itemsJSON }
+    return String(decoding: data, as: UTF8.self)
+}
+
+/// A learning reply: `learningJSON` wrapped in the provider's chat envelope.
+func learningBody(_ itemsJSON: String) -> String {
+    chatBody(learningJSON(itemsJSON))
+}
+
 /// A client whose behaviour prompt is the built-in one. Request-shape tests assert against
 /// `DefaultPrompts`, so they must not inherit a prompt saved in the developer's own settings.
 func clientWithBuiltInPrompt() -> ModelClient {

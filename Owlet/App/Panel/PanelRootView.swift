@@ -70,7 +70,10 @@ struct PanelRootView: View {
             retry: controller.processCurrentText,
             cancel: controller.stop,
             openSettings: settings,
-            close: controller.close)
+            close: controller.close,
+            lookupOrigin: controller.lookupOrigin
+        )
+        .environment(\.lookups, controller.lookups)
     }
 
     private var replaceAction: ((String) -> Void)? {

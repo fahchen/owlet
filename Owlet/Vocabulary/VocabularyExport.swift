@@ -15,6 +15,8 @@ struct VocabularyExportDocument: Codable, Equatable {
         var expression: String
         var language: String
         var meaning: String
+        /// The dictionary form when a recommendation supplied one (BDR-0009); empty otherwise.
+        var lemma: String
         var contexts: [Context]
     }
 
@@ -28,12 +30,13 @@ enum VocabularyExport {
     /// Builds the document, keeping every context and the polish pair of each one.
     static func document(_ entries: [VocabularyEntry]) -> VocabularyExportDocument {
         VocabularyExportDocument(
-            version: 1,
+            version: 2,
             entries: entries.map { entry in
                 VocabularyExportDocument.Entry(
                     expression: entry.expression,
                     language: entry.language,
                     meaning: entry.meaning,
+                    lemma: entry.lemma,
                     contexts: entry.contexts.map { context in
                         VocabularyExportDocument.Context(
                             source: context.source,

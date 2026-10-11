@@ -168,6 +168,15 @@ private struct VocabularyDetail: View {
     let entry: VocabularyEntry
     let collection: CollectionAction
 
+    /// The meaning is text in the language the entry recorded (BDR-0005), so a word in it is explained
+    /// the way a source in that language is: through the mapping.
+    private var meaningOrigin: LookupOrigin {
+        let language = entry.lookupOrigin.definitionLanguage
+        return LookupOrigin(
+            language: language,
+            definitionLanguage: SettingsStore.targetMapping().target(forSource: LanguageTag.key(language)))
+    }
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             ScrollView {
@@ -176,22 +185,36 @@ private struct VocabularyDetail: View {
                         "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境 · 收藏于 \(HistoryTime.display(entry.createdAt))"
                     )
                     .font(.caption).foregroundStyle(.secondary)
-                    Text(entry.expression)
-                        .font(.system(size: 22, weight: .semibold))
-                        .textSelection(.enabled)
+                    // The entry's own form has no source sentence, so a lookup in it asks for the
+                    // general meaning instead of passing the form off as its own context.
+                    LookupText(
+                        text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "表达",
+                        origin: entry.lookupOrigin, hasSentence: false)
+                    // The dictionary form the recommendation supplied, secondary to the collected form
+                    // and only when it says something new (BDR-0009).
+                    if !entry.lemma.isEmpty,
+                        TranslationResult.normalized(entry.lemma)
+                            != TranslationResult.normalized(entry.expression)
+                    {
+                        Text(entry.lemma).font(.subheadline).foregroundStyle(.secondary)
+                    }
                     if entry.meaning.isEmpty {
                         MissingMeaningView(entry: entry, collection: collection)
                     } else {
-                        Text(entry.meaning)
-                            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.textWeight))
-                            .lineSpacing(2)
-                            .textSelection(.enabled)
+                        LookupText(
+                            text: entry.meaning, size: PanelMetrics.textSize, weight: .medium, label: "释义",
+                            origin: meaningOrigin)
                     }
                     Divider().padding(.vertical, 4)
                     Text("原句语境").font(.caption).foregroundStyle(.secondary)
                     ForEach(entry.contexts) { context in
-                        VocabularyContextView(context: context)
-                            .padding(.bottom, 8)
+                        VocabularyContextView(
+                            context: context,
+                            language: context.language.isEmpty
+                                ? entry.language : context.language,
+                            definitionLanguage: entry.lookupOrigin.definitionLanguage
+                        )
+                        .padding(.bottom, 8)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -28,3 +28,18 @@ final class HistoryRecord {
         Operation(rawValue: operation) ?? .translate
     }
 }
+
+extension HistoryRecord {
+    /// BDR-0005 for a record: a translation is explained in its target, a polish in the mapped target
+    /// of its language. A translation's source language was never stored, so it stays unknown.
+    func lookupOrigins(mapping: TargetMapping) -> (source: LookupOrigin, result: LookupOrigin) {
+        guard operationKind == .translate else {
+            let polish = LookupOrigin.result(of: .polish, languages: (language, language), mapping: mapping)
+            return (polish, polish)
+        }
+        return (
+            LookupOrigin(language: nil, definitionLanguage: language),
+            LookupOrigin(language: language, definitionLanguage: language)
+        )
+    }
+}

@@ -15,6 +15,7 @@ struct ExpandedPanel: View {
     let cancel: () -> Void
     let openSettings: () -> Void
     let close: () -> Void
+    let lookupOrigin: LookupOrigin?
     @State var learning = LearningModel()
     /// Natural height of the text column; the panel hugs it up to `maxHeight`, then scrolls.
     @State private var contentHeight: CGFloat = 0
@@ -48,7 +49,7 @@ struct ExpandedPanel: View {
                     ExpandedPanelContent(
                         model: model, notice: notice, recover: recover,
                         collection: collection, openNotebook: openNotebook, learning: learning,
-                        showsSource: !showsLearning
+                        lookupOrigin: lookupOrigin, showsSource: !showsLearning
                     )
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
                     // Beside the learning column the buttons sit on the right, so this side needs no room.

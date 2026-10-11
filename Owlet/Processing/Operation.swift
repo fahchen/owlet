@@ -1,11 +1,14 @@
 import AppKit
+import Foundation
 
 /// Text processing operation: translation to a target language, or polishing in place.
 enum Operation: String, CaseIterable, Sendable {
     case translate
     case polish
 
-    var title: String {
+    /// A resource rather than a `String`, so interpolating it into a message keeps that message
+    /// localizable; `String(localized:)` is where a plain string is actually needed.
+    var title: LocalizedStringResource {
         switch self {
         case .translate: "翻译"
         case .polish: "润色"

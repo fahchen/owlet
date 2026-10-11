@@ -22,20 +22,18 @@ final class PanelController {
         var message: String {
             switch self {
             case .translating: ""
-            case .permission: "需要选区读取权限"
-            case .unreadable: "未能读取到文字"
-            case .missingConfig: "模型服务未配置"
-            case .failure(let message, _):
-                if message == ModelError.format.message {
-                    String(localized: "返回格式错误，请检查提示词")
-                } else if Self.isConnection(message) {
-                    String(localized: "连接失败，请检查模型服务")
-                } else {
-                    message
+            case .permission: String(localized: "需要选区读取权限")
+            case .unreadable: String(localized: "未能读取到文字")
+            case .missingConfig: String(localized: "模型服务未配置")
+            case .failure(let message, let kind):
+                switch kind {
+                case .contract: String(localized: "返回格式错误，请检查提示词")
+                case .connection: String(localized: "连接失败，请检查模型服务")
+                case .service: message
                 }
-            case .unwritten: "未能写回原应用"
-            case .unwritable: "原选区不可编辑"
-            case .cancelled: "已取消处理"
+            case .unwritten: String(localized: "未能写回原应用")
+            case .unwritable: String(localized: "原选区不可编辑")
+            case .cancelled: String(localized: "已取消处理")
             }
         }
 
@@ -43,22 +41,16 @@ final class PanelController {
         var actionTitle: String {
             switch self {
             case .translating: ""
-            case .permission: "权限设置"
-            case .unreadable: "手动输入"
-            case .missingConfig: "配置服务"
-            case .failure(_, let kind): kind == .contract ? "提示词设置" : "服务设置"
-            case .unwritten: "复制结果"
-            case .unwritable: "复制结果"
-            case .cancelled: "重新处理"
+            case .permission: String(localized: "权限设置")
+            case .unreadable: String(localized: "手动输入")
+            case .missingConfig: String(localized: "配置服务")
+            case .failure(_, let kind): kind == .contract ? String(localized: "提示词设置") : String(localized: "服务设置")
+            case .unwritten: String(localized: "复制结果")
+            case .unwritable: String(localized: "复制结果")
+            case .cancelled: String(localized: "重新处理")
             }
         }
 
-        /// Network, auth and HTTP failures read as a connection problem; `State.failure` keeps only the text.
-        private static func isConnection(_ message: String) -> Bool {
-            message == ModelError.unauthorized.message
-                || message.hasPrefix(ModelError.network("").message)
-                || message.hasPrefix("服务返回 HTTP")
-        }
     }
 
     private(set) var expanded = false

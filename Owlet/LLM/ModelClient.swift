@@ -16,6 +16,8 @@ enum ModelError: Error, Equatable {
     case truncated
     case refused
 
+    /// A failure reaches the user as its message, and that is all the panel keeps: the kind above
+    /// decides what it means, this decides how it reads.
     var message: String {
         switch self {
         case .network(let detail):
@@ -32,19 +34,23 @@ enum ModelError: Error, Equatable {
         }
     }
 
-    /// Which recovery a failure offers. This is a property of the error, never of its wording: a
-    /// translated message must not decide whether 提示词设置 or 服务设置 is the way out.
+    /// What a failure means for the user. Classification is a property of the error, never of its
+    /// wording: a translated message must not decide whether the way out is the prompt editor or the
+    /// service settings, nor whether the problem is the connection.
     enum Kind: Equatable {
         /// A prompt edit can address it: the reply broke the contract.
         case contract
-        /// The service settings can address it.
+        /// Reaching the service failed: network, credentials or HTTP status.
+        case connection
+        /// The service answered, but the answer is unusable.
         case service
     }
 
     var kind: Kind {
         switch self {
         case .format, .sourceMismatch, .targetMismatch: .contract
-        case .network, .unauthorized, .http, .emptyResponse, .truncated, .refused: .service
+        case .network, .unauthorized, .http: .connection
+        case .emptyResponse, .truncated, .refused: .service
         }
     }
 }
@@ -109,7 +115,8 @@ struct ModelClient: Sendable {
 
     /// Names what was asked for, so a debug entry reads without opening it.
     static func debugTitle(operation: Operation, target: String?) -> String {
-        target.map { "\(operation.title) · \($0)" } ?? operation.title
+        let name = String(localized: "\(operation.title)")
+        return target.map { "\(name) · \($0)" } ?? name
     }
 
     /// The body as sent, so the debug page shows the real request instead of a reconstruction. The

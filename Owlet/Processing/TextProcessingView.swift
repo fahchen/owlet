@@ -81,7 +81,8 @@ struct TextProcessingView: View {
     private func segmentSymbol(_ operation: Operation) -> NSImage {
         PanelSegmentedControl.content(
             of: .init(
-                title: "", symbol: operation.symbol, action: {}, accessibilityLabel: operation.title,
+                title: "", symbol: operation.symbol, action: {},
+                accessibilityLabel: String(localized: "\(operation.title)"),
                 tint: model.operation == operation ? operation.tint : nil),
             font: nil)
     }

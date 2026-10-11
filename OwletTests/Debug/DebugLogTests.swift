@@ -69,7 +69,8 @@ struct DebugLogTests {
             "Hello", operation: .translate, to: "zh-Hans", config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == "翻译 · zh-Hans")
+        // The title is the operation's own localized name, so it follows the interface language.
+        #expect(box.exchanges.first?.title == "\(String(localized: "翻译")) · zh-Hans")
         #expect(box.exchanges.first?.failure == nil)
         #expect(box.exchanges.first?.request.contains("zh-Hans") == true)
         #expect(box.exchanges.first?.response?.contains("source_language") == true)

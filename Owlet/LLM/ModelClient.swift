@@ -44,6 +44,13 @@ enum ModelError: Error, Equatable {
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
+/// A failure together with the model content that produced it, so a caller can show the model what it
+/// must fix instead of asking again from scratch.
+struct ContentError: Error {
+    let error: Error
+    let content: String
+}
+
 struct ModelClient: Sendable {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
     /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
@@ -150,6 +157,10 @@ struct ModelClient: Sendable {
 
     /// Runs the optional learning request as its own call, so a failure here can only ever affect the
     /// learning area and never the main result the caller already has.
+    ///
+    /// A reply this app cannot accept buys one corrective round: the model is shown its own answer and
+    /// which rule it broke, which is far more reliable than re-sending the same prompt and hoping. Only
+    /// one round, so a model that cannot follow the contract still fails exactly where it did.
     func learning(
         text: String, operation: Operation, targetLanguage: String, result: String,
         config: ServiceConfig
@@ -157,15 +168,51 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        return try await perform(
-            request, title: "学习推荐", submitted: text, parse: { try LearningResult.parse($0) })
+        switch try await attempt(request, title: "学习推荐", submitted: text) {
+        case .success(let items):
+            return items
+        case .failure(let error):
+            // Only a reply that arrived but broke the contract is worth correcting; truncation,
+            // refusal, an empty answer and every transport failure stand as they are.
+            guard let asModelError = error.error as? ModelError, case .format = asModelError else {
+                throw error.error
+            }
+            let correction = try makeLearningRequest(
+                text: text, operation: operation, targetLanguage: targetLanguage, result: result,
+                config: config, correcting: error.content,
+                reasons: LearningResult.diagnose(error.content))
+            switch try await attempt(correction, title: "学习推荐（纠正）", submitted: text) {
+            case .success(let items): return items
+            case .failure(let retried): throw retried.error
+            }
+        }
+    }
+
+    /// Sends one request and parses it; the content comes back with a format failure, because the
+    /// corrective round has to show the model the reply it must fix.
+    /// Sends one request and parses it; the parse failure carries the content back, because the
+    /// corrective round has to show the model the reply it must fix. Everything else throws.
+    private func attempt(
+        _ request: URLRequest, title: String, submitted: String
+    ) async throws -> Result<[LearningResult.Item], ContentError> {
+        try await perform(request, title: title, submitted: submitted) {
+            (content: String) -> Result<[LearningResult.Item], ContentError> in
+            do {
+                return .success(try LearningResult.parse(content))
+            } catch {
+                return .failure(ContentError(error: error, content: content))
+            }
+        }
     }
 
     /// Builds the separate learning request: the same behavior prompt as the main request plus the
     /// learning task and the `$defs.learning` contract, with the original and result as data.
+    ///
+    /// With `correcting`, the same contract comes after the model's own rejected reply and the rules
+    /// it broke, so the one thing that changes between the two requests is the model's own output.
     func makeLearningRequest(
         text: String, operation: Operation, targetLanguage: String, result: String,
-        config: ServiceConfig
+        config: ServiceConfig, correcting reply: String? = nil, reasons: [String] = []
     ) throws -> URLRequest {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
@@ -192,26 +239,56 @@ struct ModelClient: Sendable {
             {"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。",\
             "context":"Let's take a step back.","lemma":null}]}
             """
-        let responseFormat: [String: Any] =
-            !config.provider.supportsJSONSchema
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "original": text, "result": result,
+        ])
+        let user = String(decoding: payload, as: UTF8.self)
+        let messages: [[String: String]]
+        if let reply {
+            let problems =
+                reasons.isEmpty
+                ? "It does not satisfy the contract for items."
+                : "These rules were broken: " + reasons.joined(separator: "; ") + "."
+            messages = [
+                ["role": "system", "content": system],
+                [
+                    "role": "user",
+                    "content": "Original and result, as data:\n\(user)",
+                ],
+                ["role": "assistant", "content": reply],
+                [
+                    "role": "user",
+                    "content": """
+                    That reply was rejected. \(problems)
+                    Reply again with only the one json object, keeping every meaning you already \
+                    wrote and changing only what the rules require.
+                    """,
+                ],
+            ]
+        } else {
+            messages = [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
+            ]
+        }
+        let body = requestBody(
+            messages: messages, responseFormat: learningResponseFormat(config.model, config: config),
+            config: config)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    /// The learning contract as a provider accepts it: a real schema where the service supports one,
+    /// otherwise `json_object` with the shape carried by the system prompt instead.
+    private func learningResponseFormat(_ name: String, config: ServiceConfig) -> [String: Any] {
+        !config.provider.supportsJSONSchema
             ? ["type": "json_object"]
             : [
                 "type": "json_schema",
                 "json_schema": [
-                    "name": "learning", "strict": true,
-                    "schema": LearningResult.providerSchema,
+                    "name": name, "strict": true, "schema": LearningResult.providerSchema,
                 ],
             ]
-        let payload = try JSONSerialization.data(withJSONObject: [
-            "original": text, "result": result,
-        ])
-        let body = requestBody(
-            messages: [
-                ["role": "system", "content": system],
-                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ], responseFormat: responseFormat, config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return request
     }
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the

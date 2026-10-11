@@ -234,6 +234,86 @@ struct LearningContentTests {
         }
     }
 
+    /// The user's own failing reply, from the debug page on 2026-10-11: every item gave the
+    /// dictionary form as `text`, so none of them appears in its context, and every `lemma` repeated
+    /// the text. The corrective round must show the model exactly that and take the fixed answer.
+    @Test func aReplyThatGivesDictionaryFormsIsCorrected() async throws {
+        let rejected = """
+            {"items":[{"text":"跳ね上がる","language":"ja","kind":"word","meaning":"急剧上涨。",\
+            "context":"原油市場で受け渡しまでの期間が短い現物の取引価格が跳ね上がっている。","lemma":"跳ね上がる"}]}
+            """
+        let accepted = learningJSON(
+            #"{"items":[{"text":"跳ね上がっている","language":"ja","kind":"word","meaning":"急剧上涨。","context":"原油市場で受け渡しまでの期間が短い現物の取引価格が跳ね上がっている。","lemma":"跳ね上がる"}]}"#
+        )
+        let calls = Mutex(0)
+        let sentCorrection = Mutex(false)
+        let client = ModelClient(transport: { request in
+            let count = calls.withLock { value -> Int in
+                value += 1
+                return value
+            }
+            if count == 2 {
+                let body = try JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any]
+                let messages = body?["messages"] as? [[String: String]] ?? []
+                // The second request carries the rejected reply back to the model, plus which rule
+                // it broke, instead of repeating the same question.
+                sentCorrection.withLock {
+                    $0 =
+                        messages.contains { $0["role"] == "assistant" && $0["content"] == rejected }
+                        && messages.contains {
+                            $0["role"] == "user" && ($0["content"]?.contains("not in its context") ?? false)
+                        }
+                }
+            }
+            return try await stub(body: chatBody(count == 1 ? rejected : accepted))(request)
+        })
+
+        let items = try await client.learning(
+            text: "原油市場で…", operation: .translate, targetLanguage: "zh-Hans", result: "在原油市场…",
+            config: testConfig)
+
+        #expect(calls.withLock { $0 } == 2)
+        #expect(sentCorrection.withLock { $0 })
+        #expect(items.count == 1)
+        #expect(items.first?.text == "跳ね上がっている")
+        #expect(items.first?.lemma == "跳ね上がる")
+    }
+
+    /// One corrective round only: a model that cannot follow the contract still fails, and the third
+    /// request is never sent.
+    @Test func aSecondBadReplyIsNotCorrectedAgain() async throws {
+        let bad = learningJSON(
+            #"{"items":[{"text":"missing","language":"en","kind":"word","meaning":"无。","context":"I will follow up."}]}"#
+        )
+        let calls = Mutex(0)
+        let client = ModelClient(transport: { request in
+            calls.withLock { $0 += 1 }
+            return try await stub(body: learningBody(bad))(request)
+        })
+        await #expect(throws: ModelError.format) {
+            try await client.learning(
+                text: "I will follow up.", operation: .translate, targetLanguage: "zh-Hans",
+                result: "我会跟进。", config: testConfig)
+        }
+        #expect(calls.withLock { $0 } == 2)
+    }
+
+    /// A transport failure is not a contract failure: there is no reply to correct, so the request is
+    /// not repeated.
+    @Test func aTransportFailureIsNotRetried() async throws {
+        let calls = Mutex(0)
+        let client = ModelClient(transport: { _ in
+            calls.withLock { $0 += 1 }
+            throw URLError(.notConnectedToInternet)
+        })
+        await #expect(throws: (any Error).self) {
+            try await client.learning(
+                text: "Hello", operation: .translate, targetLanguage: "zh-Hans", result: "你好",
+                config: testConfig)
+        }
+        #expect(calls.withLock { $0 } == 1)
+    }
+
     @Test func learningFailureLeavesTheMainResultUsable() async throws {
         let main = TextProcessingModel(
             client: ModelClient(transport: stub(body: chatBody(translationPayload))),

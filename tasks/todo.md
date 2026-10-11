@@ -1039,12 +1039,22 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 
 验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupCollectionTests` 五条（保存释义与原形不二次请求、语言来自模型回答、无语境不存语境、另一句追加且保留原释义、取消收藏）。预览端到端（`OWLET_PREVIEW_CARD_CHECK=1 python3 scripts/panel-preview.py --panel`）走真实 `LookupPresenter` 与内存生词本：查询命中后 before=false → 加入 after=true、条目有释义与 1 条语境 → 取消 removed=false，输出 `CARD-CHECK PASS`。已用 `mise run dev` 启动应用确认可运行。未验证：本书写环境的 `screencapture` 无屏幕录制权限（`could not create image from display`），因此我无法自己截图核对卡片版式，图标与 `发音` 的并排观感需用户确认；真实模型下的入库结果同样待验。预览新增 `查词卡` 状态（菜单 ⌘6）可在不依赖 popover 的情况下查看卡片版式。
 
-## T56：学习推荐词形 prompt 修正（待真实模型复验）
+## T56：学习推荐契约失败时纠正一次（已实现，待真实模型复验）
 
-2026-10-11 用户提供「学习推荐」调试页原始返回，证实失败原因与 BDR-0009 的预判不同：模型对三条日语推荐**全部**返回字典形 `text`（`跳ね上がる`／`史上最高値をつける`／`拍車がかかる`），而语境里是活用形，三条都不通过「`text` 逐字出现在 `context`」；同时三条还把 `lemma` 原样复制成 `text`（契约要求不同才给，否则 null）。即 `json_object` 下模型把 `text` 当词典形、`lemma` 当重复字段。
+2026-10-11 用户提供「学习推荐」调试页原始返回，证实失败原因与 BDR-0009 的预判不同：三条日语推荐**全部**返回字典形 `text`（`跳ね上がる`／`史上最高値をつける`／`拍車がかかる`），语境里却是活用形，三条都不通过「`text` 逐字出现在 `context`」；同时三条把 `lemma` 原样复制成 `text`，违反「不同才给原形」。即 `json_object` 下模型把 `text` 当词典形、`lemma` 当重复字段。
 
-根因是 prompt 示例本身：原来给的例子 `take a step back` 词形与原形相同，模型无从学到「`text` 抄词汇形」。修法不改校验（放宽会让生词本收进语境里不存在的词形），改为把三项分工拆成短句并换成词形≠原形的示例（`跳ね上がっている`／`跳ね上がる`），`上下文`/`text`/`lemma` 三行各自明确，并写明「Never give the dictionary form here」「Never repeat text」。
+两层修法：
 
-已改：`makeLearningRequest` 与 `fillMeaning` 两处系统提示。`mise run check` 退出码 0。
+1. **prompt 措辞**（根因）。原示例 `take a step back` 词形等于原形，模型无从学到「`text` 抄词汇形」。把 `context`／`text`／`lemma` 三项分工拆成短句，示例换成词形≠原形的 `跳ね上がっている`／`跳ね上がる`，并写明不得给字典形、不得重复 `text`。学习与补释义两处同步。
+2. **一次纠正重试**。校验失败时不再原样重问：`LearningResult.diagnose` 指出打破的具体规则，第二次请求带上模型自己被拒的回复与这些规则，让它只改该改的地方。只纠正一次，纠正后仍不合规则照样失败；截断、拒绝、空响应与传输错误都不是契约失败，不触发重试。
 
-**待复验**：上面两处 prompt 是否真的让真实模型返回词汇形。本会话环境没有 `DEEPSEEK_API_KEY`，我无法自己发起真实调用。复验方式：`bash .build/run-prompt-probe.sh`（读应用自己的钥匙串项，连发三次同一段日语，用应用同款规则判定并打印 PASS／FAIL），或在应用里开调试页重跑同一段日语并贴「学习推荐」原始返回。
+验收：
+
+- [x] `LearningResult.diagnose` 区分：非 JSON、顶层键不对、缺键、多键、`text`／`language`／`meaning`／`context` 空白或类型错、`kind` 非法、`text` 不在语境中、`lemma` 重复 `text`。
+- [x] 第二次请求是独立一次交换（调试页标题「学习推荐（纠正）」），带 `assistant` 原回复与用户纠正说明。
+- [x] 纠正后成功则返回结果；仍失败则抛第二次的错误；传输失败与空响应只请求一次。
+- [x] 两次提示词都不再示范「词形等于原形」的条目。
+
+验证：`mise run format`、`mise run check` 退出码 0；`LearningContentTests` 新增三条——用用户原始失败回复复现并断言第二次请求确实带回了该回复与「not in its context」规则、第二次仍错时只请求两次、传输失败只请求一次。
+
+**待复验**：真实 `deepseek-flash` 在新提示词与纠正重试下是否一次通过。本会话环境没有 `DEEPSEEK_API_KEY`（读钥匙串被授权阻断），我无法自己发起真实调用。复验方式：应用里开调试页重跑同一段日语；若出现「学习推荐（纠正）」条目且最终出结果，即为修复；把两条原始返回复制给我可进一步收紧措辞。

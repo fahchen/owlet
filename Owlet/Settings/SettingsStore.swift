@@ -237,9 +237,17 @@ extension SettingsStore {
     static let debugEnabledKey = "debug.enabled"
     /// The settings pane the window opens on, kept so it returns to the last one people used.
     static let settingsPaneKey = "settings.pane"
+    /// Which language the interface speaks; absent means follow the system.
+    static let appLanguageKey = "app.language"
 
     static func isDebugEnabled(in defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: debugEnabledKey)
+    }
+
+    static func appLanguage(in defaults: UserDefaults = .standard) -> AppLanguage {
+        AppLanguage.resolve(
+            saved: defaults.string(forKey: appLanguageKey),
+            preferred: Locale.preferredLanguages)
     }
 }
 

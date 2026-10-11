@@ -20,6 +20,9 @@ struct OwletApp: App {
     @State private var panel: PanelController
 
     init() {
+        // Before any view is built: put the stored interface language where Foundation reads it, so the
+        // String Catalog resolves to it for this launch.
+        AppLanguage.applyStoredChoice()
         // A card's 加入生词本 writes through the same notebook the pages use, so a word added from a
         // lookup shows up in 生词本 immediately. The notebook, the lookups and the panel all live as
         // long as the app does.

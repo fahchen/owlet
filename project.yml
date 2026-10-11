@@ -1,6 +1,9 @@
 name: Owlet
 options:
   bundleIdPrefix: dev.fahchen
+  # The app is written in Simplified Chinese, so that is the String Catalog's source language and the
+  # fallback for a missing translation. English, Traditional Chinese and Japanese are translated there.
+  developmentLanguage: zh-Hans
   deploymentTarget:
     macOS: "26.0"
 settings:

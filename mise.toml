@@ -2,10 +2,12 @@
 xcodegen = "2.45.4"
 
 [tasks.lint]
-description = "Whitespace and swift-format lint"
+description = "Whitespace, swift-format and String Catalog lint"
 run = [
   "git diff --check HEAD",
   "xcrun swift-format lint --strict --recursive Owlet OwletTests",
+  # The catalog is generated from scripts/build-strings.py; this fails when the two drift apart.
+  "python3 scripts/build-strings.py --check",
 ]
 
 [tasks.format]

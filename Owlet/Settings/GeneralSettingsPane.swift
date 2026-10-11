@@ -10,9 +10,21 @@ struct GeneralSettingsPane: View {
     @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
 
     @AppStorage(SettingsStore.panelGlassEffectKey) private var panelGlassEffect = PanelGlassEffect.contrast
+    @AppStorage(SettingsStore.appLanguageKey) private var appLanguage = ""
+    /// The chosen language, including the default "follow the system" the key cannot express by itself.
+    private var language: AppLanguage {
+        AppLanguage(rawValue: appLanguage) ?? .system
+    }
 
     var body: some View {
         Form {
+            Section {
+                Picker("界面语言", selection: languageBinding) {
+                    ForEach(AppLanguage.selectable) { Text($0.title).tag($0) }
+                }
+            } footer: {
+                Text("改动在下次启动 Owlet 后生效。")
+            }
             Section("文本处理") {
                 Picker("翻译显示方式", selection: $displayMode) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -40,6 +52,13 @@ struct GeneralSettingsPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Applies the pick the moment it changes, so the next launch already speaks it.
+    private var languageBinding: Binding<AppLanguage> {
+        Binding(
+            get: { language },
+            set: { AppLanguage.apply($0) })
     }
 
     /// Recording is already gated on this switch; clearing on the way out also drops what was

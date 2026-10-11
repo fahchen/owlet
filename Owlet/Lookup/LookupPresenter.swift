@@ -128,6 +128,11 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     }
 }
 
+extension EnvironmentValues {
+    /// The reading area's lookup presenter; reading text without one stays plain selectable text.
+    @Entry var lookups: LookupPresenter?
+}
+
 /// The popover's content: the one-action selection toolbar, or the card.
 private struct LookupPopoverContent: View {
     let presenter: LookupPresenter

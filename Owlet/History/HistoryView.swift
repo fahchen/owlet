@@ -208,16 +208,18 @@ private struct HistoryDetail: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.bottom, 12)
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(record.source)
-                            .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
-                            .lineSpacing(2)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        LookupText(
+                            text: record.source, size: PanelMetrics.textSize, label: "原文",
+                            origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).source
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         Divider()
                     }
                     .padding(.bottom, 12)
                     .collapsing(shown: !learning.isExpanded, height: $sourceHeight)
-                    PanelJustifiedText(text: record.result)
+                    LookupText(
+                        text: record.result, size: PanelMetrics.textSize, weight: .medium, justified: true,
+                        origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).result)
                     VStack(alignment: .leading, spacing: 12) {
                         Divider()
                         // Only once opened: a closed list would show its disclosure row.

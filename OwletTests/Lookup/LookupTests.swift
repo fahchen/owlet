@@ -517,3 +517,72 @@ final class LookupTransport: Sendable {
         #expect(word(at: "，", in: text) == nil)
     }
 }
+
+/// Each reading area explains in its source's definition language (BDR-0005, word-lookup.feature).
+@MainActor @Suite struct LookupAreaTests {
+    let mapping = TargetMapping(targets: ["en": "zh-Hans", "zh-Hans": "en"], fallback: "zh-Hans")
+
+    @Test func historyFollowsTheRecordsOperation() {
+        let translated = HistoryRecord(
+            operation: .translate, source: "我会跟进", result: "I will follow up", language: "en")
+        #expect(
+            translated.lookupOrigins(mapping: mapping).result == LookupOrigin(language: "en", definitionLanguage: "en"))
+        #expect(
+            translated.lookupOrigins(mapping: mapping).source == LookupOrigin(language: nil, definitionLanguage: "en"))
+        let polished = HistoryRecord(operation: .polish, source: "收敛", result: "收敛", language: "zh-Hans")
+        #expect(
+            polished.lookupOrigins(mapping: mapping).result
+                == LookupOrigin(language: "zh-Hans", definitionLanguage: "en"))
+        let japanese = HistoryRecord(operation: .polish, source: "銀行", result: "銀行", language: "ja")
+        #expect(japanese.lookupOrigins(mapping: mapping).result.definitionLanguage == "zh-Hans")
+    }
+
+    @Test func vocabularyUsesTheEntrysMeaningLanguage() {
+        let entry = VocabularyEntry(expression: "bank", language: "en")
+        #expect(entry.lookupOrigin == LookupOrigin(language: "en", definitionLanguage: "zh-Hans"))
+    }
+
+    @Test func anotherAreaReusesTheSameLookupAndNothingIsSaved() async throws {
+        let bank = try query("bank", in: "We sat on the bank of the river.")
+        let transport = LookupTransport([bank])
+        let store = LookupStore(
+            client: ModelClient(transport: transport.transport, capture: .off), config: { testConfig },
+            defaults: lookupDefaults)
+        let silent = LookupSpeech(canSpeak: { _ in true }, speak: { _, _ in }, stop: {})
+        let panel = LookupPresenter(store: store, speech: silent)
+        let window = LookupPresenter(store: store, speech: silent)
+        let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
+        let vocabulary = VocabularyStore(
+            container: try ModelContainer(
+                for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]))
+        let entry = try #require(
+            CollectionAction(store: vocabulary, client: ModelClient(transport: transport.transport), config: { nil })
+                .collect(
+                    VocabularyDraft(expression: "bank", language: "en", context: "We sat on the bank of the river."),
+                    meaning: "河岸"))
+
+        panel.lookUp(bank, at: nil, in: nil)
+        try await Task.sleep(for: .milliseconds(100))
+        window.lookUp(bank, at: nil, in: nil)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(transport.count == 1)
+        #expect(entry.meaning == "河岸")
+        #expect(try vocabulary.entries().count == 1)
+    }
+
+    @Test func leavingTheWindowClosesThatTextsCard() async throws {
+        let presenter = LookupPresenter(
+            store: LookupStore(config: { nil }, defaults: lookupDefaults),
+            speech: LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}))
+        let view = LookupTextView(usingTextLayoutManager: false)
+        view.presenter = presenter
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [], backing: .buffered, defer: true)
+        window.contentView?.addSubview(view)
+        let bank = try query("bank", in: "We sat on the bank of the river.")
+        presenter.lookUp(bank, at: .zero, in: view)
+        #expect(presenter.isShown)
+        view.removeFromSuperview()
+        #expect(!presenter.isShown)
+    }
+}

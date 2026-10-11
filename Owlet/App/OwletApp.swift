@@ -14,8 +14,12 @@ struct OwletApp: App {
     }()
     @State private var collection = CollectionAction()
     @State private var history = HistoryRecorder()
+    /// One launch's lookups, shared by the panel and the main window so either reuses the other's.
+    private static let lookupStore = LookupStore()
     @State private var panel = PanelController(
-        model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig))
+        model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig),
+        lookups: LookupPresenter(store: lookupStore))
+    @State private var mainLookups = LookupPresenter(store: lookupStore)
     @State private var page: MainView.Page = .processing
     /// One-shot focus request for the prompt editor the panel's format error points at.
     @State private var promptFocus: Operation?
@@ -27,6 +31,7 @@ struct OwletApp: App {
                 collection: collection, history: history, promptFocus: $promptFocus
             )
             .modelContainer(collection.store.container)
+            .environment(\.lookups, mainLookups)
             .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
         .windowToolbarStyle(.unified)

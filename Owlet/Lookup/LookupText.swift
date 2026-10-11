@@ -12,9 +12,13 @@ struct LookupText: NSViewRepresentable {
     var weight: NSFont.Weight = .regular
     var lineSpacing: CGFloat = 2
     var justified = false
+    /// Secondary text, such as a polish's 润色前, which reads quieter than what replaced it.
+    var secondary = false
+    /// What the text is, for VoiceOver.
+    var label = "结果"
     /// nil keeps the text selectable without offering a lookup.
     let origin: LookupOrigin?
-    let presenter: LookupPresenter
+    @Environment(\.lookups) private var presenter
 
     func makeNSView(context: Context) -> LookupTextView {
         let view = LookupTextView(usingTextLayoutManager: false)
@@ -27,17 +31,17 @@ struct LookupText: NSViewRepresentable {
         view.textContainer?.widthTracksTextView = true
         view.isVerticallyResizable = false
         view.isHorizontallyResizable = false
-        view.setAccessibilityLabel("结果")
         return view
     }
 
     func updateNSView(_ view: LookupTextView, context: Context) {
-        view.origin = origin
+        view.origin = presenter == nil ? nil : origin
         view.presenter = presenter
-        let style: [CGFloat] = [size, weight.rawValue, lineSpacing, justified ? 1 : 0]
+        view.setAccessibilityLabel(label)
+        let style: [CGFloat] = [size, weight.rawValue, lineSpacing, justified ? 1 : 0, secondary ? 1 : 0]
         guard view.string != text || view.style != style else { return }
         // New text is a new reading, so a toolbar or card for the old one goes with it.
-        if view.string != text { presenter.textReplaced(in: view) }
+        if view.string != text { presenter?.textReplaced(in: view) }
         view.style = style
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = justified ? .justified : .natural
@@ -48,7 +52,7 @@ struct LookupText: NSViewRepresentable {
                 attributes: [
                     .font: NSFont.systemFont(ofSize: size, weight: weight),
                     // labelColor reads lighter over the panel glass; textColor matches the editable source.
-                    .foregroundColor: NSColor.textColor,
+                    .foregroundColor: secondary ? NSColor.secondaryLabelColor : NSColor.textColor,
                     .paragraphStyle: paragraph,
                 ]))
     }
@@ -79,6 +83,19 @@ final class LookupTextView: NSTextView {
     /// Hover tints the word with the selection color at reduced strength (DESIGN 封闭例外): the
     /// same color as a selection, so it reads as "this can be picked", but clearly weaker.
     static let hoverOpacity: CGFloat = 0.3
+
+    /// Leaving the window — another page, a closed panel — takes this text's toolbar or card with it,
+    /// so a late answer has nothing to reopen.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { presenter?.textReplaced(in: self) }
+    }
+
+    /// Esc closes this text's toolbar or card first; with none up it goes on as before.
+    override func cancelOperation(_ sender: Any?) {
+        if presenter?.isShown == true, presenter?.close() == true { return }
+        super.cancelOperation(sender)
+    }
 
     /// A click is a lookup only once the double-click interval passes without a second click, so
     /// double-click word selection, drag selection and copy keep working.

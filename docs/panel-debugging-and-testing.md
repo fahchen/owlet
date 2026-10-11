@@ -55,7 +55,7 @@ python3 scripts/panel-preview.py --transition /tmp/owlet-panel-transition.mov
 
 过渡录制走生产展开路径，模拟模型延迟 1.5 秒返回；用 `ffmpeg -i <mov> -vf fps=30 f%03d.png` 拆帧逐帧检查。录制进程独立结束，主线程不等待它，否则动画会被阻塞。
 
-查词交互（T48）用真实控制器：`--panel` 以 accessory 应用打开真正的 `PanelController`／`FloatingPanel`（隔离 suite 固定目标为 en），夹具查词延迟 1.2 秒，“literary”首次返回违约内容以驱动失败与重试；`--no-voice` 模拟没有系统语音。合成鼠标键盘需要终端已有辅助功能权限；不改系统外观或语音设置。
+查词交互（T48）用真实控制器：`--panel` 以 accessory 应用打开真正的 `PanelController`／`FloatingPanel`（隔离 suite 固定目标为 en），夹具查词延迟 1.2 秒，“literary”首次返回违约内容以驱动失败与重试；`--no-voice` 模拟没有系统语音；`--target ja|zh-Hans` 换结果语言，`--appearance dark|contrast|darkContrast` 只改预览进程外观；`--main` 用夹具与内存存储打开主窗口的文本处理、生词本、历史三页。合成鼠标键盘需要终端已有辅助功能权限；不改系统外观或语音设置。
 
 交互预览使用 ⌘1–⌘5 切换：处理中、未配置模型、连接失败、成功、学习。预览窗口固定1030×550pt，截图实际像素随屏幕缩放变化。
 

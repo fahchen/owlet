@@ -8,7 +8,6 @@ struct ExpandedPanelContent: View {
     let collection: CollectionAction?
     let openNotebook: (() -> Void)?
     let learning: LearningModel
-    let lookups: LookupPresenter
     let lookupOrigin: LookupOrigin?
     var showsSource = true
     /// The pinned target language; an empty value means 自动.
@@ -74,17 +73,21 @@ struct ExpandedPanelContent: View {
                     AlignedSegments(
                         segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
                         targetSize: PanelMetrics.textSize,
-                        lineSpacing: 4, pairSpacing: 12)
+                        lineSpacing: 4, pairSpacing: 12,
+                        sourceOrigin: lookupOrigin.map {
+                            LookupOrigin(language: model.languages?.source, definitionLanguage: $0.definitionLanguage)
+                        },
+                        targetOrigin: lookupOrigin)
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
                         Button(editingSource ? "收起原文" : "编辑原文") { editingSource.toggle() }
                             .buttonStyle(.glass)
                     }
                 } else {
-                    // Beside learning the result is justified, as PanelJustifiedText draws it elsewhere.
+                    // Beside learning the result is justified, as the main window's result is.
                     LookupText(
                         text: text, size: PanelMetrics.textSize, weight: .medium,
-                        justified: !showsSource, origin: lookupOrigin, presenter: lookups
+                        justified: !showsSource, origin: lookupOrigin
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }

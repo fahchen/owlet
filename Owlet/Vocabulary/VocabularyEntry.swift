@@ -16,6 +16,10 @@ final class VocabularyEntry {
     @Relationship(deleteRule: .cascade, inverse: \VocabularyContext.entry)
     var contexts: [VocabularyContext] = []
 
+    /// A lookup in this entry is explained in its meaning's language (BDR-0005).
+    /// ponytail: every saved meaning is Simplified Chinese until BDR-0005 stores the language per entry.
+    var lookupOrigin: LookupOrigin { LookupOrigin(language: language, definitionLanguage: "zh-Hans") }
+
     init(expression: String, language: String, meaning: String = "", createdAt: Date = Date()) {
         self.expression = expression
         self.language = language

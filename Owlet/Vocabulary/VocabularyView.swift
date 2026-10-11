@@ -176,9 +176,9 @@ private struct VocabularyDetail: View {
                         "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境 · 收藏于 \(HistoryTime.display(entry.createdAt))"
                     )
                     .font(.caption).foregroundStyle(.secondary)
-                    Text(entry.expression)
-                        .font(.system(size: 22, weight: .semibold))
-                        .textSelection(.enabled)
+                    LookupText(
+                        text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "表达",
+                        origin: entry.lookupOrigin)
                     if entry.meaning.isEmpty {
                         MissingMeaningView(entry: entry, collection: collection)
                     } else {
@@ -190,7 +190,7 @@ private struct VocabularyDetail: View {
                     Divider().padding(.vertical, 4)
                     Text("原句语境").font(.caption).foregroundStyle(.secondary)
                     ForEach(entry.contexts) { context in
-                        VocabularyContextView(context: context)
+                        VocabularyContextView(context: context, origin: entry.lookupOrigin)
                             .padding(.bottom, 8)
                     }
                 }

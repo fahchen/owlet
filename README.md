@@ -10,7 +10,7 @@ macOS 26+ 翻译、润色与个人生词本。
 - [Liquid Glass 组件对照](docs/liquid-glass-components.md)
 - [Panel 调试、测试与截图](docs/panel-debugging-and-testing.md)
 - [未实现功能清单](docs/unimplemented-features.md)
-- [阅读查词第一步](spec/vocabulary/features/word-lookup.feature)：浮窗选区与单击／悬停查询已实现（T48–T49），其余区域与学习行待实现，决策见 [BDR-0008](spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。
+- [阅读查词第一步](spec/vocabulary/features/word-lookup.feature)：五类区域中除学习行外均已实现选区、单击与悬停查询（T48–T50），学习行待实现，决策见 [BDR-0008](spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。
 - [实现计划](tasks/plan.md)
 - [任务清单](tasks/todo.md)
 

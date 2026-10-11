@@ -146,12 +146,13 @@ struct PreviewView: View {
                     ExpandedPanel(
                         model: PreviewFixtures.model, replace: nil, copy: { _ in },
                         collection: PreviewFixtures.collection, openNotebook: {}, notice: nil, recover: { _ in },
-                        retry: {}, cancel: {}, openSettings: {}, close: {}, lookups: PreviewFixtures.lookups,
+                        retry: {}, cancel: {}, openSettings: {}, close: {},
                         lookupOrigin: PreviewFixtures.model.languages.map {
                             .result(of: .translate, languages: $0, mapping: TargetMapping(targets: [:], fallback: "zh-Hans"))
                         }, learning: PreviewFixtures.learning
                     )
                     .panelSurface(.regular)
+                    .environment(\.lookups, PreviewFixtures.lookups)
                 }
             }
         }
@@ -187,6 +188,10 @@ final class PreviewPanel: NSPanel {
 
     @MainActor static func main() {
         let app = NSApplication.shared
+        if ProcessInfo.processInfo.arguments.contains("--main") {
+            showMainWindow(app)
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--panel") {
             // The real controller and FloatingPanel, as the shortcut opens them: an accessory app
             // with a non-activating panel, so focus, Esc and outside clicks behave as in Owlet.
@@ -335,4 +340,60 @@ final class PreviewPanel: NSPanel {
             do { try capture.run() } catch { exit(1) }
         }
     }
+}
+
+/// `--main`: the main window's three reading pages with fixture data in memory, so lookups in them
+/// can be checked by hand without the user's store or a real model.
+struct MainPreview: View {
+    @State private var page = 0
+    let history = HistoryStore(container: PreviewFixtures.store.container)
+
+    var body: some View {
+        NavigationSplitView {
+            List(selection: Binding<Int?>(get: { page }, set: { page = $0 ?? page })) {
+                Label("翻译与润色", systemImage: "translate").tag(0)
+                Label("生词本", systemImage: "books.vertical").tag(1)
+                Label("历史记录", systemImage: "clock").tag(2)
+            }
+        } detail: {
+            switch page {
+            case 0:
+                TextProcessingView(model: PreviewFixtures.model, openSettings: {}, collection: PreviewFixtures.collection)
+            case 1: VocabularyView(collection: PreviewFixtures.collection, openProcessing: {})
+            default: HistoryView(store: history, collection: PreviewFixtures.collection, openProcessing: {})
+            }
+        }
+        .modelContainer(PreviewFixtures.store.container)
+        .environment(\.lookups, PreviewFixtures.lookups)
+        .defaultAppStorage(PreviewFixtures.defaults)
+        .task {
+            PreviewFixtures.model.input = PreviewFixtures.source
+            await PreviewFixtures.model.process(to: "en")?.value
+            _ = PreviewFixtures.collection.setCollected(
+                true,
+                draft: VocabularyDraft(
+                    expression: "deliberate", language: "en",
+                    context: "we meticulously deliberate context, nuance, and emotion in every language pairing."),
+                meaning: "仔细斟酌、深思熟虑。")
+            _ = try? history.record(
+                operation: .translate, source: PreviewFixtures.source,
+                result: "Much like ancient poets weighing every character, we refine each expression.",
+                language: "en")
+        }
+    }
+}
+
+@MainActor func showMainWindow(_ app: NSApplication) {
+    app.setActivationPolicy(.regular)
+    SettingsStore.setPinnedTarget("en", in: PreviewFixtures.defaults)
+    let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 1080, height: 690),
+        styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView], backing: .buffered,
+        defer: false)
+    window.title = "Owlet Main Preview"
+    window.contentView = NSHostingView(rootView: MainPreview())
+    window.setFrameTopLeftPoint(NSPoint(x: 200, y: (NSScreen.main?.visibleFrame.maxY ?? 900) - 40))
+    window.makeKeyAndOrderFront(nil)
+    app.activate(ignoringOtherApps: true)
+    app.run()
 }

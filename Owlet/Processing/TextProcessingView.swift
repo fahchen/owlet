@@ -224,12 +224,20 @@ struct TextProcessingView: View {
 
     @ViewBuilder private var result: some View {
         if case .success(let text) = model.state {
+            let origin = model.languages.map {
+                LookupOrigin.result(of: model.operation, languages: $0, mapping: SettingsStore.targetMapping())
+            }
             if displayMode == .aligned, !model.segments.isEmpty {
                 AlignedSegments(
                     segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
-                    targetSize: PanelMetrics.textSize, lineSpacing: 4, pairSpacing: 12)
+                    targetSize: PanelMetrics.textSize, lineSpacing: 4, pairSpacing: 12,
+                    sourceOrigin: origin.map {
+                        LookupOrigin(language: model.languages?.source, definitionLanguage: $0.definitionLanguage)
+                    },
+                    targetOrigin: origin)
             } else {
-                PanelJustifiedText(text: text)
+                LookupText(
+                    text: text, size: PanelMetrics.textSize, weight: .medium, justified: true, origin: origin)
             }
         }
     }

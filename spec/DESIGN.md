@@ -16,7 +16,7 @@
 
 ### 排版
 
-- 结果比原文更重：原文 Regular，译文／润色结果 Medium；浮窗原文 15pt、结果 16pt，主窗口两栏 16pt。结果用两端对齐的原生文本（`PanelJustifiedText`），文字颜色用 `textColor`，避免玻璃上的 vibrancy 把结果画淡。
+- 结果比原文更重：原文 Regular，译文／润色结果 Medium；浮窗原文 15pt、结果 16pt，主窗口两栏 16pt。结果用两端对齐的原生只读文本（`LookupText`，可选区与查词），文字颜色用 `textColor`，避免玻璃上的 vibrancy 把结果画淡。
 - 区域高度贴合文字，不留空白；浮窗原文用纵向 `TextField`，按内容长高。
 - 选区首尾空白在处理前去掉，写回时原样补回。
 - 语言名以该语言自己的写法显示：简体中文、繁體中文、English、日本語，全应用一致（`LanguageCatalog.name(for:)`）。

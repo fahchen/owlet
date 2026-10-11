@@ -71,8 +71,9 @@ struct PanelRootView: View {
             cancel: controller.stop,
             openSettings: settings,
             close: controller.close,
-            lookups: controller.lookups,
-            lookupOrigin: controller.lookupOrigin)
+            lookupOrigin: controller.lookupOrigin
+        )
+        .environment(\.lookups, controller.lookups)
     }
 
     private var replaceAction: ((String) -> Void)? {

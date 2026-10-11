@@ -8,22 +8,22 @@ struct AlignedSegments: View {
     var targetSize: CGFloat
     var lineSpacing: CGFloat
     var pairSpacing: CGFloat
+    /// What each side is, for a lookup in it; nil keeps that side plain selectable text.
+    var sourceOrigin: LookupOrigin? = nil
+    var targetOrigin: LookupOrigin? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(segment.source)
-                        .font(.system(size: sourceSize))
-                        .fontWeight(PanelMetrics.sourceWeight)
-                        .lineSpacing(lineSpacing)
-                    Text(segment.target)
-                        .font(.system(size: targetSize))
-                        .fontWeight(PanelMetrics.textWeight)
-                        .lineSpacing(lineSpacing)
+                    LookupText(
+                        text: segment.source, size: sourceSize, lineSpacing: lineSpacing, label: "原文",
+                        origin: sourceOrigin)
+                    LookupText(
+                        text: segment.target, size: targetSize, weight: .medium, lineSpacing: lineSpacing,
+                        origin: targetOrigin)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
                 if index < segments.count - 1 {
                     Divider().padding(.vertical, pairSpacing)
                 }

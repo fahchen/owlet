@@ -15,6 +15,7 @@ parser.add_argument('--active', action='store_true', help='Render native control
 parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
 parser.add_argument('--panel', action='store_true', help='Open the real floating panel through PanelController')
+parser.add_argument('--main', action='store_true', help='Open the main window pages with fixture data')
 parser.add_argument('--no-voice', action='store_true', help='Stand in for a Mac without a system voice')
 parser.add_argument('--target', choices=['en', 'ja', 'zh-Hans'], help='Result language for --panel')
 parser.add_argument('--appearance', choices=['dark', 'contrast', 'darkContrast'], help='Appearance for --panel')
@@ -53,5 +54,5 @@ if args.appearance:
     environment['OWLET_PREVIEW_APPEARANCE'] = args.appearance
 if args.background:
     environment['OWLET_PREVIEW_BACKGROUND'] = str(args.background.resolve())
-flags = [*(['--live'] if args.live else []), *(['--panel'] if args.panel else [])]
+flags = [*(['--live'] if args.live else []), *(['--panel'] if args.panel else []), *(['--main'] if args.main else [])]
 subprocess.run([str(executable), *flags], env=environment, check=True)

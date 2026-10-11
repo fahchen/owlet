@@ -282,9 +282,9 @@ T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使�
 | 阅读区域 | 保留行为与原生承载边界 |
 | --- | --- |
 | 浮窗正文 | **T48 已实现**：原文 TextEditor 保留；只读结果改为 TextKit 1 只读 `NSTextView`（`LookupText`，16pt Medium、`NSColor.textColor`，学习双栏时两端对齐），浮窗内取代 `Text.textSelection` 与 `PanelJustifiedText` |
-| 主窗口文本处理结果 | 保留普通文本／逐句对照显示及复制；只读结果接入同一查询动作，原文 TextEditor 继续编辑 |
-| 生词本详情 | 只读表达与语境可查；编辑字段继续使用系统输入控件 |
-| 历史详情 | 只读正文可查，保留来源语境及原有收藏动作 |
+| 主窗口文本处理结果 | **T50 已实现**：结果与逐句对照两侧均为 `LookupText`（结果两端对齐 16pt Medium，逐句对照原文 Regular、译文 Medium）；原文输入框继续编辑 |
+| 生词本详情 | **T50 已实现**：表达（22pt semibold）、原句语境与润色前／后为 `LookupText`；润色前用次要色；释义保持 `Text` |
+| 历史详情 | **T50 已实现**：原文（Regular）与结果（两端对齐 Medium）为 `LookupText`，取代 `PanelJustifiedText`；学习与收藏动作不变 |
 | 学习表达式 | 行点击仍收藏／取消；文本选区工具栏与右键查询，拖拽不触发行点击 |
 
 T48：选区工具栏与查词卡共用一个系统 `NSPopover`（`.transient`）。工具栏只有一个 `.glass` 的「查询」按钮；卡片 320pt 宽，标题 16pt semibold 为查询词形，次级 13pt `.secondary` 依次为不同的原形、读音、词性，释义 15pt，来源／无原句用 `Label` + `.secondary`；加载为居中次要色文字，失败为居中红色 `Label` 加纯文本「重试」，「按当前语境重查」为纯文本按钮，发音为 36pt `CardButton`。右键菜单在系统菜单顶部插入「查询所选」。查词卡优先验证系统 popover，内容用系统 Text／Label、ProgressView、Button；选区动作使用原生工具栏／菜单承载，不手画控件。原形次级展示，来源、失败、禁用发音原因在内容中可读并可被辅助功能访问。

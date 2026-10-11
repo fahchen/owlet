@@ -140,7 +140,7 @@ struct ExpandedPanel: View {
                 .keyboardShortcut(KeyHint.panelRetry.shortcut)
                 .disabled(!canRetry)
             if case .success(let text) = model.state, let replace {
-                Button("Replace Selection") { replace(text) }
+                Button(L10n.shared.string("Replace Selection")) { replace(text) }
                     .keyboardShortcut(.return, modifiers: .command)
             }
             Button(action: close) { Label("Off", systemImage: "xmark").foregroundStyle(.primary) }

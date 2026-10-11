@@ -47,6 +47,7 @@ struct OwletApp: App {
                 translation: translation, page: $page,
                 collection: collection, history: history, promptFocus: $promptFocus
             )
+            .id(L10n.shared.revision)
             .modelContainer(collection.store.container)
             .environment(\.lookups, mainLookups)
             .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
@@ -69,6 +70,7 @@ struct OwletApp: App {
         // manages showing it. Nothing else in the app carries a settings entry.
         Settings {
             SettingsView(shortcuts: shortcuts, promptFocus: $promptFocus)
+                .id(L10n.shared.revision)
                 .background { EndEditingOnBackgroundClick().frame(width: 0, height: 0) }
         }
         MenuBarExtra {
@@ -99,7 +101,7 @@ private struct MainView: View {
             List(selection: Binding<Page?>(get: { page }, set: { if let new = $0 { page = new } })) {
                 // The main page needs no group title: it is what the app is for.
                 Label("Translate &amp; Polish", systemImage: "translate").tag(Page.processing)
-                Section("My Collection") {
+                Section(L10n.shared.string("My Collection")) {
                     Label("Notebook", systemImage: "books.vertical").tag(Page.vocabulary)
                     Label("History", systemImage: "clock").tag(Page.history)
                 }
@@ -165,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// only adds the system Close to a File menu it creates for a document scene, so the command is ours.
 private struct CloseWindowButton: View {
     var body: some View {
-        Button("Close Window") { NSApp.keyWindow?.performClose(nil) }
+        Button(L10n.shared.string("Close Window")) { NSApp.keyWindow?.performClose(nil) }
             .keyboardShortcut("w", modifiers: .command)
     }
 }
@@ -176,7 +178,7 @@ private struct SubmitTextButton: View {
     let translation: TextProcessingModel
 
     var body: some View {
-        Button("\(translation.operation.title) Text") {
+        Button(L10n.shared.string("\(translation.operation.title) Text")) {
             translation.process(to: SettingsStore.resolvedTarget(for: translation.input))
         }
         .keyboardShortcut(.return, modifiers: .command)
@@ -191,7 +193,7 @@ private struct OperationButtons: View {
 
     var body: some View {
         ForEach([(Operation.translate, KeyHint.translateMode), (.polish, .polishMode)], id: \.0) { operation, key in
-            Button("\(operation.title) Mode") {
+            Button(L10n.shared.string("\(operation.title) Mode")) {
                 page = .processing
                 translation.operation = operation
             }
@@ -208,9 +210,9 @@ private struct PasteboardButtons: View {
     @FocusedValue(\.copyText) private var copyText
 
     var body: some View {
-        Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+        Button(L10n.shared.string("Cut")) { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
             .keyboardShortcut("x")
-        Button("Copy") {
+        Button(L10n.shared.string("Copy")) {
             if hasTextSelection {
                 NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
             } else if let copyText {
@@ -218,10 +220,12 @@ private struct PasteboardButtons: View {
             }
         }
         .keyboardShortcut(KeyHint.copy.shortcut)
-        Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
+        Button(L10n.shared.string("Paste")) { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
             .keyboardShortcut("v")
-        Button("Select All") { NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil) }
-            .keyboardShortcut("a")
+        Button(L10n.shared.string("Select All")) {
+            NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+        }
+        .keyboardShortcut("a")
     }
 
     // ponytail: only an AppKit text view's selection counts; a selection in SwiftUI selectable Text
@@ -265,7 +269,7 @@ private struct MenuBarLabel: View {
             .resizable()
             .scaledToFit()
             .frame(width: 18, height: 18)
-            .accessibilityLabel("Owlet")
+            .accessibilityLabel(L10n.shared.string("Owlet"))
             .onAppear {
                 let perform = ProcessingAction(panel: panel)
                 shortcuts.onAction = { perform($0) }
@@ -297,7 +301,7 @@ private struct MenuContent: View {
 
     var body: some View {
         let perform = ProcessingAction(panel: panel)
-        Button("Open Owlet") {
+        Button(L10n.shared.string("Open Owlet")) {
             NSApp.activate()
             openWindow(id: "main")
         }
@@ -308,15 +312,15 @@ private struct MenuContent: View {
                 .keyboardShortcut(shortcuts.shortcuts[action]?.menuShortcut)
         }
         // The settings window manages itself, so this only has to open it; ⌘, lives in the App menu.
-        Button("Settings…") { openSettings() }
+        Button(L10n.shared.string("Settings…")) { openSettings() }
         Divider()
-        Button("Quit Owlet") { NSApp.terminate(nil) }
+        Button(L10n.shared.string("Quit Owlet")) { NSApp.terminate(nil) }
     }
 
     /// The action's name; a combination the menu cannot show as a key equivalent is written after it,
     /// and an unset one adds nothing, so the menu never shows a hollow "not set" prompt.
     private func title(for action: ShortcutAction) -> String {
-        let name = String(localized: action.title)
+        let name = L10n.shared.string(action.title.key)
         guard let shortcut = shortcuts.shortcuts[action], shortcut.menuShortcut == nil else { return name }
         return "\(name)：\(shortcut.displayString)"
     }

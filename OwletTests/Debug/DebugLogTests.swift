@@ -75,7 +75,8 @@ struct DebugLogTests {
         await settle(box)
         #expect(box.exchanges.count == 1)
         // The title is the operation's own localized name, so it follows the interface language.
-        #expect(box.exchanges.first?.title == "\(String(localized: "Translate")) · zh-Hans")
+        let operationName = L10n.shared.string("Translate")
+        #expect(box.exchanges.first?.title == "\(operationName) · zh-Hans")
         #expect(box.exchanges.first?.failure == nil)
         #expect(box.exchanges.first?.request.contains("zh-Hans") == true)
         #expect(box.exchanges.first?.response?.contains("source_language") == true)

@@ -44,7 +44,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     /// exception: it is not a language, so it does come from the catalog.
     var title: String {
         switch self {
-        case .system: String(localized: "Follow System")
+        case .system: L10n.shared.string("Follow System")
         default:
             // The system already knows a language's own name for itself, so no name is written here —
             // which also keeps the sources free of the scripts the catalog is supposed to hold.

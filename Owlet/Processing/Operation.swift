@@ -7,13 +7,17 @@ enum Operation: String, CaseIterable, Sendable {
     case polish
 
     /// A resource rather than a `String`, so interpolating it into a message keeps that message
-    /// localizable; `String(localized:)` is where a plain string is actually needed.
+    /// localizable; `L10n` is where a plain string is actually needed.
     var title: LocalizedStringResource {
         switch self {
         case .translate: "Translate"
         case .polish: "Polish"
         }
     }
+
+    /// The operation's name in the chosen language, resolved when it is shown. `title` is a resource,
+    /// so anything that displays it has to go through this to follow a live language change.
+    var name: String { L10n.shared.string(title.key) }
 
     /// "Translating…" / "Polishing…", as its own catalog entry per operation.
     ///

@@ -71,7 +71,7 @@ struct PanelLearningView: View {
     @ViewBuilder private var content: some View {
         switch learning.state {
         case .idle, .loading:
-            Text("Finding useful expressions…")
+            Text(L10n.shared.string("Finding useful expressions…"))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(height: inline ? Self.inlineStateHeight : nil)
@@ -90,7 +90,7 @@ struct PanelLearningView: View {
             .frame(height: inline ? Self.inlineStateHeight : nil)
             .padding(.horizontal, PanelMetrics.contentInset)
         case .success(let items) where items.isEmpty:
-            Text("Nothing more to suggest.")
+            Text(L10n.shared.string("Nothing more to suggest."))
                 .foregroundStyle(.secondary)
                 .padding(PanelMetrics.contentInset)
         case .success(let items) where inline:

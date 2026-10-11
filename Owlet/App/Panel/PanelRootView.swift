@@ -88,8 +88,8 @@ struct PanelRootView: View {
             CompactProcessingView(
                 summary: controller.model.input,
                 status: controller.replacing
-                    ? String(localized: "Translating and replacing…")
-                    : String(localized: controller.model.operation.progress),
+                    ? L10n.shared.string("Translating and replacing…")
+                    : L10n.shared.string(controller.model.operation.progress.key),
                 symbol: controller.model.operation.symbol, stop: controller.stop, close: controller.close,
                 showsBar: false)
         case let notice?:

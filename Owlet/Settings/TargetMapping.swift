@@ -43,15 +43,15 @@ enum LanguageCatalog {
     /// script, as the contract splits it.
     private static func localizedName(for tag: String) -> String? {
         switch LanguageTag.key(tag) {
-        case "zh-Hans": return String(localized: "Simplified Chinese")
-        case "zh-Hant": return String(localized: "Traditional Chinese")
-        case "en": return String(localized: "English")
-        case "ja": return String(localized: "Japanese")
-        case "ko": return String(localized: "Korean")
-        case "fr": return String(localized: "French")
-        case "de": return String(localized: "German")
-        case "es": return String(localized: "Spanish")
-        case "ru": return String(localized: "Russian")
+        case "zh-Hans": return L10n.shared.string("Simplified Chinese")
+        case "zh-Hant": return L10n.shared.string("Traditional Chinese")
+        case "en": return L10n.shared.string("English")
+        case "ja": return L10n.shared.string("Japanese")
+        case "ko": return L10n.shared.string("Korean")
+        case "fr": return L10n.shared.string("French")
+        case "de": return L10n.shared.string("German")
+        case "es": return L10n.shared.string("Spanish")
+        case "ru": return L10n.shared.string("Russian")
         default: return nil
         }
     }

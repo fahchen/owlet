@@ -17,11 +17,11 @@ struct LanguageSettingsView: View {
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                         .disabled(languages.count <= 1)
-                        .accessibilityLabel("Remove \(LanguageCatalog.name(for: tag))")
+                        .accessibilityLabel(L10n.shared.string("Remove \(LanguageCatalog.name(for: tag))"))
                 }
             }
             Picker("Add Language", selection: $pending) {
-                Text("Choose a language to add").tag("")
+                Text(L10n.shared.string("Choose a language to add")).tag("")
                 ForEach(available) { Text($0.name).tag($0.tag) }
             }
             .onChange(of: pending) { _, tag in
@@ -30,7 +30,7 @@ struct LanguageSettingsView: View {
                 pending = ""
             }
         } header: {
-            Text("Languages")
+            Text(L10n.shared.string("Languages"))
         } footer: {
             Text(
                 "Only the languages chosen here appear in the target, the fallback and the mapping; keep at least one.")

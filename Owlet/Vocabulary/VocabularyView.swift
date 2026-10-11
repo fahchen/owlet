@@ -25,7 +25,7 @@ struct VocabularyView: View {
 
     var body: some View {
         page
-            .navigationTitle("Notebook")
+            .navigationTitle(L10n.shared.string("Notebook"))
             .focusedSceneValue(\.copyText, selectedEntry?.expression)
             // The count lives under the title, so the list starts with its first row.
             .navigationSubtitle("\(filtered.count) expressions")
@@ -68,8 +68,11 @@ struct VocabularyView: View {
                                 .lineLimit(1)
                             Text(entry.meaning.isEmpty ? "No meaning yet" : entry.meaning)
                                 .foregroundStyle(.secondary).lineLimit(1)
-                            Text("\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts")
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text(
+                                L10n.shared.string(
+                                    "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts")
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 6)
                         .tag(entry.persistentModelID)
@@ -82,11 +85,11 @@ struct VocabularyView: View {
                 } else if selection.count > 1 {
                     ContentUnavailableView(
                         "\(selection.count) expressions selected", systemImage: "checkmark.circle",
-                        description: Text("Use the toolbar to delete the selection."))
+                        description: Text(L10n.shared.string("Use the toolbar to delete the selection.")))
                 } else {
                     ContentUnavailableView(
                         "Select an expression", systemImage: "sidebar.left",
-                        description: Text("Select something in the list to see its details."))
+                        description: Text(L10n.shared.string("Select something in the list to see its details.")))
                 }
             }
         }
@@ -96,7 +99,7 @@ struct VocabularyView: View {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
                 Picker("Filter by Language", selection: $language) {
-                    Text("All Languages").tag("")
+                    Text(L10n.shared.string("All Languages")).tag("")
                     ForEach(VocabularyFilter.languages(in: entries), id: \.self) { tag in
                         Text(LanguageCatalog.name(for: tag)).tag(tag)
                     }
@@ -149,7 +152,7 @@ struct VocabularyView: View {
             if entries.isEmpty {
                 Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
             } else {
-                Button("Clear Filters") {
+                Button(L10n.shared.string("Clear Filters")) {
                     search = ""; language = ""
                 }.buttonStyle(.glass)
             }
@@ -210,7 +213,7 @@ private struct VocabularyDetail: View {
                             origin: meaningOrigin)
                     }
                     Divider().padding(.vertical, 4)
-                    Text("Source Sentence").font(.caption).foregroundStyle(.secondary)
+                    Text(L10n.shared.string("Source Sentence")).font(.caption).foregroundStyle(.secondary)
                     ForEach(entry.contexts) { context in
                         VocabularyContextView(
                             context: context,

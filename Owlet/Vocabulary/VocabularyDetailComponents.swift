@@ -8,7 +8,7 @@ struct MissingMeaningView: View {
     var body: some View {
         switch collection.status {
         case .filling(let filling) where filling == entry:
-            Text("Filling in the meaning…").foregroundStyle(.secondary)
+            Text(L10n.shared.string("Filling in the meaning…")).foregroundStyle(.secondary)
         // As in the learning column: a red message and a plain retry.
         case .meaningFailed(let failed, let message) where failed == entry:
             VStack(alignment: .leading, spacing: 8) {

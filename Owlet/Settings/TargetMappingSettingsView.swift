@@ -29,7 +29,7 @@ struct TargetMappingSettingsView: View {
                 .buttonStyle(.borderless)
                 .disabled(rows.count >= options.count)
         } header: {
-            Text("Translation Target")
+            Text(L10n.shared.string("Translation Target"))
         } footer: {
             Text(
                 "The source is detected from the text. The fallback is used when it cannot be detected or has no row; one source keeps one mapping."
@@ -64,7 +64,8 @@ struct TargetMappingSettingsView: View {
             Button("Delete", systemImage: "trash") { remove(row.wrappedValue.id) }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
-                .accessibilityLabel("Remove the mapping for \(LanguageCatalog.name(for: row.wrappedValue.source))")
+                .accessibilityLabel(
+                    L10n.shared.string("Remove the mapping for \(LanguageCatalog.name(for: row.wrappedValue.source))"))
         }
     }
 

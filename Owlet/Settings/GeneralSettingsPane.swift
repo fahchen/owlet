@@ -22,19 +22,17 @@ struct GeneralSettingsPane: View {
                 Picker("Interface Language", selection: languageBinding) {
                     ForEach(AppLanguage.selectable) { Text(verbatim: $0.title).tag($0) }
                 }
-            } footer: {
-                Text("Takes effect the next time Owlet starts.")
             }
-            Section("Text") {
+            Section(L10n.shared.string("Text")) {
                 Picker("Translation Display", selection: $displayMode) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
-            Section("Study") {
+            Section(L10n.shared.string("Study")) {
                 Toggle("Request study expressions after translating", isOn: $translateLearning)
                 Toggle("Request study expressions after polishing", isOn: $polishLearning)
             }
-            Section("Panel") {
+            Section(L10n.shared.string("Panel")) {
                 Picker("Glass Effect", selection: $panelGlassEffect) {
                     ForEach(PanelGlassEffect.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -46,9 +44,11 @@ struct GeneralSettingsPane: View {
             Section {
                 Toggle("Show the Debug Page", isOn: debugSwitch)
             } header: {
-                Text("Debug")
+                Text(L10n.shared.string("Debug"))
             } footer: {
-                Text("Show the Debug page in settings, which keeps the last few model requests and replies.")
+                Text(
+                    L10n.shared.string(
+                        "Show the Debug page in settings, which keeps the last few model requests and replies."))
             }
         }
         .formStyle(.grouped)
@@ -58,7 +58,12 @@ struct GeneralSettingsPane: View {
     private var languageBinding: Binding<AppLanguage> {
         Binding(
             get: { language },
-            set: { AppLanguage.apply($0) })
+            set: {
+                // Saved for the next launch and applied now: the interface is rebuilt from `L10n`, so
+                // the change shows without restarting.
+                AppLanguage.apply($0)
+                L10n.shared.use($0)
+            })
     }
 
     /// Recording is already gated on this switch; clearing on the way out also drops what was

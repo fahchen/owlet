@@ -15,10 +15,10 @@ struct ShortcutSettingsPane: View {
         Form {
             Section {
                 ForEach(Self.order, id: \.self) { action in
-                    LabeledContent(String(localized: action.title)) {
+                    LabeledContent(L10n.shared.string(action.title.key)) {
                         HStack(spacing: 4) {
                             ShortcutRecorder(
-                                title: String(localized: action.title), shortcut: controller.shortcuts[action],
+                                title: L10n.shared.string(action.title.key), shortcut: controller.shortcuts[action],
                                 recording: bindingFor(action)
                             ) { controller.set($0, for: action) }
                             // Only a set shortcut has something to clear.
@@ -30,18 +30,18 @@ struct ShortcutSettingsPane: View {
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)
                                 .foregroundStyle(.secondary)
-                                .accessibilityLabel(String(localized: "Clear the \(action.title) shortcut"))
+                                .accessibilityLabel(L10n.shared.string("Clear the \(action.title) shortcut"))
                             }
                         }
                     }
                 }
             } header: {
-                Text("Global")
+                Text(L10n.shared.string("Global"))
             } footer: {
                 notice
             }
             ForEach(KeyHint.groups, id: \.title) { group in
-                fixedKeys(String(localized: "\(group.title)"), group.keys)
+                fixedKeys(L10n.shared.string("\(group.title)"), group.keys)
             }
         }
         .formStyle(.grouped)
@@ -68,7 +68,9 @@ struct ShortcutSettingsPane: View {
             Text(title)
         } footer: {
             if title == KeyHint.groups.last?.title {
-                Text("Fixed keys that cannot be changed; ⌘C copies the selection when there is one.").foregroundStyle(
+                Text(
+                    L10n.shared.string("Fixed keys that cannot be changed; ⌘C copies the selection when there is one.")
+                ).foregroundStyle(
                     .secondary)
             }
         }
@@ -79,9 +81,11 @@ struct ShortcutSettingsPane: View {
             if let error = controller.registrationError {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
             } else if recording != nil {
-                Text("Press the new combination; Esc cancels, Delete clears.").foregroundStyle(.secondary)
+                Text(L10n.shared.string("Press the new combination; Esc cancels, Delete clears.")).foregroundStyle(
+                    .secondary)
             } else {
-                Text("Click the combination on the right to record it again.").foregroundStyle(.secondary)
+                Text(L10n.shared.string("Click the combination on the right to record it again.")).foregroundStyle(
+                    .secondary)
             }
         }
         .accessibilityAddTraits(.updatesFrequently)
@@ -109,7 +113,7 @@ private struct ShortcutRecorder: View {
             label
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Record the \(title) shortcut")
+        .accessibilityLabel(L10n.shared.string("Record the \(title) shortcut"))
         .accessibilityValue(shortcut?.displayString ?? "Not set")
         .onChange(of: recording) { _, now in if !now { removeMonitor() } }
         .onDisappear(perform: stop)

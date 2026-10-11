@@ -14,7 +14,7 @@ struct DebugSettingsPane: View {
             if log.exchanges.isEmpty {
                 ContentUnavailableView(
                     "Nothing recorded yet", systemImage: "ladybug",
-                    description: Text("Run a translation or a polish and it appears here."))
+                    description: Text(L10n.shared.string("Run a translation or a polish and it appears here.")))
             } else {
                 // `List(_:)` over the identified collection: no explicit `ForEach` needed.
                 List(log.exchanges) { exchange in
@@ -67,7 +67,7 @@ struct DebugSettingsPane: View {
             block("Submitted Text", exchange.submitted)
             block("Model Raw Reply", exchange.response ?? "—")
             block("Request Body", exchange.request)
-            Button("Copy This Record") { Clipboard.copy(exchange.report) }
+            Button(L10n.shared.string("Copy This Record")) { Clipboard.copy(exchange.report) }
         }
         .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)

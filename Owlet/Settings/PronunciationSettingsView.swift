@@ -74,11 +74,11 @@ struct PronunciationSettingsView: View {
                 } else {
                     // The value is a resource; `LabeledContent` needs a string on both sides.
                     LabeledContent(
-                        LanguageCatalog.name(for: tag), value: String(localized: options[0].title))
+                        LanguageCatalog.name(for: tag), value: L10n.shared.string(options[0].title.key))
                 }
             }
         } header: {
-            Text("Reading Notation")
+            Text(L10n.shared.string("Reading Notation"))
         } footer: {
             Text(
                 "Used when filling in a reading or looking a word up while reading; a change affects later requests only."

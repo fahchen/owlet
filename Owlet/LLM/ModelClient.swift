@@ -21,10 +21,10 @@ enum ModelError: Error, Equatable {
     var message: String {
         switch self {
         case .network(let detail):
-            String(localized: "Network error: \(detail)")
-        case .unauthorized: String(localized: "Authentication failed. Check the API key.")
-        case .http(let code): String(localized: "The service returned HTTP \(code).")
-        case .emptyResponse: String(localized: "The service returned empty content.")
+            L10n.shared.string("Network error: \(detail)")
+        case .unauthorized: L10n.shared.string("Authentication failed. Check the API key.")
+        case .http(let code): L10n.shared.string("The service returned HTTP \(code).")
+        case .emptyResponse: L10n.shared.string("The service returned empty content.")
         case .format:
             String(
                 localized:
@@ -35,9 +35,9 @@ enum ModelError: Error, Equatable {
                     "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
             )
         case .targetMismatch(let requested, let returned):
-            String(localized: "The reply is in \(returned), which does not match the requested \(requested).")
-        case .truncated: String(localized: "The result was cut off for being too long.")
-        case .refused: String(localized: "The service refused to process this text.")
+            L10n.shared.string("The reply is in \(returned), which does not match the requested \(requested).")
+        case .truncated: L10n.shared.string("The result was cut off for being too long.")
+        case .refused: L10n.shared.string("The service refused to process this text.")
         }
     }
 
@@ -122,7 +122,7 @@ struct ModelClient: Sendable {
 
     /// Names what was asked for, so a debug entry reads without opening it.
     static func debugTitle(operation: Operation, target: String?) -> String {
-        let name = String(localized: "\(operation.title)")
+        let name = operation.name
         return target.map { "\(name) · \($0)" } ?? name
     }
 
@@ -180,7 +180,7 @@ struct ModelClient: Sendable {
             ], responseFormat: responseFormat, config: config)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return try await perform(
-            request, title: "Fill In Meaning", submitted: expression,
+            request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
             parse: { try LearningResult.item($0, expression: expression).meaning })
     }
 
@@ -197,7 +197,7 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        switch try await attempt(request, title: "Study Expressions", submitted: text) {
+        switch try await attempt(request, title: L10n.shared.string("Study Expressions"), submitted: text) {
         case .success(let items):
             return items
         case .failure(let error):
@@ -213,7 +213,7 @@ struct ModelClient: Sendable {
                 text: text, operation: operation, targetLanguage: targetLanguage, result: result,
                 config: config, correcting: error.content, reasons: reasons)
             switch try await attempt(
-                correction, title: String(localized: "Study Expressions (corrected)"), submitted: text)
+                correction, title: L10n.shared.string("Study Expressions (corrected)"), submitted: text)
             {
             case .success(let items): return items
             case .failure(let retried): throw retried.error
@@ -331,7 +331,7 @@ struct ModelClient: Sendable {
     /// breaks it usually has a fixable answer, not a bad one.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
-        let title = "Look Up · \(query.definitionLanguage)"
+        let title = L10n.shared.string("Look Up · %@", query.definitionLanguage)
         switch try await attemptLookup(request, query: query, title: title) {
         case .success(let result):
             return result
@@ -345,7 +345,7 @@ struct ModelClient: Sendable {
             let correction = try makeLookupRequest(
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
-                correction, query: query, title: String(localized: "\(title) (corrected)"))
+                correction, query: query, title: L10n.shared.string("\(title) (corrected)"))
             {
             case .success(let result): return result
             case .failure(let retried): throw retried.error

@@ -99,7 +99,7 @@ struct ExpandedPanelContent: View {
                     .lineLimit(2)
                     .redacted(reason: .placeholder)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("Generating the result")
+                    .accessibilityLabel(L10n.shared.string("Generating the result"))
             }
         }
     }

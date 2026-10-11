@@ -19,7 +19,7 @@ struct KeyHint: Equatable, Sendable {
 
     /// The tooltip: what the button does, then its key. The name is a catalog key, resolved here
     /// because a `String` is what the hover view shows.
-    var tooltip: String { "\(String(localized: "\(title)")) \(keys)" }
+    var tooltip: String { "\(L10n.shared.string("\(title)")) \(keys)" }
 
     private static func glyph(_ key: KeyEquivalent) -> String {
         switch key {

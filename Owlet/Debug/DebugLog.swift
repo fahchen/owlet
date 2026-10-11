@@ -50,12 +50,12 @@ struct DebugExchange: Identifiable, Sendable {
 
     /// The plain text a one-click copy puts on the pasteboard.
     var report: String {
-        var lines = ["# \(title)", String(localized: "Time: \(date.formatted(date: .numeric, time: .standard))")]
-        if let failure { lines.append(String(localized: "Failure: \(failure)")) }
-        if let sourceDivergence { lines.append(String(localized: "Source difference:\n\(sourceDivergence)")) }
-        lines.append(String(localized: "\n## Request body\n\(request)"))
-        if let response { lines.append(String(localized: "\n## Model raw reply\n\(response)")) }
-        lines.append(String(localized: "\n## Submitted text\n\(submitted)"))
+        var lines = ["# \(title)", L10n.shared.string("Time: \(date.formatted(date: .numeric, time: .standard))")]
+        if let failure { lines.append(L10n.shared.string("Failure: \(failure)")) }
+        if let sourceDivergence { lines.append(L10n.shared.string("Source difference:\n\(sourceDivergence)")) }
+        lines.append(L10n.shared.string("\n## Request body\n\(request)"))
+        if let response { lines.append(L10n.shared.string("\n## Model raw reply\n\(response)")) }
+        lines.append(L10n.shared.string("\n## Submitted text\n\(submitted)"))
         return lines.joined(separator: "\n")
     }
 

@@ -28,7 +28,7 @@ struct HistoryView: View {
 
     var body: some View {
         page
-            .navigationTitle("History")
+            .navigationTitle(L10n.shared.string("History"))
             .focusedSceneValue(\.copyText, selectedRecord?.result)
             // The count lives under the title, so the list starts with its first row.
             .navigationSubtitle("\(filtered.count) records")
@@ -57,7 +57,7 @@ struct HistoryView: View {
                 Button("Delete", role: .destructive) { deleteSelected() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Expressions in the notebook are not affected.")
+                Text(L10n.shared.string("Expressions in the notebook are not affected."))
             }
             .alert(
                 "Operation failed",
@@ -83,8 +83,11 @@ struct HistoryView: View {
                             HStack(spacing: 4) {
                                 Image(systemName: record.operationKind.symbol)
                                     .foregroundStyle(Color(nsColor: record.operationKind.tint))
-                                Text("\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
-                                    .foregroundStyle(.secondary)
+                                Text(
+                                    L10n.shared.string(
+                                        "\(record.operationKind.title) · \(HistoryTime.display(record.createdAt))")
+                                )
+                                .foregroundStyle(.secondary)
                             }
                             .font(.caption)
                             // The result reads first, as in the panel; its source stays lighter below it.
@@ -105,11 +108,11 @@ struct HistoryView: View {
                 } else if selection.count > 1 {
                     ContentUnavailableView(
                         "\(selection.count) records selected", systemImage: "checkmark.circle",
-                        description: Text("Use the toolbar to delete the selection."))
+                        description: Text(L10n.shared.string("Use the toolbar to delete the selection.")))
                 } else {
                     ContentUnavailableView(
                         "Select a record", systemImage: "sidebar.left",
-                        description: Text("Select something in the list to see its details."))
+                        description: Text(L10n.shared.string("Select something in the list to see its details.")))
                 }
             }
         }
@@ -119,7 +122,7 @@ struct HistoryView: View {
         ToolbarItemGroup(placement: .navigation) {
             Menu {
                 Picker("Filter by Type", selection: $operationFilter) {
-                    Text("All Types").tag(Operation?.none)
+                    Text(L10n.shared.string("All Types")).tag(Operation?.none)
                     ForEach(Operation.allCases, id: \.self) { operation in
                         Text(operation.title).tag(Operation?.some(operation))
                     }
@@ -172,7 +175,7 @@ struct HistoryView: View {
             if records.isEmpty {
                 Button("Go to Translate", action: openProcessing).buttonStyle(.glass)
             } else {
-                Button("Clear Filters") {
+                Button(L10n.shared.string("Clear Filters")) {
                     search = ""; operationFilter = nil
                 }.buttonStyle(.glass)
             }

@@ -121,7 +121,7 @@ struct CompactNoticeView: View {
     var retry: (() -> Void)? = nil
     var close: () -> Void = {}
     var symbol = "exclamationmark.triangle"
-    var actionTitle = String(localized: "Settings")
+    var actionTitle = L10n.shared.string("Settings")
     var actionSymbol = "gearshape"
     var recover: () -> Void = {}
     var action: (() -> Void)? = nil

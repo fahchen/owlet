@@ -82,7 +82,7 @@ struct TextProcessingView: View {
         PanelSegmentedControl.content(
             of: .init(
                 title: "", symbol: operation.symbol, action: {},
-                accessibilityLabel: String(localized: "\(operation.title)"),
+                accessibilityLabel: L10n.shared.string("\(operation.title)"),
                 tint: model.operation == operation ? operation.tint : nil),
             font: nil)
     }
@@ -164,7 +164,7 @@ struct TextProcessingView: View {
             .scrollContentBackground(.hidden)
             .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
             .lineSpacing(2)
-            .accessibilityLabel("Source")
+            .accessibilityLabel(L10n.shared.string("Source"))
             .overlay(alignment: .topLeading) {
                 if model.input.isEmpty {
                     // The page has no submit button; the placeholder names the shortcut instead.
@@ -194,8 +194,8 @@ struct TextProcessingView: View {
             failure(message, action: kind == .contract ? "Prompt Settings" : "Service Settings")
         case .missingConfig:
             failure(
-                String(localized: "The model service is not configured"),
-                action: String(localized: "Configure Service"))
+                L10n.shared.string("The model service is not configured"),
+                action: L10n.shared.string("Configure Service"))
         case .idle, .success:
             resultScroll
         }
@@ -252,7 +252,7 @@ struct TextProcessingView: View {
             if !isBusy, !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 // ⌘↩ belongs to the File menu's command, which runs the same request.
                 CardButton(
-                    title: String(localized: model.operation.retry), symbol: "arrow.clockwise",
+                    title: L10n.shared.string(model.operation.retry.key), symbol: "arrow.clockwise",
                     key: .process, bindsKey: false
                 ) {
                     model.process(to: resolvedTarget)

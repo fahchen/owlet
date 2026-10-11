@@ -15,7 +15,7 @@ struct LookupText: NSViewRepresentable {
     /// Secondary text, such as a polish's 润色前, which reads quieter than what replaced it.
     var secondary = false
     /// What the text is, for VoiceOver.
-    var label = String(localized: "Result")
+    var label = L10n.shared.string("Result")
     /// nil keeps the text selectable without offering a lookup.
     let origin: LookupOrigin?
     /// The sentence this text was taken from; a selection in the text is looked up inside it.

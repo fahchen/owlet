@@ -22,18 +22,18 @@ final class PanelController {
         var message: String {
             switch self {
             case .translating: ""
-            case .permission: String(localized: "Needs permission to read the selection")
-            case .unreadable: String(localized: "Could not read any text")
-            case .missingConfig: String(localized: "The model service is not configured")
+            case .permission: L10n.shared.string("Needs permission to read the selection")
+            case .unreadable: L10n.shared.string("Could not read any text")
+            case .missingConfig: L10n.shared.string("The model service is not configured")
             case .failure(let message, let kind):
                 switch kind {
-                case .contract: String(localized: "The reply's format is wrong. Check the prompt.")
-                case .connection: String(localized: "Connection failed. Check the model service.")
+                case .contract: L10n.shared.string("The reply's format is wrong. Check the prompt.")
+                case .connection: L10n.shared.string("Connection failed. Check the model service.")
                 case .service: message
                 }
-            case .unwritten: String(localized: "Could not write back to the other app")
-            case .unwritable: String(localized: "The selection cannot be edited")
-            case .cancelled: String(localized: "Cancelled")
+            case .unwritten: L10n.shared.string("Could not write back to the other app")
+            case .unwritable: L10n.shared.string("The selection cannot be edited")
+            case .cancelled: L10n.shared.string("Cancelled")
             }
         }
 
@@ -41,14 +41,14 @@ final class PanelController {
         var actionTitle: String {
             switch self {
             case .translating: ""
-            case .permission: String(localized: "Permission Settings")
-            case .unreadable: String(localized: "Enter Text")
-            case .missingConfig: String(localized: "Configure Service")
+            case .permission: L10n.shared.string("Permission Settings")
+            case .unreadable: L10n.shared.string("Enter Text")
+            case .missingConfig: L10n.shared.string("Configure Service")
             case .failure(_, let kind):
-                kind == .contract ? String(localized: "Prompt Settings") : String(localized: "Service Settings")
-            case .unwritten: String(localized: "Copy Result")
-            case .unwritable: String(localized: "Copy Result")
-            case .cancelled: String(localized: "Try Again")
+                kind == .contract ? L10n.shared.string("Prompt Settings") : L10n.shared.string("Service Settings")
+            case .unwritten: L10n.shared.string("Copy Result")
+            case .unwritable: L10n.shared.string("Copy Result")
+            case .cancelled: L10n.shared.string("Try Again")
             }
         }
 

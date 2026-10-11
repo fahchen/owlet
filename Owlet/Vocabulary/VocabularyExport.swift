@@ -97,7 +97,7 @@ final class NotebookExporter {
 
     private static func presentSavePanel() -> URL? {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = String(localized: "Notebook.json")
+        panel.nameFieldStringValue = L10n.shared.string("Notebook.json")
         panel.allowedContentTypes = [.json]
         return panel.runModal() == .OK ? panel.url : nil
     }

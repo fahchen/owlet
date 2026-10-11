@@ -31,18 +31,18 @@ struct ModelSettingsPane: View {
                 }
                 // Verbatim, or the placeholder URL renders as a link.
                 TextField("Base URL", text: $baseURL, prompt: Text(verbatim: "https://api.openai.com/v1"))
-                SecureField("API Key", text: $apiKey, prompt: Text("sk-…"))
+                SecureField("API Key", text: $apiKey, prompt: Text(L10n.shared.string("sk-…")))
                     .focused($editingKey)
                     .onSubmit(commitKey)
                     .onChange(of: editingKey) { _, editing in
                         if !editing { commitKey() }
                     }
             } header: {
-                Text("Service")
+                Text(L10n.shared.string("Service"))
             } footer: {
-                Text("The API key is kept in the keychain, and applies when the field loses focus.")
+                Text(L10n.shared.string("The API key is kept in the keychain, and applies when the field loses focus."))
             }
-            Section("Model") {
+            Section(L10n.shared.string("Model")) {
                 modelField
                 modelStatus
                 Picker("Reasoning Effort", selection: $effort) {
@@ -75,7 +75,9 @@ struct ModelSettingsPane: View {
                 ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
             }
         } else {
-            TextField("Model Name", text: $model, prompt: Text("Enter the model name the provider gives you"))
+            TextField(
+                "Model Name", text: $model,
+                prompt: Text(L10n.shared.string("Enter the model name the provider gives you")))
         }
     }
 

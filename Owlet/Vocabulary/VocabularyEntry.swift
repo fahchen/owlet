@@ -9,6 +9,11 @@ final class VocabularyEntry {
 
     var expression: String = ""
     var language: String = ""
+    /// The dictionary form and the meaning's language, both known only when a lookup or a learning
+    /// recommendation supplied them; empty means "not known", which is also every entry saved before
+    /// these fields existed (BDR-0009).
+    var lemma: String = ""
+    var definitionLocale: String = ""
     /// Simplified Chinese meaning; empty until the meaning request succeeds.
     var meaning: String = ""
     var createdAt: Date = Date()
@@ -16,15 +21,24 @@ final class VocabularyEntry {
     @Relationship(deleteRule: .cascade, inverse: \VocabularyContext.entry)
     var contexts: [VocabularyContext] = []
 
-    /// A lookup in this entry is explained in its meaning's language (BDR-0005).
-    /// ponytail: every saved meaning is Simplified Chinese until BDR-0005 stores the language per entry.
-    var lookupOrigin: LookupOrigin { LookupOrigin(language: language, definitionLanguage: "zh-Hans") }
+    /// A lookup in this entry is explained in its meaning's language (BDR-0005), which older entries
+    /// do not record, so they fall back to the Simplified Chinese they were all saved with.
+    var lookupOrigin: LookupOrigin {
+        LookupOrigin(
+            language: language,
+            definitionLanguage: definitionLocale.isEmpty ? "zh-Hans" : definitionLocale)
+    }
 
-    init(expression: String, language: String, meaning: String = "", createdAt: Date = Date()) {
+    init(
+        expression: String, language: String, meaning: String = "", createdAt: Date = Date(),
+        lemma: String = "", definitionLocale: String = ""
+    ) {
         self.expression = expression
         self.language = language
         self.meaning = meaning
         self.createdAt = createdAt
+        self.lemma = lemma
+        self.definitionLocale = definitionLocale
     }
 }
 
@@ -71,4 +85,8 @@ struct VocabularyDraft: Equatable {
     var context: String
     var polishBefore: String?
     var polishAfter: String?
+    /// The dictionary form and the meaning's language when the source knows them (BDR-0009 and
+    /// BDR-0005); nil from regions that only have text.
+    var lemma: String?
+    var definitionLocale: String?
 }

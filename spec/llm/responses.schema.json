@@ -60,7 +60,8 @@
               "language",
               "kind",
               "meaning",
-              "context"
+              "context",
+              "lemma"
             ],
             "properties": {
               "text": {
@@ -84,6 +85,13 @@
               },
               "context": {
                 "type": "string",
+                "minLength": 1
+              },
+              "lemma": {
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "minLength": 1
               }
             }

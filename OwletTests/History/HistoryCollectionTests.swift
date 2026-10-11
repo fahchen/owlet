@@ -78,8 +78,8 @@ struct HistoryCollectionTests {
                 return count
             }
             if call == 1 { throw URLError(.notConnectedToInternet) }
-            // A compliant model echoes the context it was sent, so a request whose context does not
-            // contain the expression would come back as a format error instead of a meaning.
+            // A compliant model echoes the context it was sent, so the entry keeps the exact 原句 it
+            // was collected with rather than the expression standing in for it.
             let request1 =
                 try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
             let messages = request1?["messages"] as? [[String: Any]] ?? []
@@ -90,7 +90,7 @@ struct HistoryCollectionTests {
                 {"items":[{"text":"我明天会跟进。","language":"zh-Hans","kind":"sentence",\
                 "meaning":"用于承诺后续跟进。","context":"\(context)"}]}
                 """
-            return try await stub(body: chatBody(content))(request)
+            return try await stub(body: learningBody(content))(request)
         })
         let action = CollectionAction(store: vocabulary, client: client, config: { testConfig })
         let entry = try #require(action.collect(VocabularyDraft.from(record: record)))

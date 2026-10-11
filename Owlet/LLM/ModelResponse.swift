@@ -104,8 +104,12 @@ struct LearningResult: Equatable {
         var kind: String
         var meaning: String
         var context: String
+        /// The dictionary form, only when it differs from `text` and is certain (BDR-0009).
+        var lemma: String?
     }
     var items: [Item]
+
+    static let keys: Set<String> = ["text", "language", "kind", "meaning", "context", "lemma"]
 
     /// Response schema sent to the provider; the constraints OpenAI strict mode rejects are
     /// enforced by `parse` instead.
@@ -120,13 +124,14 @@ struct LearningResult: Equatable {
                     "items": [
                         "type": "object",
                         "additionalProperties": false,
-                        "required": ["text", "language", "kind", "meaning", "context"],
+                        "required": ["text", "language", "kind", "meaning", "context", "lemma"],
                         "properties": [
                             "text": ["type": "string"],
                             "language": ["type": "string"],
                             "kind": ["type": "string", "enum": ["word", "phrase", "sentence"]],
                             "meaning": ["type": "string"],
                             "context": ["type": "string"],
+                            "lemma": ["type": ["string", "null"]],
                         ],
                     ],
                 ]
@@ -134,8 +139,9 @@ struct LearningResult: Equatable {
         ]
     }
 
-    /// Validates the whole learning payload: only `items`, non-blank fields, a known kind, and each
-    /// expression appearing in its own context; an empty list is valid because padding is forbidden.
+    /// Validates the whole learning payload: only `items`, non-blank fields, a known kind, each
+    /// expression appearing in its own context, and a lemma that either differs from the expression
+    /// or is null; an empty list is valid because padding is forbidden.
     static func parse(_ content: String) throws -> [Item] {
         guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -143,8 +149,7 @@ struct LearningResult: Equatable {
             let rawItems = object["items"] as? [Any]
         else { throw ModelError.format }
         return try rawItems.map { raw -> Item in
-            guard let dict = raw as? [String: Any],
-                Set(dict.keys) == ["text", "language", "kind", "meaning", "context"],
+            guard let dict = raw as? [String: Any], Set(dict.keys) == keys,
                 let text = dict["text"] as? String, !TranslationResult.isBlank(text),
                 let language = dict["language"] as? String, !TranslationResult.isBlank(language),
                 let kind = dict["kind"] as? String,
@@ -154,8 +159,23 @@ struct LearningResult: Equatable {
                 TranslationResult.normalized(context).localizedStandardContains(
                     TranslationResult.normalized(text))
             else { throw ModelError.format }
+            let lemma = try optional(dict["lemma"])
+            // Repeating the expression buys nothing; the contract asks for null instead.
+            if let lemma, TranslationResult.normalized(lemma) == TranslationResult.normalized(text) {
+                throw ModelError.format
+            }
             return Item(
-                text: text, language: language, kind: kind, meaning: meaning, context: context)
+                text: text, language: language, kind: kind, meaning: meaning, context: context,
+                lemma: lemma)
+        }
+    }
+
+    /// A nullable field: null, or a non-blank string.
+    private static func optional(_ value: Any?) throws -> String? {
+        switch value {
+        case is NSNull: return nil
+        case let string as String where !TranslationResult.isBlank(string): return string
+        default: throw ModelError.format
         }
     }
 

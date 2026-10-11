@@ -117,7 +117,8 @@ final class LearningModel {
                 VocabularyDraft(
                     expression: item.text, language: item.language, context: item.context,
                     polishBefore: polish ? request.text : nil,
-                    polishAfter: polish ? request.result : nil),
+                    polishAfter: polish ? request.result : nil,
+                    lemma: item.lemma, definitionLocale: request.targetLanguage),
                 meaning: item.meaning)
         }
     }

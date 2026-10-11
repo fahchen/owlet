@@ -25,17 +25,38 @@ final class VocabularyStore {
             polishAfter: draft.polishAfter)
         if let existing = try entry(language: draft.language, expression: expression) {
             // The same context submitted again adds nothing, and an earlier context is never replaced.
+            var changed = false
             if !existing.contexts.contains(where: { $0.hasSameContent(as: newContext) }) {
                 existing.contexts.append(newContext)
-                try context.save()
+                changed = true
             }
+            // The dictionary form and the meaning's language are only ever filled in, never corrected
+            // by a later collection of the same expression (BDR-0005, BDR-0009).
+            if existing.lemma.isEmpty, let lemma = trimmed(draft.lemma) {
+                existing.lemma = lemma
+                changed = true
+            }
+            if existing.definitionLocale.isEmpty, let locale = trimmed(draft.definitionLocale) {
+                existing.definitionLocale = locale
+                changed = true
+            }
+            if changed { try context.save() }
             return existing
         }
-        let entry = VocabularyEntry(expression: expression, language: draft.language)
+        let entry = VocabularyEntry(
+            expression: expression, language: draft.language, lemma: trimmed(draft.lemma) ?? "",
+            definitionLocale: trimmed(draft.definitionLocale) ?? "")
         entry.contexts = [newContext]
         context.insert(entry)
         try context.save()
         return entry
+    }
+
+    /// An empty or whitespace-only optional value means the source did not know it.
+    private func trimmed(_ value: String?) -> String? {
+        value.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap {
+            $0.isEmpty ? nil : $0
+        }
     }
 
     /// Newest first, which is the order the notebook lists them in.

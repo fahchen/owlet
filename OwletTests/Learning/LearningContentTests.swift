@@ -6,9 +6,9 @@ import Testing
 @testable import Owlet
 
 /// Three recommendations that all appear in the sample result, used by the model and collection tests.
-private let learningPayload =
+private let learningPayload = learningJSON(
     #"{"items":[{"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。","context":"Let's take a step back."},{"text":"the bigger picture","language":"en","kind":"phrase","meaning":"全局、整体情况。","context":"look at the bigger picture"},{"text":"move forward","language":"en","kind":"phrase","meaning":"继续推进。","context":"before we move forward"}]}"#
-
+)
 private let translationPayload =
     #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Let's take a step back.","target":"让我们退一步。"}]}"#
 
@@ -32,8 +32,20 @@ struct LearningContentTests {
         #expect(items.first?.text == "take a step back")
         #expect(items.first?.kind == "phrase")
         #expect(items.first?.context == "Let's take a step back.")
+        #expect(items.first?.lemma == nil)
         // No padding: an empty list is a valid answer, not a failure.
         #expect(try LearningResult.parse(#"{"items":[]}"#).isEmpty)
+    }
+
+    /// The shape that used to fail every Japanese recommendation: the text is the inflected form as
+    /// it appears in the sentence, and the dictionary form rides along in `lemma` (BDR-0009).
+    @Test func aLemmaThatDiffersFromTheSentenceFormIsAccepted() throws {
+        let content = learningJSON(
+            #"{"items":[{"text":"跳ね上がっている","language":"ja","kind":"word","meaning":"急剧上升。","context":"物価が跳ね上がっている。","lemma":"跳ね上がる"}]}"#
+        )
+        let item = try #require(try LearningResult.parse(content).first)
+        #expect(item.text == "跳ね上がっている")
+        #expect(item.lemma == "跳ね上がる")
     }
 
     @Test(arguments: [
@@ -46,9 +58,12 @@ struct LearningContentTests {
         #"{"items":[{"text":"missing","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up."}]}"#,
         #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。"}]}"#,
         #"{"items":["nope"]}"#,
+        // A lemma that says nothing new, or is only whitespace, is malformed rather than stored.
+        #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up.","lemma":"follow up"}]}"#,
+        #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up.","lemma":"  "}]}"#,
     ])
     func malformedPayloadsAreFormatErrors(content: String) {
-        #expect(throws: ModelError.format) { try LearningResult.parse(content) }
+        #expect(throws: ModelError.format) { try LearningResult.parse(learningJSON(content)) }
     }
 
     @Test func learningRequestReusesThePromptAndAddsTheContract() throws {
@@ -70,7 +85,7 @@ struct LearningContentTests {
     }
 
     @Test func learningMapsResponseAndRequestFailures() async throws {
-        let ok = ModelClient(transport: stub(body: chatBody(learningPayload)))
+        let ok = ModelClient(transport: stub(body: learningBody(learningPayload)))
         let items = try await ok.learning(
             text: "x", operation: .translate, targetLanguage: "zh-Hans", result: "y",
             config: testConfig)
@@ -99,7 +114,7 @@ struct LearningContentTests {
         let model = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         // The switch is injected so the assertion does not read the developer's own settings.
@@ -121,7 +136,7 @@ struct LearningContentTests {
         let model = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
 
@@ -146,7 +161,7 @@ struct LearningContentTests {
                 return value
             }
             if count == 1 { throw URLError(.notConnectedToInternet) }
-            return try await stub(body: chatBody(learningPayload))(request)
+            return try await stub(body: learningBody(learningPayload))(request)
         })
         let model = LearningModel(client: client, config: { testConfig })
 
@@ -171,7 +186,7 @@ struct LearningContentTests {
         let collection = CollectionAction(
             store: store, client: ModelClient(), config: { testConfig })
         let model = LearningModel(
-            client: ModelClient(transport: stub(body: chatBody(learningPayload))),
+            client: ModelClient(transport: stub(body: learningBody(learningPayload))),
             config: { testConfig })
 
         model.generate(for: request)
@@ -192,6 +207,31 @@ struct LearningContentTests {
         // Collecting the same checked items again reuses the entries instead of duplicating them.
         model.collectSelected(into: collection, for: request)
         #expect(try store.entries().count == 2)
+    }
+
+    /// A checked recommendation keeps the form it was collected as and the dictionary form beside it,
+    /// so the notebook shows what the user saw without losing the lemma (BDR-0009).
+    @Test func aCollectedRecommendationKeepsItsLemma() async throws {
+        let payload = learningJSON(
+            #"{"items":[{"text":"跳ね上がっている","language":"ja","kind":"word","meaning":"急剧上升。","context":"物価が跳ね上がっている。","lemma":"跳ね上がる"}]}"#
+        )
+        let store = try makeStore()
+        let collection = CollectionAction(store: store, client: ModelClient(), config: { testConfig })
+        let model = LearningModel(
+            client: ModelClient(transport: stub(body: learningBody(payload))), config: { testConfig })
+
+        model.generate(for: request)
+        await model.task?.value
+        model.selected = [0]
+        model.collectSelected(into: collection, for: request)
+
+        let entry = try #require(try store.entries().first)
+        withExtendedLifetime(store) {
+            #expect(entry.expression == "跳ね上がっている")
+            #expect(entry.lemma == "跳ね上がる")
+            // The meaning language the request asked for, recorded with the meaning it produced.
+            #expect(entry.definitionLocale == "zh-Hans")
+        }
     }
 
     @Test func learningFailureLeavesTheMainResultUsable() async throws {
@@ -218,7 +258,7 @@ struct LearningContentTests {
         let model = LearningModel(
             client: ModelClient(transport: { request in
                 try? await Task.sleep(for: .milliseconds(200))
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         model.generate(for: request)

@@ -168,8 +168,8 @@ private struct VocabularyDetail: View {
     let entry: VocabularyEntry
     let collection: CollectionAction
 
-    /// The meaning is text in its own language (BDR-0005's recorded one, Simplified Chinese for
-    /// now), so a word in it is explained the way a source in that language is: through the mapping.
+    /// The meaning is text in the language the entry recorded (BDR-0005), so a word in it is explained
+    /// the way a source in that language is: through the mapping.
     private var meaningOrigin: LookupOrigin {
         let language = entry.lookupOrigin.definitionLanguage
         return LookupOrigin(
@@ -188,6 +188,14 @@ private struct VocabularyDetail: View {
                     LookupText(
                         text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "表达",
                         origin: entry.lookupOrigin)
+                    // The dictionary form the recommendation supplied, secondary to the collected form
+                    // and only when it says something new (BDR-0009).
+                    if !entry.lemma.isEmpty,
+                        TranslationResult.normalized(entry.lemma)
+                            != TranslationResult.normalized(entry.expression)
+                    {
+                        Text(entry.lemma).font(.subheadline).foregroundStyle(.secondary)
+                    }
                     if entry.meaning.isEmpty {
                         MissingMeaningView(entry: entry, collection: collection)
                     } else {

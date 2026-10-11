@@ -26,9 +26,9 @@ struct VocabularyExportTests {
         try store.save()
         let japanese = try store.collect(
             VocabularyDraft(
-                expression: "手紙", language: "ja", context: "手紙を書きます。", polishBefore: nil,
-                polishAfter: nil))
-        try store.update(japanese, expression: japanese.expression, meaning: "信。")
+                expression: "跳ね上がっている", language: "ja", context: "物価が跳ね上がっている。",
+                polishBefore: nil, polishAfter: nil, lemma: "跳ね上がる"))
+        try store.update(japanese, expression: japanese.expression, meaning: "急剧上升。")
         return store
     }
 
@@ -37,19 +37,23 @@ struct VocabularyExportTests {
         let data = try VocabularyExport.data(try store.entries())
         let decoder = JSONDecoder()
         let document = try decoder.decode(VocabularyExportDocument.self, from: data)
-        #expect(document.version == 1)
+        #expect(document.version == 2)
         #expect(document.entries.count == 2)
 
         let japanese = try #require(document.entries.first { $0.language == "ja" })
-        #expect(japanese.expression == "手紙")
-        #expect(japanese.meaning == "信。")
+        #expect(japanese.expression == "跳ね上がっている")
+        #expect(japanese.meaning == "急剧上升。")
+        // The dictionary form rides along with the form it was collected as (BDR-0009).
+        #expect(japanese.lemma == "跳ね上がる")
         #expect(japanese.contexts.count == 1)
-        #expect(japanese.contexts.first?.source == "手紙を書きます。")
+        #expect(japanese.contexts.first?.source == "物価が跳ね上がっている。")
         #expect(japanese.contexts.first?.polishBefore == nil)
 
         let english = try #require(document.entries.first { $0.language == "en" })
         #expect(english.expression == "take a \"step\" back")
         #expect(english.meaning == "退一步，从新的角度重新审视。")
+        // A region that only has text leaves the lemma empty rather than inventing one.
+        #expect(english.lemma.isEmpty)
         #expect(english.contexts.count == 2)
         let collected = try #require(
             english.contexts.first { $0.polishAfter != nil })
@@ -82,7 +86,7 @@ struct VocabularyExportTests {
         let data = try VocabularyExport.data(try store.entries())
         let text = try #require(String(data: data, encoding: .utf8))
         // Literal CJK proves the encoder did not fall back to \u escapes.
-        #expect(text.contains("手紙"))
+        #expect(text.contains("跳ね上がっている"))
         #expect(text.contains("退一步，从新的角度重新审视。"))
     }
 

@@ -994,3 +994,20 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 验收：不按 ⌘ 的单击、双击、拖拽、复制回到系统文本行为且不查询；⌘ 单击立即查询所点的词，五类区域一致；学习行 ⌘ 单击只查询、不收藏，普通点击仍收藏；按下或松开 ⌘ 时不移动鼠标也即时更新提示与光标。
 
 结果：`LookupTextView` 在 ⌘ 按下的 mouseDown 中按真实命中取词并立即查询，随后自己吞掉 mouse up，免得学习行的点击手势也收藏；普通单击交还 NSTextView，不再等双击间隔。鼠标在文本内时用本地 flagsChanged 监视器跟踪 ⌘，按住时淡化选中色 30% 加手形光标，否则 I-beam 无提示。原生验证（`--panel` 与默认预览 ⌘5，合成带 ⌘ 的鼠标与 flagsChanged 事件）：不按 ⌘ 悬停为 I-beam 无提示；按下 ⌘ 不移动即出现提示与手形；按住移动提示跟随；松开即消失；普通单击不查询；⌘ 单击立即出卡；双击仍选词出工具栏；学习行 ⌘ 单击出卡且收藏不变，普通点击表达与释义照常切换收藏。format/check 通过。
+
+## T53：学习契约区分词形与原形（已实现）
+
+依据 [BDR-0009](../spec/learning/decisions/BDR-0009-learning-lemma.md)。真实 DeepSeek 调用的学习推荐稳定报 `.format`：模型返回字典形（`跳ね上がる`），语境里是活用形（`跳ね上がっている`），而本地校验要求 `text` 逐字出现在 `context` 中。
+
+范围：契约加可空 `lemma`，`text` 限定为语境中的实际词形；生词本按词形收藏、原形作次级信息；顺带把 BDR-0005 的释义语言随条目保存落实（原为 `ponytail` 占位）。
+
+验收：
+
+- [x] `$defs.learning` 的每个 item 含 `lemma`（可空字符串，列入 `required`）；`text` 必须逐字出现在 `context` 中。
+- [x] `LearningResult.parse` 接受与词形不同的 `lemma`，拒绝空白 `lemma` 与重复词形的 `lemma`；缺 `lemma` 键仍按格式错误处理。
+- [x] 学习与补释义两处 prompt 都写明分工并给出示例。
+- [x] 勾选学习推荐入库时，条目存词形，另存 `lemma` 与释义语言；同一表达再次收藏只填空、不覆盖。
+- [x] 生词本详情在表达下方次级显示不同的原形；导出带 `lemma`（`version` 升到 2）。
+- [x] 补释义沿用条目已记的释义语言，不再写死简体中文。
+
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LearningContentTests.aLemmaThatDiffersFromTheSentenceFormIsAccepted`（跳ね上がっている／跳ね上がる）与 `aCollectedRecommendationKeepsItsLemma`，`malformedPayloadsAreFormatErrors` 增两条 `lemma` 用例，导出用例断言原形与空原形。未验证：真实 DeepSeek 返回 `lemma` 的稳定性（本地校验只保证形状）。

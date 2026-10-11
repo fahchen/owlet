@@ -254,8 +254,9 @@ struct VocabularyFilterTests {
 
 @MainActor
 struct CollectionActionTests {
-    let meaningResponse =
+    let meaningResponse = learningJSON(
         #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进，后续联系。","context":"I will follow up tomorrow."}]}"#
+    )
 
     func makeStore() throws -> VocabularyStore {
         let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
@@ -299,7 +300,7 @@ struct CollectionActionTests {
                 return count
             }
             if call == 1 { throw URLError(.notConnectedToInternet) }
-            return try await stub(body: chatBody(self.meaningResponse))(request)
+            return try await stub(body: learningBody(self.meaningResponse))(request)
         })
         let action = CollectionAction(store: store, client: client, config: { testConfig })
         let entry = try #require(action.collect(draft()))
@@ -325,7 +326,7 @@ struct CollectionActionTests {
         let calls = Mutex(0)
         let client = ModelClient(transport: { request in
             calls.withLock { $0 += 1 }
-            return try await stub(body: chatBody(self.meaningResponse))(request)
+            return try await stub(body: learningBody(self.meaningResponse))(request)
         })
         let action = CollectionAction(store: store, client: client, config: { testConfig })
         let first = try #require(action.collect(draft()))
@@ -425,24 +426,27 @@ struct VocabularyDraftTests {
 @MainActor
 struct LearningResultTests {
     @Test func parsesTheMatchingItemAndItsMeaning() throws {
-        let content =
+        let content = learningJSON(
             #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up."}]}"#
+        )
         let item = try LearningResult.item(content, expression: "follow up")
         #expect(item.meaning == "跟进。")
         #expect(item.kind == "phrase")
     }
 
     @Test func rejectsARejectedOrUnknownKind() {
-        let content =
+        let content = learningJSON(
             #"{"items":[{"text":"follow up","language":"en","kind":"idiom","meaning":"跟进。","context":"I will follow up."}]}"#
+        )
         #expect(throws: ModelError.format) {
             try LearningResult.item(content, expression: "follow up")
         }
     }
 
     @Test func rejectsAnItemThatDoesNotMatchTheExpression() {
-        let content =
+        let content = learningJSON(
             #"{"items":[{"text":"other","language":"en","kind":"word","meaning":"别的。","context":"I will follow up."}]}"#
+        )
         #expect(throws: ModelError.format) {
             try LearningResult.item(content, expression: "follow up")
         }

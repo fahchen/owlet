@@ -20,6 +20,7 @@
 - [按需补充决策](vocabulary/decisions/BDR-0006-on-demand-enrichment.md)：读音与词性在详情按需补充；「补充缺失」只填空、单项「重新生成」只覆盖该项；整句不标；读音体系按语言设置。
 - [历史作为学习本决策](history/decisions/BDR-0007-history-as-learning-log.md)：收藏记录来源入口与原文所在 App；历史按天分组、可按有收藏与来源 App 筛选、详情关联收藏词条。
 - [阅读查词决策](vocabulary/decisions/BDR-0008-reading-word-lookup.md)：只读正文 ⌘ 单击、选区工具栏／右键查询；学习行保留点击收藏，跨句旧释义标来源，手动系统发音，查询不入库。五类区域均已实现（T48–T51），待最终验收；讨论记录见 [意图文档](../docs/intent/word-lookup.md)。
+- [学习词形决策](learning/decisions/BDR-0009-learning-lemma.md)：学习契约的 `text` 用语境中的实际词形，字典形另放 `lemma`；生词本按词形收藏、原形作次级信息。
 
 Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。`tasks/plan.md` 与 `tasks/todo.md` 负责实现顺序；技术选型不作为领域场景。
 

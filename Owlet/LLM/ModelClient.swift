@@ -96,26 +96,29 @@ struct ModelClient: Sendable {
         return text
     }
 
-    /// Fills in a Chinese meaning for one collected expression through the learning contract; the
-    /// caller keeps the saved entry when this throws so the user can retry.
+    /// Fills in a meaning for one collected expression through the learning contract, in the language
+    /// that entry is explained in (BDR-0005); the caller keeps the saved entry when this throws so the
+    /// user can retry.
     func fillMeaning(
-        expression: String, language: String, context: String, config: ServiceConfig
+        expression: String, language: String, context: String, definitionLocale: String,
+        config: ServiceConfig
     ) async throws -> String {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         let task = """
-            为下面这条语言学习条目给出简体中文释义。释义要说明含义和用法，保留必要的语域说明，\
-            不添加原文没有的信息。
+            为下面这条语言学习条目给出\(LanguageCatalog.name(for: definitionLocale))释义。释义要说明含义和用法，\
+            保留必要的语域说明，不添加原文没有的信息。
             """
         let system = """
             \(task)
 
-            Respond with one json object with key items (array of {text, language, kind, meaning, context}). \
-            kind is one of word, phrase, sentence. text must appear in context. Example json: \
-            {"items":[{"text":"follow up","language":"en","kind":"phrase",\
-            "meaning":"跟进，后续联系。","context":"..."}]}
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}). \
+            kind is one of word, phrase, sentence. text must appear in context exactly as it does there. \
+            lemma is the dictionary form only when it differs from text and is certain, else null. \
+            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
+            "meaning":"急剧上升。","context":"物価が跳ね上がっている。","lemma":"跳ね上がる"}]}
             """
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema
@@ -164,19 +167,21 @@ struct ModelClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        let meaningLanguage = LanguageCatalog.name(for: targetLanguage)
         let task =
             operation == .polish
-            ? "从这次润色的原文与结果中挑选值得学习的表达，用简体中文解释修改的原因，并区分语法错误与风格偏好。"
-            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用简体中文解释含义与用法。"
+            ? "从这次润色的原文与结果中挑选值得学习的表达，用\(meaningLanguage)解释修改的原因，并区分语法错误与风格偏好。"
+            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用\(meaningLanguage)解释含义与用法。"
         let system = """
             \(promptForOperation(operation))
 
             \(task)不强凑条目，没有值得推荐的内容时 items 为空数组。
-            Respond with one json object with key items (array of {text, language, kind, meaning, context}). \
-            kind is one of word, phrase, sentence. meaning is Simplified Chinese. context must come from \
-            the original or the result, and text must appear in context. Example json: \
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}). \
+            kind is one of word, phrase, sentence. meaning is \(meaningLanguage). context must come from \
+            the original or the result, and text must appear in context exactly as it does there. lemma is \
+            the dictionary form only when it differs from text and is certain, else null. Example json: \
             {"items":[{"text":"take a step back","language":"en","kind":"phrase",\
-            "meaning":"退一步重新审视。","context":"Let's take a step back."}]}
+            "meaning":"退一步重新审视。","context":"Let's take a step back.","lemma":null}]}
             """
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema

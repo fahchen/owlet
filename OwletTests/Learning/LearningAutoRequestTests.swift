@@ -4,8 +4,9 @@ import Testing
 
 @testable import Owlet
 
-private let learningPayload =
+private let learningPayload = learningJSON(
     #"{"items":[{"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。","context":"Let's take a step back."}]}"#
+)
 
 /// The automatic 学习表达 request: off by default, on after a success when its switch is on, never
 /// for a failure, and never retroactively for a result the user already saw.
@@ -30,7 +31,7 @@ struct LearningAutoRequestTests {
         let learning = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         learning.autoRequest = { SettingsStore.autoRequestsLearning(for: $0, in: defaults) }
@@ -47,7 +48,7 @@ struct LearningAutoRequestTests {
         let learning = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         learning.autoRequest = { (operation: Owlet.Operation) in operation == .translate }
@@ -61,7 +62,7 @@ struct LearningAutoRequestTests {
         let rebuilt = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         rebuilt.autoRequest = { (operation: Owlet.Operation) in operation == .translate }
@@ -93,7 +94,7 @@ struct LearningAutoRequestTests {
         let learning = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         learning.autoRequest = { (_: Owlet.Operation) in false }
@@ -117,7 +118,7 @@ struct LearningAutoRequestTests {
         let learning = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         learning.autoRequest = { (operation: Owlet.Operation) in operation == .translate }
@@ -134,7 +135,7 @@ struct LearningAutoRequestTests {
         let learning = LearningModel(
             client: ModelClient(transport: { request in
                 calls.withLock { $0 += 1 }
-                return try await stub(body: chatBody(learningPayload))(request)
+                return try await stub(body: learningBody(learningPayload))(request)
             }),
             config: { testConfig })
         learning.autoRequest = { (_: Owlet.Operation) in false }

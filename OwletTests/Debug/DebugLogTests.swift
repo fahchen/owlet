@@ -125,8 +125,9 @@ struct DebugLogTests {
         let box = Box()
         var client = ModelClient(
             transport: stub(
-                body: chatBody(
-                    #"{"items":[{"text":"Hello","language":"en","kind":"word","meaning":"你好","context":"Hello"}]}"#)))
+                body: learningBody(
+                    #"{"items":[{"text":"Hello","language":"en","kind":"word","meaning":"你好","context":"Hello"}]}"#
+                )))
         client.capture = DebugCapture(
             isEnabled: { true }, record: { box.exchanges.append($0) })
         _ = try? await client.learning(
@@ -144,13 +145,14 @@ struct DebugLogTests {
         let box = Box()
         var client = ModelClient(
             transport: stub(
-                body: chatBody(
+                body: learningBody(
                     #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进","context":"follow up"}]}"#
                 )))
         client.capture = DebugCapture(
             isEnabled: { true }, record: { box.exchanges.append($0) })
         _ = try? await client.fillMeaning(
-            expression: "follow up", language: "en", context: "follow up", config: testConfig)
+            expression: "follow up", language: "en", context: "follow up",
+            definitionLocale: "zh-Hans", config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
         #expect(box.exchanges.first?.title == "补释义")

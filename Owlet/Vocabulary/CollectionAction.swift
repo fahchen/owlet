@@ -57,11 +57,19 @@ final class CollectionAction {
     func collect(_ draft: VocabularyDraft, meaning: String) -> VocabularyEntry? {
         do {
             let entry = try store.collect(draft)
+            var changed = false
+            // The dictionary form a recommendation knew is worth keeping even when the meaning it
+            // came with is not written, so the notebook still shows the lemma (BDR-0009).
+            if let lemma = draft.lemma, entry.lemma.isEmpty {
+                entry.lemma = lemma
+                changed = true
+            }
             let trimmed = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
             if entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !trimmed.isEmpty {
                 entry.meaning = trimmed
-                try store.save()
+                changed = true
             }
+            if changed { try store.save() }
             status = .saved
             return entry
         } catch {
@@ -100,16 +108,21 @@ final class CollectionAction {
         let client = client
         let expression = entry.expression
         let language = entry.language
-        // The meaning contract only validates when the expression appears in its context, and a 原句
-        // collected from 历史详情 is in the record's other language, so the expression stands in for it.
+        // The context only shapes the explanation; a 原句 collected from 历史详情 is in the record's
+        // other language, so the expression stands in for it there.
         let stored = entry.contexts.first?.source ?? ""
         let context = stored.localizedStandardContains(expression) ? stored : expression
+        let definitionLocale = entry.lookupOrigin.definitionLanguage
         task = Task { [store] in
             do {
                 let meaning = try await client.fillMeaning(
-                    expression: expression, language: language, context: context, config: config)
+                    expression: expression, language: language, context: context,
+                    definitionLocale: definitionLocale, config: config)
                 try Task.checkCancellation()
                 entry.meaning = meaning
+                // Recorded with the meaning it produced, so a later regenerate keeps asking in the
+                // same language even after the target mapping changes (BDR-0005).
+                entry.definitionLocale = definitionLocale
                 try store.save()
                 status = .saved
             } catch is CancellationError {
@@ -135,25 +148,39 @@ extension VocabularyDraft {
         let regionText = region == .source ? source : result
         let trimmed = selection?.trimmingCharacters(in: .whitespacesAndNewlines)
         let expression = (trimmed?.isEmpty == false ? trimmed : nil) ?? regionText
+        let language = region == .source ? languages.source : languages.target
+        // The meaning uses the language this region's text is explained in (BDR-0005).
+        let origin =
+            region == .source
+            ? LookupOrigin(
+                language: language,
+                definitionLanguage: SettingsStore.targetMapping().target(
+                    forSource: LanguageTag.key(language)))
+            : LookupOrigin.result(
+                of: model.operation, languages: languages, mapping: SettingsStore.targetMapping())
         let polish = model.operation == .polish
         return VocabularyDraft(
             expression: expression,
-            language: region == .source ? languages.source : languages.target,
+            language: language,
             context: regionText,
             polishBefore: polish ? source : nil,
-            polishAfter: polish ? result : nil)
+            polishAfter: polish ? result : nil,
+            definitionLocale: origin.definitionLanguage)
     }
 
     /// Builds the snapshot for collecting from 历史详情: the result is the expression and the record's
     /// own source text is the context, so the entry keeps its 原句 after the history is deleted, and a
     /// polish record keeps the before/after comparison it was collected from.
-    @MainActor static func from(record: HistoryRecord) -> VocabularyDraft {
+    @MainActor static func from(
+        record: HistoryRecord, mapping: TargetMapping = SettingsStore.targetMapping()
+    ) -> VocabularyDraft {
         let polish = record.operationKind == .polish
         return VocabularyDraft(
             expression: record.result,
             language: record.language,
             context: record.source,
             polishBefore: polish ? record.source : nil,
-            polishAfter: polish ? record.result : nil)
+            polishAfter: polish ? record.result : nil,
+            definitionLocale: record.lookupOrigins(mapping: mapping).result.definitionLanguage)
     }
 }

@@ -2,20 +2,21 @@
 #
 # Production build: Release configuration, verified and packaged for another Mac.
 #
-# Ad-hoc signing is the default, because that is what this repository can do without an Apple
-# account session. It runs on another Mac after a one-time right-click Open, and its Accessibility
-# permission is lost on every rebuild. Pass --team (or set OWLET_TEAM) once a certificate exists:
-# a signed build keeps the same permission across rebuilds, but still needs notarisation before it
-# opens without a warning.
+# Signing comes from what the project configures (`Signing.xcconfig`, which a machine with a
+# certificate overrides through `Signing.local.xcconfig`), or from --identity/--team when given. The
+# script reports what the artifact actually carries rather than assuming: an ad-hoc build runs on
+# another Mac after a one-time right-click Open and loses its Accessibility grant on every rebuild,
+# while a certificate keeps it. Either way the result is not notarised, so the first launch on
+# another Mac needs a right-click Open.
 #
 # Usage:
 #   scripts/prod-build.sh [--identity <name>] [--team <id>] [--arch <arm64|x86_64|universal>]
 #                         [--out <dir>] [--notarise <keychain-profile>] [--no-package] [--help]
 #
 # Examples:
-#   scripts/prod-build.sh                                  # ad-hoc, universal, packaged
-#   scripts/prod-build.sh --arch arm64                     # faster, this Mac only
-#   scripts/prod-build.sh --team Z98NKJSF69                # Apple Development (free account)
+#   scripts/prod-build.sh                                  # universal, signed as the project configures
+#   scripts/prod-build.sh --arch arm64                     # this Mac's architecture only, smaller
+#   scripts/prod-build.sh --team Z98NKJSF69                # sign with that team explicitly
 #   scripts/prod-build.sh --team ABCDE12345 --notarise owlet-notary
 #
 set -euo pipefail
@@ -59,29 +60,43 @@ readonly root="$PWD"
 readonly derived="$root/.build/prod"
 readonly app="$derived/Build/Products/Release/$app_name.app"
 
+# --- reporting ----------------------------------------------------------------------------------
+
+# What a signed artifact is worth, said from what `codesign` reported rather than from the arguments
+# that were passed: only a certificate keeps the Accessibility grant across rebuilds.
+report_signing() {
+  local signed_with="$1" team_id="$2"
+  # `codesign` prints "ad-hoc" as the authority when nothing signed the app, so that too means no
+  # certificate — the case this function exists to keep out of the certificate branch.
+  if [[ -z "$signed_with" || "$signed_with" == "-" || "$signed_with" == "ad-hoc" ]]; then
+    echo "    signed with    ad-hoc, no certificate"
+    echo "                   Runs on another Mac after a one-time right-click Open, and the Accessibility"
+    echo "                   grant is lost on every rebuild. Pass --team <id> to sign with a certificate."
+  else
+    echo "    signed with    $signed_with${team_id:+ (team $team_id)}"
+    echo "                   A certificate keeps the Accessibility grant across rebuilds."
+  fi
+}
+
 # --- signing ------------------------------------------------------------------------------------
 
-# macOS ships bash 3.2, where an empty array expanded under `set -u` is an error, so every
-# expansion below uses the ${arr[@]+...} guard.
+# `project.yml` points both configurations at an xcconfig, which a machine with a certificate
+# overrides through `Signing.local.xcconfig`. Passing `--identity` or `--team` overrides that again.
+#
+# Nothing is assumed about which of the three won: the build is asked to sign, and what it produced is
+# read back from the artifact below. Guessing here is what made this script report "ad-hoc" for a build
+# it had signed with a certificate.
+#
+# macOS ships bash 3.2, where an empty array expanded under `set -u` is an error, so every expansion
+# below uses the ${arr[@]+...} guard.
 signing_args=()
 if [[ -n "$identity" || -n "$team" ]]; then
-  echo "==> Signing identity"
-  if ! security find-identity -v -p codesigning | grep -q "valid identities found" \
-     || security find-identity -v -p codesigning | grep -q "0 valid identities found"; then
-    echo "No valid codesigning identity is in this keychain." >&2
-    echo "Renew or create one in Xcode: Settings → Accounts → Manage Certificates… → + → Apple Development." >&2
-    echo "Without it, run this script with no --team to build ad-hoc." >&2
-    exit 1
-  fi
-  security find-identity -v -p codesigning | sed -n '2,20p'
-  identity="${identity:-Apple Development}"
-  signing_args+=(CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="$identity" -allowProvisioningUpdates)
+  echo "==> Signing with the identity given on the command line"
+  security find-identity -v -p codesigning | sed -n '2,20p' || true
+  signing_args+=(CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="${identity:-Apple Development}" -allowProvisioningUpdates)
   [[ -n "$team" ]] && signing_args+=(DEVELOPMENT_TEAM="$team")
 else
-  # No identity was passed, so whatever the project's xcconfig says applies — which on a machine with
-  # `Signing.local.xcconfig` is a real certificate, not ad-hoc. What was actually used is reported
-  # after the build, from the artifact, rather than guessed here.
-  echo "==> Signing from the project's xcconfig; the result is reported once built."
+  echo "==> Signing as the project's xcconfig configures it; what the artifact carries is reported below."
 fi
 
 # --- provenance ---------------------------------------------------------------------------------
@@ -145,22 +160,15 @@ else
 fi
 echo "    architectures  $built_archs"
 echo "    minimum macOS  $minimum_macos"
-if [[ -z "${identity:-}" && -z "${team:-}" && -n "$signed_with" && "$signed_with" != "-" ]]; then
-  # No identity was passed, so the project's xcconfig chose this; said plainly because the script
-  # would otherwise leave the impression that a build without --team is ad-hoc.
-  echo "    signed with    $signed_with${team_id:+ (team $team_id)} (from Signing.local.xcconfig)"
-  echo "                   A certificate keeps the Accessibility grant across rebuilds."
-else
-  echo "    signed with    ${signed_with:-ad-hoc (no Team ID)}${team_id:+ (team $team_id)}"
-fi
+
+# Reported from the built app, not from the arguments: a certificate is what allows the Accessibility
+# grant to survive a rebuild, so the two cases must not be confused.
+report_signing "$signed_with" "$team_id"
 echo "    size           $size"
 
-if [[ -z "$team_id" ]]; then
-  echo
-  echo "    Ad-hoc: not notarised and not attributable. Another Mac will need"
-  echo "    'xattr -dr com.apple.quarantine <app>' or a right-click Open, and Accessibility"
-  echo "    must be granted again on that Mac and after every rebuild here."
-fi
+echo
+echo "    Not notarised either way: another Mac needs 'xattr -dr com.apple.quarantine <app>'"
+echo "    or a right-click Open before it will launch."
 
 # --- notarise (opt-in) --------------------------------------------------------------------------
 

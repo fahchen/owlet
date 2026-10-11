@@ -114,11 +114,15 @@ struct ModelClient: Sendable {
         let system = """
             \(task)
 
-            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}). \
-            kind is one of word, phrase, sentence. text must appear in context exactly as it does there. \
-            lemma is the dictionary form only when it differs from text and is certain, else null. \
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
+            kind is one of word, phrase, sentence. meaning is \(LanguageCatalog.name(for: definitionLocale)).
+            context: copied from the original, character for character.
+            text: the exact substring of that context. Give the form as it is written there — an \
+            inflected verb stays inflected. Never give the dictionary form here when the context has a \
+            different form.
+            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
             Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
-            "meaning":"急剧上升。","context":"物価が跳ね上がっている。","lemma":"跳ね上がる"}]}
+            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"}]}
             """
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema
@@ -176,12 +180,17 @@ struct ModelClient: Sendable {
             \(promptForOperation(operation))
 
             \(task)不强凑条目，没有值得推荐的内容时 items 为空数组。
-            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}). \
-            kind is one of word, phrase, sentence. meaning is \(meaningLanguage). context must come from \
-            the original or the result, and text must appear in context exactly as it does there. lemma is \
-            the dictionary form only when it differs from text and is certain, else null. Example json: \
-            {"items":[{"text":"take a step back","language":"en","kind":"phrase",\
-            "meaning":"退一步重新审视。","context":"Let's take a step back.","lemma":null}]}
+            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
+            kind is one of word, phrase, sentence. meaning is \(meaningLanguage).
+            context: copied from the original or the result, character for character.
+            text: the exact substring of that context. Give the form as it is written there — an \
+            inflected verb stays inflected. Never give the dictionary form here when the context has a \
+            different form.
+            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
+            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
+            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"},\
+            {"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。",\
+            "context":"Let's take a step back.","lemma":null}]}
             """
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema

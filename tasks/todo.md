@@ -1038,3 +1038,13 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] 浮窗与主窗口共用应用级生词本，卡片收藏后生词本页立即可见。
 
 验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupCollectionTests` 五条（保存释义与原形不二次请求、语言来自模型回答、无语境不存语境、另一句追加且保留原释义、取消收藏）。预览端到端（`OWLET_PREVIEW_CARD_CHECK=1 python3 scripts/panel-preview.py --panel`）走真实 `LookupPresenter` 与内存生词本：查询命中后 before=false → 加入 after=true、条目有释义与 1 条语境 → 取消 removed=false，输出 `CARD-CHECK PASS`。已用 `mise run dev` 启动应用确认可运行。未验证：本书写环境的 `screencapture` 无屏幕录制权限（`could not create image from display`），因此我无法自己截图核对卡片版式，图标与 `发音` 的并排观感需用户确认；真实模型下的入库结果同样待验。预览新增 `查词卡` 状态（菜单 ⌘6）可在不依赖 popover 的情况下查看卡片版式。
+
+## T56：学习推荐词形 prompt 修正（待真实模型复验）
+
+2026-10-11 用户提供「学习推荐」调试页原始返回，证实失败原因与 BDR-0009 的预判不同：模型对三条日语推荐**全部**返回字典形 `text`（`跳ね上がる`／`史上最高値をつける`／`拍車がかかる`），而语境里是活用形，三条都不通过「`text` 逐字出现在 `context`」；同时三条还把 `lemma` 原样复制成 `text`（契约要求不同才给，否则 null）。即 `json_object` 下模型把 `text` 当词典形、`lemma` 当重复字段。
+
+根因是 prompt 示例本身：原来给的例子 `take a step back` 词形与原形相同，模型无从学到「`text` 抄词汇形」。修法不改校验（放宽会让生词本收进语境里不存在的词形），改为把三项分工拆成短句并换成词形≠原形的示例（`跳ね上がっている`／`跳ね上がる`），`上下文`/`text`/`lemma` 三行各自明确，并写明「Never give the dictionary form here」「Never repeat text」。
+
+已改：`makeLearningRequest` 与 `fillMeaning` 两处系统提示。`mise run check` 退出码 0。
+
+**待复验**：上面两处 prompt 是否真的让真实模型返回词汇形。本会话环境没有 `DEEPSEEK_API_KEY`，我无法自己发起真实调用。复验方式：`bash .build/run-prompt-probe.sh`（读应用自己的钥匙串项，连发三次同一段日语，用应用同款规则判定并打印 PASS／FAIL），或在应用里开调试页重跑同一段日语并贴「学习推荐」原始返回。

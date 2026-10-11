@@ -1087,10 +1087,13 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 
 **已修**：`LookupSpeech.live` 的 `stop()` 原本无条件 `stopSpeaking(at: .immediate)`，而卡片关闭、切换查询、打开卡片都会调用它——一次都没播过也一样。对静音合成器做立即停止就是立刻拆掉它的音频队列。现在 `LiveSpeech` 用 delegate 回调（`didStart`／`didFinish`／`didCancel`）记住「真的有声音在播」，无事可做时直接返回；顺带把每次调用都枚举全部已安装语音改为按语言缓存。`mise run check` 退出码 0。
 
-**未能归因、且已确认不是应用造成的**：
+**未能归因、且已确认不是应用造成的（2026-10-11 第二轮实测）**：
 
-- 独立探针（`.build/audio-probe.swift`，直接用 `AVSpeechSynthesizer`，同一台机器、同一个 API）跑三段——正常播完、播 0.4 秒后 `.immediate` 打断、播 0.4 秒后 `.word` 打断——**一条噪声都没有**。预览钩子（静音 stop、连点六次发音、打断播放）同样复现不出。
-- 静止的对照事实：修复后用户仍看到 `AudioQueue underflow #1 … minInFlight=3 … refills=58`——`minInFlight` 大于 0 表示队列里始终有在途缓冲，这不是「没人喂数据」，而是设备在播报一次缓冲区欠载。日志里同时出现的 `AddInstanceForFactory`／`AUCrashHandler.mm`／`AVAudioBuffer.mm` 全是 CoreAudio 的设备与音频单元层记录，应用代码不创建也不入队任何 `AVAudioBuffer`，只调用 `AVSpeechSynthesizer.speak`。
-- 结论：这些是 coreaudiod 与音频设备层的记录（蓝牙耳机、采样率切换、设备睡眠唤醒是常见诱因）。应用这层没有可改的余地；先确认输出设备再谈下一步（换系统 TTS 或显式配置 `AVAudioSession` 都是有代价的决定）。
+- 用户用 Xcode Build and Run、默认扬声器、真机点发音仍看到 `AVAudioBuffer.mm:291` 与 `AudioQueue underflow #1 … minInFlight=3 … refills=58`。
+- 追加实测，全部无噪声：独立探针（直接 `AVSpeechSynthesizer`，正常播完／播 0.4 秒后 `.immediate` 打断／`.word` 打断）；按应用调用形状写的探针（静音 stop 两次 → speak → 1.2 秒后 stop），stdout 与 stderr 都为空；预览钩子（静音 stop、连点六次、打断播放）。
+- `minInFlight=3` 说明队列里**始终有在途缓冲**，不是"没人喂数据"；`refills=58` 说明它在正常补充。即设备侧一次缓冲欠载播报。
+- 日志中的 `AddInstanceForFactory: No factory registered for id <CFUUID …>`、`AUCrashHandler.mm:126 invalidated`、`AVAudioBuffer.mm:291` 全属 coreaudiod 与音频单元层。应用不创建、不配置、不入队任何 `AVAudioBuffer`，也没有 `AVAudioSession` 代码，全仓只有一句 `AVSpeechSynthesizer.speak`。
+- 结论：**这些是 CoreAudio 在新建音频单元与拆队列时的固有记录，应用这层没有可改的余地**。判据是「有没有可听的卡顿」——没有就当作已知噪声放着；有才值得换 TTS 实现或显式配置音频会话（都要评估代价）。不要再为这几条日志改应用代码。
 
+**顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式。Xcode 的 console 是累积的，用户那份日志里混着此前跑测试的输出，因此出现了这条。
 **顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式，都是测试／预览路径。用户 console 里出现它，说明当时跑的是预览而非 app。

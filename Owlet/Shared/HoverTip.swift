@@ -115,7 +115,7 @@ extension View {
     }
 
     func hoverTip(_ key: KeyHint, title: String? = nil) -> some View {
-        hoverTip(title ?? key.title, keys: key.keys)
+        hoverTip(title ?? String(localized: "\(key.title)"), keys: key.keys)
     }
 }
 

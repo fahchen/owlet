@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 /// A fixed key the app claims: the one place its combination is written, so a button's binding, its
@@ -16,8 +17,9 @@ struct KeyHint: Equatable, Sendable {
         return prefix + Self.glyph(key)
     }
 
-    /// The tooltip: what the button does, then its key.
-    var tooltip: String { "\(title) \(keys)" }
+    /// The tooltip: what the button does, then its key. The name is a catalog key, resolved here
+    /// because a `String` is what the hover view shows.
+    var tooltip: String { "\(String(localized: "\(title)")) \(keys)" }
 
     private static func glyph(_ key: KeyEquivalent) -> String {
         switch key {

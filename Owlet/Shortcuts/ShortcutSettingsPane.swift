@@ -41,7 +41,7 @@ struct ShortcutSettingsPane: View {
                 notice
             }
             ForEach(KeyHint.groups, id: \.title) { group in
-                fixedKeys(group.title, group.keys)
+                fixedKeys(String(localized: "\(group.title)"), group.keys)
             }
         }
         .formStyle(.grouped)
@@ -56,7 +56,7 @@ struct ShortcutSettingsPane: View {
             ) {
                 ForEach(keys, id: \.title) { key in
                     HStack(spacing: 8) {
-                        Text(key.title).lineLimit(1)
+                        Text(LocalizedStringKey(key.title)).lineLimit(1)
                         Spacer(minLength: 4)
                         Text(key.keys).monospacedDigit().foregroundStyle(.secondary)
                     }

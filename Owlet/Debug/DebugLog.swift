@@ -47,12 +47,12 @@ struct DebugExchange: Identifiable, Sendable {
 
     /// The plain text a one-click copy puts on the pasteboard.
     var report: String {
-        var lines = ["# \(title)", "时间：\(date.formatted(date: .numeric, time: .standard))"]
-        if let failure { lines.append("失败原因：\(failure)") }
-        if let sourceDivergence { lines.append("原文差异：\n\(sourceDivergence)") }
-        lines.append("\n## 请求体\n\(request)")
-        if let response { lines.append("\n## 模型原始返回\n\(response)") }
-        lines.append("\n## 提交原文\n\(submitted)")
+        var lines = ["# \(title)", String(localized: "时间：\(date.formatted(date: .numeric, time: .standard))")]
+        if let failure { lines.append(String(localized: "失败原因：\(failure)")) }
+        if let sourceDivergence { lines.append(String(localized: "原文差异：\n\(sourceDivergence)")) }
+        lines.append(String(localized: "\n## 请求体\n\(request)"))
+        if let response { lines.append(String(localized: "\n## 模型原始返回\n\(response)")) }
+        lines.append(String(localized: "\n## 提交原文\n\(submitted)"))
         return lines.joined(separator: "\n")
     }
 

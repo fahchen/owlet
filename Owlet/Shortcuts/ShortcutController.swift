@@ -107,7 +107,7 @@ final class ShortcutController {
     /// Saves (or clears with nil) and re-registers. On conflict or failure nothing is saved.
     func set(_ shortcut: Shortcut?, for action: ShortcutAction) {
         if let shortcut, let other = conflict(shortcut, for: action) {
-            registrationError = "该组合已用于“\(other.title)”，请换一个。"
+            registrationError = String(localized: "该组合已用于“\(other.title)”，请换一个。")
             return
         }
         let previous = shortcuts[action]
@@ -115,7 +115,7 @@ final class ShortcutController {
         guard register() || shortcut == nil else {
             shortcuts[action] = previous
             register()
-            registrationError = "该组合已被系统或其他应用占用，请换一个。"
+            registrationError = String(localized: "该组合已被系统或其他应用占用，请换一个。")
             return
         }
         SettingsStore.setShortcut(shortcut, forKey: action.defaultsKey, in: defaults)
@@ -140,7 +140,7 @@ final class ShortcutController {
             let status = RegisterEventHotKey(
                 shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
             guard status == noErr, let ref else {
-                registrationError = "快捷键注册失败（\(status)）。"
+                registrationError = String(localized: "快捷键注册失败（\(status)）。")
                 ok = false
                 continue
             }

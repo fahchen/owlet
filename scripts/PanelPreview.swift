@@ -81,7 +81,8 @@ import SwiftData
                 "meaning": query["context"] is NSNull
                     ? "（预览）「\(text)」的一般含义。" : "（预览）「\(text)」在这句话中的意思。",
                 "lemma": text == "weighing" ? "weigh" : NSNull(),
-                "pronunciation": sentence ? NSNull() : "/ˈpriːvjuː/",
+                // Not a real reading: the fixture cannot know one, so it must not look like one.
+                "pronunciation": sentence ? NSNull() : "预览读音",
                 "part_of_speech": sentence ? NSNull() : "词",
             ]
             content = String(decoding: try JSONSerialization.data(withJSONObject: answer), as: UTF8.self)

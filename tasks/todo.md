@@ -1080,3 +1080,13 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 **本会话末的环境限制**：`mise run check` 的 test 步骤在本 shell 里失败于 `Command CodeSign failed`——`Signing.local.xcconfig` 用 `Apple Development` 证书，而非交互 shell 无法解锁钥匙串（`security find-identity` 能看到该证书，但读不到私钥）。同一条命令加 `CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual` 即通过。这是环境问题，不是代码问题；交互终端里的 `mise run check` 不受影响（交接文档 2026-10-11 已记录同一现象）。
 
 未验证：真实 `deepseek-flash` 在查词上的纠正效果——仍缺「查词 · zh-Hans」的原始返回。
+
+## T58：发音不再空拆音频队列（部分修，含一条环境观察）
+
+2026-10-11 用户点发音后 console 出现两条：`AudioQueue underflow #4: injecting silence … refills=316` 与 `AVAudioBuffer.mm:291 mBuffers[0].mDataByteSize (0) should be non-zero`。
+
+已修的是第一条的成因：`LookupSpeech.live` 的 `stop()` 无条件 `stopSpeaking(at: .immediate)`，而卡片关闭、切换查询、打开卡片都会调用它——**即使一次都没播过**。对一个静音的合成器做立即停止就是立刻拆掉它的音频队列，队列报 underflow、框架再记一个 0 字节缓冲。现在 `LiveSpeech` 用 delegate 回调（`didStart`／`didFinish`／`didCancel`）记住「真的有声音在播」，`stop()` 无事可做时直接返回；顺带把「每次调用都枚举全部已安装语音」改为按语言缓存。
+
+验证：`mise run check` 退出码 0（332 项测试通过）。预览里加了临时钩子实测：静音 stop 两次、连点六次发音、打断正在播的语音——本机 console 都没有再出现 `AudioQueue underflow`。
+
+**未修、也无法在本机复现**：`AVAudioBuffer.mm:291` 那条 0 字节缓冲。它只在用户真机点发音时出现，我的预览钩子（静音 stop、快速连点、打断播放）都复现不出；同一份 console 里还有 `AddInstanceForFactory: No factory registered for id <CFUUID …>` 与 `AUCrashHandler.mm:126 invalidated`，都是音频硬件／驱动层的记录，不是应用入队的缓冲——应用代码里没有任何地方自己创建或入队 `AVAudioBuffer`，只有 `AVSpeechSynthesizer.speak`。结论：框架／设备侧的噪声，应用这层没有可改的余地；若真机上伴随可听卡顿，下一步是换掉系统 TTS（例如自带音频会话配置）或接受它。

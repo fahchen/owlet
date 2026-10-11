@@ -49,3 +49,22 @@ Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认
 | 学习推荐 | T09 |
 | 重复表达追加语境 | T10 |
 | 阅读查词第一步（已实现，待最终验收） | T47–T51 |
+
+## T59：界面语言 i18n，支持四种语言（已实现）
+
+依据 [BDR-0011](../spec/settings/decisions/BDR-0011-interface-language.md)。用户要求「实现系统的 i18n，支持英语、简体和繁体中文，日语」，并允许分多个提交。
+
+范围与取舍：界面文字与用户可见的错误文案进 `Localizable.xcstrings`（源语言简体中文，另存 English／繁體中文／日本語）；发给模型的提示词、任务描述与示例保持中文；界面语言默认跟随系统，设置里可覆盖，下次启动生效。
+
+验收：
+
+- [x] `project.yml` 声明 `developmentLanguage: zh-Hans`；四种语言随构建产出 `en／zh-Hans／zh-Hant／ja` 四个 `lproj`。
+- [x] 目录由 `scripts/build-strings.py` 的对照表生成，`mise run lint` 校验两者一致；测试断言「每条四语齐全」且「源语言等于 key」。
+- [x] 设置「通用」页可选「跟随系统／简体中文／繁體中文／English／日本語」，写入 `AppleLanguages` 且在构建视图前生效；`AppLanguage.resolve` 为纯函数并覆盖四类输入。
+- [x] 语言名跟随界面语言；「界面语言」选择器例外，用 `Text(verbatim:)` 显示各语言自己的名字。
+- [x] 「按失败类型选恢复入口」不再依赖文案：`ModelError.Kind` 扩为契约／连接／服务，`Notice.failure` 与 `TextProcessingModel.State.failure` 携带它；`DebugExchange` 携带 `failureKind`。
+- [x] `mise run i18n` 以产物 `en.lproj` 为准列出未翻译的界面串；当前报告三种语言全覆盖（236 条）。
+
+验证：`mise run check` 退出码 0，345 项测试通过；用 Foundation 本体解析产物，四种语言对同一批键各自正确（`界面语言／生词本／翻译／润色／取消处理／加入生词本／查询／设置…` 与两个插值串）。`scripts/check-i18n.py` 报告无缺口。
+
+已知缺口（不属于本任务）：`PanelControllerTests.opensWithNothingFocusedButTraversalStillReachesTheControls` 在全量套件中偶发失败（单独连跑五次均通过），属窗口焦点类测试的隔离脆弱性，待单独处理。

@@ -98,7 +98,9 @@ struct PanelSegmentedControl: NSViewRepresentable {
         func tip(at index: Int) -> (String, String?)? {
             guard items.indices.contains(index) else { return nil }
             let item = items[index]
-            return (item.accessibilityLabel ?? item.title, item.key?.keys)
+            // The label is a catalog key written at the call site, resolved here because the tip is a
+            // String by the time AppKit asks for it.
+            return (String(localized: "\(item.accessibilityLabel ?? item.title)"), item.key?.keys)
         }
 
         @objc func activate(_ control: NSSegmentedControl) {

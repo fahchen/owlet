@@ -23,7 +23,7 @@ import SwiftUI
     /// the window's content view, or that reports an intrinsic size, joins the window's constraint
     /// passes, and the glass inside it keeps requesting more until AppKit raises an exception.
     private let host: NSHostingView<HoverTipLabel> = {
-        let host = NSHostingView(rootView: HoverTipLabel(title: "", keys: nil))
+        let host = NSHostingView(rootView: HoverTipLabel(label: { Text(verbatim: "") }, keys: nil))
         host.sizingOptions = []
         host.translatesAutoresizingMaskIntoConstraints = true
         return host
@@ -33,13 +33,13 @@ import SwiftUI
     private var clicks: Any?
 
     /// Shows the tip after the system's hover delay, under the pointer, unless the pointer leaves first.
-    func schedule(_ title: String, keys: String?, owner: AnyHashable) {
+    func schedule(_ label: @escaping () -> Text, keys: String?, owner: AnyHashable) {
         pending?.cancel()
         self.owner = owner
         pending = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
-            self?.show(title, keys: keys)
+            self?.show(label, keys: keys)
         }
     }
 
@@ -50,11 +50,18 @@ import SwiftUI
         hide()
     }
 
-    private func show(_ title: String, keys: String?) {
-        let label = HoverTipLabel(title: title, keys: keys)
-        host.rootView = label
+    /// For a caller holding a title that is already resolved — an AppKit view with a `String` — so it
+    /// is shown as it stands rather than looked up a second time.
+    func schedule(_ title: String, keys: String?, owner: AnyHashable) {
+        schedule({ Text(verbatim: title) }, keys: keys, owner: owner)
+    }
+
+    private func show(_ label: @escaping () -> Text, keys: String?) {
+        let content = HoverTipLabel(label: label, keys: keys)
+        host.rootView = content
         // Measured off-screen, so the shown view never has to report a size of its own.
-        let size = NSHostingController(rootView: label).sizeThatFits(in: CGSize(width: 600, height: 200))
+        let size = NSHostingController(rootView: content).sizeThatFits(
+            in: CGSize(width: 600, height: 200))
         let mouse = NSEvent.mouseLocation
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height - 22)
         // Above the pointer when there is no room below it, as at the bottom of the screen.
@@ -92,12 +99,14 @@ import SwiftUI
 }
 
 private struct HoverTipLabel: View {
-    let title: String
+    /// Built by the view that asked for the tip, so `Text` resolves the catalog on its side and the
+    /// tooltip and the accessibility hint can never show two different strings.
+    let label: () -> Text
     let keys: String?
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(title)
+            label()
             if let keys { Text(keys).foregroundStyle(.secondary) }
         }
         .font(.system(size: 12, weight: .medium))
@@ -109,18 +118,31 @@ private struct HoverTipLabel: View {
 }
 
 extension View {
-    /// The app's tooltip: the action and its key, shown on hover even in the never-active panel.
-    func hoverTip(_ title: String, keys: String? = nil) -> some View {
-        modifier(HoverTipModifier(title: title, keys: keys))
+    /// A tip whose title is interface wording: `Text` resolves it, so the wording follows the
+    /// interface language and the catalog stays the only place a phrase is written.
+    func hoverTip(_ title: LocalizedStringKey, keys: String? = nil) -> some View {
+        hoverTip(label: { Text(title) }, keys: keys)
     }
 
-    func hoverTip(_ key: KeyHint, title: String? = nil) -> some View {
-        hoverTip(title ?? String(localized: "\(key.title)"), keys: key.keys)
+    /// A tip naming one of the app's fixed keys, whose title is itself a catalog key.
+    func hoverTip(_ key: KeyHint, title: LocalizedStringResource? = nil) -> some View {
+        hoverTip(label: { Text(title ?? "\(key.title)") }, keys: title == nil ? key.keys : nil)
+    }
+
+    /// A tip whose text is runtime content — the source a panel is showing — rather than interface
+    /// wording, so it is shown as it stands instead of being looked up.
+    func hoverTip(verbatim title: String, keys: String? = nil) -> some View {
+        hoverTip(label: { Text(verbatim: title) }, keys: keys)
+    }
+
+    /// The one place a tip is built, so every overload above shares one implementation.
+    private func hoverTip(label: @escaping () -> Text, keys: String?) -> some View {
+        modifier(HoverTipContent(label: label, keys: keys))
     }
 }
 
-private struct HoverTipModifier: ViewModifier {
-    let title: String
+private struct HoverTipContent: ViewModifier {
+    let label: () -> Text
     let keys: String?
     @State private var id = UUID()
 
@@ -128,12 +150,12 @@ private struct HoverTipModifier: ViewModifier {
         content
             .onHover { inside in
                 if inside {
-                    HoverTip.shared.schedule(title, keys: keys, owner: id)
+                    HoverTip.shared.schedule(label, keys: keys, owner: id)
                 } else {
                     HoverTip.shared.cancel(owner: id)
                 }
             }
             .onDisappear { HoverTip.shared.cancel(owner: id) }
-            .accessibilityHint(keys.map { "\(title) \($0)" } ?? title)
+            .accessibilityHint(keys.map { "\(label()) \($0)" } ?? "\(label())")
     }
 }

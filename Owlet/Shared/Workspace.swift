@@ -94,7 +94,7 @@ struct CardGlassButton: View {
         .buttonSizing(.flexible)
         .frame(width: 36, height: 36)
         .keyboardShortcut(key)
-        .hoverTip(title, keys: keys)
+        .hoverTip(verbatim: title, keys: keys)
     }
 }
 

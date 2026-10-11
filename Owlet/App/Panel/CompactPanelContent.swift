@@ -79,7 +79,7 @@ struct PanelSourceBar: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .hoverTip(summary)
+                .hoverTip(verbatim: summary)
             if let retry {
                 PanelSegmentedControl(items: [
                     .init(

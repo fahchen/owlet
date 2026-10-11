@@ -251,26 +251,14 @@ struct ModelClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         let meaningLanguage = LanguageCatalog.name(for: targetLanguage)
-        let task =
-            operation == .polish
-            ? "从这次润色的原文与结果中挑选值得学习的表达，用\(meaningLanguage)解释修改的原因，并区分语法错误与风格偏好。"
-            : "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用\(meaningLanguage)解释含义与用法。"
-        let system = """
-            \(promptForOperation(operation))
-
-            \(task)不强凑条目，没有值得推荐的内容时 items 为空数组。
-            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
-            kind is one of word, phrase, sentence. meaning is \(meaningLanguage).
-            context: copied from the original or the result, character for character.
-            text: the exact substring of that context. Give the form as it is written there — an \
-            inflected verb stays inflected. Never give the dictionary form here when the context has a \
-            different form.
-            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
-            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
-            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"},\
-            {"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。",\
-            "context":"Let's take a step back.","lemma":null}]}
-            """
+        let task = ModelPrompts.format(
+            operation == .polish ? "learningTaskPolish" : "learningTaskTranslate", meaningLanguage)
+        var system = promptForOperation(operation) + "\n\n"
+        // The prompt text is data; the indent keeps the bytes the literal used to carry.
+        system += "            " + task + ModelPrompts["learningPreamble"] + "\n"
+        system += "            " + ModelPrompts["learningShape"] + "\n"
+        system += "            " + ModelPrompts.format("learningFields", meaningLanguage) + "\n"
+        system += "            " + ModelPrompts["learningExample"] + "\n"
         let payload = try JSONSerialization.data(withJSONObject: [
             "original": text, "result": result,
         ])
@@ -397,9 +385,7 @@ struct ModelClient: Sendable {
             \(query.definitionLanguage). lemma is the dictionary form only when it applies and is \
             certain, else null. \(pronunciation) Use null for any field that does not apply or is \
             uncertain. When the text is a whole sentence, pronunciation and part_of_speech must be null. \
-            Example json: {"text":"running","language":"en","definition_language":"zh-Hans",\
-            "meaning":"在这句话中指正在跑步。","lemma":"run","pronunciation":"ˈrʌnɪŋ",\
-            "part_of_speech":"动词"}
+            \(ModelPrompts["lookupExample"])
             """
         let payload = try JSONSerialization.data(
             withJSONObject: [

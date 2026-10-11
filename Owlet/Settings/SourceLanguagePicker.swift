@@ -25,7 +25,9 @@ struct SourceLanguagePicker: View {
     }
 
     private var autoTitle: String {
-        guard let source = SettingsStore.autoSource(for: text) else { return "Automatic (not detected)" }
-        return "Automatic (\(LanguageCatalog.name(for: source)))"
+        guard let source = SettingsStore.autoSource(for: text) else {
+            return L10n.shared.string("Automatic (not detected)")
+        }
+        return L10n.shared.string("Automatic (%@)", LanguageCatalog.name(for: source))
     }
 }

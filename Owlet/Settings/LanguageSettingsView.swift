@@ -33,7 +33,9 @@ struct LanguageSettingsView: View {
             Text(L10n.shared.string("Languages"))
         } footer: {
             Text(
-                "Only the languages chosen here appear in the target, the fallback and the mapping; keep at least one.")
+                L10n.shared.string(
+                    "Only the languages chosen here appear in the target, the fallback and the mapping; keep at least one."
+                ))
         }
         .onAppear { languages = SettingsStore.languages() }
     }

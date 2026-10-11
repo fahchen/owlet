@@ -5,7 +5,7 @@ import Foundation
 struct DebugExchange: Identifiable, Sendable {
     let id = UUID()
     var date = Date()
-    /// "翻译 · zh-Hant" / "Polish", naming what was asked for.
+    /// "Translate · zh-Hant" / "Polish", naming what was asked for.
     var title: String
     /// The request body exactly as sent, pretty printed. The API key travels in a header, so it is
     /// not in here.

@@ -28,7 +28,7 @@ struct VocabularyView: View {
             .navigationTitle(L10n.shared.string("Notebook"))
             .focusedSceneValue(\.copyText, selectedEntry?.expression)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle("\(filtered.count) expressions")
+            .navigationSubtitle(L10n.shared.string("%@ expressions", filtered.count))
             .searchable(
                 text: $search, placement: .toolbar, prompt: L10n.shared.string("Search expressions or meanings")
             )

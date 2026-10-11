@@ -27,7 +27,7 @@ struct ModelSettingsPane: View {
         Form {
             Section {
                 Picker(L10n.shared.string("Provider"), selection: $provider) {
-                    ForEach(Provider.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(Provider.allCases, id: \.self) { Text(verbatim: L10n.shared.string($0.title.key)).tag($0) }
                 }
                 // Verbatim, or the placeholder URL renders as a link.
                 TextField(
@@ -47,7 +47,9 @@ struct ModelSettingsPane: View {
                 modelField
                 modelStatus
                 Picker(L10n.shared.string("Reasoning Effort"), selection: $effort) {
-                    ForEach(EffortLevel.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(EffortLevel.allCases, id: \.self) {
+                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
+                    }
                 }
             }
             PromptSettingsView(promptFocus: $promptFocus)
@@ -77,7 +79,7 @@ struct ModelSettingsPane: View {
             }
         } else {
             TextField(
-                "Model Name", text: $model,
+                L10n.shared.string("Model Name"), text: $model,
                 prompt: Text(L10n.shared.string("Enter the model name the provider gives you")))
         }
     }

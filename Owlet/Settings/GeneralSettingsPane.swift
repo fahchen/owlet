@@ -25,7 +25,9 @@ struct GeneralSettingsPane: View {
             }
             Section(L10n.shared.string("Text")) {
                 Picker(L10n.shared.string("Translation Display"), selection: $displayMode) {
-                    ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(TranslationDisplayMode.allCases, id: \.self) {
+                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
+                    }
                 }
             }
             Section(L10n.shared.string("Study")) {
@@ -34,11 +36,15 @@ struct GeneralSettingsPane: View {
             }
             Section(L10n.shared.string("Panel")) {
                 Picker(L10n.shared.string("Glass Effect"), selection: $panelGlassEffect) {
-                    ForEach(PanelGlassEffect.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(PanelGlassEffect.allCases, id: \.self) {
+                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
+                    }
                 }
 
                 Picker(L10n.shared.string("Panel Position"), selection: $panelPosition) {
-                    ForEach(PanelPosition.allCases, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(PanelPosition.allCases, id: \.self) {
+                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
+                    }
                 }
             }
             Section {

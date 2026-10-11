@@ -31,7 +31,7 @@ struct HistoryView: View {
             .navigationTitle(L10n.shared.string("History"))
             .focusedSceneValue(\.copyText, selectedRecord?.result)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle("\(filtered.count) records")
+            .navigationSubtitle(L10n.shared.string("%@ records", filtered.count))
             .searchable(text: $search, placement: .toolbar, prompt: L10n.shared.string("Search source or result"))
             .toolbar { toolbar }
             .safeAreaInset(edge: .top) {
@@ -127,7 +127,7 @@ struct HistoryView: View {
                 Picker(L10n.shared.string("Filter by Type"), selection: $operationFilter) {
                     Text(L10n.shared.string("All Types")).tag(Operation?.none)
                     ForEach(Operation.allCases, id: \.self) { operation in
-                        Text(operation.title).tag(Operation?.some(operation))
+                        Text(verbatim: operation.name).tag(Operation?.some(operation))
                     }
                 }
                 .pickerStyle(.inline)

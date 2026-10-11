@@ -69,7 +69,7 @@ struct PronunciationSettingsView: View {
                 let options = PronunciationSystem.options(for: tag)
                 if options.count > 1 {
                     Picker(LanguageCatalog.name(for: tag), selection: binding(for: tag)) {
-                        ForEach(options, id: \.self) { Text($0.title).tag($0) }
+                        ForEach(options, id: \.self) { Text(verbatim: L10n.shared.string($0.title.key)).tag($0) }
                     }
                 } else {
                     // The value is a resource; `LabeledContent` needs a string on both sides.

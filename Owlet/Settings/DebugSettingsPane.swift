@@ -33,7 +33,7 @@ struct DebugSettingsPane: View {
     /// point of the row is to be scannable, and the disclosure opens the rest.
     private func summary(_ exchange: DebugExchange) -> some View {
         HStack(spacing: 10) {
-            Text(exchange.title)
+            Text(verbatim: exchange.title)
                 .font(.system(size: 12, weight: .medium))
             Text(exchange.summary)
                 .font(.system(size: 11))

@@ -13,22 +13,23 @@ struct SettingsView: View {
 
     var body: some View {
         TabView(selection: $pane) {
-            Tab("General", systemImage: "gearshape", value: SettingsPane.general.rawValue) {
+            Tab(L10n.shared.string("General"), systemImage: "gearshape", value: SettingsPane.general.rawValue) {
                 GeneralSettingsPane()
             }
-            Tab("Languages", systemImage: "character.bubble", value: SettingsPane.language.rawValue) {
+            Tab(L10n.shared.string("Languages"), systemImage: "character.bubble", value: SettingsPane.language.rawValue)
+            {
                 LanguageSettingsPane()
             }
-            Tab("Model", systemImage: "cloud", value: SettingsPane.model.rawValue) {
+            Tab(L10n.shared.string("Model"), systemImage: "cloud", value: SettingsPane.model.rawValue) {
                 ModelSettingsPane(promptFocus: $promptFocus)
             }
-            Tab("Shortcuts", systemImage: "keyboard", value: SettingsPane.shortcuts.rawValue) {
+            Tab(L10n.shared.string("Shortcuts"), systemImage: "keyboard", value: SettingsPane.shortcuts.rawValue) {
                 ShortcutSettingsPane(controller: shortcuts)
             }
             // The diagnostics pane exists only while it is switched on, which is the point of the
             // switch: a fresh install shows four panes and nothing else.
             if debugEnabled {
-                Tab("Debug", systemImage: "ladybug", value: SettingsPane.debug.rawValue) {
+                Tab(L10n.shared.string("Debug"), systemImage: "ladybug", value: SettingsPane.debug.rawValue) {
                     DebugSettingsPane()
                 }
             }

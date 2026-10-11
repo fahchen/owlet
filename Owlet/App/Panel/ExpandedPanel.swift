@@ -132,7 +132,7 @@ struct ExpandedPanel: View {
         }
         .contextMenu {
             Picker(L10n.shared.string("Shortcuts"), selection: $model.operation) {
-                ForEach(Operation.allCases, id: \.self) { Text($0.title).tag($0) }
+                ForEach(Operation.allCases, id: \.self) { Text(verbatim: L10n.shared.string($0.title.key)).tag($0) }
             }
             .onChange(of: model.operation) { _, _ in if canRetry { retry() } }
             .disabled(!canRetry)

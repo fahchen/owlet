@@ -25,6 +25,7 @@ struct TargetLanguagePicker: View {
     }
 
     private var autoTitle: String {
-        "Automatic (\(LanguageCatalog.name(for: SettingsStore.autoTarget(for: text))))"
+        L10n.shared.string(
+            "Automatic (%@)", LanguageCatalog.name(for: SettingsStore.autoTarget(for: text)))
     }
 }

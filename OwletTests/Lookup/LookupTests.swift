@@ -8,6 +8,8 @@ import Testing
 @testable import Owlet
 
 let english = LookupOrigin(language: "en", definitionLanguage: "zh-Hans")
+/// Read-only settings for lookup stores, so no test reads the developer's own reading notation.
+nonisolated(unsafe) let lookupDefaults = UserDefaults(suiteName: "LookupTests.readOnly")!
 
 func query(_ text: String, in full: String, origin: LookupOrigin = english) throws -> LookupQuery {
     let range = (full as NSString).range(of: text)
@@ -35,8 +37,7 @@ func lookupReply(
         #expect(query.context == "We sat on the bank of the river.")
         #expect(query.offset == 14)
         #expect(query.language == "en")
-        #expect(query.pronunciation == "IPA")
-        #expect(!query.isSentence)
+        #expect(query.pronunciation == nil)
     }
 
     @Test func aSelectionAcrossSentencesKeepsBothWhole() throws {
@@ -74,14 +75,27 @@ func lookupReply(
         #expect(context.contains("target words here"))
     }
 
-    @Test func aSentenceIsMarkedSoItsPronunciationStaysNull() throws {
-        #expect(try query("We sat on the bank of the river.", in: river).isSentence)
-    }
+    @MainActor @Test func readingNotationDefaultsPerLanguageAndFollowsTheSetting() {
+        // A suite of this test's own, so no other test reads the notation it saves.
+        let defaults = UserDefaults(suiteName: "LookupQueryTests.\(UUID().uuidString)")!
+        #expect(SettingsStore.pronunciationSystem(for: "ja", in: defaults) == .kana)
+        #expect(SettingsStore.pronunciationSystem(for: "zh-CN", in: defaults) == .pinyin)
+        #expect(SettingsStore.pronunciationSystem(for: "fr", in: defaults) == .ipa)
+        #expect(PronunciationSystem.options(for: "en") == [.ipa])
+        SettingsStore.setPronunciationSystem(.romaji, for: "ja", in: defaults)
+        #expect(SettingsStore.pronunciationSystem(for: "ja-JP", in: defaults) == .romaji)
 
-    @Test func japaneseAndChineseUseTheirOwnPronunciationSystems() {
-        #expect(LookupQuery.pronunciationSystem(for: "ja") == "kana")
-        #expect(LookupQuery.pronunciationSystem(for: "zh-CN") == "pinyin")
-        #expect(LookupQuery.pronunciationSystem(for: "fr") == "IPA")
+        let store = LookupStore(config: { testConfig }, defaults: defaults)
+        let japanese = LookupQuery.withoutContext(
+            "推敲", origin: LookupOrigin(language: "ja", definitionLanguage: "zh-Hans"))
+        let romaji = store.stamped(japanese)
+        #expect(romaji.pronunciation == "romaji")
+        SettingsStore.setPronunciationSystem(.kana, for: "ja", in: defaults)
+        #expect(store.stamped(japanese) != romaji)
+        #expect(
+            store.stamped(
+                LookupQuery.withoutContext("x", origin: LookupOrigin(language: nil, definitionLanguage: "en"))
+            ).pronunciation == nil)
     }
 
     @Test func definitionLanguageFollowsTheSourceRule() {
@@ -127,13 +141,6 @@ func lookupReply(
         #expect(throws: ModelError.targetMismatch(requested: "zh-Hans", returned: "en")) {
             try LookupResult.parse(
                 lookupReply(bank, overrides: ["definition_language": "en"]), query: bank)
-        }
-    }
-
-    @Test func aSentenceMustNotCarryPronunciation() throws {
-        let sentence = try query("We sat on the bank of the river.", in: "We sat on the bank of the river.")
-        #expect(throws: ModelError.format) {
-            try LookupResult.parse(lookupReply(sentence, overrides: ["pronunciation": "x"]), query: sentence)
         }
     }
 
@@ -220,7 +227,9 @@ final class LookupTransport: Sendable {
     let money = try! query("bank", in: "She works at the bank downtown.")
 
     func store(_ transport: LookupTransport, config: ServiceConfig? = testConfig) -> LookupStore {
-        LookupStore(client: ModelClient(transport: transport.transport, capture: .off), config: { config })
+        LookupStore(
+            client: ModelClient(transport: transport.transport, capture: .off), config: { config },
+            defaults: lookupDefaults)
     }
 
     func settle(_ store: LookupStore) async {
@@ -318,7 +327,8 @@ final class LookupTransport: Sendable {
         var config = testConfig
         let transport = LookupTransport([river])
         let store = LookupStore(
-            client: ModelClient(transport: transport.transport, capture: .off), config: { config })
+            client: ModelClient(transport: transport.transport, capture: .off), config: { config },
+            defaults: lookupDefaults)
         store.open(store.stamped(river))
         await settle(store)
         config.model = "other"
@@ -356,7 +366,8 @@ final class LookupTransport: Sendable {
     func presenter(_ transport: LookupTransport, spoken: Spoken = Spoken()) -> LookupPresenter {
         LookupPresenter(
             store: LookupStore(
-                client: ModelClient(transport: transport.transport, capture: .off), config: { testConfig }),
+                client: ModelClient(transport: transport.transport, capture: .off), config: { testConfig },
+                defaults: lookupDefaults),
             speech: LookupSpeech(
                 canSpeak: { $0 == "en" }, speak: { text, _ in spoken.said.append(text) },
                 stop: { spoken.stops += 1 }))
@@ -430,7 +441,8 @@ final class LookupTransport: Sendable {
             config: { testConfig })
         let lookups = LookupPresenter(
             store: LookupStore(
-                client: ModelClient(transport: transport.transport, capture: .off), config: { testConfig }),
+                client: ModelClient(transport: transport.transport, capture: .off), config: { testConfig },
+                defaults: lookupDefaults),
             speech: LookupSpeech(canSpeak: { _ in true }, speak: { _, _ in }, stop: {}))
         let panel = PanelController(
             model: model, defaults: UserDefaults(suiteName: "PanelLookupTests.\(UUID().uuidString)")!,

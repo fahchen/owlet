@@ -80,8 +80,8 @@ struct LookupCard: View {
         }
     }
 
-    /// Lemma when it differs from the queried form, then pronunciation and part of speech; a
-    /// sentence has neither of the last two and missing fields are simply left out.
+    /// Lemma when it differs from the queried form, then pronunciation and part of speech. The
+    /// model returns null for what does not apply, a whole sentence's pronunciation included.
     private var details: String? {
         guard let result = shown?.result else { return nil }
         var parts: [String] = []
@@ -90,9 +90,7 @@ struct LookupCard: View {
         {
             parts.append(lemma)
         }
-        if !query.isSentence {
-            parts += [result.pronunciation, result.partOfSpeech].compactMap { $0 }
-        }
+        parts += [result.pronunciation, result.partOfSpeech].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 

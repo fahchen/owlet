@@ -19,19 +19,26 @@ final class LookupStore {
     private var order: [LookupQuery] = []
     private let client: ModelClient
     private let config: () -> ServiceConfig?
+    private let defaults: UserDefaults
 
     init(
         client: ModelClient = ModelClient(),
-        config: @escaping () -> ServiceConfig? = SettingsStore.currentConfig
+        config: @escaping () -> ServiceConfig? = SettingsStore.currentConfig,
+        defaults: UserDefaults = .standard
     ) {
         self.client = client
         self.config = config
+        self.defaults = defaults
     }
 
-    /// Stamps the current model settings, so a changed setting can never hit an older answer.
+    /// Stamps the current model and reading-notation settings, so a changed setting can never hit
+    /// an older answer.
     func stamped(_ query: LookupQuery) -> LookupQuery {
         var query = query
         query.service = config().map(LookupQuery.service) ?? ""
+        query.pronunciation = query.language.map {
+            SettingsStore.pronunciationSystem(for: $0, in: defaults).rawValue
+        }
         return query
     }
 

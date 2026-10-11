@@ -273,6 +273,8 @@ T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使�
 
 学习左侧译文使用原生 NSTextField(wrappingLabelWithString:) 与 justified 段落对齐，17pt、行间距2pt，可选择复制，末行自然对齐。预览 `--active` 只用于对照系统控件活跃颜色，不代表鼠标 hover 或真实窗口活跃状态；底部按钮保留标准 Button.glass。
 
+设置「语言」分组新增「读音体系」一节：有分歧的语言（日语、中文）用系统 `Picker`，其余用 `LabeledContent` 显示固定的 IPA。
+
 ## T47 查词卡组件对照（浮窗已实现，其余待实现）
 
 行为见 [查词规格](../spec/vocabulary/features/word-lookup.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。

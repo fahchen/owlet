@@ -266,7 +266,7 @@ struct ModelClient: Sendable {
             \(query.language.map { "; it is \($0)" } ?? ""). definition_language is \
             \(query.definitionLanguage). lemma is the dictionary form only when it applies and is \
             certain, else null. \(pronunciation) Use null for any field that does not apply or is \
-            uncertain. When is_sentence is true, pronunciation and part_of_speech must be null. \
+            uncertain. When the text is a whole sentence, pronunciation and part_of_speech must be null. \
             Example json: {"text":"running","language":"en","definition_language":"zh-Hans",\
             "meaning":"在这句话中指正在跑步。","lemma":"run","pronunciation":"ˈrʌnɪŋ",\
             "part_of_speech":"动词"}
@@ -284,7 +284,7 @@ struct ModelClient: Sendable {
             withJSONObject: [
                 "text": query.text, "context": query.context as Any? ?? NSNull(),
                 "selection_start": query.offset as Any? ?? NSNull(),
-                "language": query.language as Any? ?? NSNull(), "is_sentence": query.isSentence,
+                "language": query.language as Any? ?? NSNull(),
             ], options: .sortedKeys)
         let body = requestBody(
             messages: [

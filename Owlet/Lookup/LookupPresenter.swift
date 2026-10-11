@@ -141,7 +141,7 @@ private struct LookupPopoverContent: View {
                 Label("查询", systemImage: "character.book.closed").foregroundStyle(.primary)
             }
             .buttonStyle(.glass)
-            .hoverTip("查询所选", keys: "↩")
+            .hoverTip(KeyHint.lookUp)
             .padding(8)
         case .toolbar(.failure(let refusal))?:
             HStack(spacing: 8) {

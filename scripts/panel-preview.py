@@ -16,6 +16,8 @@ parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
 parser.add_argument('--panel', action='store_true', help='Open the real floating panel through PanelController')
 parser.add_argument('--no-voice', action='store_true', help='Stand in for a Mac without a system voice')
+parser.add_argument('--target', choices=['en', 'ja', 'zh-Hans'], help='Result language for --panel')
+parser.add_argument('--appearance', choices=['dark', 'contrast', 'darkContrast'], help='Appearance for --panel')
 args = parser.parse_args()
 if args.live and not os.environ.get('DEEPSEEK_API_KEY'):
     parser.error('DEEPSEEK_API_KEY is not set')
@@ -45,6 +47,10 @@ if args.transition:
     environment['OWLET_PREVIEW_TRANSITION'] = str(args.transition.resolve())
 if args.no_voice:
     environment['OWLET_PREVIEW_NO_VOICE'] = '1'
+if args.target:
+    environment['OWLET_PREVIEW_TARGET'] = args.target
+if args.appearance:
+    environment['OWLET_PREVIEW_APPEARANCE'] = args.appearance
 if args.background:
     environment['OWLET_PREVIEW_BACKGROUND'] = str(args.background.resolve())
 flags = [*(['--live'] if args.live else []), *(['--panel'] if args.panel else [])]

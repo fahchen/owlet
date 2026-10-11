@@ -11,6 +11,7 @@ struct LanguageSettingsPane: View {
         Form {
             LanguageSettingsView(languages: $languages)
             TargetMappingSettingsView(languages: languages)
+            PronunciationSettingsView(languages: languages)
         }
         .formStyle(.grouped)
         .onAppear { languages = SettingsStore.languages() }

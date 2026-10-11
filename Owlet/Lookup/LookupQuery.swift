@@ -34,7 +34,8 @@ struct LookupQuery: Hashable, Sendable {
     var offset: Int?
     var language: String?
     var definitionLanguage: String
-    /// BDR-0006's pronunciation system for the known language; nil asks for the per-language default.
+    /// BDR-0006's reading notation for the known language, stamped from settings at request time;
+    /// nil asks the model for each language's default.
     var pronunciation: String?
     /// The model settings that change an answer, without the API key.
     var service: String = ""
@@ -55,16 +56,6 @@ struct LookupQuery: Hashable, Sendable {
             case .tooLong: "所选超过 \(LookupQuery.maxText) 字，请缩短后查询"
             }
         }
-    }
-
-    /// A sentence ends in terminal punctuation or runs long. The request states which, so the null
-    /// rule for sentences is never left to the model's own guess.
-    var isSentence: Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let last = trimmed.last, ".!?。！？".contains(last) { return true }
-        let tokenizer = NLTokenizer(unit: .word)
-        tokenizer.string = trimmed
-        return tokenizer.tokens(for: trimmed.startIndex..<trimmed.endIndex).count >= 8
     }
 
     /// Snapshots the selection inside `full`. Surrounding whitespace is dropped, never the selected
@@ -92,16 +83,14 @@ struct LookupQuery: Hashable, Sendable {
             LookupQuery(
                 text: text, context: String(full[window]),
                 offset: full.distance(from: window.lowerBound, to: range.lowerBound),
-                language: origin.language, definitionLanguage: origin.definitionLanguage,
-                pronunciation: origin.language.map(pronunciationSystem)))
+                language: origin.language, definitionLanguage: origin.definitionLanguage))
     }
 
     /// An expression with no source sentence: the card gives its general meaning and says so.
     static func withoutContext(_ text: String, origin: LookupOrigin) -> LookupQuery {
         LookupQuery(
             text: text, context: nil, offset: nil, language: origin.language,
-            definitionLanguage: origin.definitionLanguage,
-            pronunciation: origin.language.map(pronunciationSystem))
+            definitionLanguage: origin.definitionLanguage)
     }
 
     /// The sentences the selection touches; when they run past `maxContext`, a window of that size
@@ -131,16 +120,6 @@ struct LookupQuery: Hashable, Sendable {
             upper = full.index(before: upper)
         }
         return lower..<upper
-    }
-
-    /// BDR-0006 defaults: kana for Japanese, pinyin for Chinese, IPA for English and the rest.
-    /// ponytail: fixed defaults until BDR-0006 adds the per-language setting; read it here then.
-    static func pronunciationSystem(for language: String) -> String {
-        switch LanguageTag.key(language) {
-        case "ja": "kana"
-        case "zh-Hans", "zh-Hant": "pinyin"
-        default: "IPA"
-        }
     }
 
     /// Model, endpoint, provider and effort change an answer; the key never enters the cache key.

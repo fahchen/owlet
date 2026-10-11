@@ -48,7 +48,6 @@ struct LookupResult: Equatable, Sendable {
         let lemma = try optional(object["lemma"])
         let pronunciation = try optional(object["pronunciation"])
         let partOfSpeech = try optional(object["part_of_speech"])
-        if query.isSentence, pronunciation != nil || partOfSpeech != nil { throw ModelError.format }
         // A known text language must come back, and the same; the app knew it before asking.
         if let known = query.language {
             guard let language, LanguageTag.same(language, known) else { throw ModelError.format }

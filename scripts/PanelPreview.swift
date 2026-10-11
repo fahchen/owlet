@@ -25,6 +25,9 @@ import SwiftData
         let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
         let messages = body["messages"] as! [[String: String]]
         let isLearning = messages[0]["content"]!.contains("key items")
+        let target =
+            messages[0]["content"]!.components(separatedBy: "Target language: ").dropFirst().first?
+            .components(separatedBy: ".").first ?? "en"
         if messages[0]["content"]!.contains("Explain the text a reader selected") {
             return try lookupFixture(system: messages[0]["content"]!, data: messages[1]["content"]!, url: request.url!)
         }
@@ -44,12 +47,12 @@ import SwiftData
                 ]
             ]
             : [
-                "source_language": "zh-Hans", "target_language": "en",
+                "source_language": "zh-Hans", "target_language": target,
                 "segments": [
                     [
                         "source": source,
-                        "target":
-                            "\"Tui Qiao\" (deliberation) is not just an ancient literary allusion, but the ultimate pursuit of precise translation. Much like ancient poets weighing every character, we meticulously deliberate context, nuance, and emotion in every language pairing. Instead of stilted literal conversion, we refine each expression for maximum naturalness, making every cross-language exchange both perfectly accurate and beautifully articulate.",
+                        "target": translations[target]
+                            ?? "\"Tui Qiao\" (deliberation) is not just an ancient literary allusion, but the ultimate pursuit of precise translation. Much like ancient poets weighing every character, we meticulously deliberate context, nuance, and emotion in every language pairing. Instead of stilted literal conversion, we refine each expression for maximum naturalness, making every cross-language exchange both perfectly accurate and beautifully articulate.",
                     ]
                 ],
             ]
@@ -66,7 +69,7 @@ import SwiftData
         Thread.sleep(forTimeInterval: 1.2)
         let query = try JSONSerialization.jsonObject(with: Data(data.utf8)) as! [String: Any]
         let text = query["text"] as! String
-        let sentence = query["is_sentence"] as! Bool
+        let sentence = text.hasSuffix(".") || text.hasSuffix("。")
         let definition = system.components(separatedBy: "definition_language is ")[1].components(separatedBy: ".")[0]
         let content: String
         if text == "literary", !failedOnce {
@@ -88,10 +91,15 @@ import SwiftData
         ])
         return (body, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
+    /// Results in the other preview targets, so Chinese and Japanese word hits can be checked.
+    nonisolated static let translations = [
+        "ja": "「推敲」は古い文学の故事であるだけでなく、正確な翻訳の最高の境地でもある。私たちは言葉を一つずつ吟味し、自然な表現を磨き上げる。",
+        "zh-Hans": "推敲不仅是古老的文学典故，也是精准翻译的最高境界。我们反复斟酌语境、语义与情感，打磨最自然的表达。",
+    ]
     static let model = TextProcessingModel(client: client, config: { config })
     /// OWLET_PREVIEW_NO_VOICE stands in for a Mac without the voice, without touching system voices.
     static let lookups = LookupPresenter(
-        store: LookupStore(client: client, config: { config }),
+        store: LookupStore(client: client, config: { config }, defaults: defaults),
         speech: ProcessInfo.processInfo.environment["OWLET_PREVIEW_NO_VOICE"] == "1"
             ? LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}) : .live)
     static let learning: LearningModel = {
@@ -184,7 +192,17 @@ final class PreviewPanel: NSPanel {
             // with a non-activating panel, so focus, Esc and outside clicks behave as in Owlet.
             app.setActivationPolicy(.accessory)
             // The fixture answers in English; pin it in the preview's own suite, not Owlet's.
-            SettingsStore.setPinnedTarget("en", in: PreviewFixtures.defaults)
+            SettingsStore.setPinnedTarget(
+                ProcessInfo.processInfo.environment["OWLET_PREVIEW_TARGET"] ?? "en", in: PreviewFixtures.defaults)
+            // Appearance is set on this process only; the system setting is never touched.
+            app.appearance = ProcessInfo.processInfo.environment["OWLET_PREVIEW_APPEARANCE"].flatMap {
+                switch $0 {
+                case "dark": NSAppearance(named: .darkAqua)
+                case "contrast": NSAppearance(named: .accessibilityHighContrastAqua)
+                case "darkContrast": NSAppearance(named: .accessibilityHighContrastDarkAqua)
+                default: nil
+                }
+            }
             let controller = PanelController(
                 model: PreviewFixtures.model, defaults: PreviewFixtures.defaults, lookups: PreviewFixtures.lookups)
             controller.read = { completion in

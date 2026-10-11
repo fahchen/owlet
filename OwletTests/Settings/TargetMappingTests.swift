@@ -127,6 +127,24 @@ struct TargetMappingTests {
         #expect(AppLanguage.system.title == String(localized: "Follow System"))
     }
 
+    /// A notation saved for one language must read back for that language, and must not disturb the
+    /// others: the picker writes through this and then re-reads it.
+    @Test func aSavedReadingNotationReadsBackAndLeavesTheOthers() throws {
+        let defaults = UserDefaults(suiteName: "PronunciationTests.\(UUID().uuidString)")!
+        #expect(SettingsStore.pronunciationSystem(for: "ja", in: defaults) == .kana)
+        #expect(SettingsStore.pronunciationSystem(for: "zh-Hans", in: defaults) == .pinyin)
+
+        SettingsStore.setPronunciationSystem(.romaji, for: "ja", in: defaults)
+        #expect(SettingsStore.pronunciationSystem(for: "ja", in: defaults) == .romaji)
+        // The same language written as a region tag must resolve to the same saved value.
+        #expect(SettingsStore.pronunciationSystem(for: "ja-JP", in: defaults) == .romaji)
+        #expect(SettingsStore.pronunciationSystem(for: "zh-Hans", in: defaults) == .pinyin)
+
+        // What the picker's dictionary actually holds after that write.
+        let saved = try #require(defaults.dictionary(forKey: SettingsStore.pronunciationKey) as? [String: String])
+        #expect(saved["ja"] == PronunciationSystem.romaji.rawValue)
+    }
+
     /// A fresh install offers the three languages the product targets, not the whole system list.
     @Test func aFreshInstallSelectsTheProductLanguages() {
         #expect(SettingsStore.languages(in: defaults) == ["zh-Hans", "en", "ja"])

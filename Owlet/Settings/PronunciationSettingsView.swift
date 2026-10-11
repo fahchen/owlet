@@ -53,11 +53,15 @@ extension SettingsStore {
     }
 }
 
-/// 读音体系 section of the 语言 pane.
+/// Reading notation, one row per language, inside the Languages pane.
 struct PronunciationSettingsView: View {
     let languages: [String]
-    /// Mirrors the store so a picker redraws on change; the store stays the source of truth.
-    @State private var systems: [String: PronunciationSystem] = [:]
+    /// Bumped after a write so the pickers re-read the store; the store stays the one source of truth
+    /// for what a request actually uses.
+    ///
+    /// A mirrored `@State` dictionary was used before and did not redraw: reading and writing the same
+    /// piece of state within one action does not make SwiftUI re-evaluate the picker that owns it.
+    @State private var revision = 0
 
     var body: some View {
         Section {
@@ -80,21 +84,20 @@ struct PronunciationSettingsView: View {
                 "Used when filling in a reading or looking a word up while reading; a change affects later requests only."
             )
         }
-        .onAppear { reload() }
-        .onChange(of: languages) { _, _ in reload() }
     }
 
     private func binding(for tag: String) -> Binding<PronunciationSystem> {
         Binding(
-            get: { systems[tag] ?? SettingsStore.pronunciationSystem(for: tag) },
-            set: {
-                SettingsStore.setPronunciationSystem($0, for: tag)
-                systems[tag] = $0
+            get: {
+                // Reading the revision is what re-renders a picker after a change.
+                _ = revision
+                return SettingsStore.pronunciationSystem(for: tag)
+            },
+            set: { system in
+                // Written through the store, which applies the rules a request applies too: a saved
+                // value that no longer fits its language falls back to that language's default.
+                SettingsStore.setPronunciationSystem(system, for: tag)
+                revision &+= 1
             })
-    }
-
-    private func reload() {
-        systems = Dictionary(
-            uniqueKeysWithValues: languages.map { ($0, SettingsStore.pronunciationSystem(for: $0)) })
     }
 }

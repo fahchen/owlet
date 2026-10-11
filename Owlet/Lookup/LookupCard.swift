@@ -29,6 +29,10 @@ struct LookupCard: View {
 
     private var isCollected: Bool {
         guard let collection = presenter.collection, let language = notebookLanguage else { return false }
+        // Reading the revision is what re-renders this card when a click lands: the notebook's store is
+        // SwiftData, which a popover outside its container never observes, so membership alone would
+        // only appear the next time the card was built.
+        _ = collection.revision
         return collection.isCollected(language: language, expression: query.text)
     }
 

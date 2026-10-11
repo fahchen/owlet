@@ -899,6 +899,52 @@ final class LookupTransport: Sendable {
         }
     }
 
+    /// The card mirrors membership through the notebook's revision, and that is the only thing that
+    /// redraws it: the store is SwiftData, which a popover outside its container does not observe.
+    /// Both directions must bump it, or the bookmark would only change on the next card.
+    @Test func togglingMembershipBumpsTheRevisionTheCardReads() throws {
+        let (collection, store) = try notebook()
+        let answer = try LookupResult.parse(lookupReply(river), query: river)
+        let before = collection.revision
+
+        #expect(collection.setCollected(true, query: river, result: answer))
+        let added = collection.revision
+        #expect(added != before)
+
+        #expect(collection.setCollected(false, query: river, result: answer))
+        #expect(collection.revision != added)
+        #expect(try store.entries().isEmpty)
+
+        // Removing something that was never collected changes nothing, so nothing is redrawn.
+        let unchanged = collection.revision
+        #expect(collection.setCollected(false, query: river, result: answer))
+        #expect(collection.revision == unchanged)
+    }
+
+    /// A meaning filled in later is a change to the entry the card mirrors, so it redraws too.
+    @Test func aFilledMeaningBumpsTheRevision() async throws {
+        let store = try makeVocabularyStore()
+        let answer = learningBody(
+            #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up."}]}"#
+        )
+        let collection = CollectionAction(
+            store: store,
+            client: ModelClient(transport: stub(body: answer), capture: .off),
+            config: { testConfig })
+        let entry = try store.collect(
+            VocabularyDraft(
+                expression: "follow up", language: "en", context: "I will follow up.",
+                contextLanguage: "en", definitionLocale: "zh-Hans"))
+        #expect(entry.meaning.isEmpty)
+        let before = collection.revision
+
+        collection.fillMeaning(for: entry)
+        await collection.task?.value
+
+        #expect(entry.meaning == "跟进。")
+        #expect(collection.revision != before)
+    }
+
     /// Reopening the card for a word already in the notebook shows it as collected, which is what
     /// makes the button's two states reachable at all.
     @Test func aStoredWordReadsAsCollectedWhenTheCardReopens() throws {

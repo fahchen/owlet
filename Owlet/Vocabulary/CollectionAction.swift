@@ -22,6 +22,10 @@ final class CollectionAction {
     private let client: ModelClient
     private let config: () -> ServiceConfig?
     private(set) var status: Status = .idle
+    /// Bumped whenever the notebook gains or loses an entry. The store is SwiftData, and a surface
+    /// outside its container — the lookup card's bookmark — does not observe it, so a view that
+    /// mirrors membership reads this to be redrawn the moment a click lands.
+    private(set) var revision = 0
     /// The meaning request in flight; tests await it, the views only observe `status`.
     private(set) var task: Task<Void, Never>?
 
@@ -34,11 +38,17 @@ final class CollectionAction {
         self.config = config
     }
 
+    /// Records that membership may have changed.
+    private func notebookChanged() {
+        revision &+= 1
+    }
+
     /// Saves the draft at once; a missing meaning is then filled by the model.
     @discardableResult
     func collect(_ draft: VocabularyDraft) -> VocabularyEntry? {
         do {
             let entry = try store.collect(draft)
+            notebookChanged()
             if entry.meaning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 fillMeaning(for: entry)
             } else {
@@ -57,6 +67,7 @@ final class CollectionAction {
     func collect(_ draft: VocabularyDraft, meaning: String) -> VocabularyEntry? {
         do {
             let entry = try store.collect(draft)
+            notebookChanged()
             var changed = false
             // The dictionary form a recommendation knew is worth keeping even when the meaning it
             // came with is not written, so the notebook still shows the lemma (BDR-0009).
@@ -88,6 +99,7 @@ final class CollectionAction {
                 expression: draft.expression.trimmingCharacters(in: .whitespacesAndNewlines))
             {
                 try store.delete(entry)
+                notebookChanged()
             }
             status = .idle
             return true
@@ -121,6 +133,7 @@ final class CollectionAction {
         if selected {
             do {
                 _ = try store.collect(draft, in: query, result: result)
+                notebookChanged()
                 status = .saved
                 return true
             } catch {
@@ -135,6 +148,7 @@ final class CollectionAction {
                 status = .saveFailed(error.localizedDescription)
                 return false
             }
+            notebookChanged()
         }
         status = .idle
         return true
@@ -167,6 +181,7 @@ final class CollectionAction {
                 // same language even after the target mapping changes (BDR-0005).
                 entry.definitionLocale = definitionLocale
                 try store.save()
+                notebookChanged()
                 status = .saved
             } catch is CancellationError {
                 // A newer collect owns the status; leaving it alone avoids overwriting the new one.

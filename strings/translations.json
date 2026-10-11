@@ -44,20 +44,20 @@
     "zh-Hans": "%@ · %@",
     "zh-Hant": "%@ · %@"
   },
-  "%@ · %@ contexts": {
-    "ja": "%@ · %@ 件の文脈",
-    "zh-Hans": "%@ · %@ 个语境",
-    "zh-Hant": "%@ · %@ 個語境"
-  },
-  "%@ · %@ contexts · saved %@": {
-    "ja": "%@ · %@ 件の文脈 · %@ に保存",
-    "zh-Hans": "%@ · %@ 个语境 · 收藏于 %@",
-    "zh-Hant": "%@ · %@ 個語境 · 收藏於 %@"
-  },
   "%@ · %@ · %@": {
     "ja": "%@ · %@ · %@",
     "zh-Hans": "%@ · %@ · %@",
     "zh-Hant": "%@ · %@ · %@"
+  },
+  "%@ · %lld contexts": {
+    "ja": "%@ · %lld 件の文脈",
+    "zh-Hans": "%@ · %lld 个语境",
+    "zh-Hant": "%@ · %lld 個語境"
+  },
+  "%@ · %lld contexts · saved %@": {
+    "ja": "%@ · %lld 件の文脈 · %@ に保存",
+    "zh-Hans": "%@ · %lld 个语境 · 收藏于 %@",
+    "zh-Hant": "%@ · %lld 個語境 · 收藏於 %@"
   },
   "%lld expressions": {
     "ja": "%lld 件の表現",

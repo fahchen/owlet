@@ -106,8 +106,8 @@ struct PanelRootView: View {
     }
 
     private func statusRetries(_ notice: PanelController.Notice) -> Bool {
-        guard case .failure(let message) = notice else { return false }
-        return !ModelError.isContractFailure(message)
+        guard case .failure(_, let kind) = notice else { return false }
+        return kind != .contract
     }
 
     private var compactRetry: (() -> Void)? {

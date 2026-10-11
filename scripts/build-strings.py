@@ -53,6 +53,38 @@ TABLE: dict[str, tuple[str, str, str]] = {
         "改動在下次啟動 Owlet 後生效。",
         "次回 Owlet の起動時から反映されます。",
     ),
+    # Model failures and the contract. These reach the panel, the settings window and the notebook, so
+    # they are translated even though the prompts they come from are not.
+    "网络错误：%@": ("Network error: %@", "網路錯誤：%@", "ネットワークエラー：%@"),
+    "认证失败，请检查 API Key。": (
+        "Authentication failed. Check the API key.",
+        "認證失敗，請檢查 API Key。",
+        "認証に失敗しました。API Key を確認してください。",
+    ),
+    "服务返回 HTTP %lld。": ("The service returned HTTP %lld.", "服務傳回 HTTP %lld。", "サービスが HTTP %lld を返しました。"),
+    "服务返回了空内容。": ("The service returned empty content.", "服務傳回空內容。", "サービスが空の内容を返しました。"),
+    "返回的结构不符合约定：字段缺失、类型不对或内容为空。": (
+        "The reply does not match the agreed structure: a missing field, a wrong type, or empty content.",
+        "回傳的結構不符合約定：欄位缺失、型別不對或內容為空。",
+        "返された構造が約束と一致しません：項目の欠落、型の不一致、または内容が空です。",
+    ),
+    "返回的原文与提交的内容不一致，配对无法信任。": (
+        "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted.",
+        "回傳的原文與提交的內容不一致，配對無法信任。",
+        "返された原文が送信した内容と一致しないため、対応関係を信頼できません。",
+    ),
+    "返回的目标语言是 %@，与请求的 %@ 不一致。": (
+        "The reply is in %@, which does not match the requested %@.",
+        "回傳的目標語言是 %@，與請求的 %@ 不一致。",
+        "返された言語は %@ で、要求した %@ と一致しません。",
+    ),
+    "结果过长被截断。": ("The result was cut off for being too long.", "結果過長被截斷。", "結果が長すぎて打ち切られました。"),
+    "服务拒绝处理这段文本。": (
+        "The service refused to process this text.",
+        "服務拒絕處理這段文字。",
+        "サービスがこのテキストの処理を拒否しました。",
+    ),
+    "（请求体不可读）": ("(the request body is unreadable)", "（請求內容無法讀取）", "（リクエスト本文を読めません）"),
 }
 
 

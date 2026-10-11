@@ -7,7 +7,9 @@ final class TextProcessingModel {
         case idle
         case loading
         case success(String)
-        case failure(String)
+        /// The message the user reads, and what kind of problem it was, so a view can choose the way
+        /// out by the failure itself instead of by its (translated) wording.
+        case failure(String, kind: ModelError.Kind = .service)
         case missingConfig
     }
 
@@ -116,7 +118,7 @@ final class TextProcessingModel {
                 full = result
                 outcome = .success(result.text)
             } catch let error as ModelError {
-                outcome = .failure(error.message)
+                outcome = .failure(error.message, kind: error.kind)
             } catch is CancellationError {
                 return
             } catch {

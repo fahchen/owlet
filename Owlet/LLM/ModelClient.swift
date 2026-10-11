@@ -18,28 +18,35 @@ enum ModelError: Error, Equatable {
 
     var message: String {
         switch self {
-        case .network(let detail): "网络错误：\(detail)"
-        case .unauthorized: "认证失败，请检查 API Key。"
-        case .http(let code): "服务返回 HTTP \(code)。"
-        case .emptyResponse: "服务返回了空内容。"
-        case .format: "返回的结构不符合约定：字段缺失、类型不对或内容为空。"
-        case .sourceMismatch: "返回的原文与提交的内容不一致，配对无法信任。"
+        case .network(let detail):
+            String(localized: "网络错误：\(detail)")
+        case .unauthorized: String(localized: "认证失败，请检查 API Key。")
+        case .http(let code): String(localized: "服务返回 HTTP \(code)。")
+        case .emptyResponse: String(localized: "服务返回了空内容。")
+        case .format: String(localized: "返回的结构不符合约定：字段缺失、类型不对或内容为空。")
+        case .sourceMismatch: String(localized: "返回的原文与提交的内容不一致，配对无法信任。")
         case .targetMismatch(let requested, let returned):
-            "\(Self.targetMismatchPrefix)\(returned)，与请求的 \(requested) 不一致。"
-        case .truncated: "结果过长被截断。"
-        case .refused: "服务拒绝处理这段文本。"
+            String(localized: "返回的目标语言是 \(returned)，与请求的 \(requested) 不一致。")
+        case .truncated: String(localized: "结果过长被截断。")
+        case .refused: String(localized: "服务拒绝处理这段文本。")
         }
     }
 
-    /// Whether these are the failures a prompt edit can address, rather than the service settings.
-    /// The panel routes its recovery entry with this because a failure reaches it as its message.
-    static func isContractFailure(_ message: String) -> Bool {
-        message == format.message || message == sourceMismatch.message
-            || message.hasPrefix(targetMismatchPrefix)
+    /// Which recovery a failure offers. This is a property of the error, never of its wording: a
+    /// translated message must not decide whether 提示词设置 or 服务设置 is the way out.
+    enum Kind: Equatable {
+        /// A prompt edit can address it: the reply broke the contract.
+        case contract
+        /// The service settings can address it.
+        case service
     }
 
-    /// `targetMismatch` names two language tags, so only its lead is fixed.
-    static let targetMismatchPrefix = "返回的目标语言是 "
+    var kind: Kind {
+        switch self {
+        case .format, .sourceMismatch, .targetMismatch: .contract
+        case .network, .unauthorized, .http, .emptyResponse, .truncated, .refused: .service
+        }
+    }
 }
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)

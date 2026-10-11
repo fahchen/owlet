@@ -189,8 +189,8 @@ struct TextProcessingView: View {
             Text("\(model.operation.title)中…")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .failure(let message):
-            failure(message, action: "服务设置")
+        case .failure(let message, let kind):
+            failure(message, action: kind == .contract ? "提示词设置" : "服务设置")
         case .missingConfig:
             failure("模型服务未配置", action: "配置服务")
         case .idle, .success:

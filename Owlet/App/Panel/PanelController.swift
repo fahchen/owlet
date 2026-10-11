@@ -10,7 +10,9 @@ final class PanelController {
         case permission
         case unreadable
         case missingConfig
-        case failure(String)
+        /// The message the user reads, and which recovery it offers: a translated message must never
+        /// decide whether the way out is the prompt editor or the service settings.
+        case failure(String, kind: ModelError.Kind)
         /// The result could not be written back; the result stays copyable.
         case unwritten
         /// The selection cannot hold text, so the result was never typed anywhere.
@@ -23,11 +25,11 @@ final class PanelController {
             case .permission: "需要选区读取权限"
             case .unreadable: "未能读取到文字"
             case .missingConfig: "模型服务未配置"
-            case .failure(let message):
+            case .failure(let message, _):
                 if message == ModelError.format.message {
-                    "返回格式错误，请检查提示词"
+                    String(localized: "返回格式错误，请检查提示词")
                 } else if Self.isConnection(message) {
-                    "连接失败，请检查模型服务"
+                    String(localized: "连接失败，请检查模型服务")
                 } else {
                     message
                 }
@@ -44,7 +46,7 @@ final class PanelController {
             case .permission: "权限设置"
             case .unreadable: "手动输入"
             case .missingConfig: "配置服务"
-            case .failure(let message): ModelError.isContractFailure(message) ? "提示词设置" : "服务设置"
+            case .failure(_, let kind): kind == .contract ? "提示词设置" : "服务设置"
             case .unwritten: "复制结果"
             case .unwritable: "复制结果"
             case .cancelled: "重新处理"
@@ -199,7 +201,7 @@ final class PanelController {
             guard id == requestID, !expanded, notice == .translating else { return }
             switch model.state {
             case .success: if !auto { expanded = true }
-            case .failure(let message): notice = .failure(message)
+            case .failure(let message, let kind): notice = .failure(message, kind: kind)
             default: break
             }
         }
@@ -217,7 +219,7 @@ final class PanelController {
     /// The operation whose prompt editor a contract failure opens; nil for every other notice, so
     /// the panel view can route 提示词设置 to the editor that actually failed.
     func promptSettingsOperation(for notice: Notice) -> Operation? {
-        guard case .failure(let message) = notice, ModelError.isContractFailure(message) else {
+        guard case .failure(_, let kind) = notice, kind == .contract else {
             return nil
         }
         return model.operation
@@ -226,9 +228,9 @@ final class PanelController {
     /// Status shown inside the expanded content, derived from the latest request outcome.
     var inlineNotice: Notice? {
         switch model.state {
-        case .failure(let message):
+        case .failure(let message, let kind):
             if notice == .permission || notice == .unreadable { return notice }
-            return .failure(message)
+            return .failure(message, kind: kind)
         case .missingConfig: return .missingConfig
         case .success: return writebackRefusal
         case .idle: return notice == .cancelled ? .cancelled : nil

@@ -78,8 +78,10 @@ if [[ -n "$identity" || -n "$team" ]]; then
   signing_args+=(CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="$identity" -allowProvisioningUpdates)
   [[ -n "$team" ]] && signing_args+=(DEVELOPMENT_TEAM="$team")
 else
-  echo "==> Signing ad-hoc (no certificate). The result runs on another Mac after a one-time"
-  echo "    right-click Open, and asks for Accessibility again after every rebuild."
+  # No identity was passed, so whatever the project's xcconfig says applies — which on a machine with
+  # `Signing.local.xcconfig` is a real certificate, not ad-hoc. What was actually used is reported
+  # after the build, from the artifact, rather than guessed here.
+  echo "==> Signing from the project's xcconfig; the result is reported once built."
 fi
 
 # --- provenance ---------------------------------------------------------------------------------
@@ -143,7 +145,14 @@ else
 fi
 echo "    architectures  $built_archs"
 echo "    minimum macOS  $minimum_macos"
-echo "    signed with    ${signed_with:-ad-hoc (no Team ID)}${team_id:+ (team $team_id)}"
+if [[ -z "${identity:-}" && -z "${team:-}" && -n "$signed_with" && "$signed_with" != "-" ]]; then
+  # No identity was passed, so the project's xcconfig chose this; said plainly because the script
+  # would otherwise leave the impression that a build without --team is ad-hoc.
+  echo "    signed with    $signed_with${team_id:+ (team $team_id)} (from Signing.local.xcconfig)"
+  echo "                   A certificate keeps the Accessibility grant across rebuilds."
+else
+  echo "    signed with    ${signed_with:-ad-hoc (no Team ID)}${team_id:+ (team $team_id)}"
+fi
 echo "    size           $size"
 
 if [[ -z "$team_id" ]]; then

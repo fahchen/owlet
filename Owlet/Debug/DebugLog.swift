@@ -14,13 +14,15 @@ struct DebugExchange: Identifiable, Sendable {
     var submitted: String
     /// The model's raw message content, when a response arrived.
     var response: String?
-    /// The failure as the UI shows it.
+    /// The failure as the UI shows it, and what kind it was. The kind is what the page reasons about:
+    /// a translated message must never be the thing that decides which comparison to show.
     var failure: String?
+    var failureKind: ModelError.Kind?
 
     /// Where a source mismatch first stops matching the submitted text. nil for every other failure,
     /// so the page only explains the check that actually failed.
     var sourceDivergence: String? {
-        guard failure == ModelError.sourceMismatch.message,
+        guard failureKind == .contract, failure == ModelError.sourceMismatch.message,
             let response,
             let object = try? JSONSerialization.jsonObject(with: Data(response.utf8))
                 as? [String: Any],
@@ -33,11 +35,12 @@ struct DebugExchange: Identifiable, Sendable {
         let index =
             zip(returned, wanted).enumerated().first { $0.element.0 != $0.element.1 }?.offset
             ?? min(returned.count, wanted.count)
-        return """
-            首个差异在第 \(index) 个字符：
-            返回 …\(Self.snippet(of: returned, around: index))…
-            提交 …\(Self.snippet(of: wanted, around: index))…
-            """
+        return String(
+            localized: """
+                首个差异在第 \(index) 个字符：
+                返回 …\(Self.snippet(of: returned, around: index))…
+                提交 …\(Self.snippet(of: wanted, around: index))…
+                """)
     }
 
     /// One line of the captured text, for a collapsed row: a list row must not grow with the text.

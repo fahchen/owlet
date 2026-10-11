@@ -32,8 +32,10 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 - 应用以简体中文为源语言，`Owlet/Localizable.xcstrings` 另存 English、繁體中文、日本語；该文件由
   `scripts/build-strings.py` 的对照表生成，**不要手改**，改完跑一次脚本（`mise run lint` 会校验两者一致）。
 - 界面文字用 `Text("中文源串")` 即可被抽取；需要拼装的用 `String(localized:)`，占位用 `\(...)`。
-- 发给模型的文字（`DefaultPrompts` 的两段默认 Prompt、提示词说明与示例）**保持中文**，不本地化；
-  用户可见的错误文案、按钮、标题一律本地化。
+- 发给模型的文字（`DefaultPrompts` 的两段默认 Prompt、提示词说明、任务描述与示例）**保持中文**，
+  不本地化；用户可见的错误文案、按钮、标题一律本地化。
+- `mise run i18n`（需先构建）列出「翻译后会显示成中文」的界面串：它以产物里的 `en.lproj` 为准，
+  比对源码中的中文字面量。新增界面文字后跑一次，别让缺口留到用户那里。
 
 ## 规格先行
 

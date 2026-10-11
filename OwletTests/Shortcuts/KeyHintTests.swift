@@ -10,7 +10,11 @@ struct KeyHintTests {
         #expect(KeyHint.panelCopy.keys == "⌘C")
         #expect(KeyHint.panelCancel.keys == "Esc")
         #expect(KeyHint.delete.keys == "⌘⌫")
-        #expect(KeyHint.copy.tooltip == "复制 ⌘C")
+        // The tooltip is the action's name followed by its key. The name is translated, so this checks
+        // the shape and the combination rather than the wording, which the catalog owns.
+        #expect(KeyHint.copy.tooltip.hasSuffix(" ⌘C"))
+        #expect(KeyHint.copy.tooltip != " ⌘C")
+        #expect(KeyHint.panelReplace.tooltip.hasSuffix(" ⌘↩"))
         #expect(KeyHint.lookUp.keys == "↩")
     }
 

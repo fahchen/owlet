@@ -400,6 +400,42 @@ TABLE: dict[str, tuple[str, str, str]] = {
     "\n## 请求体\n%@": ("\n## Request body\n%@", "\n## 請求內容\n%@", "\n## リクエスト本文\n%@"),
     "\n## 模型原始返回\n%@": ("\n## Model raw reply\n%@", "\n## 模型原始回傳\n%@", "\n## モデルの生の返答\n%@"),
     "\n## 提交原文\n%@": ("\n## Submitted text\n%@", "\n## 提交原文\n%@", "\n## 送信した原文\n%@"),
+    # The 通用 pane and the panel-glass titles.
+    "文本处理": ("Text", "文字處理", "テキスト処理"),
+    "翻译显示方式": ("Translation Display", "翻譯顯示方式", "翻訳の表示"),
+    "翻译后自动请求学习表达": (
+        "Request study expressions after translating",
+        "翻譯後自動請求學習表達",
+        "翻訳後に学習表現を自動で取得",
+    ),
+    "润色后自动请求学习表达": (
+        "Request study expressions after polishing",
+        "潤色後自動請求學習表達",
+        "推敲後に学習表現を自動で取得",
+    ),
+    "浮窗": ("Panel", "浮動視窗", "パネル"),
+    "玻璃效果": ("Glass Effect", "玻璃效果", "ガラス効果"),
+    "浮窗位置": ("Panel Position", "浮動視窗位置", "パネルの位置"),
+    "显示调试页": ("Show the Debug Page", "顯示除錯頁", "デバッグページを表示"),
+    "在设置里显示「调试」页，记录最近几次模型请求与返回。": (
+        "Show the Debug page in settings, which keeps the last few model requests and replies.",
+        "在設定裡顯示「除錯」頁，記錄最近幾次模型請求和回傳。",
+        "設定に「デバッグ」ページを表示し、直近数回のモデル要求と返答を記録します。",
+    ),
+    "更透明": ("More Transparent", "更透明", "より透明"),
+    "更高对比度": ("Higher Contrast", "更高對比度", "より高いコントラスト"),
+    "生词本与历史记录": ("Notebook and History", "生詞本與歷史記錄", "単語帳と履歴"),
+    "未能确定这段文字的语言": (
+        "Could not determine the language of this text",
+        "未能確定這段文字的語言",
+        "このテキストの言語を判別できませんでした",
+    ),
+    "%@（纠正）": ("%@ (corrected)", "%@（糾正）", "%@（訂正）"),
+    "并替换": ("and Replace", "並取代", "して置換"),    "首个差异在第 %lld 个字符：\n返回 …%@…\n提交 …%@…": (
+        "The first difference is at character %lld:\nreturned …%@…\nsubmitted …%@…",
+        "首個差異在第 %lld 個字元：\n回傳 …%@…\n提交 …%@…",
+        "最初の違いは %lld 文字目です：\n返された …%@…\n送信した …%@…",
+    ),
 }
 
 

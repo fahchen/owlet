@@ -34,6 +34,10 @@ run = "scripts/prod-build.sh"
 description = "Lint and test; used by pre-commit and CI"
 depends = ["lint", "test"]
 
+[tasks.i18n]
+description = "Report interface strings with no translation (needs a build)"
+run = "python3 scripts/check-i18n.py"
+
 [tasks.precommit]
 depends = ["check"]
 

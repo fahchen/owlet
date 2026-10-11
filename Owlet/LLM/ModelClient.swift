@@ -482,12 +482,13 @@ struct ModelClient: Sendable {
         let records = capture.isEnabled()
         var response: String?
         var failure: String?
+        var failureKind: ModelError.Kind?
         // The record is handed off, not awaited: diagnostics must never delay or fail a request.
         defer {
             if records {
                 let exchange = DebugExchange(
                     title: title, request: Self.prettyPrintedBody(request), submitted: submitted,
-                    response: response, failure: failure)
+                    response: response, failure: failure, failureKind: failureKind)
                 let record = capture.record
                 Task { await record(exchange) }
             }
@@ -498,6 +499,7 @@ struct ModelClient: Sendable {
             return try parse(content)
         } catch {
             failure = (error as? ModelError)?.message ?? error.localizedDescription
+            failureKind = (error as? ModelError)?.kind
             throw error
         }
     }

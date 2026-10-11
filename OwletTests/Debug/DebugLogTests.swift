@@ -22,7 +22,8 @@ struct DebugLogTests {
     @Test func theReportCarriesTheExchangeButNotTheKey() {
         let exchange = DebugExchange(
             title: "翻译 · zh-Hant", request: #"{"model":"m"}"#, submitted: "お世話になっております。",
-            response: #"{"source_language":"ja"}"#, failure: ModelError.format.message)
+            response: #"{"source_language":"ja"}"#, failure: ModelError.format.message,
+            failureKind: .contract)
         let report = exchange.report
         #expect(report.contains("翻译 · zh-Hant"))
         #expect(report.contains(ModelError.format.message))
@@ -41,15 +42,19 @@ struct DebugLogTests {
     }
 
     /// Only a source mismatch gets the comparison, so the hint never claims the wrong check failed.
-    @Test func aSourceMismatchPointsAtTheFirstDifferentCharacter() {
+    @Test func aSourceMismatchPointsAtTheFirstDifferentCharacter() throws {
         let exchange = DebugExchange(
             title: "翻译 · zh-Hant", request: "{}", submitted: "お世話になっております。",
             response:
                 #"{"source_language":"ja","target_language":"zh-Hant","segments":[{"source":"お世話になりました。","target":"x"}]}"#,
-            failure: ModelError.sourceMismatch.message)
-        let divergence = exchange.sourceDivergence
-        #expect(divergence?.contains("首个差异") == true)
-        #expect(divergence?.contains("お世話になり") == true)
+            failure: ModelError.sourceMismatch.message, failureKind: .contract)
+        let divergence = try #require(exchange.sourceDivergence)
+        // The comparison is what matters, not its wording: the report must show what was returned
+        // beside what was submitted. The labels around them are the catalog's, and asserting on those
+        // would couple this test to the language the runner happens to be in.
+        #expect(divergence.contains("お世話になりました。"))
+        #expect(divergence.contains("お世話になっております。"))
+        #expect(divergence.contains("5"))
     }
 
     @Test func otherFailuresCarryNoSourceComparison() {
@@ -136,7 +141,7 @@ struct DebugLogTests {
             config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == "学习推荐")
+        #expect(box.exchanges.first?.title == String(localized: "学习推荐"))
         #expect(box.exchanges.first?.request.contains("original") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }
@@ -156,7 +161,7 @@ struct DebugLogTests {
             definitionLocale: "zh-Hans", config: testConfig)
         await settle(box)
         #expect(box.exchanges.count == 1)
-        #expect(box.exchanges.first?.title == "补释义")
+        #expect(box.exchanges.first?.title == String(localized: "补释义"))
         #expect(box.exchanges.first?.request.contains("expression") == true)
         #expect(box.exchanges.first?.response?.contains("items") == true)
     }

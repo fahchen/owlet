@@ -61,7 +61,6 @@ struct LookupCard: View {
                 }
             }
             status
-            actions
         }
         .padding(16)
         .frame(width: 320, alignment: .leading)
@@ -81,40 +80,38 @@ struct LookupCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 4) {
+            HStack(spacing: 6) {
+                if let shown, canCollect { collectButton(shown.result) }
                 CardButton(title: "发音", symbol: "speaker.wave.2") {
                     if let voiceLanguage { presenter.speak(query.text, language: voiceLanguage) }
                 }
                 .disabled(!canSpeak)
                 .accessibilityHint(canSpeak ? "" : "暂无系统语音")
-                if !canSpeak {
-                    Text("暂无系统语音").font(.system(size: 11)).foregroundStyle(.secondary)
-                }
+                .hoverTip(canSpeak ? "发音" : "暂无系统语音")
             }
         }
     }
 
-    /// 加入生词本／已收藏, the same immediate toggle and bookmark the learning rows use. It sits under
-    /// the meaning so the answer stays where the user is reading, and the entry keeps the answer.
-    @ViewBuilder private var actions: some View {
-        if let shown, canCollect {
-            Divider()
-            Button {
-                guard let language = notebookLanguage else { return }
-                presenter.collection?.setCollected(
-                    !isCollected,
-                    query: query.language == nil ? stampedLanguageQuery(language) : query,
-                    result: shown.result)
-            } label: {
-                Label(
-                    isCollected ? "已收藏" : "加入生词本",
-                    systemImage: isCollected ? "bookmark.fill" : "bookmark")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(isCollected ? Color.accentColor : Color.primary)
-            .accessibilityValue(isCollected ? "已收藏" : "未收藏")
-            .accessibilityHint(isCollected ? "取消收藏" : "加入生词本")
+    /// 加入生词本／已收藏 as an icon beside 发音, in the learning rows' bookmark and color: filled and
+    /// accented once the entry is stored, plain otherwise. The card stays open, and the entry keeps
+    /// the meaning the lookup already paid for.
+    private func collectButton(_ result: LookupResult) -> some View {
+        Button {
+            guard let language = notebookLanguage else { return }
+            presenter.collection?.setCollected(
+                !isCollected,
+                query: query.language == nil ? stampedLanguageQuery(language) : query,
+                result: result)
+        } label: {
+            Image(systemName: isCollected ? "bookmark.fill" : "bookmark")
+                .foregroundStyle(isCollected ? Color.accentColor : Color.primary)
         }
+        .buttonStyle(.plain)
+        .font(.system(size: 15))
+        .accessibilityLabel(isCollected ? "已收藏" : "加入生词本")
+        .accessibilityValue(isCollected ? "已收藏" : "未收藏")
+        .accessibilityHint(isCollected ? "取消收藏" : "加入生词本")
+        .hoverTip(isCollected ? "取消收藏" : "加入生词本")
     }
 
     /// The lookup can identify the language the reading area did not know; the notebook keys on it, so

@@ -291,4 +291,4 @@ T48：选区工具栏与查词卡共用一个系统 `NSPopover`（`.transient`�
 
 悬停仅按 [DESIGN 封闭例外](../spec/DESIGN.md#查词悬停的封闭例外2026-10-07-已确认t49-已实现)。原生验证须覆盖真实文字命中（不能仅凭最近字符索引）、中日文分词、双击／拖拽／复制、学习行收藏隔离、popover 焦点、Esc 层级、VoiceOver，以及系统语音可用／缺失。先验证首个阅读区域，再决定其他区域的最小改动，不预定五处统一替换。
 
-T55（[BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)）：卡片释义下方加一条 `Divider` 与一个 `.plain` 的书签按钮 `加入生词本`／`已收藏`，图标 `bookmark`／`bookmark.fill`、收藏时为强调色，与学习行的逐条收藏同形；文本语言未知或未接入生词本时不出现该动作。不用自绘控件，不加确认弹窗。
+T55（[BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)）：卡片标题行右侧、`发音` 左侧是一个 `.plain` 的图标按钮 `bookmark`／`bookmark.fill`，已收藏用强调色，与学习行的逐条收藏同形（`.hoverTip` 与辅助功能值给出「加入生词本／取消收藏」；系统无可用语音时 `发音` 的原因同样走提示，不再占一行说明）。文本语言未知或未接入生词本时不出现该按钮。不用自绘控件，不加确认弹窗。

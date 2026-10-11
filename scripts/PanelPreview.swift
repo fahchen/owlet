@@ -118,6 +118,14 @@ import SwiftData
         learning.autoRequest = { _ in false }
         return learning
     }()
+    /// The word the card preview looks up: the first word of the fixture source, which is in English.
+    static let cardQuery: LookupQuery? = {
+        guard case .success(let query) = LookupQuery.make(
+            selection: NSRange(location: 0, length: 8), in: source,
+            origin: LookupOrigin(language: "en", definitionLanguage: "zh-Hans"))
+        else { return nil }
+        return query
+    }()
 }
 
 @Observable @MainActor final class PreviewState: NSObject {
@@ -148,6 +156,22 @@ struct PreviewView: View {
                         message: "连接失败", summary: PreviewFixtures.source, retry: {}, close: {}, symbol: "network.slash",
                         actionTitle: "重试",
                         actionSymbol: "arrow.clockwise", recover: {})
+                case 6:
+                    // The card itself, so its layout (bookmark beside 发音) can be read off a window
+                    // screenshot without hunting for the transient popover.
+                    VStack {
+                        if let query = PreviewFixtures.cardQuery, case .card(let shown, let other)? = PreviewFixtures.lookups.mode {
+                            LookupCard(presenter: PreviewFixtures.lookups, query: shown, other: other)
+                                .background(Color(nsColor: .windowBackgroundColor))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                    .task(id: state.mode) {
+                        guard state.mode == 6, let query = PreviewFixtures.cardQuery else { return }
+                        PreviewFixtures.lookups.lookUp(query, at: nil, in: nil)
+                    }
                 default:
                     ExpandedPanel(
                         model: PreviewFixtures.model, replace: nil, copy: { _ in },
@@ -295,11 +319,12 @@ final class PreviewPanel: NSPanel {
         let menu = NSMenu()
         let states = NSMenuItem(title: "预览状态", action: nil, keyEquivalent: "")
         let submenu = NSMenu()
-        for (index, title) in ["处理中", "未配置模型", "连接失败", "成功", "成功与学习"].enumerated() {
+        for (index, title) in ["处理中", "未配置模型", "连接失败", "成功", "成功与学习", "查词卡"].enumerated() {
             let item = NSMenuItem(
-                title: title, action: #selector(PreviewState.choose(_:)), keyEquivalent: String(index + 1))
+                title: title, action: #selector(PreviewState.choose(_:)),
+                keyEquivalent: index < 5 ? String(index + 1) : String(index + 1))
             item.target = PreviewState.shared
-            item.tag = index
+            item.tag = index == 5 ? 6 : index
             submenu.addItem(item)
         }
         submenu.addItem(.separator())

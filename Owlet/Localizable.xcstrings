@@ -175,35 +175,6 @@
         }
       }
     },
-    "%@中…": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@…"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@中…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@中…"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@中…"
-          }
-        }
-      }
-    },
     "%@并替换": {
       "extractionState": "manual",
       "localizations": {
@@ -4351,6 +4322,35 @@
         }
       }
     },
+    "润色中…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polishing…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推敲中…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "润色中…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "潤色中…"
+          }
+        }
+      }
+    },
     "润色前": {
       "extractionState": "manual",
       "localizations": {
@@ -5337,6 +5337,35 @@
         }
       }
     },
+    "翻译中…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translating…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳中…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译中…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯中…"
+          }
+        }
+      }
+    },
     "翻译后自动请求学习表达": {
       "extractionState": "manual",
       "localizations": {
@@ -5391,6 +5420,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "翻譯並取代"
+          }
+        }
+      }
+    },
+    "翻译并替换中…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translating and replacing…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳して置換中…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻译并替换中…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻譯並取代中…"
           }
         }
       }
@@ -6033,31 +6091,60 @@
         }
       }
     },
-    "输入或粘贴文字，⌘↩ %@": {
+    "输入或粘贴文字，⌘↩润色": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Type or paste text, ⌘↩ %@"
+            "value": "Type or paste text, ⌘↩ Polish"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "テキストを入力またはペースト、⌘↩ %@"
+            "value": "テキストを入力またはペースト、⌘↩ 推敲"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "输入或粘贴文字，⌘↩ %@"
+            "value": "输入或粘贴文字，⌘↩润色"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "輸入或貼上文字，⌘↩ %@"
+            "value": "輸入或貼上文字，⌘↩潤色"
+          }
+        }
+      }
+    },
+    "输入或粘贴文字，⌘↩翻译": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type or paste text, ⌘↩ Translate"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを入力またはペースト、⌘↩ 翻訳"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入或粘贴文字，⌘↩翻译"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "輸入或貼上文字，⌘↩翻譯"
           }
         }
       }
@@ -6584,35 +6671,6 @@
         }
       }
     },
-    "重新%@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Run %@ again"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@をやり直す"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新%@"
-          }
-        }
-      }
-    },
     "重新处理": {
       "extractionState": "manual",
       "localizations": {
@@ -6638,6 +6696,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新處理"
+          }
+        }
+      }
+    },
+    "重新润色": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polish Again"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推敲をやり直す"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新润色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新潤色"
+          }
+        }
+      }
+    },
+    "重新翻译": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Translate Again"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翻訳をやり直す"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新翻译"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新翻譯"
           }
         }
       }

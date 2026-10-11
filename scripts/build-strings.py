@@ -143,14 +143,24 @@ TABLE: dict[str, tuple[str, str, str]] = {
     "服务设置": ("Service Settings", "服務設定", "サービス設定"),
     "复制结果": ("Copy Result", "拷貝結果", "結果をコピー"),
     "重新处理": ("Try Again", "重新處理", "やり直す"),
-    # Composed at runtime: the operation's own name is filled in.
-    "%@中…": ("%@…", "%@中…", "%@中…"),
-    "输入或粘贴文字，⌘↩ %@": (
-        "Type or paste text, ⌘↩ %@",
-        "輸入或貼上文字，⌘↩ %@",
-        "テキストを入力またはペースト、⌘↩ %@",
+    # The operation's running state. A dedicated key per operation, because composing one from a
+    # nested resource only resolves inside `Text`; everywhere else the outer lookup sees the already
+    # resolved title and falls back to the source string, which reads as a Chinese tail in an English UI.
+    "翻译中…": ("Translating…", "翻譯中…", "翻訳中…"),
+    "润色中…": ("Polishing…", "潤色中…", "推敲中…"),
+    "翻译并替换中…": ("Translating and replacing…", "翻譯並取代中…", "翻訳して置換中…"),
+    "输入或粘贴文字，⌘↩翻译": (
+        "Type or paste text, ⌘↩ Translate",
+        "輸入或貼上文字，⌘↩翻譯",
+        "テキストを入力またはペースト、⌘↩ 翻訳",
     ),
-    "重新%@": ("Run %@ again", "重新%@", "%@をやり直す"),
+    "输入或粘贴文字，⌘↩润色": (
+        "Type or paste text, ⌘↩ Polish",
+        "輸入或貼上文字，⌘↩潤色",
+        "テキストを入力またはペースト、⌘↩ 推敲",
+    ),
+    "重新翻译": ("Translate Again", "重新翻譯", "翻訳をやり直す"),
+    "重新润色": ("Polish Again", "重新潤色", "推敲をやり直す"),
     "%@文本": ("%@ Text", "%@文字", "%@テキスト"),
     "%@模式": ("%@ Mode", "%@模式", "%@モード"),
     "%@并替换": ("%@ and Replace", "%@並取代", "%@して置換"),

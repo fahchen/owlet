@@ -87,10 +87,9 @@ struct PanelRootView: View {
         case .translating, nil:
             CompactProcessingView(
                 summary: controller.model.input,
-                status: String(
-                    localized:
-                        "\(controller.model.operation.title)\(controller.replacing ? String(localized: "并替换") : "")中…"
-                ),
+                status: controller.replacing
+                    ? String(localized: "翻译并替换中…")
+                    : String(localized: controller.model.operation.progress),
                 symbol: controller.model.operation.symbol, stop: controller.stop, close: controller.close,
                 showsBar: false)
         case let notice?:

@@ -168,7 +168,7 @@ struct TextProcessingView: View {
             .overlay(alignment: .topLeading) {
                 if model.input.isEmpty {
                     // The page has no submit button; the placeholder names the shortcut instead.
-                    Text("输入或粘贴文字，⌘↩ \(model.operation.title)")
+                    Text(model.operation.placeholder)
                         .font(.system(size: PanelMetrics.textSize, weight: PanelMetrics.sourceWeight))
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)
@@ -187,7 +187,7 @@ struct TextProcessingView: View {
         // Loading and errors sit centered in the column, as the learning column's own states do.
         switch model.state {
         case .loading:
-            Text("\(model.operation.title)中…")
+            Text(model.operation.progress)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failure(let message, let kind):
@@ -250,7 +250,8 @@ struct TextProcessingView: View {
             if !isBusy, !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 // ⌘↩ belongs to the File menu's command, which runs the same request.
                 CardButton(
-                    title: "重新\(model.operation.title)", symbol: "arrow.clockwise", key: .process, bindsKey: false
+                    title: String(localized: model.operation.retry), symbol: "arrow.clockwise",
+                    key: .process, bindsKey: false
                 ) {
                     model.process(to: resolvedTarget)
                 }

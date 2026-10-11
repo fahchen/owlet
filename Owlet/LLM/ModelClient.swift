@@ -44,11 +44,25 @@ enum ModelError: Error, Equatable {
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
-/// A failure together with the model content that produced it, so a caller can show the model what it
-/// must fix instead of asking again from scratch.
-struct ContentError: Error {
+/// A contract failure together with the model content that produced it, so a caller can show the model
+/// what it must fix instead of asking again from scratch.
+struct ContractError: Error {
     let error: Error
     let content: String
+}
+
+extension ModelClient {
+    /// Whether a failure is worth one corrective round. A structure the app cannot read, a pairing that
+    /// does not reassemble, or an explanation in the wrong language all describe something the model got
+    /// wrong and can be told about. Truncation, refusal, an empty answer and transport failures cannot.
+    static func isCorrectable(_ error: ModelError) -> Bool {
+        switch error {
+        case .format, .sourceMismatch, .targetMismatch: true
+        case .network, .unauthorized, .http, .emptyResponse, .truncated, .refused: false
+        }
+    }
+
+    func isCorrectable(_ error: ModelError) -> Bool { Self.isCorrectable(error) }
 }
 
 struct ModelClient: Sendable {
@@ -174,9 +188,9 @@ struct ModelClient: Sendable {
         case .failure(let error):
             // Only a reply that arrived but broke the contract is worth correcting; truncation,
             // refusal, an empty answer and every transport failure stand as they are.
-            guard let asModelError = error.error as? ModelError, case .format = asModelError else {
-                throw error.error
-            }
+            guard let asModelError = error.error as? ModelError,
+                isCorrectable(asModelError)
+            else { throw error.error }
             // A reply with no JSON in it names no rule to follow, so it gets no second round.
             let reasons = LearningResult.diagnose(error.content)
             guard !reasons.isEmpty else { throw error.error }
@@ -194,13 +208,13 @@ struct ModelClient: Sendable {
     /// corrective round has to show the model the reply it must fix. Everything else throws.
     private func attempt(
         _ request: URLRequest, title: String, submitted: String
-    ) async throws -> Result<[LearningResult.Item], ContentError> {
+    ) async throws -> Result<[LearningResult.Item], ContractError> {
         try await perform(request, title: title, submitted: submitted) {
-            (content: String) -> Result<[LearningResult.Item], ContentError> in
+            (content: String) -> Result<[LearningResult.Item], ContractError> in
             do {
                 return .success(try LearningResult.parse(content))
             } catch {
-                return .failure(ContentError(error: error, content: content))
+                return .failure(ContractError(error: error, content: content))
             }
         }
     }
@@ -296,7 +310,8 @@ struct ModelClient: Sendable {
     ///
     /// As with learning, a reply this app cannot accept buys one corrective round naming the claims the
     /// model got wrong. A lookup is the app's most exacting contract — seven keys, nullable ones
-    /// included — and a `json_object` provider that drops one has a fixable answer, not a bad one.
+    /// included, and a definition written in the language that was asked for — and a provider that
+    /// breaks it usually has a fixable answer, not a bad one.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
         let title = "查词 · \(query.definitionLanguage)"
@@ -304,10 +319,10 @@ struct ModelClient: Sendable {
         case .success(let result):
             return result
         case .failure(let error):
-            guard let asModelError = error.error as? ModelError, case .format = asModelError else {
+            guard let asModelError = error.error as? ModelError, isCorrectable(asModelError) else {
                 throw error.error
             }
-            // A reply with no JSON in it names no key to add, so it gets no second round.
+            // A reply with no JSON in it names no claim to fix, so it gets no second round.
             let reasons = LookupResult.diagnose(error.content, query: query)
             guard !reasons.isEmpty else { throw error.error }
             let correction = try makeLookupRequest(
@@ -324,12 +339,12 @@ struct ModelClient: Sendable {
     /// Sends one lookup and parses it; the parse failure carries the content back for correction.
     private func attemptLookup(
         _ request: URLRequest, query: LookupQuery, title: String
-    ) async throws -> Result<LookupResult, ContentError> {
-        func parsed(_ content: String) -> Result<LookupResult, ContentError> {
+    ) async throws -> Result<LookupResult, ContractError> {
+        func parsed(_ content: String) -> Result<LookupResult, ContractError> {
             do {
                 return .success(try LookupResult.parse(content, query: query))
             } catch {
-                return .failure(ContentError(error: error, content: content))
+                return .failure(ContractError(error: error, content: content))
             }
         }
         return try await perform(request, title: title, submitted: query.text, parse: parsed)

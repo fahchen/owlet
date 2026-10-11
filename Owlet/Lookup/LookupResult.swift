@@ -113,8 +113,12 @@ struct LookupResult: Equatable, Sendable {
             if TranslationResult.isBlank(value) {
                 reasons.append("definition_language must not be blank")
             } else if !LanguageTag.same(value, query.definitionLanguage) {
+                // The explanation has to be written in the language that was asked for, whichever
+                // language the text itself turns out to be in.
                 reasons.append(
-                    "definition_language must be \(query.definitionLanguage); found \(value)")
+                    "definition_language must be \(query.definitionLanguage), the language the "
+                        + "explanation was requested in; write meaning and part_of_speech in "
+                        + "\(query.definitionLanguage), not in the text's own language")
             }
         } else {
             reasons.append("definition_language must be a string")

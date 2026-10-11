@@ -722,6 +722,64 @@ final class LookupTransport: Sendable {
         #expect(result.lemma == nil)
     }
 
+    /// The failure the user hit on 2026-10-11: the model explained the text in the text's own language
+    /// while the reader's target asked for another, and the reply was otherwise perfect. The retry must
+    /// name that claim, not only the structural ones.
+    @Test func anExplanationInTheWrongLanguageIsCorrected() async throws {
+        // The reader practises English, so the explanation is requested in English; the reply is
+        // structurally perfect and explains it in the text's own Chinese instead.
+        let readerTarget = {
+            var target = self.river
+            target.definitionLanguage = "en"
+            return target
+        }()
+        let wrongLanguage =
+            #"{"text":"bank","language":"en","definition_language":"zh-Hans","meaning":"河岸。","lemma":null,"pronunciation":null,"part_of_speech":null}"#
+        let calls = Mutex(0)
+        let sawRule = Mutex(false)
+        let client = ModelClient(
+            transport: { request in
+                let count = calls.withLock { value -> Int in
+                    value += 1
+                    return value
+                }
+                if count == 2 {
+                    let body = try JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any]
+                    let messages = body?["messages"] as? [[String: String]] ?? []
+                    sawRule.withLock {
+                        $0 = messages.contains {
+                            $0["role"] == "user"
+                                && ($0["content"]?.contains("definition_language must be en") ?? false)
+                                && ($0["content"]?.contains("requested in") ?? false)
+                        }
+                    }
+                }
+                let content =
+                    count == 1 ? wrongLanguage : lookupReply(readerTarget, meaning: "river bank")
+                return try await stub(body: chatBody(content))(request)
+            }, capture: .off)
+
+        let result = try await client.lookup(readerTarget, config: testConfig)
+        #expect(calls.withLock { $0 } == 2)
+        #expect(sawRule.withLock { $0 })
+        #expect(result.meaning == "river bank")
+        #expect(result.definitionLanguage == "en")
+    }
+
+    /// A correctable failure that the app cannot describe as a rule still gets no second round.
+    @Test func anUndescribableFailureIsNotRetried() async throws {
+        let calls = Mutex(0)
+        let client = ModelClient(
+            transport: { request in
+                calls.withLock { $0 += 1 }
+                return try await stub(body: chatBody("not json at all"))(request)
+            }, capture: .off)
+        await #expect(throws: ModelError.format) {
+            try await client.lookup(self.river, config: testConfig)
+        }
+        #expect(calls.withLock { $0 } == 1)
+    }
+
     /// One corrective round only, and a transport failure has no reply to correct.
     @Test func oneCorrectionOnly() async throws {
         let calls = Mutex(0)

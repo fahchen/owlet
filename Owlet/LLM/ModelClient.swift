@@ -149,23 +149,17 @@ struct ModelClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        let task = """
-            为下面这条语言学习条目给出\(LanguageCatalog.name(for: definitionLocale))释义。释义要说明含义和用法，\
-            保留必要的语域说明，不添加原文没有的信息。
-            """
-        let system = """
-            \(task)
-
-            Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).
-            kind is one of word, phrase, sentence. meaning is \(LanguageCatalog.name(for: definitionLocale)).
-            context: copied from the original, character for character.
-            text: the exact substring of that context. Give the form as it is written there — an \
-            inflected verb stays inflected. Never give the dictionary form here when the context has a \
-            different form.
-            lemma: the dictionary form, only when it differs from text, else null. Never repeat text.
-            Example json: {"items":[{"text":"跳ね上がっている","language":"ja","kind":"word",\
-            "meaning":"急剧上涨。","context":"原油価格が跳ね上がっている。","lemma":"跳ね上がる"}]}
-            """
+        let task = ModelPrompts.format(
+            "fillMeaningTask", LanguageCatalog.name(for: definitionLocale))
+        // The prompt text lives in ModelPrompts.json; `"\n"` keeps the blank line and the indent the
+        // literal used to carry, so the model receives the same bytes.
+        var system = task + "\n\n"
+        system += "            " + ModelPrompts["fillMeaningShape"] + "\n"
+        system +=
+            "            "
+            + ModelPrompts.format(
+                "fillMeaningFields", LanguageCatalog.name(for: definitionLocale)) + "\n"
+        system += "            " + ModelPrompts["fillMeaningExample"] + "\n"
         let responseFormat: [String: Any] =
             !config.provider.supportsJSONSchema
             ? ["type": "json_object"]

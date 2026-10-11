@@ -22,7 +22,13 @@ targets:
   Owlet:
     type: application
     platform: macOS
-    sources: [Owlet]
+    sources:
+      - path: Owlet
+        excludes: [ModelPrompts.json]
+      # A data file, not source: xcodegen only bundles known resource types, so the model prompts have
+      # to be declared explicitly or the app would run with empty prompts.
+      - path: Owlet/ModelPrompts.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.fahchen.owlet

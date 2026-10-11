@@ -233,13 +233,13 @@
         }
       }
     },
-    "%@ · %lld contexts": {
+    "%@ · %@ contexts": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld contexts"
+            "value": "%@ · %@ contexts"
           }
         },
         "ja": {
@@ -262,13 +262,13 @@
         }
       }
     },
-    "%@ · %lld contexts · saved %@": {
+    "%@ · %@ contexts · saved %@": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld contexts · saved %@"
+            "value": "%@ · %@ contexts · saved %@"
           }
         },
         "ja": {

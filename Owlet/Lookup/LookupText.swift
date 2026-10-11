@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Read-only reading text that can be looked up. A native text view keeps drag and double-click
 /// selection, ⌘C and the system menu; a settled selection offers 查询 and nothing is requested
-/// until the user picks it from the toolbar, the menu, Return or the accessibility action. A
-/// single click on a word looks that word up, and hovering one previews it.
+/// until the user picks it from the toolbar, the menu, Return or the accessibility action. ⌘-click
+/// looks up the word under the pointer, and holding ⌘ previews which word that is.
 struct LookupText: NSViewRepresentable {
     let text: String
     var size: CGFloat = 17
@@ -20,8 +20,8 @@ struct LookupText: NSViewRepresentable {
     let origin: LookupOrigin?
     /// The sentence this text was taken from; a selection in the text is looked up inside it.
     var sentence: String? = nil
-    /// Set on a learning row: a plain click is the row's own action (collect) instead of a lookup,
-    /// and the text gets no hover, so selection is its only lookup entry.
+    /// Set on a learning row: a plain click is the row's own action (collect); ⌘-click and a
+    /// selection still look up.
     var onPlainClick: (() -> Void)? = nil
     @Environment(\.lookups) private var presenter
 
@@ -83,21 +83,27 @@ final class LookupTextView: NSTextView {
     var onPlainClick: (() -> Void)?
     /// Size, weight, line spacing and alignment last applied, so an unchanged update leaves the selection.
     var style: [CGFloat] = []
-    /// The single-click lookup waiting out the double-click interval.
+    /// A learning row's plain click, waiting out the double-click interval.
     private var pendingClick: Task<Void, Never>?
-    /// The word under the pointer, tinted until the pointer leaves it.
+    /// The word under the pointer while ⌘ is held, tinted until ⌘ or the pointer leaves.
     private var hovered: NSRange?
+    /// Watches ⌘ while the pointer is over the text, so pressing or releasing it without moving
+    /// the mouse updates the tint and cursor at once.
+    private var modifierMonitor: Any?
     private let words = NLTokenizer(unit: .word)
 
-    /// Hover tints the word with the selection color at reduced strength (DESIGN 封闭例外): the
-    /// same color as a selection, so it reads as "this can be picked", but clearly weaker.
+    /// The ⌘ hover tints the word with the selection color at reduced strength (DESIGN 封闭例外):
+    /// the same color as a selection, so it reads as "this can be picked", but clearly weaker.
     static let hoverOpacity: CGFloat = 0.3
 
     /// Leaving the window — another page, a closed panel — takes this text's toolbar or card with it,
     /// so a late answer has nothing to reopen.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil { presenter?.textReplaced(in: self) }
+        if window == nil {
+            presenter?.textReplaced(in: self)
+            stopWatchingModifiers()
+        }
     }
 
     /// Esc closes this text's toolbar or card first; with none up it goes on as before.
@@ -106,33 +112,32 @@ final class LookupTextView: NSTextView {
         super.cancelOperation(sender)
     }
 
-    /// A click is a lookup only once the double-click interval passes without a second click, so
-    /// double-click word selection, drag selection and copy keep working.
+    /// ⌘-click looks up the word under the pointer at once; a plain click is an ordinary text click,
+    /// so double-click word selection, drag selection and copy are untouched.
     override func mouseDown(with event: NSEvent) {
         pendingClick?.cancel()
         pendingClick = nil
-        setHover(nil)
         let point = convert(event.locationInWindow, from: nil)
-        // NSTextView tracks the whole gesture here and returns on mouse up.
-        super.mouseDown(with: event)
-        guard event.clickCount == 1, selectedRange().length == 0 else { return }
-        if let onPlainClick {
-            // Waits out a double-click too, so selecting a word never also collects it.
-            pendingClick = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
-                guard !Task.isCancelled, self?.selectedRange().length == 0 else { return }
-                onPlainClick()
-            }
+        if event.modifierFlags.contains(.command), let word = word(at: point),
+            case .success(let query)? = query(for: word)
+        {
+            setHover(nil)
+            presenter?.lookUp(query, at: rect(for: word), in: self)
+            // The text owns this click to its end; otherwise the mouse up reaches the row around it,
+            // and a learning row would also collect.
+            _ = window?.nextEvent(matching: .leftMouseUp)
             return
         }
-        guard origin != nil, let word = word(at: point) else { return }
+        setHover(nil)
+        // NSTextView tracks the whole gesture here and returns on mouse up.
+        super.mouseDown(with: event)
+        guard let onPlainClick, event.clickCount == 1, selectedRange().length == 0 else { return }
+        // A learning row collects on a click, but waits out a double-click so selecting a word in
+        // it never also collects it.
         pendingClick = Task { [weak self] in
             try? await Task.sleep(for: .seconds(NSEvent.doubleClickInterval))
-            guard !Task.isCancelled, let self, self.selectedRange().length == 0,
-                let origin = self.origin,
-                case .success(let query) = LookupQuery.make(selection: word, in: self.string, origin: origin)
-            else { return }
-            self.presenter?.lookUp(query, at: self.rect(for: word), in: self)
+            guard !Task.isCancelled, self?.selectedRange().length == 0 else { return }
+            onPlainClick()
         }
     }
 
@@ -146,19 +151,41 @@ final class LookupTextView: NSTextView {
                 owner: self))
     }
 
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        guard modifierMonitor == nil else { return }
+        modifierMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.refreshHover(command: event.modifierFlags.contains(.command))
+            return event
+        }
+    }
+
     override func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
-        // Cursor rects do not apply while Owlet is inactive, which the panel always leaves it.
-        NSCursor.iBeam.set()
-        guard origin != nil, onPlainClick == nil else { return }
-        let word = word(at: convert(event.locationInWindow, from: nil))
-        // A selection already shows its own highlight; hover never stacks on it.
-        setHover(word.flatMap { NSIntersectionRange($0, selectedRange()).length == 0 ? $0 : nil })
+        refreshHover(command: event.modifierFlags.contains(.command))
     }
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
         setHover(nil)
+        stopWatchingModifiers()
+    }
+
+    /// While ⌘ is held the word under the pointer is tinted and the cursor becomes the pointing
+    /// hand; otherwise the text reads as text, with the I-beam. Cursor rects do not apply while Owlet
+    /// is inactive, which the panel always leaves it, so the cursor is set here.
+    private func refreshHover(command: Bool) {
+        guard let window else { return }
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        let word = command && origin != nil ? word(at: point) : nil
+        // A selection already shows its own highlight; the tint never stacks on it.
+        setHover(word.flatMap { NSIntersectionRange($0, selectedRange()).length == 0 ? $0 : nil })
+        (word == nil ? NSCursor.iBeam : NSCursor.pointingHand).set()
+    }
+
+    private func stopWatchingModifiers() {
+        if let modifierMonitor { NSEvent.removeMonitor(modifierMonitor) }
+        modifierMonitor = nil
     }
 
     /// A temporary attribute is drawn by the layout manager without changing layout.
@@ -206,9 +233,13 @@ final class LookupTextView: NSTextView {
     /// The selection as a lookup, or why it cannot be one; nil when nothing is selected.
     var selectedQuery: Result<LookupQuery, LookupQuery.Refusal>? {
         let range = selectedRange()
-        guard range.length > 0, let origin else { return nil }
-        // Inside its source sentence when the text is a phrase taken from one, so the explanation
-        // is the meaning there rather than the phrase on its own.
+        return range.length > 0 ? query(for: range) : nil
+    }
+
+    /// A range of this text as a lookup, inside its source sentence when the text is a phrase taken
+    /// from one, so the explanation is the meaning there rather than the phrase on its own.
+    func query(for range: NSRange) -> Result<LookupQuery, LookupQuery.Refusal>? {
+        guard let origin else { return nil }
         if let sentence, let within = sentence.range(of: string) {
             let base = NSRange(within, in: sentence).location
             return LookupQuery.make(

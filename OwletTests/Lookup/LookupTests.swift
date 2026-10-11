@@ -673,6 +673,83 @@ final class LookupTransport: Sendable {
     }
 }
 
+/// The corrective round a lookup gets when the reply breaks the contract (2026-10-11): a
+/// `json_object` provider that leaves out a nullable key is asked again, told which key is missing.
+@MainActor @Suite struct LookupRetryTests {
+    let river = try! query("bank", in: "We sat on the bank of the river.")
+
+    /// A reply missing the three nullable keys: the exact failure the seven-key contract invites from
+    /// a provider without a schema.
+    nonisolated func replyMissingNullableKeys(_ query: LookupQuery) -> String {
+        """
+        {"text":"\(query.text)","language":"en","definition_language":"\(query.definitionLanguage)",\
+        "meaning":"河岸"}
+        """
+    }
+
+    @Test func aReplyMissingNullableKeysIsCorrected() async throws {
+        let calls = Mutex(0)
+        let sawCorrection = Mutex(false)
+        let client = ModelClient(
+            transport: { request in
+                let count = calls.withLock { value -> Int in
+                    value += 1
+                    return value
+                }
+                if count == 2 {
+                    let body = try JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any]
+                    let messages = body?["messages"] as? [[String: String]] ?? []
+                    sawCorrection.withLock {
+                        $0 =
+                            messages.contains { $0["role"] == "assistant" }
+                            && messages.contains {
+                                $0["role"] == "user"
+                                    && ($0["content"]?.contains("lemma") ?? false)
+                                    && ($0["content"]?.contains("missing") ?? false)
+                            }
+                    }
+                }
+                let content =
+                    count == 1
+                    ? replyMissingNullableKeys(river) : lookupReply(river, meaning: "河岸")
+                return try await stub(body: chatBody(content))(request)
+            }, capture: .off)
+
+        let result = try await client.lookup(river, config: testConfig)
+        #expect(calls.withLock { $0 } == 2)
+        #expect(sawCorrection.withLock { $0 })
+        #expect(result.meaning == "河岸")
+        #expect(result.lemma == nil)
+    }
+
+    /// One corrective round only, and a transport failure has no reply to correct.
+    @Test func oneCorrectionOnly() async throws {
+        let calls = Mutex(0)
+        let client = ModelClient(
+            transport: { request in
+                calls.withLock { $0 += 1 }
+                return try await stub(body: chatBody(self.replyMissingNullableKeys(self.river)))(request)
+            }, capture: .off)
+        await #expect(throws: ModelError.format) {
+            try await client.lookup(self.river, config: testConfig)
+        }
+        #expect(calls.withLock { $0 } == 2)
+    }
+
+    @Test func aTransportFailureIsNotRetried() async throws {
+        let calls = Mutex(0)
+        let client = ModelClient(
+            transport: { _ in
+                calls.withLock { $0 += 1 }
+                throw URLError(.notConnectedToInternet)
+            }, capture: .off)
+        await #expect(throws: (any Error).self) {
+            try await client.lookup(self.river, config: testConfig)
+        }
+        #expect(calls.withLock { $0 } == 1)
+    }
+}
+
 /// 加入生词本 on the lookup card: the answer the query already produced becomes a notebook entry,
 /// with no second request, and the same card can undo it.
 @MainActor @Suite struct LookupCollectionTests {

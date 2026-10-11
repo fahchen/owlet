@@ -92,26 +92,23 @@ struct LookupCard: View {
         }
     }
 
-    /// 加入生词本／已收藏 as an icon beside 发音, in the learning rows' bookmark and color: filled and
-    /// accented once the entry is stored, plain otherwise. The card stays open, and the entry keeps
-    /// the meaning the lookup already paid for.
+    /// 加入生词本／已收藏 as the same round glass action as 发音, beside it, so the two read as one pair.
+    /// Filled and accented once the entry is stored, matching the learning rows. The card stays open,
+    /// and the entry keeps the meaning the lookup already paid for.
     private func collectButton(_ result: LookupResult) -> some View {
-        Button {
+        CardGlassButton(
+            title: isCollected ? "已收藏" : "加入生词本",
+            symbol: isCollected ? "bookmark.fill" : "bookmark",
+            tint: isCollected ? Color.accentColor : Color.primary
+        ) {
             guard let language = notebookLanguage else { return }
             presenter.collection?.setCollected(
                 !isCollected,
                 query: query.language == nil ? stampedLanguageQuery(language) : query,
                 result: result)
-        } label: {
-            Image(systemName: isCollected ? "bookmark.fill" : "bookmark")
-                .foregroundStyle(isCollected ? Color.accentColor : Color.primary)
         }
-        .buttonStyle(.plain)
-        .font(.system(size: 15))
-        .accessibilityLabel(isCollected ? "已收藏" : "加入生词本")
         .accessibilityValue(isCollected ? "已收藏" : "未收藏")
         .accessibilityHint(isCollected ? "取消收藏" : "加入生词本")
-        .hoverTip(isCollected ? "取消收藏" : "加入生词本")
     }
 
     /// The lookup can identify the language the reading area did not know; the notebook keys on it, so

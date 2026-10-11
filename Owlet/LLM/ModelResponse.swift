@@ -180,14 +180,16 @@ struct LearningResult: Equatable {
     }
 
     /// Why `parse` refused, phrased as an instruction for the model — the shape a corrective retry
-    /// needs. Empty when the payload parses.
+    /// needs. Empty when the payload parses, and also when it does not even parse as one object: a
+    /// reply with no JSON in it has nothing to repair, so the caller only spends a round when this
+    /// names at least one rule the model can follow next time.
     ///
     /// The rejection reasons are named rather than counted: a model told only "invalid JSON" repeats
     /// the same mistake, while one told which rule it broke can fix that one.
     static func diagnose(_ content: String) -> [String] {
         guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return ["the reply is not one JSON object, or has text outside the object"] }
+        else { return [] }
         guard Set(object.keys) == ["items"] else {
             return ["the object must have exactly the key items; it has \(object.keys.sorted())"]
         }

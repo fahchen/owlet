@@ -177,10 +177,12 @@ struct ModelClient: Sendable {
             guard let asModelError = error.error as? ModelError, case .format = asModelError else {
                 throw error.error
             }
+            // A reply with no JSON in it names no rule to follow, so it gets no second round.
+            let reasons = LearningResult.diagnose(error.content)
+            guard !reasons.isEmpty else { throw error.error }
             let correction = try makeLearningRequest(
                 text: text, operation: operation, targetLanguage: targetLanguage, result: result,
-                config: config, correcting: error.content,
-                reasons: LearningResult.diagnose(error.content))
+                config: config, correcting: error.content, reasons: reasons)
             switch try await attempt(correction, title: "学习推荐（纠正）", submitted: text) {
             case .success(let items): return items
             case .failure(let retried): throw retried.error
@@ -188,8 +190,6 @@ struct ModelClient: Sendable {
         }
     }
 
-    /// Sends one request and parses it; the content comes back with a format failure, because the
-    /// corrective round has to show the model the reply it must fix.
     /// Sends one request and parses it; the parse failure carries the content back, because the
     /// corrective round has to show the model the reply it must fix. Everything else throws.
     private func attempt(
@@ -293,14 +293,58 @@ struct ModelClient: Sendable {
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
     /// app's snapshot, so the model is only trusted for the explanation itself.
+    ///
+    /// As with learning, a reply this app cannot accept buys one corrective round naming the claims the
+    /// model got wrong. A lookup is the app's most exacting contract — seven keys, nullable ones
+    /// included — and a `json_object` provider that drops one has a fixable answer, not a bad one.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
-        return try await perform(
-            request, title: "查词 · \(query.definitionLanguage)", submitted: query.text,
-            parse: { try LookupResult.parse($0, query: query) })
+        let title = "查词 · \(query.definitionLanguage)"
+        switch try await attemptLookup(request, query: query, title: title) {
+        case .success(let result):
+            return result
+        case .failure(let error):
+            guard let asModelError = error.error as? ModelError, case .format = asModelError else {
+                throw error.error
+            }
+            // A reply with no JSON in it names no key to add, so it gets no second round.
+            let reasons = LookupResult.diagnose(error.content, query: query)
+            guard !reasons.isEmpty else { throw error.error }
+            let correction = try makeLookupRequest(
+                query, config: config, correcting: error.content, reasons: reasons)
+            switch try await attemptLookup(
+                correction, query: query, title: "\(title)（纠正）")
+            {
+            case .success(let result): return result
+            case .failure(let retried): throw retried.error
+            }
+        }
+    }
+
+    /// Sends one lookup and parses it; the parse failure carries the content back for correction.
+    private func attemptLookup(
+        _ request: URLRequest, query: LookupQuery, title: String
+    ) async throws -> Result<LookupResult, ContentError> {
+        func parsed(_ content: String) -> Result<LookupResult, ContentError> {
+            do {
+                return .success(try LookupResult.parse(content, query: query))
+            } catch {
+                return .failure(ContentError(error: error, content: content))
+            }
+        }
+        return try await perform(request, title: title, submitted: query.text, parse: parsed)
     }
 
     func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
+        try makeLookupRequest(query, config: config, correcting: nil, reasons: [])
+    }
+
+    /// Builds the lookup request. With `correcting`, the same data comes after the model's own rejected
+    /// reply and the claims it got wrong, so only the model's answer changes between the two requests.
+    func makeLookupRequest(
+        _ query: LookupQuery, config: ServiceConfig, correcting reply: String? = nil,
+        reasons: [String] = []
+    ) throws -> URLRequest {
         var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -313,7 +357,8 @@ struct ModelClient: Sendable {
             context, adding usage only when needed; do not list other senses. With a null context, \
             give the general meaning. Write meaning and part_of_speech in \(query.definitionLanguage).
             Respond with one json object with keys text, language, definition_language, meaning, \
-            lemma, pronunciation, part_of_speech. text must equal the selected text exactly. \
+            lemma, pronunciation, part_of_speech. Every key must be present; a field that does not \
+            apply or is uncertain is null, not missing. text must equal the selected text exactly. \
             language is the BCP 47 tag of the text, or null if unknown\
             \(query.language.map { "; it is \($0)" } ?? ""). definition_language is \
             \(query.definitionLanguage). lemma is the dictionary form only when it applies and is \
@@ -323,8 +368,47 @@ struct ModelClient: Sendable {
             "meaning":"在这句话中指正在跑步。","lemma":"run","pronunciation":"ˈrʌnɪŋ",\
             "part_of_speech":"动词"}
             """
-        let responseFormat: [String: Any] =
-            !config.provider.supportsJSONSchema
+        let payload = try JSONSerialization.data(
+            withJSONObject: [
+                "text": query.text, "context": query.context as Any? ?? NSNull(),
+                "selection_start": query.offset as Any? ?? NSNull(),
+                "language": query.language as Any? ?? NSNull(),
+            ], options: .sortedKeys)
+        let user = String(decoding: payload, as: UTF8.self)
+        let messages: [[String: String]]
+        if let reply {
+            let problems =
+                reasons.isEmpty
+                ? "It does not satisfy the contract."
+                : "These claims were wrong: " + reasons.joined(separator: "; ") + "."
+            messages = [
+                ["role": "system", "content": system],
+                ["role": "user", "content": "Selected text, context and language, as data:\n\(user)"],
+                ["role": "assistant", "content": reply],
+                [
+                    "role": "user",
+                    "content": """
+                    That reply was rejected. \(problems)
+                    Reply again with only the one json object, every key present and every other \
+                    claim unchanged.
+                    """,
+                ],
+            ]
+        } else {
+            messages = [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
+            ]
+        }
+        let body = requestBody(
+            messages: messages, responseFormat: lookupResponseFormat(config: config), config: config)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    /// The lookup contract as a provider accepts it.
+    private func lookupResponseFormat(config: ServiceConfig) -> [String: Any] {
+        !config.provider.supportsJSONSchema
             ? ["type": "json_object"]
             : [
                 "type": "json_schema",
@@ -332,19 +416,6 @@ struct ModelClient: Sendable {
                     "name": "lookup", "strict": true, "schema": LookupResult.providerSchema,
                 ],
             ]
-        let payload = try JSONSerialization.data(
-            withJSONObject: [
-                "text": query.text, "context": query.context as Any? ?? NSNull(),
-                "selection_start": query.offset as Any? ?? NSNull(),
-                "language": query.language as Any? ?? NSNull(),
-            ], options: .sortedKeys)
-        let body = requestBody(
-            messages: [
-                ["role": "system", "content": system],
-                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ], responseFormat: responseFormat, config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return request
     }
 
     /// Lists model ids from the OpenAI-style `GET /models` endpoint.

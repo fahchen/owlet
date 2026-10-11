@@ -57,19 +57,44 @@ struct CardButton: View {
     var key: KeyHint? = nil
     /// False for ⌘C, which the Edit menu's 拷贝 routes, so selected text still copies itself.
     var bindsKey = true
+    /// A state that is on rather than an action, such as a stored bookmark: the glyph takes the
+    /// accent and the label names the state instead of the command.
+    var isOn = false
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { Label(title, systemImage: symbol).foregroundStyle(.primary) }
-            .labelStyle(.iconOnly)
-            .font(.system(size: 13, weight: .medium))
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .controlSize(.extraLarge)
-            .buttonSizing(.flexible)
-            .frame(width: 36, height: 36)
-            .keyboardShortcut(bindsKey ? key?.shortcut : nil)
-            .hoverTip(title, keys: key?.keys)
+        CardGlassButton(
+            title: title, symbol: symbol,
+            tint: isOn ? Color.accentColor : Color.primary,
+            key: bindsKey ? key?.shortcut : nil, keys: bindsKey ? key?.keys : nil, action: action
+        )
+    }
+}
+
+/// The one round glass button both card actions use, so the bookmark and the speaker are the same
+/// control: 13pt glyph, `.glass`, circular border shape, 36pt.
+struct CardGlassButton: View {
+    let title: String
+    let symbol: String
+    var tint: Color = .primary
+    var key: KeyboardShortcut? = nil
+    /// The key's display string, when it has one, for the hover tip.
+    var keys: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).foregroundStyle(tint)
+        }
+        .labelStyle(.iconOnly)
+        .font(.system(size: 13, weight: .medium))
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .controlSize(.extraLarge)
+        .buttonSizing(.flexible)
+        .frame(width: 36, height: 36)
+        .keyboardShortcut(key)
+        .hoverTip(title, keys: keys)
     }
 }
 

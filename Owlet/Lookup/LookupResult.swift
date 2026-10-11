@@ -82,4 +82,80 @@ struct LookupResult: Equatable, Sendable {
         default: throw ModelError.format
         }
     }
+
+    /// Every claim `parse` would refuse, phrased for the model — the shape a corrective retry needs.
+    /// The nullable keys are named explicitly because a `json_object` provider that "forgets" a key
+    /// still has a field the app needs written as null. Empty when there is no JSON to correct, so
+    /// the caller only spends a round on an answer whose claims can actually be repaired.
+    static func diagnose(_ content: String, query: LookupQuery) -> [String] {
+        let needed = Array(keys).sorted()
+        guard let data = TranslationResult.unfenced(content)?.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return [] }
+        var reasons: [String] = []
+        if let extra = Set(object.keys).subtracting(keys).sorted().first {
+            reasons.append("no key other than \(needed) is allowed; found \(extra)")
+        }
+        if let missing = keys.subtracting(object.keys).sorted().first {
+            reasons.append(
+                "every key must be present, including the nullable ones written as null; missing \(missing)")
+        }
+        for field in ["text", "meaning"] {
+            if let value = object[field] as? String {
+                if TranslationResult.isBlank(value) {
+                    reasons.append("\(field) must not be blank")
+                }
+            } else {
+                reasons.append("\(field) must be a non-empty string")
+            }
+        }
+        if let value = object["definition_language"] as? String {
+            if TranslationResult.isBlank(value) {
+                reasons.append("definition_language must not be blank")
+            } else if !LanguageTag.same(value, query.definitionLanguage) {
+                reasons.append(
+                    "definition_language must be \(query.definitionLanguage); found \(value)")
+            }
+        } else {
+            reasons.append("definition_language must be a string")
+        }
+        let returnedLanguage: String?
+        switch object["language"] {
+        case is NSNull:
+            returnedLanguage = nil
+        case let value as String where !TranslationResult.isBlank(value):
+            returnedLanguage = value
+        default:
+            returnedLanguage = nil
+            reasons.append(
+                "language must be the BCP 47 tag of the text, or null when it is unknown")
+        }
+        if let known = query.language {
+            guard let returnedLanguage, LanguageTag.same(returnedLanguage, known) else {
+                reasons.append(
+                    "language must be \(known), the language the query asked about, and may not be null")
+                return reasons
+            }
+        }
+        for field in ["lemma", "pronunciation", "part_of_speech"] {
+            switch object[field] {
+            case is NSNull:
+                break
+            case let value as String where !TranslationResult.isBlank(value):
+                break
+            default:
+                reasons.append("\(field) must be a non-empty string, or null when it does not apply")
+            }
+        }
+        if let text = object["text"] as? String, !TranslationResult.isBlank(text),
+            TranslationResult.normalized(text) != TranslationResult.normalized(query.text)
+        {
+            reasons.append(
+                "text must equal the selected text \(query.text) exactly; found \(text)")
+        }
+        if !snapshotHoldsText(query) {
+            reasons.append("text must start at the offset the query reported in its context")
+        }
+        return Array(Set(reasons)).sorted()
+    }
 }

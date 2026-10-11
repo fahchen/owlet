@@ -28,7 +28,7 @@ struct VocabularyView: View {
             .navigationTitle(L10n.shared.string("Notebook"))
             .focusedSceneValue(\.copyText, selectedEntry?.expression)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle(L10n.shared.string("%@ expressions", filtered.count))
+            .navigationSubtitle(L10n.shared.string("%lld expressions", filtered.count))
             .searchable(
                 text: $search, placement: .toolbar, prompt: L10n.shared.string("Search expressions or meanings")
             )
@@ -72,7 +72,8 @@ struct VocabularyView: View {
                                 .foregroundStyle(.secondary).lineLimit(1)
                             Text(
                                 L10n.shared.string(
-                                    "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts")
+                                    "%@ · %lld contexts", LanguageCatalog.name(for: entry.language),
+                                    entry.contexts.count)
                             )
                             .font(.caption).foregroundStyle(.secondary)
                         }
@@ -193,7 +194,9 @@ private struct VocabularyDetail: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(
-                        "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) contexts · saved \(HistoryTime.display(entry.createdAt))"
+                        L10n.shared.string(
+                            "%@ · %lld contexts · saved %@", LanguageCatalog.name(for: entry.language),
+                            entry.contexts.count, HistoryTime.display(entry.createdAt))
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     // The entry's own form has no source sentence, so a lookup in it asks for the

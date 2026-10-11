@@ -145,7 +145,7 @@ final class ShortcutController {
             let status = RegisterEventHotKey(
                 shortcut.keyCode, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
             guard status == noErr, let ref else {
-                registrationError = L10n.shared.string("Registering the shortcut failed (%@).", status)
+                registrationError = L10n.shared.string("Registering the shortcut failed (%lld).", status)
                 ok = false
                 continue
             }

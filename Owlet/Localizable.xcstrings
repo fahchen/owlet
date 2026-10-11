@@ -233,64 +233,6 @@
         }
       }
     },
-    "%@ expressions": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ expressions"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 件の表現"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 个表达"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 個表達"
-          }
-        }
-      }
-    },
-    "%@ records": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ records"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 件の履歴"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 条记录"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 條記錄"
-          }
-        }
-      }
-    },
     "%@ · %@": {
       "extractionState": "manual",
       "localizations": {
@@ -4496,31 +4438,31 @@
         }
       }
     },
-    "Registering the shortcut failed (%@).": {
+    "Registering the shortcut failed (%lld).": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Registering the shortcut failed (%@)."
+            "value": "Registering the shortcut failed (%lld)."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ショートカットの登録に失敗しました（%@）。"
+            "value": "ショートカットの登録に失敗しました（%lld）。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "快捷键注册失败（%@）。"
+            "value": "快捷键注册失败（%lld）。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "快速鍵註冊失敗（%@）。"
+            "value": "快速鍵註冊失敗（%lld）。"
           }
         }
       }

@@ -39,6 +39,8 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
   不要用裸字面量或 `String(localized:)`：它们经 `Bundle.main` 解析，只在启动时定一次，切换语言不会跟着变。
   占位符用显式参数（`L10n.shared.string("%@ · %@", a, b)`），**不要**在键里写 `\(...)` 插值，那样插值会先
   求值而匹配不到含 `%@` 的键；也不要把 `LocalizedStringResource` 插进字符串，那会打印它的调试描述。
+- 占位符按**参数类型**选：字符串用 `%@`，整数（`Int`、`.count`、`OSStatus`）用 `%lld`。`%@` 只接受
+  对象，传整数会得到 `does not match expected '%lld'` 的运行时错误；`String(format:)` 会检查，别猜。
 - 发给模型的文字（`Owlet/ModelPrompts.json` 的两段默认 Prompt、任务描述与示例）**不本地化**。
 - `mise run i18n`（需先构建）列出「翻译后会显示成中文」的界面串：它以产物里的 `en.lproj` 为准，
   比对源码中的中文字面量。新增界面文字后跑一次，别让缺口留到用户那里。

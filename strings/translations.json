@@ -39,16 +39,6 @@
     "zh-Hans": "%@并替换",
     "zh-Hant": "%@並取代"
   },
-  "%@ expressions": {
-    "ja": "%@ 件の表現",
-    "zh-Hans": "%@ 个表达",
-    "zh-Hant": "%@ 個表達"
-  },
-  "%@ records": {
-    "ja": "%@ 件の履歴",
-    "zh-Hans": "%@ 条记录",
-    "zh-Hant": "%@ 條記錄"
-  },
   "%@ · %@": {
     "ja": "%@ · %@",
     "zh-Hans": "%@ · %@",
@@ -774,10 +764,10 @@
     "zh-Hans": "录制%@快捷键",
     "zh-Hant": "錄製%@快速鍵"
   },
-  "Registering the shortcut failed (%@).": {
-    "ja": "ショートカットの登録に失敗しました（%@）。",
-    "zh-Hans": "快捷键注册失败（%@）。",
-    "zh-Hant": "快速鍵註冊失敗（%@）。"
+  "Registering the shortcut failed (%lld).": {
+    "ja": "ショートカットの登録に失敗しました（%lld）。",
+    "zh-Hans": "快捷键注册失败（%lld）。",
+    "zh-Hant": "快速鍵註冊失敗（%lld）。"
   },
   "Remove %@": {
     "ja": "%@を削除",

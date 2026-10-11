@@ -182,7 +182,7 @@ func lookupReply(
         await #expect(throws: ModelError.format) { try await client.lookup(bank, config: testConfig) }
         try await Task.sleep(for: .milliseconds(50))
         let exchange = try #require(captured.withLock { $0.first })
-        #expect(exchange.title == "Look Up · zh-Hans")
+        #expect(exchange.title == L10n.shared.string("Look Up · %@", "zh-Hans"))
         #expect(exchange.response == "not json")
         #expect(!exchange.request.contains("sk-test"))
     }

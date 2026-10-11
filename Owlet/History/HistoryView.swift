@@ -31,7 +31,7 @@ struct HistoryView: View {
             .navigationTitle(L10n.shared.string("History"))
             .focusedSceneValue(\.copyText, selectedRecord?.result)
             // The count lives under the title, so the list starts with its first row.
-            .navigationSubtitle(L10n.shared.string("%@ records", filtered.count))
+            .navigationSubtitle(L10n.shared.string("%lld records", filtered.count))
             .searchable(text: $search, placement: .toolbar, prompt: L10n.shared.string("Search source or result"))
             .toolbar { toolbar }
             .safeAreaInset(edge: .top) {

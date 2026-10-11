@@ -110,6 +110,71 @@ import Testing
         #expect(offenders.isEmpty, "资源被当作字符串插值：\(offenders.joined(separator: "、"))")
     }
 
+    /// An integer argument must meet `%lld`, and a string `%@`: `String(format:)` checks the types it is
+    /// given, so `%@` with an `Int` fails at runtime with "does not match expected '%lld'". The type is
+    /// read from the call site, which is why this looks at the sources.
+    @Test func formatPlaceholdersMatchTheirArguments() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Owlet")
+        let files =
+            FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        #expect(!files.isEmpty, "找不到源码目录：\(root.path)")
+
+        func needs(_ argument: String) -> String {
+            // `String(format:)` promotes Int32 to Int, so an integer argument needs %lld.
+            let integer =
+                argument.range(of: #"\.count\b"#, options: .regularExpression) != nil
+                || argument == "count" || argument == "status" || argument == "code"
+            return integer ? "lld" : "@"
+        }
+        let call = /L10n\.shared\.string\(\s*"((?:[^"\\]|\\.)*)"/
+        let specifier = /%(@|lld)/
+
+        var offenders: [String] = []
+        for file in files {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for match in text.matches(of: call) {
+                let key = String(match.output.1)
+                let tail = text[match.range.upperBound...].prefix(220)
+                guard tail.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix(",") else { continue }
+                var depth = 0
+                var argumentText = ""
+                for character in tail.dropFirst() {
+                    if character == "(" {
+                        depth += 1
+                    } else if character == ")" {
+                        if depth == 0 { break }
+                        depth -= 1
+                    }
+                    argumentText.append(character)
+                }
+                // Split on commas that are not inside a call, so `f(a, b)` stays one argument.
+                var arguments: [String] = []
+                var current = ""
+                var nested = 0
+                for character in argumentText {
+                    if character == "," && nested == 0 {
+                        arguments.append(current); current = ""; continue
+                    }
+                    if character == "(" { nested += 1 }
+                    if character == ")" { nested -= 1 }
+                    current.append(character)
+                }
+                arguments.append(current)
+                arguments = arguments.map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty && !$0.hasPrefix(",") }
+                let expected = arguments.map(needs)
+                let written = key.matches(of: specifier).map { String($0.output.1) }
+                if !arguments.isEmpty, written != expected {
+                    offenders.append("\(file.lastPathComponent): \(key) 需要 \(expected) 却是 \(written)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "占位符与参数类型不符：\(offenders.joined(separator: "、"))")
+    }
+
     /// The source value is the key itself, so an entry that says otherwise would show a raw key.
     @Test func theSourceLanguageEqualsTheKey() throws {
         let catalog = try catalog()

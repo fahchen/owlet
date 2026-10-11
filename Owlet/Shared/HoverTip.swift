@@ -132,7 +132,7 @@ extension View {
                 // rather than at the call site — and never by interpolating a resource into a String.
                 Text(verbatim: L10n.shared.string(title?.key ?? key.title))
             },
-            keys: title == nil ? key.keys : nil)
+            keys: title == nil ? key.keys : nil, key: key, title: title)
     }
 
     /// A tip whose text is runtime content — the source a panel is showing — rather than interface
@@ -142,15 +142,30 @@ extension View {
     }
 
     /// The one place a tip is built, so every overload above shares one implementation.
-    private func hoverTip(label: @escaping () -> Text, keys: String?) -> some View {
-        modifier(HoverTipContent(label: label, keys: keys))
+    private func hoverTip(
+        label: @escaping () -> Text, keys: String?, key: KeyHint? = nil,
+        title: LocalizedStringResource? = nil
+    ) -> some View {
+        modifier(HoverTipContent(label: label, keys: keys, key: key, title: title))
     }
 }
 
 private struct HoverTipContent: ViewModifier {
     let label: () -> Text
     let keys: String?
+    /// The action this tip describes, when there is one, so the accessibility hint can be resolved as
+    /// text: a `Text` cannot be read back into a string, and interpolating one would describe the view.
+    let key: KeyHint?
+    let title: LocalizedStringResource?
     @State private var id = UUID()
+
+    /// The action and its key as text. Built from the inputs rather than from `label`, because a
+    /// `Text` cannot be turned back into a string and interpolating one describes the view instead.
+    private var hint: String {
+        let action = L10n.shared.string(title?.key ?? key?.title ?? "")
+        guard let keys else { return action }
+        return action + " " + keys
+    }
 
     func body(content: Content) -> some View {
         content
@@ -162,6 +177,8 @@ private struct HoverTipContent: ViewModifier {
                 }
             }
             .onDisappear { HoverTip.shared.cancel(owner: id) }
-            .accessibilityHint(keys.map { "\(label()) \($0)" } ?? "\(label())")
+            // A `Text`, not a string: interpolating one would describe the view instead of reading
+            // the action, so VoiceOver would announce SwiftUI internals.
+            .accessibilityHint(hint)
     }
 }

@@ -145,6 +145,19 @@ struct TargetMappingTests {
         #expect(saved["ja"] == PronunciationSystem.romaji.rawValue)
     }
 
+    /// "Follow the system" must land on the language the system is actually in, including a region
+    /// variant: a Traditional Chinese system must not fall back to Simplified Chinese, and an
+    /// unsupported one to the source language.
+    @Test func followingTheSystemPicksTheSystemsOwnLanguage() {
+        #expect(AppLanguage.pick(from: ["zh-Hant-TW", "en-US"]) == .traditionalChinese)
+        #expect(AppLanguage.pick(from: ["zh-Hans-CN"]) == .simplifiedChinese)
+        #expect(AppLanguage.pick(from: ["ja-JP", "en-US"]) == .japanese)
+        #expect(AppLanguage.pick(from: ["en-GB"]) == .english)
+        #expect(AppLanguage.pick(from: ["fr-FR", "de-DE"]) == nil)
+        // What the runtime actually reads: `.system` resolves through the system's preference.
+        #expect(AppLanguage.system.resolvedLocale != "")
+    }
+
     /// A fresh install offers the three languages the product targets, not the whole system list.
     @Test func aFreshInstallSelectsTheProductLanguages() {
         #expect(SettingsStore.languages(in: defaults) == ["zh-Hans", "en", "ja"])

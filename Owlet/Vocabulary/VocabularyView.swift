@@ -185,9 +185,11 @@ private struct VocabularyDetail: View {
                         "\(LanguageCatalog.name(for: entry.language)) · \(entry.contexts.count) 个语境 · 收藏于 \(HistoryTime.display(entry.createdAt))"
                     )
                     .font(.caption).foregroundStyle(.secondary)
+                    // The entry's own form has no source sentence, so a lookup in it asks for the
+                    // general meaning instead of passing the form off as its own context.
                     LookupText(
                         text: entry.expression, size: 22, weight: .semibold, lineSpacing: 0, label: "表达",
-                        origin: entry.lookupOrigin)
+                        origin: entry.lookupOrigin, hasSentence: false)
                     // The dictionary form the recommendation supplied, secondary to the collected form
                     // and only when it says something new (BDR-0009).
                     if !entry.lemma.isEmpty,
@@ -206,8 +208,13 @@ private struct VocabularyDetail: View {
                     Divider().padding(.vertical, 4)
                     Text("原句语境").font(.caption).foregroundStyle(.secondary)
                     ForEach(entry.contexts) { context in
-                        VocabularyContextView(context: context, origin: entry.lookupOrigin)
-                            .padding(.bottom, 8)
+                        VocabularyContextView(
+                            context: context,
+                            language: context.language.isEmpty
+                                ? entry.language : context.language,
+                            definitionLanguage: entry.lookupOrigin.definitionLanguage
+                        )
+                        .padding(.bottom, 8)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

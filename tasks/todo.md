@@ -1011,3 +1011,15 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] 补释义沿用条目已记的释义语言，不再写死简体中文。
 
 验证：`mise run format`、`mise run check` 退出码 0；新增 `LearningContentTests.aLemmaThatDiffersFromTheSentenceFormIsAccepted`（跳ね上がっている／跳ね上がる）与 `aCollectedRecommendationKeepsItsLemma`，`malformedPayloadsAreFormatErrors` 增两条 `lemma` 用例，导出用例断言原形与空原形。未验证：真实 DeepSeek 返回 `lemma` 的稳定性（本地校验只保证形状）。
+
+## T54：修查词分支首轮审阅的三个缺陷（已实现）
+
+来源：`codex exec review --base main` 对 `main..word-lookup` 的首轮审阅，三个 P2 均已确认是缺陷。
+
+验收：
+
+- [x] 语境语言归因：`VocabularyContext` 记自己的语言（`language`），从译文一侧收藏时语境语言取原文语言，不再套用条目语言；历史翻译记录的原文语言从未保存，留空并回退条目语言，不猜。
+- [x] 「无原句语境」可达：`LookupText` 增加 `hasSentence`，生词本表达这类没有源句的文本查询时走 `LookupQuery.withoutContext`，卡片显示「无原句语境」，不再把表达本身冒充成语境。
+- [x] 重试重盖章：`LookupPresenter.requestCurrent()` 先 `store.stamped(query)` 再请求并更新卡片，换模型或改读音体系后请求与缓存键一致，切回旧模型不会命中另一个模型的答案。
+
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupReviewFixTests`（无语境查询、空白选区拒绝、重试重盖章）与 `VocabularyDraftTests.aTranslatedResultKeepsTheSourceSentenceLanguage`。未验证：真实窗口里生词本表达的「无原句语境」卡片观感。

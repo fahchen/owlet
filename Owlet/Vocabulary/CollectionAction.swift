@@ -163,6 +163,9 @@ extension VocabularyDraft {
             expression: expression,
             language: language,
             context: regionText,
+            // The whole region is the expression's context, and for a translation's result that
+            // sentence is the source text, in the source language.
+            contextLanguage: model.languages?.source,
             polishBefore: polish ? source : nil,
             polishAfter: polish ? result : nil,
             definitionLocale: origin.definitionLanguage)
@@ -179,6 +182,9 @@ extension VocabularyDraft {
             expression: record.result,
             language: record.language,
             context: record.source,
+            // A polish record's source is in its own language; a translation's source language was
+            // never stored, and a wrong tag would make the model explain the wrong words.
+            contextLanguage: polish ? record.language : nil,
             polishBefore: polish ? record.source : nil,
             polishAfter: polish ? record.result : nil,
             definitionLocale: record.lookupOrigins(mapping: mapping).result.definitionLanguage)

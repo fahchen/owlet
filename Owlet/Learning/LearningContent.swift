@@ -116,6 +116,7 @@ final class LearningModel {
             collection.collect(
                 VocabularyDraft(
                     expression: item.text, language: item.language, context: item.context,
+                    contextLanguage: item.language,
                     polishBefore: polish ? request.text : nil,
                     polishAfter: polish ? request.result : nil,
                     lemma: item.lemma, definitionLocale: request.targetLanguage),

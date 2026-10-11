@@ -20,6 +20,10 @@ struct LookupText: NSViewRepresentable {
     let origin: LookupOrigin?
     /// The sentence this text was taken from; a selection in the text is looked up inside it.
     var sentence: String? = nil
+    /// Whether this text has a source sentence at all. A standalone expression — a notebook entry's
+    /// own form — has none, so looking it up asks for the general meaning and the card says
+    /// 无原句语境 instead of passing the expression off as its own context.
+    var hasSentence = true
     /// Set on a learning row: a plain click is the row's own action (collect); ⌘-click and a
     /// selection still look up.
     var onPlainClick: (() -> Void)? = nil
@@ -43,6 +47,7 @@ struct LookupText: NSViewRepresentable {
         view.origin = presenter == nil ? nil : origin
         view.presenter = presenter
         view.sentence = sentence
+        view.hasSentence = hasSentence
         view.onPlainClick = onPlainClick
         view.setAccessibilityLabel(label)
         let style: [CGFloat] = [size, weight.rawValue, lineSpacing, justified ? 1 : 0, secondary ? 1 : 0]
@@ -80,6 +85,8 @@ final class LookupTextView: NSTextView {
     var origin: LookupOrigin?
     weak var presenter: LookupPresenter?
     var sentence: String?
+    /// Whether a lookup in this text has a source sentence to explain it inside (see `LookupText`).
+    var hasSentence = true
     var onPlainClick: (() -> Void)?
     /// Size, weight, line spacing and alignment last applied, so an unchanged update leaves the selection.
     var style: [CGFloat] = []
@@ -237,7 +244,8 @@ final class LookupTextView: NSTextView {
     }
 
     /// A range of this text as a lookup, inside its source sentence when the text is a phrase taken
-    /// from one, so the explanation is the meaning there rather than the phrase on its own.
+    /// from one, so the explanation is the meaning there rather than the phrase on its own. A text
+    /// that stands alone has no sentence to be read in, and says so rather than posing as one.
     func query(for range: NSRange) -> Result<LookupQuery, LookupQuery.Refusal>? {
         guard let origin else { return nil }
         if let sentence, let within = sentence.range(of: string) {
@@ -246,7 +254,19 @@ final class LookupTextView: NSTextView {
                 selection: NSRange(location: base + range.location, length: range.length), in: sentence,
                 origin: origin)
         }
+        guard hasSentence else {
+            guard let text = Self.trimmed(self.string, range: range) else { return .failure(.empty) }
+            return .success(LookupQuery.withoutContext(text, origin: origin))
+        }
         return LookupQuery.make(selection: range, in: string, origin: origin)
+    }
+
+    /// The selected characters with surrounding whitespace dropped, or nil when only whitespace was
+    /// selected; punctuation still has to pass `LookupQuery`'s own check.
+    static func trimmed(_ text: String, range: NSRange) -> String? {
+        guard let range = Range(range, in: text) else { return nil }
+        let trimmed = text[range].trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     /// Only a finished gesture — mouse up, a double-click, a keyboard step — offers the toolbar;

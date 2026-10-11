@@ -25,7 +25,14 @@ struct MissingMeaningView: View {
 
 struct VocabularyContextView: View {
     let context: VocabularyContext
-    var origin: LookupOrigin? = nil
+    /// The language the sentence is written in, which is not always the entry's; a context that
+    /// never recorded one falls back to the entry's own.
+    let language: String
+    let definitionLanguage: String
+
+    var origin: LookupOrigin {
+        LookupOrigin(language: language, definitionLanguage: definitionLanguage)
+    }
 
     /// A quote: a thin accent bar beside the sentence, and for a polish the before in gray above the
     /// after in full color, so the change reads at a glance.

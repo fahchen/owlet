@@ -174,6 +174,7 @@ struct PanelLearningView: View {
             !isCollected(item),
             draft: VocabularyDraft(
                 expression: item.text, language: item.language, context: item.context,
+                contextLanguage: item.language,
                 polishBefore: polish ? request.text : nil,
                 polishAfter: polish ? request.result : nil,
                 lemma: item.lemma, definitionLocale: lookupOrigin(item).definitionLanguage),

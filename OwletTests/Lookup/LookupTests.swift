@@ -615,3 +615,60 @@ final class LookupTransport: Sendable {
         #expect(!presenter.isShown)
     }
 }
+
+/// The defects the first review of the lookup branch found (2026-10-11, codex P2).
+@MainActor @Suite struct LookupReviewFixTests {
+    /// A notebook entry's own form has no source sentence: querying it asks for the general meaning
+    /// and says so, instead of passing the expression off as its own context.
+    @Test func aStandaloneExpressionIsLookedUpWithoutAContext() throws {
+        let view = LookupTextView(usingTextLayoutManager: false)
+        view.string = "跳ね上がる"
+        view.origin = LookupOrigin(language: "ja", definitionLanguage: "zh-Hans")
+        view.hasSentence = false
+        view.setSelectedRange(NSRange(location: 0, length: 5))
+
+        let query = try #require(try view.selectedQuery?.get())
+        #expect(query.text == "跳ね上がる")
+        #expect(query.context == nil)
+        #expect(query.offset == nil)
+        #expect(query.language == "ja")
+    }
+
+    /// Selecting only whitespace in a standalone expression is still nothing to look up.
+    @Test func whitespaceAloneInAStandaloneExpressionIsRefused() throws {
+        let view = LookupTextView(usingTextLayoutManager: false)
+        view.string = "follow  up"
+        view.origin = english
+        view.hasSentence = false
+        view.setSelectedRange(NSRange(location: 6, length: 2))
+        let outcome = try #require(view.selectedQuery)
+        guard case .failure(.empty) = outcome else {
+            Issue.record("expected an empty refusal, got \(outcome)")
+            return
+        }
+    }
+
+    /// 重试 must re-stamp: the request and the key it is cached under have to agree, or switching
+    /// models would let one model's answer come back as another's.
+    @Test func retryingReStampsTheQuery() throws {
+        var config = testConfig
+        let store = LookupStore(config: { config }, defaults: lookupDefaults)
+        let presenter = LookupPresenter(
+            store: store, speech: LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}))
+        let bank = try query("bank", in: "We sat on the bank of the river.")
+        presenter.lookUp(bank, at: nil, in: nil)
+
+        config.model = "other"
+        presenter.requestCurrent()
+
+        guard case .card(let current, _)? = presenter.mode else {
+            Issue.record("expected a card, got \(String(describing: presenter.mode))")
+            return
+        }
+        #expect(current.service != bank.service)
+        #expect(current == store.stamped(bank))
+        // The request landed under the re-stamped key, not the one the card was opened with.
+        #expect(store.entries[current] == .loading)
+        #expect(store.entries[bank] == nil)
+    }
+}

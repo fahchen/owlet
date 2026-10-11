@@ -21,8 +21,8 @@ final class VocabularyStore {
         let expression = draft.expression.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !expression.isEmpty else { throw VocabularyError.emptyExpression }
         let newContext = VocabularyContext(
-            source: draft.context, polishBefore: draft.polishBefore,
-            polishAfter: draft.polishAfter)
+            source: draft.context, language: trimmed(draft.contextLanguage) ?? "",
+            polishBefore: draft.polishBefore, polishAfter: draft.polishAfter)
         if let existing = try entry(language: draft.language, expression: expression) {
             // The same context submitted again adds nothing, and an earlier context is never replaced.
             var changed = false

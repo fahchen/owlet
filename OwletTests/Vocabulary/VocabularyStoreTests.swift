@@ -5,9 +5,16 @@ import Testing
 
 @testable import Owlet
 
+/// One fresh in-memory notebook per test, per `tasks/plan.md`; several suites below need one.
+@MainActor
+func makeVocabularyStore() throws -> VocabularyStore {
+    let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    return VocabularyStore(container: try ModelContainer(for: schema, configurations: [config]))
+}
+
 @MainActor
 struct VocabularyStoreTests {
-    /// One fresh in-memory container per test, per `tasks/plan.md`.
     @Test func deletesSelectedEntriesAndTheirContextsOnly() throws {
         let store = try makeStore()
         let first = try store.collect(draft("one"))
@@ -19,11 +26,7 @@ struct VocabularyStoreTests {
         #expect(try fresh.fetchCount(FetchDescriptor<VocabularyContext>()) == 1)
     }
 
-    func makeStore() throws -> VocabularyStore {
-        let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        return VocabularyStore(container: try ModelContainer(for: schema, configurations: [config]))
-    }
+    func makeStore() throws -> VocabularyStore { try makeVocabularyStore() }
 
     func draft(
         _ expression: String, language: String = "en", context: String = "I will follow up tomorrow."
@@ -420,6 +423,30 @@ struct VocabularyDraftTests {
         let model = TextProcessingModel(client: ModelClient(), config: { testConfig })
         model.input = "Hello"
         #expect(VocabularyDraft.from(region: .source, model: model, selection: nil) == nil)
+    }
+
+    /// Collecting from the result of a translation: the expression is English but the 原句 kept with
+    /// it is the Chinese source, so each needs its own language (BDR-0008's 语境归因).
+    @Test func aTranslatedResultKeepsTheSourceSentenceLanguage() async throws {
+        let content =
+            #"{"source_language":"zh-Hans","target_language":"en","segments":[{"source":"我明天会跟进。","target":"I will follow up tomorrow."}]}"#
+        let model = TextProcessingModel(
+            client: ModelClient(transport: stub(body: chatBody(content))), config: { testConfig })
+        model.input = "我明天会跟进。"
+        await model.process(to: "en")?.value
+
+        let draft = try #require(
+            VocabularyDraft.from(region: .result, model: model, selection: "follow up"))
+        #expect(draft.expression == "follow up")
+        #expect(draft.language == "en")
+        #expect(draft.context == "I will follow up tomorrow.")
+        // The entry's own language says nothing about the sentence beside it.
+        #expect(draft.contextLanguage == "zh-Hans")
+
+        let store = try makeVocabularyStore()
+        let entry = try store.collect(draft)
+        #expect(entry.contexts.first?.language == "zh-Hans")
+        #expect(entry.language == "en")
     }
 }
 

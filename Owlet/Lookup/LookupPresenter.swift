@@ -73,10 +73,14 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// 重试 and 按当前语境重查: the current query only. A failed recheck keeps the other answer.
+    /// 重试 and 按当前语境重查: the current query only, re-stamped so a changed model or reading
+    /// notation reaches the request and the key it is cached under together. A failed recheck keeps
+    /// the other answer.
     func requestCurrent() {
-        guard case .card(let query, _)? = mode else { return }
-        store.request(query)
+        guard case .card(let query, let other)? = mode else { return }
+        let stamped = store.stamped(query)
+        mode = .card(stamped, other: other)
+        store.request(stamped)
     }
 
     func speak(_ text: String, language: String) {

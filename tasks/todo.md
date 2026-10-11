@@ -1037,4 +1037,4 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] 取消收藏删除同一条目；保存或删除失败只更新状态，不改生词本内容。
 - [x] 浮窗与主窗口共用应用级生词本，卡片收藏后生词本页立即可见。
 
-验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupCollectionTests` 五条（保存释义与原形不二次请求、语言来自模型回答、无语境不存语境、另一句追加且保留原释义、取消收藏）。未验证：真实窗口里卡片动作的观感与真实模型的入库结果。
+验证：`mise run format`、`mise run check` 退出码 0；新增 `LookupCollectionTests` 五条（保存释义与原形不二次请求、语言来自模型回答、无语境不存语境、另一句追加且保留原释义、取消收藏）。预览端到端（`OWLET_PREVIEW_CARD_CHECK=1 python3 scripts/panel-preview.py --panel`）走真实 `LookupPresenter` 与内存生词本：查询命中后 before=false → 加入 after=true、条目有释义与 1 条语境 → 取消 removed=false，输出 `CARD-CHECK PASS`。已用 `mise run dev` 启动应用确认可运行。未验证：卡片动作在真实窗口中的观感，以及真实模型下的入库结果。

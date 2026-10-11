@@ -98,21 +98,26 @@ import SwiftData
         "zh-Hans": "推敲不仅是古老的文学典故，也是精准翻译的最高境界。我们反复斟酌语境、语义与情感，打磨最自然的表达。",
     ]
     static let model = TextProcessingModel(client: client, config: { config })
-    /// OWLET_PREVIEW_NO_VOICE stands in for a Mac without the voice, without touching system voices.
-    static let lookups = LookupPresenter(
-        store: LookupStore(client: client, config: { config }, defaults: defaults),
-        speech: ProcessInfo.processInfo.environment["OWLET_PREVIEW_NO_VOICE"] == "1"
-            ? LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}) : .live)
-    static let learning: LearningModel = {
-        let learning = LearningModel(client: client, config: { config })
-        learning.autoRequest = { _ in false }
-        return learning
-    }()
     static let store = VocabularyStore(
         container: try! ModelContainer(
             for: VocabularyEntry.self, VocabularyContext.self, HistoryRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
     static let collection = CollectionAction(store: store, client: client, config: { config })
+    /// OWLET_PREVIEW_NO_VOICE stands in for a Mac without the voice, without touching system voices.
+    static let lookups: LookupPresenter = {
+        let lookups = LookupPresenter(
+            store: LookupStore(client: client, config: { config }, defaults: defaults),
+            speech: ProcessInfo.processInfo.environment["OWLET_PREVIEW_NO_VOICE"] == "1"
+                ? LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}) : .live)
+        // As in the app: the card's 加入生词本 writes through the same notebook the pages use.
+        lookups.collection = collection
+        return lookups
+    }()
+    static let learning: LearningModel = {
+        let learning = LearningModel(client: client, config: { config })
+        learning.autoRequest = { _ in false }
+        return learning
+    }()
 }
 
 @Observable @MainActor final class PreviewState: NSObject {
@@ -187,6 +192,57 @@ final class PreviewPanel: NSPanel {
     /// Keeps the real panel controller alive for `--panel`.
     @MainActor static var panel: PanelController?
 
+    /// OWLET_PREVIEW_CARD_CHECK=1: drives the card's 加入生词本 through the real presenter and
+    /// notebook, prints one line, and exits — the same evidence `--panel` gives by hand, without
+    /// needing synthetic clicks. No model is called for the collect action itself.
+    @MainActor static func runCardCheck(_ controller: PanelController) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard let languages = PreviewFixtures.model.languages else {
+                print("CARD-CHECK FAIL: no result language")
+                NSApp.terminate(nil)
+                return
+            }
+            let origin = LookupOrigin.result(
+                of: .translate, languages: languages,
+                mapping: TargetMapping(targets: [:], fallback: "zh-Hans"))
+            guard
+                case .success(let query) = LookupQuery.make(
+                    selection: NSRange(location: 0, length: 8), in: PreviewFixtures.source, origin: origin)
+            else {
+                print("CARD-CHECK FAIL: no query")
+                NSApp.terminate(nil)
+                return
+            }
+            controller.lookups.lookUp(query, at: nil, in: nil)
+            try? await Task.sleep(for: .seconds(3))
+            // The presenter stamps a query with the current settings before requesting, so the
+            // answer is keyed under the stamped query, not the one handed in.
+            let stamped = PreviewFixtures.lookups.store.stamped(query)
+            guard case .success(let result) = PreviewFixtures.lookups.store.entries[stamped] else {
+                print("CARD-CHECK FAIL: no lookup answer")
+                NSApp.terminate(nil)
+                return
+            }
+            let language = stamped.lookupLanguage(from: result) ?? "nil"
+            let collection = PreviewFixtures.collection
+            let before = collection.isCollected(language: language, expression: stamped.text)
+            collection.setCollected(true, query: stamped, result: result)
+            let after = collection.isCollected(language: language, expression: stamped.text)
+            let entry = try? PreviewFixtures.store.entry(language: language, expression: stamped.text)
+            let meaning = entry?.meaning ?? ""
+            let contexts = entry?.contexts.count ?? 0
+            collection.setCollected(false, query: stamped, result: result)
+            let removed = collection.isCollected(language: language, expression: stamped.text)
+            print(
+                "CARD-CHECK text=\(stamped.text) language=\(language) before=\(before) after=\(after) "
+                    + "meaning=\(meaning) contexts=\(contexts) removed=\(removed)")
+            let passed = !before && after && !meaning.isEmpty && contexts == 1 && !removed
+            print(passed ? "CARD-CHECK PASS" : "CARD-CHECK FAIL")
+            NSApp.terminate(nil)
+        }
+    }
+
     @MainActor static func main() {
         let app = NSApplication.shared
         if ProcessInfo.processInfo.arguments.contains("--main") {
@@ -221,6 +277,9 @@ final class PreviewPanel: NSPanel {
             controller.collection = PreviewFixtures.collection
             panel = controller
             DispatchQueue.main.async { controller.processSelection() }
+            if ProcessInfo.processInfo.environment["OWLET_PREVIEW_CARD_CHECK"] == "1" {
+                runCardCheck(controller)
+            }
             app.run()
             return
         }

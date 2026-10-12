@@ -49,10 +49,16 @@ struct TranslationResult: Equatable {
         let segments = try rawSegments.map { raw -> Segment in
             guard let dict = raw as? [String: Any], Set(dict.keys) == ["source", "target"],
                 let source = dict["source"] as? String, let target = dict["target"] as? String,
-                !isBlank(source), !isBlank(target)
+                // A blank line is content, not a missing field. The model may legitimately give the
+                // paragraph break a segment of its own, and the concatenation check below still holds
+                // it to the submitted text — rejecting it here turned a correct reply into
+                // "a missing field, a wrong type, or empty content". A segment with nothing at all is
+                // still refused, as is an empty translation of text that had some.
+                !source.isEmpty, !target.isEmpty || isBlank(source)
             else { throw ModelError.format }
             return Segment(source: source, target: target)
         }
+        guard segments.contains(where: { !isBlank($0.target) }) else { throw ModelError.format }
         guard !isBlank(sourceLanguage) else { throw ModelError.format }
         guard sameLanguage(target, targetLanguage ?? sourceLanguage) else {
             throw ModelError.targetMismatch(

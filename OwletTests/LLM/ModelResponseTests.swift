@@ -23,6 +23,33 @@ private func parse(
     #expect(try parse(valid, "  Good   morning.\nLet's\tbegin.\n").text == "早上好。我们开始吧。")
 }
 
+/// The model may give a paragraph break a segment of its own: "\n" is content, not an empty field.
+/// Rejecting it turned a structurally correct reply into "a missing field, a wrong type, or empty
+/// content" (reported from a real translation of a Japanese mail).
+@Test func aBlankLineMayBeItsOwnSegment() throws {
+    let json =
+        #"{"source_language":"ja","target_language":"en","segments":[{"source":"お世話になっております。\n","target":"Thank you.\n"},{"source":"\n","target":"\n"},{"source":"よろしくお願いいたします。","target":"Best regards."}]}"#
+    let result = try parse(json, "お世話になっております。\n\nよろしくお願いいたします。", target: "en")
+    #expect(result.segments.count == 3)
+    #expect(result.text == "Thank you.\n\nBest regards.")
+}
+
+/// Accepting a blank line must not accept a reply that translates nothing at all.
+@Test func aReplyWithNoTranslationIsStillRefused() throws {
+    let json =
+        #"{"source_language":"ja","target_language":"en","segments":[{"source":"お世話になっております。","target":"\n"},{"source":"\n","target":""}]}"#
+    #expect(throws: ModelError.format) {
+        try parse(json, "お世話になっております。\n", target: "en")
+    }
+}
+
+/// A segment with nothing in it is still a missing field.
+@Test func anEmptySegmentIsRefused() throws {
+    let json =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"","target":""}]}"#
+    #expect(throws: ModelError.format) { try parse(json, "", target: "zh-Hans") }
+}
+
 @Test func equivalentLanguageTags() throws {
     #expect(try parse(valid, target: "zh-CN").segments.count == 2)
     let en = valid.replacingOccurrences(of: "zh-Hans", with: "en-US")

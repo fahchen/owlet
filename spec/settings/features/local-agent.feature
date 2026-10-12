@@ -39,6 +39,23 @@ Feature: 把本机的 agent CLI 当作模型服务
       When 用户把服务商改为本地 agent
       Then 模型名留空，改用该 agent 自己的默认模型
 
+  Rule: 能列模型的 agent 把模型名做成列表
+    Scenario: 从 agent 自己的清单里选模型
+      Given 用户在设置里选了 Codex CLI 或 pi
+      When 应用读取该 agent 的模型清单
+      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      And 清单里标记为不公开的模型不出现
+
+    Scenario: 不列举模型的 agent 保持自由填写
+      Given 用户在设置里选了 Claude Code
+      Then 模型名是自由填写的文本框
+      And 留空表示使用它自己的默认模型
+
+    Scenario: 清单读取失败
+      When 读取模型清单失败
+      Then 在模型名行下就地提示原因并提供重试
+      And 已保存的模型名不变
+
   Rule: 只借用模型，不用它的工具与上下文
     Scenario: 三个 agent 都关掉工具与上下文
       Given 用户在设置里选了任一本地 agent

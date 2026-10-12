@@ -211,6 +211,8 @@ struct ModelSettingsPane: View {
         case .failed(let message):
             agent = .failed(message)
         }
+        // The model list comes from the executable, so it is read once that is known.
+        loadModels()
     }
 
     private func chooseExecutable() {
@@ -235,6 +237,12 @@ struct ModelSettingsPane: View {
             Picker(L10n.shared.string("Model Name"), selection: $model) {
                 ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
             }
+        } else if let kind = provider.localAgent, kind.modelListArguments != nil {
+            // An agent that can list its models gets the same picker as the HTTP services, with its own
+            // default as a real first choice; Claude Code has no such command and stays free-form.
+            Picker(L10n.shared.string("Model Name"), selection: $model) {
+                ForEach(agentModelOptions, id: \.self) { modelRow($0) }
+            }
         } else {
             TextField(
                 L10n.shared.string("Model Name"), text: $model, prompt: Text(modelPrompt))
@@ -245,6 +253,18 @@ struct ModelSettingsPane: View {
         provider.isLocalAgent
             ? L10n.shared.string("Leave empty to use the agent's own default model")
             : L10n.shared.string("Enter the model name the provider gives you")
+    }
+
+    /// The agent's own default comes first: leaving the model empty is a real choice for a CLI that
+    /// picks its own model, not an omission.
+    private var agentModelOptions: [String] { [""] + modelOptions }
+
+    @ViewBuilder private func modelRow(_ name: String) -> some View {
+        if name.isEmpty {
+            Text(L10n.shared.string("The agent's own default")).tag("")
+        } else {
+            Text(verbatim: name).tag(name)
+        }
     }
 
     private var modelOptions: [String] { Self.modelOptions(for: models, model: model) }
@@ -277,18 +297,39 @@ struct ModelSettingsPane: View {
         loadModels()
     }
 
-    /// DeepSeek only: fetch the model list once a key is stored; other providers stay free-form.
+    /// Reads the list a provider can offer: DeepSeek's `GET /models` once a key is stored, or the
+    /// agent's own listing command once its executable is known. Providers with neither stay free-form.
     private func loadModels() {
-        guard provider == .deepSeek, let url = URL(string: baseURL),
-            let key = SettingsStore.apiKey(for: provider), !key.isEmpty
-        else {
+        if provider == .deepSeek {
+            guard let url = URL(string: baseURL), let key = SettingsStore.apiKey(for: provider),
+                !key.isEmpty
+            else {
+                models = .idle
+                return
+            }
+            models = .loading
+            Task {
+                do {
+                    models = .loaded(try await ModelClient().listModels(baseURL: url, apiKey: key))
+                } catch {
+                    models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
+                }
+            }
+            return
+        }
+        guard let kind = provider.localAgent, kind.modelListArguments != nil else {
+            models = .idle
+            return
+        }
+        let path = agentExecutable.isEmpty ? SettingsStore.agentPath(for: provider) : agentExecutable
+        guard let path, FileManager.default.isExecutableFile(atPath: path) else {
             models = .idle
             return
         }
         models = .loading
         Task {
             do {
-                models = .loaded(try await ModelClient().listModels(baseURL: url, apiKey: key))
+                models = .loaded(try await LocalAgent.models(kind, executable: URL(fileURLWithPath: path)))
             } catch {
                 models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
             }

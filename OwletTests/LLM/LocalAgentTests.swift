@@ -257,6 +257,49 @@ struct LocalAgentTests {
         #expect(!ModelClient.isCorrectable(error))
     }
 
+    // MARK: - Model lists
+
+    /// The real shape `codex debug models` prints, trimmed to the fields the picker reads.
+    let codexCatalog = """
+        {"models":[
+          {"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"list"},
+          {"slug":"gpt-reserve","display_name":"GPT-Reserve","visibility":"hide"},
+          {"slug":"gpt-6-sol","display_name":"GPT-6-Sol","visibility":"list"}
+        ]}
+        """
+
+    @Test func codexModelsComeFromItsCatalogAndSkipHiddenOnes() throws {
+        let names = try LocalAgent.parseModels(kind: .codexCLI, output: codexCatalog)
+        #expect(names == ["gpt-6.1-sol", "gpt-6-sol"])
+    }
+
+    /// The real shape `pi --list-models` prints: a header row, then one row per model. pi takes
+    /// `provider/id`, which is the only unambiguous form when two providers share a model name.
+    @Test func piModelsPairTheProviderWithTheModel() throws {
+        let table = """
+            provider  model            context  max-out  thinking  images
+            deepseek  deepseek-flash   1M       384K     yes       yes
+            deepseek  deepseek-v4-pro  1M       384K     yes       no
+            """
+        let names = try LocalAgent.parseModels(kind: .piCLI, output: table)
+        #expect(names == ["deepseek/deepseek-flash", "deepseek/deepseek-v4-pro"])
+    }
+
+    /// Claude Code only takes an alias or a full name, so its model stays free-form rather than being
+    /// guessed at from a list this app would have to invent.
+    @Test func claudeCodeOffersNoModelList() throws {
+        #expect(try LocalAgent.parseModels(kind: .claudeCode, output: "anything").isEmpty)
+        #expect(LocalAgentKind.claudeCode.modelListArguments == nil)
+        #expect(LocalAgentKind.codexCLI.modelListArguments == ["debug", "models"])
+        #expect(LocalAgentKind.piCLI.modelListArguments == ["--list-models"])
+    }
+
+    @Test func anUnreadableCatalogIsALocalAgentFailure() {
+        #expect(throws: ModelError.localAgent("the model catalog is unreadable")) {
+            try LocalAgent.parseModels(kind: .codexCLI, output: "not json")
+        }
+    }
+
     // MARK: - The process
 
     @Test func thePromptArrivesOnStandardInput() async throws {

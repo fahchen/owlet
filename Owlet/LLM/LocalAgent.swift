@@ -31,6 +31,19 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
+    /// The command that lists the model names this agent can reach, or nil when it has none. Claude
+    /// Code only takes an alias (`sonnet`) or a full name and offers no way to enumerate them, so its
+    /// model stays free-form rather than guessed at from a list this app would have to invent.
+    var modelListArguments: [String]? {
+        switch self {
+        case .claudeCode: nil
+        // The catalog as JSON, which is where the slugs and the visibility of each model live.
+        case .codexCLI: ["debug", "models"]
+        // A table with one row per model, `provider  model  context  max-out  thinking  images`.
+        case .piCLI: ["--list-models"]
+        }
+    }
+
     func effortValue(_ level: EffortLevel) -> String? {
         guard level != .automatic, let start = EffortLevel.ordered.firstIndex(of: level) else {
             return nil
@@ -348,6 +361,62 @@ extension LocalAgent {
         let collapsed = text.split(whereSeparator: \.isNewline).joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
         return collapsed.count <= limit ? collapsed : "…" + String(collapsed.suffix(limit))
+    }
+}
+
+extension LocalAgent {
+    /// The model names this agent offers, in its own order, for the settings pane's picker. A listing
+    /// command is local — it never reaches a model — so opening the pane stays cheap.
+    static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [String] {
+        guard let arguments = kind.modelListArguments else { return [] }
+        let invocation = LocalAgentInvocation(
+            executable: executable, arguments: arguments, stdin: "",
+            directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
+            answersToFile: false, timeout: .seconds(60))
+        let environment = await AgentEnvironment.shared.value(for: executable)
+        let output = try await withPreparedDirectory(invocation) {
+            try await runProcess($0, environment: environment)
+        }
+        guard output.status == 0 else {
+            throw ModelError.localAgent("exit \(output.status): \(tail(output.stderr))")
+        }
+        return try parseModels(kind: kind, output: output.stdout)
+    }
+
+    /// Reads each agent's own listing format. Pure, so the fixtures in the tests are the real shapes
+    /// these two commands print.
+    static func parseModels(kind: LocalAgentKind, output: String) throws -> [String] {
+        switch kind {
+        case .claudeCode: []
+        case .codexCLI: try codexModels(output)
+        case .piCLI: piModels(output)
+        }
+    }
+
+    /// `codex debug models` prints the catalog as JSON. A model the picker should not offer is marked
+    /// `visibility: "hide"`; `--model` takes the slug.
+    private static func codexModels(_ output: String) throws -> [String] {
+        guard let data = output.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let models = object["models"] as? [[String: Any]]
+        else { throw ModelError.localAgent("the model catalog is unreadable") }
+        return models.compactMap { model in
+            guard model["visibility"] as? String != "hide", let slug = model["slug"] as? String,
+                !slug.isEmpty
+            else { return nil }
+            return slug
+        }
+    }
+
+    /// `pi --list-models` prints a table whose first two columns are the provider and the model. pi
+    /// takes either the bare id or `provider/id`, and only the paired form is unambiguous when two
+    /// providers offer a model of the same name.
+    private static func piModels(_ output: String) -> [String] {
+        output.split(whereSeparator: \.isNewline).compactMap { line in
+            let columns = line.split(whereSeparator: \.isWhitespace)
+            guard columns.count >= 2, columns[0] != "provider" else { return nil }
+            return "\(columns[0])/\(columns[1])"
+        }
     }
 }
 

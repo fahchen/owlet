@@ -1069,6 +1069,11 @@
     "zh-Hans": "该 agent 使用自己的登录状态，因此这里不需要 API Key；它的工具、技能、项目上下文与会话文件都保持关闭。",
     "zh-Hant": "該 agent 使用自己的登入狀態，因此這裡不需要 API Key；它的工具、技能、專案內容與工作階段檔案都保持關閉。"
   },
+  "The agent's own default": {
+    "ja": "agent 自身の既定モデル",
+    "zh-Hans": "该 agent 自己的默认模型",
+    "zh-Hant": "該 agent 自己的預設模型"
+  },
   "The content cannot be empty; this change was not applied.": {
     "ja": "内容を空にはできません。この変更は反映されませんでした。",
     "zh-Hans": "内容不能为空；这次改动没有生效。",

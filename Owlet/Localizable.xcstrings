@@ -6207,6 +6207,35 @@
         }
       }
     },
+    "The agent's own default": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The agent's own default"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agent 自身の既定モデル"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该 agent 自己的默认模型"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該 agent 自己的預設模型"
+          }
+        }
+      }
+    },
     "The content cannot be empty; this change was not applied.": {
       "extractionState": "manual",
       "localizations": {

@@ -2669,6 +2669,35 @@
         }
       }
     },
+    "Learning content skips your native language; it does not change the language explanations are written in.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learning content skips your native language; it does not change the language explanations are written in."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "学習内容に母語の表現は含まれません。母語は解説に使う言語を変えません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "学习内容不包含母语表达；母语不改变释义所用的语言。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "學習內容不包含母語表達；母語不改變釋義所用的語言。"
+          }
+        }
+      }
+    },
     "Look Up": {
       "extractionState": "manual",
       "localizations": {
@@ -3133,6 +3162,35 @@
         }
       }
     },
+    "Native Language": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Native Language"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "母語"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "母语"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "母語"
+          }
+        }
+      }
+    },
     "Needs permission to read the selection": {
       "extractionState": "manual",
       "localizations": {
@@ -3361,6 +3419,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "暫無系統語音"
+          }
+        }
+      }
+    },
+    "Not Specified": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Specified"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未指定"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未指定"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未指定"
           }
         }
       }
@@ -4347,6 +4434,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "錄製%@快速鍵"
+          }
+        }
+      }
+    },
+    "Regenerate in %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerate in %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@で再生成"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用%@重新生成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用%@重新產生"
           }
         }
       }

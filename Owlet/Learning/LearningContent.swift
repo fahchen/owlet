@@ -31,9 +31,16 @@ struct LearningRequest: Equatable {
             && lhs.targetLanguage == rhs.targetLanguage && lhs.result == rhs.result
     }
 
-    /// Builds the request from a finished result; nil until the model has one to reason about.
-    @MainActor static func from(_ model: TextProcessingModel) -> LearningRequest? {
+    /// Builds the request from a finished result; nil until the model has one to reason about, and nil
+    /// for a polish of the reader's own language, which has nothing to teach (BDR-0012). The entry
+    /// point is built from this too, so the nil hides the button as well as skipping the request.
+    @MainActor static func from(
+        _ model: TextProcessingModel, defaults: UserDefaults = .standard
+    ) -> LearningRequest? {
         guard case .success(let text) = model.state, let languages = model.languages else {
+            return nil
+        }
+        if model.operation == .polish, !SettingsStore.learnsFrom(languages.source, in: defaults) {
             return nil
         }
         return LearningRequest(

@@ -8,6 +8,8 @@ struct TargetMappingSettingsView: View {
     let languages: [String]
     @AppStorage(SettingsStore.targetLanguageKey) private var fallbackTarget =
         SettingsStore.defaultTargetLanguage
+    /// Empty means 未指定, which leaves learning exactly as it was before the setting existed.
+    @AppStorage(SettingsStore.nativeLanguageKey) private var nativeLanguage = ""
     @State private var rows: [Row] = []
 
     /// One mapping row; the `id` keeps a row stable while its two pickers change.
@@ -22,6 +24,10 @@ struct TargetMappingSettingsView: View {
             Picker(L10n.shared.string("Fallback Target"), selection: $fallbackTarget) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
+            Picker(L10n.shared.string("Native Language"), selection: $nativeLanguage) {
+                Text(L10n.shared.string("Not Specified")).tag("")
+                ForEach(options) { Text($0.name).tag($0.tag) }
+            }
             ForEach($rows) { $row in
                 mappingRow($row)
             }
@@ -31,9 +37,16 @@ struct TargetMappingSettingsView: View {
         } header: {
             Text(L10n.shared.string("Translation Target"))
         } footer: {
+            // Two paragraphs, one concern each: the mapping's rule, then what the native language is
+            // for — and what it is deliberately not for (BDR-0012).
             Text(
-                "The source is detected from the text. The fallback is used when it cannot be detected or has no row; one source keeps one mapping."
-            )
+                L10n.shared.string(
+                    "The source is detected from the text. The fallback is used when it cannot be detected or has no row; one source keeps one mapping."
+                ))
+            Text(
+                L10n.shared.string(
+                    "Learning content skips your native language; it does not change the language explanations are written in."
+                ))
         }
         .onAppear(perform: load)
         // A language leaving the selection also leaves the table, so the rows are read again.

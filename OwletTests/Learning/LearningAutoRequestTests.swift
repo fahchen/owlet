@@ -22,6 +22,40 @@ struct LearningAutoRequestTests {
         return model
     }
 
+    /// A finished polish: its result stays in the text's own language.
+    func completedPolish() async -> TextProcessingModel {
+        let reply =
+            #"{"source_language":"en","target_language":"en","segments":[{"source":"Hello","target":"Hello"}]}"#
+        let model = TextProcessingModel(
+            client: ModelClient(transport: stub(body: chatBody(reply))), config: { testConfig })
+        model.operation = .polish
+        model.input = "Hello"
+        await model.process(to: "")?.value
+        return model
+    }
+
+    /// Polishing the reader's own language leaves nothing to learn, and the views build both the
+    /// request and the entry point from this nil (BDR-0012).
+    @Test func polishingTheReadersOwnLanguageProducesNoLearning() async throws {
+        let suite = "LearningAutoRequestTests.native.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let main = await completedPolish()
+        // 未指定母语：照常
+        #expect(LearningRequest.from(main, defaults: defaults) != nil)
+        SettingsStore.setNativeLanguage("en", in: defaults)
+        #expect(LearningRequest.from(main, defaults: defaults) == nil)
+    }
+
+    /// One side of a translation being the reader's language is not a reason to stay silent: the other
+    /// side is worth learning, and the client drops only the native items.
+    @Test func translatingStillAsksWhenOneSideIsTheReadersLanguage() async throws {
+        let suite = "LearningAutoRequestTests.nativeTranslation.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        SettingsStore.setNativeLanguage("zh-Hans", in: defaults)
+        let main = await completedTranslation()
+        #expect(LearningRequest.from(main, defaults: defaults) != nil)
+    }
+
     @Test func offByDefaultIssuesNoRequestAfterSuccess() async throws {
         let calls = Mutex(0)
         let suite = "LearningAutoRequestTests.off.\(UUID().uuidString)"

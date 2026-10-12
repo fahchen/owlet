@@ -218,6 +218,20 @@ private struct VocabularyDetail: View {
                         LookupText(
                             text: entry.meaning, size: PanelMetrics.textSize, weight: .medium, label: "Meaning",
                             origin: meaningOrigin)
+                        // The stored text is in the language it was written in; when the settings now say
+                        // another one, offer the one-click way to switch (BDR-0005 as revised). The label
+                        // carries the target language, so no separate explanation is needed.
+                        if entry.meaningLanguageIsStale() {
+                            Button(
+                                L10n.shared.string(
+                                    "Regenerate in %@",
+                                    LanguageCatalog.name(for: entry.currentMeaningLanguage())),
+                                systemImage: "arrow.clockwise"
+                            ) {
+                                collection.fillMeaning(for: entry)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     Divider().padding(.vertical, 4)
                     Text(L10n.shared.string("Source Sentence")).font(.caption).foregroundStyle(.secondary)

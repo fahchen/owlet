@@ -96,6 +96,8 @@ struct ModelClient: Sendable {
     /// The target mapping, for the language a recommendation is explained in (BDR-0005); injectable so
     /// a test can act as a different mapping.
     var targetMapping: @Sendable () -> TargetMapping = { SettingsStore.targetMapping() }
+    /// The reader's own language, which recommendations skip (BDR-0012); empty means 未指定.
+    var nativeLanguage: @Sendable () -> String = { SettingsStore.nativeLanguage() }
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
@@ -202,7 +204,7 @@ struct ModelClient: Sendable {
             config: config)
         switch try await attempt(request, title: L10n.shared.string("Study Expressions"), submitted: text) {
         case .success(let items):
-            return items
+            return learnable(items)
         case .failure(let error):
             // Only a reply that arrived but broke the contract is worth correcting; truncation,
             // refusal, an empty answer and every transport failure stand as they are.
@@ -218,7 +220,7 @@ struct ModelClient: Sendable {
             switch try await attempt(
                 correction, title: L10n.shared.string("Study Expressions (corrected)"), submitted: text)
             {
-            case .success(let items): return items
+            case .success(let items): return learnable(items)
             case .failure(let retried): throw retried.error
             }
         }
@@ -244,6 +246,15 @@ struct ModelClient: Sendable {
     ///
     /// With `correcting`, the same contract comes after the model's own rejected reply and the rules
     /// it broke, so the one thing that changes between the two requests is the model's own output.
+    /// Drops recommendations in the reader's own language. The prompt says not to offer them, but a
+    /// model does not always comply, and a phrase the reader already speaks is not worth learning
+    /// (BDR-0012) — so the filter is here rather than trusted to the reply.
+    private func learnable(_ items: [LearningResult.Item]) -> [LearningResult.Item] {
+        let native = nativeLanguage()
+        guard !native.isEmpty else { return items }
+        return items.filter { !LanguageTag.same(native, $0.language) }
+    }
+
     func makeLearningRequest(
         text: String, operation: Operation, targetLanguage: String, result: String,
         config: ServiceConfig, correcting reply: String? = nil, reasons: [String] = []
@@ -264,6 +275,12 @@ struct ModelClient: Sendable {
         var system = promptForOperation(operation) + "\n\n"
         // The prompt text is data; the indent keeps the bytes the literal used to carry.
         system += "            " + task + ModelPrompts["learningPreamble"] + "\n"
+        let native = nativeLanguage()
+        if !native.isEmpty {
+            system +=
+                "            "
+                + ModelPrompts.format("learningSkipNative", LanguageCatalog.name(for: native)) + "\n"
+        }
         system += "            " + ModelPrompts["learningShape"] + "\n"
         system += "            " + ModelPrompts.format("learningFields", meaningLanguage) + "\n"
         system += "            " + ModelPrompts["learningExample"] + "\n"

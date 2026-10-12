@@ -23,10 +23,26 @@ final class VocabularyEntry {
 
     /// A lookup in this entry is explained in its meaning's language (BDR-0005), which older entries
     /// do not record, so they fall back to the Simplified Chinese they were all saved with.
+    /// What a lookup started in this entry's text is explained in. Computed from the settings as they
+    /// are now (BDR-0005 as revised), not from the language the stored meaning happens to be in — the
+    /// two are only the same until the mapping changes, and `definitionLocale` exists to tell.
+    /// The language the current settings would explain this expression in (BDR-0005 as revised).
+    func currentMeaningLanguage(mapping: TargetMapping = SettingsStore.targetMapping()) -> String {
+        mapping.target(forSource: LanguageTag.key(language))
+    }
+
+    /// Whether the meaning stored here was written in another language than the settings now ask for.
+    /// False when there is no meaning yet — that case has its own 补充释义 entry.
+    func meaningLanguageIsStale(mapping: TargetMapping = SettingsStore.targetMapping()) -> Bool {
+        guard !definitionLocale.isEmpty else { return false }
+        return !LanguageTag.same(definitionLocale, currentMeaningLanguage(mapping: mapping))
+    }
+
     var lookupOrigin: LookupOrigin {
         LookupOrigin(
             language: language,
-            definitionLanguage: definitionLocale.isEmpty ? "zh-Hans" : definitionLocale)
+            definitionLanguage: SettingsStore.targetMapping().target(
+                forSource: LanguageTag.key(language)))
     }
 
     init(

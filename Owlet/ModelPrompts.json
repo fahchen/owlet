@@ -5,6 +5,7 @@
   "learningFields": "kind is one of word, phrase, sentence. meaning is %@. context: copied from the original or the result, character for character. text: the exact substring of that context. Give the form as it is written there — an inflected verb stays inflected. Never give the dictionary form here when the context has a different form. lemma: the dictionary form, only when it differs from text, else null. Never repeat text.",
   "learningPreamble": "不强凑条目，没有值得推荐的内容时 items 为空数组。",
   "learningShape": "Respond with one json object with key items (array of {text, language, kind, meaning, context, lemma}).",
+  "learningSkipNative": "不要推荐%@的表达：读者已经掌握这门语言。",
   "learningTaskPolish": "从这次润色的原文与结果中挑选值得学习的表达，用%@解释修改的原因，并区分语法错误与风格偏好。",
   "learningTaskTranslate": "从这次翻译的原文与结果中挑选值得学习的词汇、搭配或句式，用%@解释含义与用法。",
   "lookupExample": "Example json: {\"text\":\"running\",\"language\":\"en\",\"definition_language\":\"zh-Hans\",\"meaning\":\"在这句话中指正在跑步。\",\"lemma\":\"run\",\"pronunciation\":\"ˈrʌnɪŋ\",\"part_of_speech\":\"动词\"}",

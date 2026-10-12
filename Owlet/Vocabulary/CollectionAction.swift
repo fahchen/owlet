@@ -21,6 +21,9 @@ final class CollectionAction {
     let store: VocabularyStore
     private let client: ModelClient
     private let config: () -> ServiceConfig?
+    /// The target mapping, for the language a meaning is requested in (BDR-0005); injectable so a test
+    /// can act as a different mapping.
+    var mapping: () -> TargetMapping = { SettingsStore.targetMapping() }
     private(set) var status: Status = .idle
     /// Bumped whenever the notebook gains or loses an entry. The store is SwiftData, and a surface
     /// outside its container — the lookup card's bookmark — does not observe it, so a view that
@@ -169,7 +172,10 @@ final class CollectionAction {
         // other language, so the expression stands in for it there.
         let stored = entry.contexts.first?.source ?? ""
         let context = stored.localizedStandardContains(expression) ? stored : expression
-        let definitionLocale = entry.lookupOrigin.definitionLanguage
+        // BDR-0005 as revised: the language comes from the settings **now**, not from the language the
+        // entry was collected with, so changing the mapping and regenerating switches explanation
+        // language instead of keeping the old one.
+        let definitionLocale = mapping().target(forSource: LanguageTag.key(language))
         task = Task { [store] in
             do {
                 let meaning = try await client.fillMeaning(
@@ -177,8 +183,8 @@ final class CollectionAction {
                     definitionLocale: definitionLocale, config: config)
                 try Task.checkCancellation()
                 entry.meaning = meaning
-                // Recorded with the meaning it produced, so a later regenerate keeps asking in the
-                // same language even after the target mapping changes (BDR-0005).
+                // The entry records the language this text is actually in, so the detail can tell
+                // whether the current settings would produce a different one (BDR-0005).
                 entry.definitionLocale = definitionLocale
                 try store.save()
                 notebookChanged()

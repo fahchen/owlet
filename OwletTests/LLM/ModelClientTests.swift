@@ -284,3 +284,38 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
     // 翻译成英文: its own target, and the mapping must not override it.
     #expect(try prompt(.translate, text: "en").contains("meaning is \(english)"))
 }
+
+/// BDR-0012: a phrase the reader already speaks is not worth learning. The prompt asks the model not
+/// to offer one, and this filter is what makes the rule hold when it does anyway.
+@Test func recommendationsInTheReadersOwnLanguageAreDropped() async throws {
+    var client = ModelClient()
+    client.capture = .off
+    client.nativeLanguage = { "zh-Hans" }
+    client.transport = { request in
+        let items =
+            #"{"items":[{"text":"跳ね上がる","language":"ja","kind":"word","meaning":"上涨","context":"原油価格が跳ね上がる。"},{"text":"随后跟进","language":"zh-Hans","kind":"phrase","meaning":"follow up later","context":"随后跟进。"}]}"#
+        return try await stub(body: learningBody(items))(request)
+    }
+    let items = try await client.learning(
+        text: "原油価格が跳ね上がる。", operation: .translate, targetLanguage: "zh-Hans",
+        result: "油价上涨。", config: testConfig)
+    #expect(items.count == 1)
+    #expect(items.first?.language == "ja")
+}
+
+/// The same request with no native language set keeps everything, so the setting does not change
+/// behaviour for anyone who has not chosen one.
+@Test func withNoNativeLanguageEveryRecommendationIsKept() async throws {
+    var client = ModelClient()
+    client.capture = .off
+    client.nativeLanguage = { "" }
+    client.transport = { request in
+        let items =
+            #"{"items":[{"text":"跳ね上がる","language":"ja","kind":"word","meaning":"上涨","context":"原油価格が跳ね上がる。"},{"text":"随后跟进","language":"zh-Hans","kind":"phrase","meaning":"follow up later","context":"随后跟进。"}]}"#
+        return try await stub(body: learningBody(items))(request)
+    }
+    let items = try await client.learning(
+        text: "原油価格が跳ね上がる。", operation: .translate, targetLanguage: "zh-Hans",
+        result: "油价上涨。", config: testConfig)
+    #expect(items.count == 2)
+}

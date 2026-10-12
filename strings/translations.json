@@ -459,6 +459,11 @@
     "zh-Hans": "语言",
     "zh-Hant": "語言"
   },
+  "Learning content skips your native language; it does not change the language explanations are written in.": {
+    "ja": "学習内容に母語の表現は含まれません。母語は解説に使う言語を変えません。",
+    "zh-Hans": "学习内容不包含母语表达；母语不改变释义所用的语言。",
+    "zh-Hant": "學習內容不包含母語表達；母語不改變釋義所用的語言。"
+  },
   "Look Up": {
     "ja": "調べる",
     "zh-Hans": "查询",
@@ -539,6 +544,11 @@
     "zh-Hans": "我的积累",
     "zh-Hant": "我的累積"
   },
+  "Native Language": {
+    "ja": "母語",
+    "zh-Hans": "母语",
+    "zh-Hant": "母語"
+  },
   "Needs permission to read the selection": {
     "ja": "選択範囲の読み取り権限が必要です",
     "zh-Hans": "需要选区读取权限",
@@ -578,6 +588,11 @@
     "ja": "利用できるシステム音声がありません",
     "zh-Hans": "暂无系统语音",
     "zh-Hant": "暫無系統語音"
+  },
+  "Not Specified": {
+    "ja": "未指定",
+    "zh-Hans": "未指定",
+    "zh-Hant": "未指定"
   },
   "Not saved": {
     "ja": "未保存",
@@ -748,6 +763,11 @@
     "ja": "%@ のショートカットを記録",
     "zh-Hans": "录制%@快捷键",
     "zh-Hant": "錄製%@快速鍵"
+  },
+  "Regenerate in %@": {
+    "ja": "%@で再生成",
+    "zh-Hans": "用%@重新生成",
+    "zh-Hant": "用%@重新產生"
   },
   "Registering the shortcut failed (%lld).": {
     "ja": "ショートカットの登録に失敗しました（%lld）。",

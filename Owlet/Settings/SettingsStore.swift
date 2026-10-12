@@ -337,6 +337,26 @@ extension SettingsStore {
     ) -> Bool {
         defaults.bool(forKey: learningKey(for: operation))
     }
+
+    static let nativeLanguageKey = "learning.nativeLanguage"
+
+    /// The user's own language, which learning content skips (BDR-0012). Empty means 未指定, and an
+    /// unset value behaves exactly as before the setting existed.
+    static func nativeLanguage(in defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: nativeLanguageKey) ?? ""
+    }
+
+    static func setNativeLanguage(_ tag: String, in defaults: UserDefaults = .standard) {
+        defaults.set(tag, forKey: nativeLanguageKey)
+    }
+
+    /// Whether learning can say anything about text in `language`: it cannot when that language is the
+    /// user's own, which is the whole of a polish (原文与结果同语言) and one side of a translation.
+    static func learnsFrom(_ language: String?, in defaults: UserDefaults = .standard) -> Bool {
+        let native = nativeLanguage(in: defaults)
+        guard !native.isEmpty, let language else { return true }
+        return !LanguageTag.same(native, language)
+    }
 }
 
 extension SettingsStore {

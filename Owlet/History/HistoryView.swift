@@ -235,15 +235,17 @@ private struct HistoryDetail: View {
                     LookupText(
                         text: record.result, size: PanelMetrics.textSize, weight: .medium, justified: true,
                         origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).result)
-                    VStack(alignment: .leading, spacing: 12) {
-                        Divider()
-                        // Only once opened: a closed list would show its disclosure row.
-                        PanelLearningView(
-                            learning: learning, request: request, collection: collection, showsDisclosure: false,
-                            fitsRows: false, inline: true)
+                    if let request {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Divider()
+                            // Only once opened: a closed list would show its disclosure row.
+                            PanelLearningView(
+                                learning: learning, request: request, collection: collection,
+                                showsDisclosure: false, fitsRows: false, inline: true)
+                        }
+                        .padding(.top, 12)
+                        .collapsing(shown: learning.isExpanded, height: $learningHeight)
                     }
-                    .padding(.top, 12)
-                    .collapsing(shown: learning.isExpanded, height: $learningHeight)
                 }
                 // A reading column: long lines stop at 640pt instead of running across a wide window.
                 .frame(maxWidth: 640, alignment: .leading)
@@ -254,7 +256,9 @@ private struct HistoryDetail: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             HStack(spacing: 8) {
-                if learning.isExpanded {
+                if request == nil {
+                    // Nothing to learn from: a polish of the reader's own language (BDR-0012).
+                } else if learning.isExpanded {
                     CardButton(title: "Back", symbol: "chevron.left", key: .learn) { learning.isExpanded = false }
                 } else {
                     CardButton(title: "Study", symbol: "lamp.desk", key: .learn) { learning.isExpanded = true }
@@ -271,8 +275,13 @@ private struct HistoryDetail: View {
         .onDisappear { learning.reset() }
     }
 
-    private var request: LearningRequest {
-        LearningRequest(
+    /// nil when there is nothing to learn: a polish whose text is the reader's own language (BDR-0012).
+    /// A translation always has a side worth learning from, so its items are filtered instead — by the
+    /// client, which knows the reader's language.
+    private var request: LearningRequest? {
+        guard SettingsStore.learnsFrom(record.operationKind == .polish ? record.language : nil)
+        else { return nil }
+        return LearningRequest(
             text: record.source, operation: record.operationKind, targetLanguage: record.language,
             result: record.result, claimAutoRequest: { false })
     }

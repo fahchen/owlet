@@ -971,3 +971,52 @@ final class LookupTransport: Sendable {
         #expect(collection.status == .idle)
     }
 }
+
+/// BDR-0005 as revised: the meaning is requested in the language the settings ask for **now**, not
+/// the one the entry was collected with — changing the mapping and regenerating switches language.
+@Test func aMeaningIsRequestedInTheLanguageTheSettingsNowAskFor() async throws {
+    let store = try makeVocabularyStore()
+    let asked = Mutex("")
+    let answer = learningBody(
+        #"{"items":[{"text":"follow up","language":"en","kind":"phrase","meaning":"跟进。","context":"I will follow up."}]}"#
+    )
+    let collection = CollectionAction(
+        store: store,
+        client: ModelClient(
+            transport: { request in
+                let body =
+                    try? JSONSerialization.jsonObject(with: request.httpBody ?? Data())
+                    as? [String: Any]
+                let messages = body?["messages"] as? [[String: String]]
+                asked.withLock { $0 = messages?.first?["content"] ?? "" }
+                return try await stub(body: answer)(request)
+            }, capture: .off),
+        config: { testConfig })
+    // Collected while the mapping pointed at Chinese…
+    let entry = try store.collect(
+        VocabularyDraft(
+            expression: "follow up", language: "en", context: "I will follow up.",
+            contextLanguage: "en", definitionLocale: "zh-Hans"))
+    // …and the mapping now points at Japanese.
+    let japanese = TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans")
+    collection.mapping = { japanese }
+    #expect(entry.meaningLanguageIsStale(mapping: japanese))
+
+    collection.fillMeaning(for: entry)
+    await collection.task?.value
+
+    #expect(entry.meaning == "跟进。")
+    #expect(entry.definitionLocale == "ja")
+    #expect(asked.withLock { $0 }.contains(LanguageCatalog.name(for: "ja")))
+    // The stored meaning now matches the settings, so the offer to regenerate goes away.
+    #expect(!entry.meaningLanguageIsStale(mapping: japanese))
+}
+
+/// An entry with no meaning yet has its own 补充释义 entry, so it is never called stale.
+@Test func anEntryWithoutAMeaningIsNotCalledStale() throws {
+    let store = try makeVocabularyStore()
+    let entry = try store.collect(
+        VocabularyDraft(expression: "follow up", language: "en", context: "I will follow up."))
+    #expect(entry.meaning.isEmpty)
+    #expect(!entry.meaningLanguageIsStale(mapping: TargetMapping(targets: ["en": "ja"], fallback: "zh-Hans")))
+}

@@ -19,6 +19,8 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     /// tests and previews build it.
     var collection: CollectionAction?
     private var popover: NSPopover?
+    /// Live while a popover is up, so a later answer can grow the card.
+    private var sizeObservation: NSKeyValueObservation?
     private weak var anchor: NSView?
     /// The text holding this window's selection; a new selection elsewhere clears it, so a window
     /// never shows two selections, the older one gray.
@@ -97,6 +99,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         guard mode != nil || popover != nil else { return false }
         let popover = popover
         self.popover = nil
+        sizeObservation = nil
         popover?.close()
         finish(refocus: refocus)
         return true
@@ -105,6 +108,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         guard let closed = notification.object as? NSPopover, closed === popover else { return }
         popover = nil
+        sizeObservation = nil
         finish()
     }
 
@@ -114,6 +118,18 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         if refocus, let anchor, let window = anchor.window {
             window.makeKey()
             window.makeFirstResponder(anchor)
+        }
+    }
+
+    /// Keeps the popover's content size equal to what SwiftUI reports, without letting SwiftUI size
+    /// the window: the observation lives only as long as this popover does.
+    private func fit(_ host: NSHostingController<LookupPopoverContent>, into popover: NSPopover) {
+        popover.contentSize = host.view.fittingSize
+        sizeObservation = host.observe(\.preferredContentSize) { [weak popover] host, _ in
+            MainActor.assumeIsolated {
+                guard let popover, popover.isShown else { return }
+                popover.contentSize = host.preferredContentSize
+            }
         }
     }
 
@@ -128,15 +144,29 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         let old = popover
         popover = nil
         old?.close()
+        // The hosting view must not *be* the popover's content view: SwiftUI would then resize the
+        // popover window while the popover places itself, and the two resize each other until the
+        // stack runs out (`NSHostingView.updateAnimatedWindowSize` ↔ `_NSPopoverWindow setFrame`,
+        // 6500 levels deep). Instead the hosting view sits in a plain container — the same shape
+        // `FloatingPanel` uses — and the popover's content size follows SwiftUI's reported size.
         let host = NSHostingController(rootView: LookupPopoverContent(presenter: self))
         host.sizingOptions = .preferredContentSize
+        let container = NSViewController()
+        let surface = NSView()
+        host.view.translatesAutoresizingMaskIntoConstraints = true
+        host.view.frame = surface.bounds
+        host.view.autoresizingMask = [.width, .height]
+        surface.addSubview(host.view)
+        container.view = surface
+        container.addChild(host)
         let next = NSPopover()
         next.behavior = .transient
         next.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        next.contentViewController = host
+        next.contentViewController = container
         next.delegate = self
         popover = next
         next.show(relativeTo: rect, of: view, preferredEdge: .maxY)
+        fit(host, into: next)
         // A popover takes the keyboard when shown. The toolbar must not, or a keyboard selection
         // would stop growing after its first step; the card keeps it so Tab reaches its buttons.
         if case .toolbar = mode {

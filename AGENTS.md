@@ -27,6 +27,16 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
   `PageFooter` + `.glass` / `.glassProminent`。**不要画圆角卡片背景**。
 - 加新界面前先查 `docs/liquid-glass-components.md` 的逐屏表，并把它补进去。
 
+## AppKit 容器里的 SwiftUI
+
+- `NSHostingController.sizingOptions = .preferredContentSize` 会让 SwiftUI **每轮布局都去改窗口尺寸**。
+  只有这一种搭配是安全的：hosting view 先放进一个普通容器视图，**容器**才是窗口的 contentView，
+  再由容器观察 `preferredContentSize` 自己设窗口尺寸（见 `Owlet/App/Panel/FloatingPanel.swift`）。
+- **不要**把 hosting 控制器直接设为 `NSPopover.contentViewController`。popover 自己还要定位和调尺寸，
+  两边会互相触发并一路递归到栈溢出——实测 6558 层、点「发音」即崩：
+  `NSHostingView.updateAnimatedWindowSize` ↔ `-[_NSPopoverWindow setFrame:display:]`。
+  见 `Owlet/Lookup/LookupPresenter.swift`。
+
 ## 版本
 
 发版只改 `project.yml` 的 `MARKETING_VERSION`（用户看到的版本）与 `CURRENT_PROJECT_VERSION`（同一版本下每次交付递增的构建号），`scripts/prod-build.sh` 从产物的 `CFBundleShortVersionString` 读取并用于命名与打印。**不要**另建 VERSION 文件或 tag 作为第二真源。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。

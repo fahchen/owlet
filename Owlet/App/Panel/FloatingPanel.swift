@@ -47,6 +47,9 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
         isReleasedWhenClosed = false
         delegate = self
         // Keep intrinsic hosting size out of window constraints; preferredContentSize drives placement.
+        // The hosting view sits in `surface` rather than being the window's content view on purpose:
+        // showing it directly lets SwiftUI and AppKit resize each other. Changing this shape is what
+        // made the lookup popover recurse until the stack ran out — see LookupPresenter.present.
         let surface = NSView()
         host.view.translatesAutoresizingMaskIntoConstraints = true
         host.view.frame = surface.bounds

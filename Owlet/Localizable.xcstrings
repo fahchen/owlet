@@ -3974,35 +3974,6 @@
         }
       }
     },
-    "Polish Again": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Polish Again"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "推敲をやり直す"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新润色"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新潤色"
-          }
-        }
-      }
-    },
     "Polish and Replace": {
       "extractionState": "manual",
       "localizations": {
@@ -6493,35 +6464,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "翻譯與潤色"
-          }
-        }
-      }
-    },
-    "Translate Again": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Translate Again"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翻訳をやり直す"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新翻译"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新翻譯"
           }
         }
       }

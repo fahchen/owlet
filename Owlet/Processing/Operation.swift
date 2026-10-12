@@ -31,14 +31,6 @@ enum Operation: String, CaseIterable, Sendable {
         }
     }
 
-    /// "Translate Again" / "Polish Again", for the button that runs the current operation again.
-    var retry: LocalizedStringResource {
-        switch self {
-        case .translate: "Translate Again"
-        case .polish: "Polish Again"
-        }
-    }
-
     /// The empty input's placeholder, which names the operation the submit key will run.
     var placeholder: LocalizedStringResource {
         switch self {

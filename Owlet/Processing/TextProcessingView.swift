@@ -247,11 +247,13 @@ struct TextProcessingView: View {
     /// Hugs the buttons, so the text beside them keeps its own clicks.
     private var actions: some View {
         HStack(spacing: 8) {
-            // Runs the current text again: after an edit it is a new request, the old result's cache gone.
+            // The operation's own button, on its own symbol: a generic refresh glyph said nothing about
+            // which of the two operations it would run. Re-running the edited text is a new request, so
+            // the old result's cache is gone either way.
             if !isBusy, !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 // ⌘↩ belongs to the File menu's command, which runs the same request.
                 CardButton(
-                    title: L10n.shared.string(model.operation.retry.key), symbol: "arrow.clockwise",
+                    title: model.operation.name, symbol: model.operation.symbol,
                     key: .process, bindsKey: false
                 ) {
                     model.process(to: resolvedTarget)

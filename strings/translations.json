@@ -684,11 +684,6 @@
     "zh-Hans": "润色",
     "zh-Hant": "潤色"
   },
-  "Polish Again": {
-    "ja": "推敲をやり直す",
-    "zh-Hans": "重新润色",
-    "zh-Hant": "重新潤色"
-  },
   "Polish and Replace": {
     "ja": "推敲して置換",
     "zh-Hans": "润色并替换",
@@ -1118,11 +1113,6 @@
     "ja": "翻訳と推敲",
     "zh-Hans": "翻译与润色",
     "zh-Hant": "翻譯與潤色"
-  },
-  "Translate Again": {
-    "ja": "翻訳をやり直す",
-    "zh-Hans": "重新翻译",
-    "zh-Hant": "重新翻譯"
   },
   "Translate and Replace": {
     "ja": "翻訳して置換",

@@ -24,9 +24,15 @@ enum Provider: String, CaseIterable, Sendable {
         }
     }
 
-    /// DeepSeek rejects `json_schema` and only accepts `json_object`; a local agent has no response
-    /// format parameter at all, so its shape travels in the prompt like DeepSeek's.
-    var supportsJSONSchema: Bool { self == .openAICompatible }
+    /// Whether the app can hand this provider a response schema. DeepSeek and pi only accept
+    /// `json_object`, so for them the shape travels in the system prompt instead; the two agents that
+    /// take a schema get it on the command line (`--output-schema`, `--json-schema`).
+    var supportsJSONSchema: Bool {
+        switch self {
+        case .openAICompatible, .claudeCode, .codexCLI: true
+        case .deepSeek, .piCLI: false
+        }
+    }
 
     /// OpenAI compatible keeps the pre-provider "default" account so existing keys still resolve.
     var keychainAccount: String { self == .openAICompatible ? "default" : rawValue }

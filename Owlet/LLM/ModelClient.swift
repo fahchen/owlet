@@ -95,7 +95,8 @@ struct ModelClient: Sendable {
     /// transport is never touched for a local-agent provider.
     var localAgent: LocalAgent = LocalAgent()
     /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
-    /// a test can substitute a hostile one; the fixed contract is appended by `makeRequest` either way.
+    /// a test can substitute a hostile one; the fixed contract is appended by the request builders
+    /// either way.
     var promptForOperation: @Sendable (Operation) -> String = { SettingsStore.prompt(for: $0) }
     /// Where a finished exchange goes for the debug page; off by default so ordinary use never keeps
     /// the user's text.
@@ -126,8 +127,8 @@ struct ModelClient: Sendable {
         _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig
     ) async throws -> TranslationResult {
         let target = operation == .translate ? targetLanguage : nil
-        let request = try makeRequest(
-            text: text, operation: operation, targetLanguage: target, config: config)
+        let request = try translationRequest(
+            text: text, operation: operation, to: target, config: config)
         return try await perform(
             request, title: Self.debugTitle(operation: operation, target: target), submitted: text,
             config: config,
@@ -140,16 +141,13 @@ struct ModelClient: Sendable {
         return target.map { "\(name) · \($0)" } ?? name
     }
 
-    /// The body as sent, so the debug page shows the real request instead of a reconstruction. The
-    /// API key is a header, so it is not included.
-    static func prettyPrintedBody(_ request: URLRequest) -> String {
-        guard let body = request.httpBody,
-            let object = try? JSONSerialization.jsonObject(with: body),
-            let pretty = try? JSONSerialization.data(
-                withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
-            let text = String(data: pretty, encoding: .utf8)
-        else { return "(the request body is unreadable)" }
-        return text
+    /// The format the provider can accept: a real schema where it takes one, `json_object` where the
+    /// shape must travel in the system prompt instead (DeepSeek, pi).
+    private func format(name: String, schema: [String: Any], config: ServiceConfig) -> ModelResponseFormat {
+        guard config.provider.supportsJSONSchema,
+            let data = try? JSONSerialization.data(withJSONObject: schema)
+        else { return .jsonObject }
+        return .jsonSchema(name: name, schema: data)
     }
 
     /// Fills in a meaning for one collected expression through the learning contract, in the language
@@ -159,10 +157,6 @@ struct ModelClient: Sendable {
         expression: String, language: String, context: String, definitionLocale: String,
         config: ServiceConfig
     ) async throws -> String {
-        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         let task = ModelPrompts.format(
             "fillMeaningTask", LanguageCatalog.name(for: definitionLocale))
         // The prompt text lives in ModelPrompts.json; `"\n"` keeps the blank line and the indent the
@@ -174,25 +168,14 @@ struct ModelClient: Sendable {
             + ModelPrompts.format(
                 "fillMeaningFields", LanguageCatalog.name(for: definitionLocale)) + "\n"
         system += "            " + ModelPrompts["fillMeaningExample"] + "\n"
-        let responseFormat: [String: Any] =
-            !config.provider.supportsJSONSchema
-            ? ["type": "json_object"]
-            : [
-                "type": "json_schema",
-                "json_schema": [
-                    "name": "meaning", "strict": true,
-                    "schema": LearningResult.providerSchema,
-                ],
-            ]
         let payload = try JSONSerialization.data(withJSONObject: [
             "expression": expression, "language": language, "context": context,
         ])
-        let body = requestBody(
-            messages: [
-                ["role": "system", "content": system],
-                ["role": "user", "content": String(decoding: payload, as: UTF8.self)],
-            ], responseFormat: responseFormat, config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let request = ModelRequest(
+            model: config.model, system: system,
+            turns: [.user(String(decoding: payload, as: UTF8.self))],
+            format: format(name: "meaning", schema: LearningResult.providerSchema, config: config),
+            effort: config.effort)
         return try await perform(
             request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
             config: config,
@@ -209,7 +192,7 @@ struct ModelClient: Sendable {
         text: String, operation: Operation, targetLanguage: String, result: String,
         config: ServiceConfig
     ) async throws -> [LearningResult.Item] {
-        let request = try makeLearningRequest(
+        let request = try learningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
         switch try await attempt(
@@ -226,7 +209,7 @@ struct ModelClient: Sendable {
             // A reply with no JSON in it names no rule to follow, so it gets no second round.
             let reasons = LearningResult.diagnose(error.content)
             guard !reasons.isEmpty else { throw error.error }
-            let correction = try makeLearningRequest(
+            let correction = try learningRequest(
                 text: text, operation: operation, targetLanguage: targetLanguage, result: result,
                 config: config, correcting: error.content, reasons: reasons)
             switch try await attempt(
@@ -242,7 +225,7 @@ struct ModelClient: Sendable {
     /// Sends one request and parses it; the parse failure carries the content back, because the
     /// corrective round has to show the model the reply it must fix. Everything else throws.
     private func attempt(
-        _ request: URLRequest, title: String, submitted: String, config: ServiceConfig
+        _ request: ModelRequest, title: String, submitted: String, config: ServiceConfig
     ) async throws -> Result<[LearningResult.Item], ContractError> {
         try await perform(request, title: title, submitted: submitted, config: config) {
             (content: String) -> Result<[LearningResult.Item], ContractError> in
@@ -268,14 +251,10 @@ struct ModelClient: Sendable {
         return items.filter { item in !native.contains { LanguageTag.same($0, item.language) } }
     }
 
-    func makeLearningRequest(
+    func learningRequest(
         text: String, operation: Operation, targetLanguage: String, result: String,
         config: ServiceConfig, correcting reply: String? = nil, reasons: [String] = []
-    ) throws -> URLRequest {
-        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+    ) throws -> ModelRequest {
         // BDR-0005: a translation is explained in its own target; a polish keeps the text's language, so
         // its explanations use that language's mapped target instead — not the language itself.
         let explainedIn =
@@ -302,52 +281,29 @@ struct ModelClient: Sendable {
             "original": text, "result": result,
         ])
         let user = String(decoding: payload, as: UTF8.self)
-        let messages: [[String: String]]
+        let turns: [ModelTurn]
         if let reply {
             let problems =
                 reasons.isEmpty
                 ? "It does not satisfy the contract for items."
                 : "These rules were broken: " + reasons.joined(separator: "; ") + "."
-            messages = [
-                ["role": "system", "content": system],
-                [
-                    "role": "user",
-                    "content": "Original and result, as data:\n\(user)",
-                ],
-                ["role": "assistant", "content": reply],
-                [
-                    "role": "user",
-                    "content": """
+            turns = [
+                .user("Original and result, as data:\n\(user)"),
+                .assistant(reply),
+                .user(
+                    """
                     That reply was rejected. \(problems)
                     Reply again with only the one json object, keeping every meaning you already \
                     wrote and changing only what the rules require.
-                    """,
-                ],
+                    """),
             ]
         } else {
-            messages = [
-                ["role": "system", "content": system],
-                ["role": "user", "content": user],
-            ]
+            turns = [.user(user)]
         }
-        let body = requestBody(
-            messages: messages, responseFormat: learningResponseFormat(config.model, config: config),
-            config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return request
-    }
-
-    /// The learning contract as a provider accepts it: a real schema where the service supports one,
-    /// otherwise `json_object` with the shape carried by the system prompt instead.
-    private func learningResponseFormat(_ name: String, config: ServiceConfig) -> [String: Any] {
-        !config.provider.supportsJSONSchema
-            ? ["type": "json_object"]
-            : [
-                "type": "json_schema",
-                "json_schema": [
-                    "name": name, "strict": true, "schema": LearningResult.providerSchema,
-                ],
-            ]
+        return ModelRequest(
+            model: config.model, system: system, turns: turns,
+            format: format(name: "learning", schema: LearningResult.providerSchema, config: config),
+            effort: config.effort)
     }
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
@@ -358,7 +314,7 @@ struct ModelClient: Sendable {
     /// included, and a definition written in the language that was asked for — and a provider that
     /// breaks it usually has a fixable answer, not a bad one.
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
-        let request = try makeLookupRequest(query, config: config)
+        let request = try lookupRequest(query, config: config)
         let title = L10n.shared.string("Look Up · %@", query.definitionLanguage)
         switch try await attemptLookup(request, query: query, title: title, config: config) {
         case .success(let result):
@@ -370,7 +326,7 @@ struct ModelClient: Sendable {
             // A reply with no JSON in it names no claim to fix, so it gets no second round.
             let reasons = LookupResult.diagnose(error.content, query: query)
             guard !reasons.isEmpty else { throw error.error }
-            let correction = try makeLookupRequest(
+            let correction = try lookupRequest(
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
                 correction, query: query, title: L10n.shared.string("%@ (corrected)", title),
@@ -384,7 +340,7 @@ struct ModelClient: Sendable {
 
     /// Sends one lookup and parses it; the parse failure carries the content back for correction.
     private func attemptLookup(
-        _ request: URLRequest, query: LookupQuery, title: String, config: ServiceConfig
+        _ request: ModelRequest, query: LookupQuery, title: String, config: ServiceConfig
     ) async throws -> Result<LookupResult, ContractError> {
         func parsed(_ content: String) -> Result<LookupResult, ContractError> {
             do {
@@ -397,20 +353,16 @@ struct ModelClient: Sendable {
             request, title: title, submitted: query.text, config: config, parse: parsed)
     }
 
-    func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
-        try makeLookupRequest(query, config: config, correcting: nil, reasons: [])
+    func lookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> ModelRequest {
+        try lookupRequest(query, config: config, correcting: nil, reasons: [])
     }
 
     /// Builds the lookup request. With `correcting`, the same data comes after the model's own rejected
     /// reply and the claims it got wrong, so only the model's answer changes between the two requests.
-    func makeLookupRequest(
+    func lookupRequest(
         _ query: LookupQuery, config: ServiceConfig, correcting reply: String? = nil,
         reasons: [String] = []
-    ) throws -> URLRequest {
-        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+    ) throws -> ModelRequest {
         let pronunciation =
             query.pronunciation.map { "Use \($0) for pronunciation." }
             ?? "Use kana for Japanese, pinyin for Chinese and IPA for other languages."
@@ -435,81 +387,51 @@ struct ModelClient: Sendable {
                 "language": query.language as Any? ?? NSNull(),
             ], options: .sortedKeys)
         let user = String(decoding: payload, as: UTF8.self)
-        let messages: [[String: String]]
+        let turns: [ModelTurn]
         if let reply {
             let problems =
                 reasons.isEmpty
                 ? "It does not satisfy the contract."
                 : "These claims were wrong: " + reasons.joined(separator: "; ") + "."
-            messages = [
-                ["role": "system", "content": system],
-                ["role": "user", "content": "Selected text, context and language, as data:\n\(user)"],
-                ["role": "assistant", "content": reply],
-                [
-                    "role": "user",
-                    "content": """
+            turns = [
+                .user("Selected text, context and language, as data:\n\(user)"),
+                .assistant(reply),
+                .user(
+                    """
                     That reply was rejected. \(problems)
                     Reply again with only the one json object, every key present and every other \
                     claim unchanged.
-                    """,
-                ],
+                    """),
             ]
         } else {
-            messages = [
-                ["role": "system", "content": system],
-                ["role": "user", "content": user],
-            ]
+            turns = [.user(user)]
         }
-        let body = requestBody(
-            messages: messages, responseFormat: lookupResponseFormat(config: config), config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return request
+        return ModelRequest(
+            model: config.model, system: system, turns: turns,
+            format: format(name: "lookup", schema: LookupResult.providerSchema, config: config),
+            effort: config.effort)
     }
 
-    /// The lookup contract as a provider accepts it.
-    private func lookupResponseFormat(config: ServiceConfig) -> [String: Any] {
-        !config.provider.supportsJSONSchema
-            ? ["type": "json_object"]
-            : [
-                "type": "json_schema",
-                "json_schema": [
-                    "name": "lookup", "strict": true, "schema": LookupResult.providerSchema,
-                ],
-            ]
-    }
-
-    /// Lists model ids from the OpenAI-style `GET /models` endpoint.
+    /// The OpenAI-style model list, which belongs to the HTTP services; a local agent lists its models
+    /// through its own command instead (`LocalAgent.models`).
     func listModels(baseURL: URL, apiKey: String) async throws -> [String] {
         var request = URLRequest(url: baseURL.appending(path: "models"))
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        let data = try await sendHTTP(request)
+        let data = try await OpenAICompatibleBackend(transport: transport).send(request)
         guard let list = try? JSONDecoder().decode(ModelList.self, from: data) else {
             throw ModelError.format
         }
         return list.data.map(\.id)
     }
 
-    /// Decodes the provider envelope and applies the shared truncation and content-policy rules
-    /// before any contract parsing, so every request type fails the same way.
-    private func decodedContent(_ data: Data) throws -> String {
-        let choice = (try? JSONDecoder().decode(ChatResponse.self, from: data))?.choices.first
-        if choice?.finishReason == "length" { throw ModelError.truncated }
-        if choice?.finishReason == "content_filter" || choice?.message.refusal?.isEmpty == false {
-            throw ModelError.refused
-        }
-        guard let content = choice?.message.content,
-            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { throw ModelError.emptyResponse }
-        return content
-    }
-
     /// Sends one request and hands the finished exchange to the debug capture whatever the outcome,
-    /// then parses the decoded content. Every request type goes through here so none is silently
-    /// left off the debug page.
+    /// then parses the answer. Every request type goes through here so none is silently left off the
+    /// debug page, and no caller knows which backend ran it.
     private func perform<T>(
-        _ request: URLRequest, title: String, submitted: String, config: ServiceConfig,
+        _ request: ModelRequest, title: String, submitted: String, config: ServiceConfig,
         parse: (String) throws -> T
     ) async throws -> T {
+        let backend = config.provider.backend(transport: transport, agent: localAgent)
         let capture = capture
         let records = capture.isEnabled()
         var response: String?
@@ -519,7 +441,7 @@ struct ModelClient: Sendable {
         defer {
             if records {
                 let exchange = DebugExchange(
-                    title: title, request: requestDescription(request, config: config),
+                    title: title, request: backend.describe(request, config: config),
                     submitted: submitted, response: response, failure: failure,
                     failureKind: failureKind)
                 let record = capture.record
@@ -527,7 +449,7 @@ struct ModelClient: Sendable {
             }
         }
         do {
-            let content = try decodedContent(try await send(request, config: config))
+            let content = try await backend.complete(request, config: config)
             response = content
             return try parse(content)
         } catch {
@@ -537,69 +459,10 @@ struct ModelClient: Sendable {
         }
     }
 
-    /// What the debug page shows as the request: the body for an HTTP provider, the command line for a
-    /// local agent — which is the thing that actually ran, and the only place the agent's switches show.
-    private func requestDescription(_ request: URLRequest, config: ServiceConfig) -> String {
-        guard let kind = config.provider.localAgent,
-            let command = localAgent.command(kind: kind, request: request, config: config)
-        else { return Self.prettyPrintedBody(request) }
-        return command
-    }
-
-    /// The shared chat body: model, messages and response format, plus the reasoning effort only when
-    /// the user chose one, so a provider that rejects the field is left untouched by the default.
-    private func requestBody(
-        messages: [[String: Any]], responseFormat: [String: Any], config: ServiceConfig
-    ) -> [String: Any] {
-        var body: [String: Any] = [
-            "model": config.model,
-            "messages": messages,
-            "response_format": responseFormat,
-        ]
-        // A local agent maps the level to its own switch, so the OpenAI-style field would only be a
-        // stray key in a body nothing sends.
-        if config.provider.localAgent == nil,
-            let value = ModelEffort.reasoningEffort(for: config.effort, model: config.model)
-        {
-            body["reasoning_effort"] = value
-        }
-        return body
-    }
-
-    /// Reaches the model: an HTTP provider posts the request, a local agent runs it through its CLI.
-    /// Both hand back the same chat envelope, so everything downstream has one path.
-    private func send(_ request: URLRequest, config: ServiceConfig) async throws -> Data {
-        guard let kind = config.provider.localAgent else { return try await sendHTTP(request) }
-        return try await localAgent.complete(kind: kind, request: request, config: config)
-    }
-
-    private func sendHTTP(_ request: URLRequest) async throws -> Data {
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await transport(request)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
-        } catch {
-            throw ModelError.network(error.localizedDescription)
-        }
-        if let http = response as? HTTPURLResponse {
-            if http.statusCode == 401 || http.statusCode == 403 { throw ModelError.unauthorized }
-            if !(200..<300).contains(http.statusCode) { throw ModelError.http(http.statusCode) }
-        }
-        return data
-    }
-
-    func makeRequest(
-        text: String, operation: Operation = .translate, targetLanguage: String?,
+    func translationRequest(
+        text: String, operation: Operation = .translate, to targetLanguage: String?,
         config: ServiceConfig
-    ) throws -> URLRequest {
-        var request = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+    ) throws -> ModelRequest {
         let task =
             targetLanguage.map { "Operation: translate. Target language: \($0)." }
             ?? "Operation: polish. target_language must equal source_language."
@@ -613,22 +476,12 @@ struct ModelClient: Sendable {
             "segments":[{"source":"...","target":"..."}]}
             """
         // Without schema support the prompt above must mention "json" and spell out the shape.
-        let responseFormat: [String: Any] =
-            !config.provider.supportsJSONSchema
-            ? ["type": "json_object"]
-            : [
-                "type": "json_schema",
-                "json_schema": [
-                    "name": operation == .translate ? "translation" : "polish", "strict": true,
-                    "schema": TranslationResult.providerSchema,
-                ],
-            ]
-        let body = requestBody(
-            messages: [
-                ["role": "system", "content": system], ["role": "user", "content": text],
-            ], responseFormat: responseFormat, config: config)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        return request
+        return ModelRequest(
+            model: config.model, system: system, turns: [.user(text)],
+            format: format(
+                name: operation == .translate ? "translation" : "polish",
+                schema: TranslationResult.providerSchema, config: config),
+            effort: config.effort)
     }
 }
 

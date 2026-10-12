@@ -67,21 +67,16 @@ struct LearningContentTests {
     }
 
     @Test func learningRequestReusesThePromptAndAddsTheContract() throws {
-        let request = try clientWithBuiltInPrompt().makeLearningRequest(
+        let request = try clientWithBuiltInPrompt().learningRequest(
             text: "Let's take a step back.", operation: .translate, targetLanguage: "zh-Hans",
             result: "让我们退一步。", config: testConfig)
-        let json = try #require(
-            JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
-        let messages = try #require(json["messages"] as? [[String: String]])
-        #expect(messages.first?["content"]?.hasPrefix(DefaultPrompts.translate) == true)
-        #expect(messages.first?["content"]?.contains("json") == true)
-        let user = try #require(messages.last?["content"])
+        #expect(request.system.hasPrefix(DefaultPrompts.translate))
+        #expect(request.system.contains("json"))
+        let user = try #require(request.turns.first?.content)
         #expect(user.contains("Let's take a step back."))
         #expect(user.contains("让我们退一步。"))
-        let format = try #require(json["response_format"] as? [String: Any])
-        #expect(format["type"] as? String == "json_schema")
-        let schema = try JSONSerialization.data(withJSONObject: format["json_schema"]!)
-        #expect(!String(decoding: schema, as: UTF8.self).contains("minLength"))
+        let schema = try #require(schema(of: request))
+        #expect(!String(decoding: schema.data, as: UTF8.self).contains("minLength"))
     }
 
     @Test func learningMapsResponseAndRequestFailures() async throws {

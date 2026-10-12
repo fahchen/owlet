@@ -15,12 +15,19 @@ struct LocalAgentTests {
     /// The environment a shell needs and nothing more, so a test never depends on the developer's own.
     var shellEnvironment: [String: String] { ["PATH": "/usr/bin:/bin"] }
 
+    /// The one-shot request the recipes are planned from: one behaviour prompt, one turn of data.
+    func request(model: String = "", effort: EffortLevel = .automatic) -> ModelRequest {
+        ModelRequest(
+            model: model, system: "SYSTEM", turns: [.user("原文")], format: .jsonObject,
+            effort: effort)
+    }
+
     func plan(
         _ kind: LocalAgentKind, model: String = "", effort: EffortLevel = .automatic
     ) -> LocalAgentInvocation {
         LocalAgent.plan(
-            kind: kind, executable: executable, model: model, system: "SYSTEM", prompt: "原文",
-            effort: effort, directory: directory, timeout: .seconds(180))
+            kind: kind, executable: executable, request: request(model: model, effort: effort),
+            directory: directory, timeout: .seconds(180))
     }
 
     /// The argument that follows a flag, which is how every recipe passes a value.
@@ -44,7 +51,8 @@ struct LocalAgentTests {
         LocalAgentInvocation(
             executable: executable, arguments: ["-c", command], stdin: stdin,
             directory: LocalAgent.temporaryDirectory(), writesSystemPromptFile: false,
-            systemPrompt: "", answersToFile: answersToFile, timeout: .seconds(20))
+            systemPrompt: "", answersToFile: answersToFile, schema: nil, writesSchemaFile: false,
+            timeout: .seconds(20))
     }
 
     // MARK: - Recipes
@@ -89,6 +97,8 @@ struct LocalAgentTests {
         #expect(invocation.arguments.first == "exec")
         #expect(invocation.arguments.contains("--ephemeral"))
         #expect(invocation.arguments.contains("--skip-git-repo-check"))
+        // Loading the user's own config would connect their MCP servers on every translation request.
+        #expect(invocation.arguments.contains("--ignore-user-config"))
         #expect(value(after: "--sandbox", in: invocation.arguments) == "read-only")
         #expect(value(after: "--cd", in: invocation.arguments) == directory.path)
         #expect(value(after: "--disable", in: invocation.arguments) == "shell_tool")
@@ -96,6 +106,43 @@ struct LocalAgentTests {
         #expect(invocation.arguments.last == "-")
         #expect(invocation.answersToFile)
         #expect(invocation.stdin == "SYSTEM\n\n原文")
+    }
+
+    /// A provider that takes a response schema gets this contract's, and the way it takes it differs:
+    /// Codex reads a file, Claude Code an argument, pi has no such switch.
+    @Test func aSchemaTravelsTheWayEachAgentTakesIt() throws {
+        let schema = try JSONSerialization.data(withJSONObject: ["type": "object"])
+        let request = ModelRequest(
+            model: "", system: "SYSTEM", turns: [.user("原文")],
+            format: .jsonSchema(name: "translation", schema: schema), effort: .automatic)
+
+        let codex = LocalAgent.plan(
+            kind: .codexCLI, executable: executable, request: request, directory: directory,
+            timeout: .seconds(20))
+        #expect(value(after: "--output-schema", in: codex.arguments) == codex.schemaFile.path)
+        #expect(codex.writesSchemaFile)
+        #expect(codex.schema == schema)
+
+        let claude = LocalAgent.plan(
+            kind: .claudeCode, executable: executable, request: request, directory: directory,
+            timeout: .seconds(20))
+        #expect(value(after: "--json-schema", in: claude.arguments) == String(decoding: schema, as: UTF8.self))
+        #expect(!claude.writesSchemaFile)
+
+        let pi = LocalAgent.plan(
+            kind: .piCLI, executable: executable, request: request, directory: directory,
+            timeout: .seconds(20))
+        #expect(!pi.arguments.contains("--output-schema"))
+        #expect(!pi.arguments.contains("--json-schema"))
+        #expect(pi.schema == nil)
+    }
+
+    /// `json_object` means the shape travels in the prompt, so no agent gets a schema on its command line.
+    @Test func noSchemaIsPassedWhenTheProviderCannotBeConstrained() {
+        let invocation = plan(.codexCLI)
+        #expect(invocation.schema == nil)
+        #expect(!invocation.writesSchemaFile)
+        #expect(!invocation.arguments.contains("--output-schema"))
     }
 
     /// `codex exec` rejects `--ask-for-approval` with exit 2 — the option belongs to the top level, not
@@ -133,54 +180,33 @@ struct LocalAgentTests {
         #expect(value(after: "--effort", in: plan(.claudeCode, effort: .max).arguments) == "max")
     }
 
-    // MARK: - The shared request body
-
-    @Test func theBodySplitsIntoTheSystemPromptAndOnePrompt() throws {
-        let data = try JSONSerialization.data(withJSONObject: [
-            "model": "m",
-            "messages": [
-                ["role": "system", "content": "SYSTEM"],
-                ["role": "system", "content": "CONTRACT"],
-                ["role": "user", "content": "原文"],
-            ],
-        ])
-        let parts = try LocalAgent.split(body: data)
-        #expect(parts.model == "m")
-        #expect(parts.system == "SYSTEM\n\nCONTRACT")
-        #expect(parts.prompt == "原文")
-    }
+    // MARK: - The one prompt a one-shot process reads
 
     /// A corrective round is one call to a one-shot process, so the rejected reply and the correction
     /// request have to stay in order inside the single prompt.
-    @Test func aRejectedReplyAndItsCorrectionKeepTheirOrder() throws {
-        let data = try JSONSerialization.data(withJSONObject: [
-            "messages": [
-                ["role": "system", "content": "SYSTEM"],
-                ["role": "user", "content": "DATA"],
-                ["role": "assistant", "content": "BAD"],
-                ["role": "user", "content": "TRY AGAIN"],
-            ]
-        ])
-        let parts = try LocalAgent.split(body: data)
-        #expect(parts.prompt.contains("Previous reply (rejected):\nBAD"))
-        let positions = ["DATA", "BAD", "TRY AGAIN"].compactMap { parts.prompt.range(of: $0)?.lowerBound }
+    @Test func aRejectedReplyAndItsCorrectionKeepTheirOrder() {
+        let request = ModelRequest(
+            model: "m", system: "SYSTEM",
+            turns: [.user("DATA"), .assistant("BAD"), .user("TRY AGAIN")],
+            format: .jsonObject, effort: .automatic)
+        let invocation = LocalAgent.plan(
+            kind: .piCLI, executable: executable, request: request, directory: directory,
+            timeout: .seconds(180))
+        #expect(invocation.stdin.contains("Previous reply (rejected):\nBAD"))
+        let positions = ["DATA", "BAD", "TRY AGAIN"].compactMap {
+            invocation.stdin.range(of: $0)?.lowerBound
+        }
         #expect(positions.count == 3)
         #expect(positions == positions.sorted())
     }
 
-    @Test func anUnreadableBodyIsALocalAgentFailure() {
-        #expect(throws: ModelError.localAgent("the request body is unreadable")) {
-            try LocalAgent.split(body: Data("not json".utf8))
-        }
-    }
-
-    /// The agent's text is wrapped in the envelope an HTTP provider returns, which is what keeps
-    /// decoding, truncation, the contract and the corrective round on one path.
-    @Test func theAnswerIsWrappedInTheSameEnvelopeHTTPReturns() throws {
-        let reply = #"{"source_language":"en","target_language":"zh-Hans"}"#
-        let response = try JSONDecoder().decode(ChatResponse.self, from: try LocalAgent.envelope(reply))
-        #expect(response.choices.first?.message.content == reply)
-        #expect(response.choices.first?.finishReason == "stop")
+    /// An agent has no provider envelope, so its answer reaches the caller exactly as the CLI wrote it
+    /// — including the whitespace, which only `spawn` trims.
+    @Test func theAgentsAnswerIsReturnedAsPlainText() async throws {
+        let agent = LocalAgent(run: { _ in "  plain answer  " })
+        let answer = try await agent.complete(
+            kind: .piCLI, request: request(model: "m"), config: agentConfig)
+        #expect(answer == "  plain answer  ")
     }
 
     // MARK: - Through the client
@@ -221,18 +247,16 @@ struct LocalAgentTests {
     @Test func aLocalAgentGetsNoOpenAIStyleEffortField() throws {
         var client = ModelClient()
         client.promptForOperation = { $0.prompt }
-        let request = try client.makeRequest(
-            text: "Hello", operation: .translate, targetLanguage: "zh-Hans", config: agentConfig)
-        let data = try #require(request.httpBody)
-        let body = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
-        #expect(body["reasoning_effort"] == nil)
+        let request = try client.translationRequest(
+            text: "Hello", to: "zh-Hans", config: agentConfig)
+        #expect(try wireBody(request, config: agentConfig)["reasoning_effort"] == nil)
     }
 
     @Test func theDebugPageShowsTheCommandInsteadOfTheBody() throws {
         var client = ModelClient()
         client.promptForOperation = { $0.prompt }
-        let request = try client.makeRequest(
-            text: "Hello", operation: .translate, targetLanguage: "zh-Hans", config: agentConfig)
+        let request = try client.translationRequest(
+            text: "Hello", to: "zh-Hans", config: agentConfig)
         let command = try #require(
             LocalAgent().command(kind: .piCLI, request: request, config: agentConfig))
         #expect(command.contains(executable.path))
@@ -241,10 +265,12 @@ struct LocalAgentTests {
         #expect(command.contains("standard input"))
     }
 
-    @Test func anEmptyAnswerFailsLikeAnEmptyHTTPReply() async {
+    /// An empty answer must fail as an empty reply, not as a broken contract: `.format` is correctable,
+    /// so the app would start a second process to fix an answer the model never gave.
+    @Test func anEmptyAnswerFailsAsAnEmptyReply() async {
         var client = ModelClient()
         client.capture = .off
-        client.localAgent = LocalAgent(run: { _ in "" })
+        client.localAgent = LocalAgent(run: { _ in "   \n" })
         await #expect(throws: ModelError.emptyResponse) {
             try await client.translate("Hello", to: "zh-Hans", config: agentConfig)
         }
@@ -315,7 +341,7 @@ struct LocalAgentTests {
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: ["-c", "cat system.txt"], stdin: "",
             directory: directory, writesSystemPromptFile: true, systemPrompt: "SYSTEM",
-            answersToFile: false, timeout: .seconds(20))
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         let answer = try await LocalAgent.spawn(invocation, environment: shellEnvironment)
         #expect(answer == "SYSTEM")
     }

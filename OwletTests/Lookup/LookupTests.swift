@@ -152,25 +152,25 @@ func lookupReply(
     }
 
     @Test func requestKeepsTextAsDataAndUsesTheProviderFormat() throws {
-        let request = try ModelClient().makeLookupRequest(bank, config: testConfig)
-        let body = String(decoding: request.httpBody!, as: UTF8.self)
-        #expect(!body.contains("sk-test"))
-        let json = try #require(JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
-        let messages = try #require(json["messages"] as? [[String: String]])
-        #expect(messages[0]["content"]?.contains("bank of the river") == false)
-        #expect(messages[0]["content"]?.contains("zh-Hans") == true)
-        let data = try #require(messages[1]["content"]?.data(using: .utf8))
-        let payload = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let request = try ModelClient().lookupRequest(bank, config: testConfig)
+        // The key is a header, so the body the service receives never carries it.
+        let body = try OpenAICompatibleBackend.body(for: request, config: testConfig)
+        #expect(!String(decoding: body, as: UTF8.self).contains("sk-test"))
+        #expect(!request.system.contains("bank of the river"))
+        #expect(request.system.contains("zh-Hans"))
+        let user = try #require(request.turns.first?.content)
+        #expect(request.turns == [.user(user)])
+        let payload = try #require(
+            JSONSerialization.jsonObject(with: Data(user.utf8)) as? [String: Any])
         #expect(payload["context"] as? String == "We sat on the bank of the river.")
         #expect(payload["selection_start"] as? Int == 14)
-        let format = try #require(json["response_format"] as? [String: Any])
-        #expect(format["type"] as? String == "json_schema")
+        let schema = try #require(schema(of: request))
+        #expect(schema.name == "lookup")
 
         var deepSeek = testConfig
         deepSeek.provider = .deepSeek
-        let plain = try ModelClient().makeLookupRequest(bank, config: deepSeek)
-        let plainJSON = try #require(JSONSerialization.jsonObject(with: plain.httpBody!) as? [String: Any])
-        #expect((plainJSON["response_format"] as? [String: String]) == ["type": "json_object"])
+        let plain = try ModelClient().lookupRequest(bank, config: deepSeek)
+        #expect(plain.format == .jsonObject)
     }
 
     @Test func aFailureIsCapturedForDebuggingWithoutTheKey() async throws {

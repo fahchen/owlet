@@ -7,17 +7,13 @@ private let polished =
     #"{"source_language":"en","target_language":"en","segments":[{"source":"i has a pen.","target":"I have a pen."}]}"#
 
 @Test func polishRequestUsesPolishPromptWithoutTargetLanguage() throws {
-    let request = try clientWithBuiltInPrompt().makeRequest(
-        text: "i has a pen.", operation: .polish, targetLanguage: nil, config: testConfig)
-    let json = try #require(
-        JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
-    let messages = try #require(json["messages"] as? [[String: String]])
-    let system = try #require(messages.first?["content"])
-    #expect(system.hasPrefix(DefaultPrompts.polish))
-    #expect(!system.contains("Target language:"))
-    #expect(system.contains("只给一个润色版本"))
-    #expect(system.contains("保持原文语言和原意"))
-    #expect(messages.last == ["role": "user", "content": "i has a pen."])
+    let request = try clientWithBuiltInPrompt().translationRequest(
+        text: "i has a pen.", operation: .polish, to: nil, config: testConfig)
+    #expect(request.system.hasPrefix(DefaultPrompts.polish))
+    #expect(!request.system.contains("Target language:"))
+    #expect(request.system.contains("只给一个润色版本"))
+    #expect(request.system.contains("保持原文语言和原意"))
+    #expect(request.turns == [.user("i has a pen.")])
 }
 
 @Test func polishContractRequiresSourceLanguage() throws {

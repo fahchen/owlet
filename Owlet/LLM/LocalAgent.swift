@@ -44,6 +44,21 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
+    /// How this agent takes a response schema, or nil when it takes none: `pi` can only be told the
+    /// shape in the prompt, and it says so itself (`--mode json` is an event stream, not a constraint).
+    enum SchemaDelivery: Sendable {
+        case file
+        case argument
+    }
+
+    var schemaDelivery: SchemaDelivery? {
+        switch self {
+        case .codexCLI: .file
+        case .claudeCode: .argument
+        case .piCLI: nil
+        }
+    }
+
     func effortValue(_ level: EffortLevel) -> String? {
         guard level != .automatic, let start = EffortLevel.ordered.firstIndex(of: level) else {
             return nil
@@ -68,9 +83,14 @@ struct LocalAgentInvocation: Sendable, Equatable {
     var systemPrompt: String
     /// `codex` writes its final message where `--output-last-message` points instead of to stdout.
     var answersToFile: Bool
+    /// The response schema, when this agent takes one.
+    var schema: Data?
+    /// `codex` reads the schema from a file; `claude` takes it as an argument.
+    var writesSchemaFile: Bool
     var timeout: Duration
 
     var stdinFile: URL { directory.appending(path: "stdin.txt") }
+    var schemaFile: URL { directory.appending(path: "schema.json") }
     var systemPromptFile: URL { directory.appending(path: "system.txt") }
     var stdoutFile: URL { directory.appending(path: "stdout.txt") }
     var stderrFile: URL { directory.appending(path: "stderr.txt") }
@@ -114,68 +134,37 @@ struct LocalAgent: Sendable {
 }
 
 extension LocalAgent {
-    /// One request through the agent: decode the shared body, run the CLI, wrap the answer back into
-    /// the same chat envelope an HTTP provider returns.
-    func complete(kind: LocalAgentKind, request: URLRequest, config: ServiceConfig) async throws -> Data {
-        guard let body = request.httpBody else { throw ModelError.localAgent("the request has no body") }
+    /// One request through the agent: run the CLI and return the text it produced. The text is the
+    /// answer as it stands — an agent has no provider envelope, so nothing wraps it.
+    func complete(kind: LocalAgentKind, request: ModelRequest, config: ServiceConfig) async throws -> String {
         guard let executable = config.agentExecutable else {
             throw ModelError.localAgent("no executable is set")
         }
-        let parts = try Self.split(body: body)
-        let invocation = Self.plan(
-            kind: kind, executable: executable, model: parts.model, system: parts.system,
-            prompt: parts.prompt, effort: config.effort, directory: Self.temporaryDirectory(),
-            timeout: timeout)
-        return try Self.envelope(try await run(invocation))
+        let answer = try await run(
+            Self.plan(
+                kind: kind, executable: executable, request: request,
+                directory: Self.temporaryDirectory(), timeout: timeout))
+        // An agent with nothing to say is an empty reply, not a broken contract. It has to fail here:
+        // a `.format` failure is correctable, and the app would spend a second process asking the model
+        // to fix an answer it never gave.
+        guard !answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ModelError.emptyResponse
+        }
+        return answer
     }
 
     /// The command that would run, for the debug page: a one-shot agent's request *is* its command
-    /// line, and the body alone would not show which agent was asked or with which switches.
-    func command(kind: LocalAgentKind, request: URLRequest, config: ServiceConfig) -> String? {
-        guard let body = request.httpBody, let executable = config.agentExecutable,
-            let parts = try? Self.split(body: body)
-        else { return nil }
+    /// line, and the request value alone would not show which agent was asked or with which switches.
+    func command(kind: LocalAgentKind, request: ModelRequest, config: ServiceConfig) -> String? {
+        guard let executable = config.agentExecutable else { return nil }
         let invocation = Self.plan(
-            kind: kind, executable: executable, model: parts.model, system: parts.system,
-            prompt: parts.prompt, effort: config.effort, directory: Self.temporaryDirectory(),
-            timeout: timeout)
+            kind: kind, executable: executable, request: request,
+            directory: Self.temporaryDirectory(), timeout: timeout)
         return """
             $ \(invocation.executable.path) \(invocation.arguments.joined(separator: " "))
             --- the prompt below is written to the process's standard input ---
             \(invocation.stdin)
             """
-    }
-
-    /// Splits the shared chat body into the system prompt and the one prompt a one-shot CLI receives.
-    ///
-    /// Every message the app builds is `system`, `user` or `assistant`. A rejected reply and the
-    /// correction request that follows it belong to the same call, because a one-shot process has no
-    /// conversation to continue, so they are flattened in order into one prompt.
-    static func split(body: Data) throws -> (model: String, system: String, prompt: String) {
-        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-            let messages = object["messages"] as? [[String: Any]]
-        else { throw ModelError.localAgent("the request body is unreadable") }
-        var system: [String] = []
-        var turns: [String] = []
-        for message in messages {
-            let content = message["content"] as? String ?? ""
-            switch message["role"] as? String {
-            case "system": system.append(content)
-            case "assistant": turns.append("Previous reply (rejected):\n" + content)
-            default: turns.append(content)
-            }
-        }
-        return (
-            object["model"] as? String ?? "", system.joined(separator: "\n\n"),
-            turns.joined(separator: "\n\n")
-        )
-    }
-
-    /// The agent's final text in the same envelope an HTTP provider returns, so decoding, truncation,
-    /// refusal, empty content, the contract and the corrective round keep exactly one code path.
-    static func envelope(_ content: String) throws -> Data {
-        let choice: [String: Any] = ["message": ["content": content], "finish_reason": "stop"]
-        return try JSONSerialization.data(withJSONObject: ["choices": [choice]])
     }
 
     /// The recipe for one kind: the switches that turn an agent into a plain completion service, how the
@@ -185,24 +174,36 @@ extension LocalAgent {
     /// machine through `ps` — so it is always written to the process's standard input; `pi` gets the
     /// system prompt through a 0600 file for the same reason.
     static func plan(
-        kind: LocalAgentKind, executable: URL, model: String, system: String, prompt: String,
-        effort: EffortLevel, directory: URL, timeout: Duration
+        kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL, timeout: Duration
     ) -> LocalAgentInvocation {
+        let prompt = request.turns.map(\.content).joined(separator: "\n\n")
+        // Only an agent that takes a schema carries one: an invocation describes what this agent will
+        // actually be given, and pi can only be told the shape in the prompt.
+        let schema = kind.schemaDelivery == nil ? nil : schemaData(request.format)
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: [], stdin: prompt, directory: directory,
-            writesSystemPromptFile: kind == .piCLI, systemPrompt: system,
-            answersToFile: kind == .codexCLI, timeout: timeout)
+            writesSystemPromptFile: kind == .piCLI, systemPrompt: request.system,
+            answersToFile: kind == .codexCLI, schema: schema,
+            writesSchemaFile: schema != nil && kind.schemaDelivery == .file, timeout: timeout)
         var arguments = arguments(
-            kind: kind, model: model, effort: effort, invocation: invocation)
+            kind: kind, model: request.model, effort: request.effort, invocation: invocation)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
         // explicitly; the other two take the payload as context, so they need a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
         arguments.append(kind == .codexCLI ? "-" : Self.stdinInstruction)
         return LocalAgentInvocation(
             executable: executable, arguments: arguments,
-            stdin: stdin(kind: kind, system: system, prompt: prompt), directory: directory,
-            writesSystemPromptFile: invocation.writesSystemPromptFile, systemPrompt: system,
-            answersToFile: invocation.answersToFile, timeout: timeout)
+            stdin: stdin(kind: kind, system: request.system, prompt: prompt), directory: directory,
+            writesSystemPromptFile: invocation.writesSystemPromptFile, systemPrompt: request.system,
+            answersToFile: invocation.answersToFile, schema: schema,
+            writesSchemaFile: invocation.writesSchemaFile, timeout: timeout)
+    }
+
+    /// The response schema this provider can accept, if any. `json_object` means the shape travels in
+    /// the prompt, so there is nothing to pass on the command line.
+    private static func schemaData(_ format: ModelResponseFormat) -> Data? {
+        guard case .jsonSchema(_, let schema) = format else { return nil }
+        return schema
     }
 
     private static func arguments(
@@ -215,16 +216,23 @@ extension LocalAgent {
                 "--print", "--tools", "", "--safe-mode", "--strict-mcp-config",
                 "--no-session-persistence", "--system-prompt", invocation.systemPrompt,
             ]
+            if let schema = invocation.schema, kind.schemaDelivery == .argument {
+                arguments += ["--json-schema", String(decoding: schema, as: UTF8.self)]
+            }
         case .codexCLI:
             // `codex exec` takes no approval switch of its own — `--ask-for-approval` is a top-level
-            // option and the subcommand rejects it with exit 2 — so the policy goes through `-c`, and
-            // the user's own hooks stay out of a translation request.
+            // option and the subcommand rejects it with exit 2 — so the policy goes through `-c`.
+            // `--ignore-user-config` is what keeps the user's own MCP servers out of a translation
+            // request: without it codex contacts them on every run and puts their tools in the prompt
+            // (measured on codex 0.160.1: about 30k tokens with, about 15k without).
             arguments = [
                 "exec", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only",
-                "--config", "approval_policy=\"never\"", "--disable", "shell_tool", "--disable", "hooks",
+                "--ignore-user-config", "--config", "approval_policy=\"never\"",
+                "--disable", "shell_tool", "--disable", "hooks",
                 "--cd", invocation.directory.path,
                 "--output-last-message", invocation.answerFile.path,
             ]
+            if invocation.schema != nil { arguments += ["--output-schema", invocation.schemaFile.path] }
         case .piCLI:
             arguments = [
                 "--print", "--no-tools", "--no-extensions", "--no-mcp", "--no-skills",
@@ -282,7 +290,8 @@ extension LocalAgent {
     }
 
     /// The one place that prepares a directory for one call: created empty and private, written with the
-    /// prompt and — when this agent wants one — the system prompt file, then removed however it ends.
+    /// prompt and — when this agent wants them — the system prompt file and the response schema, then
+    /// removed however it ends.
     static func withPreparedDirectory<T: Sendable>(
         _ invocation: LocalAgentInvocation, _ body: (LocalAgentInvocation) async throws -> T
     ) async throws -> T {
@@ -293,6 +302,9 @@ extension LocalAgent {
         try write(invocation.stdin, to: invocation.stdinFile, permissions: 0o600)
         if invocation.writesSystemPromptFile {
             try write(invocation.systemPrompt, to: invocation.systemPromptFile, permissions: 0o600)
+        }
+        if invocation.writesSchemaFile, let schema = invocation.schema {
+            try write(String(decoding: schema, as: UTF8.self), to: invocation.schemaFile, permissions: 0o600)
         }
         return try await body(invocation)
     }
@@ -372,7 +384,7 @@ extension LocalAgent {
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: arguments, stdin: "",
             directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
-            answersToFile: false, timeout: .seconds(60))
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(60))
         let environment = await AgentEnvironment.shared.value(for: executable)
         let output = try await withPreparedDirectory(invocation) {
             try await runProcess($0, environment: environment)
@@ -428,7 +440,7 @@ extension LocalAgent {
             executable: URL(fileURLWithPath: "/bin/zsh"),
             arguments: ["-lc", "command -v \(kind.executableName)"], stdin: "",
             directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
-            answersToFile: false, timeout: .seconds(20))
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         let output = try? await withPreparedDirectory(invocation) {
             try await runProcess($0, environment: ProcessInfo.processInfo.environment)
         }
@@ -451,7 +463,7 @@ extension LocalAgent {
         let version = LocalAgentInvocation(
             executable: executable, arguments: ["--version"], stdin: "",
             directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
-            answersToFile: false, timeout: .seconds(20))
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         do {
             let reported = try await withPreparedDirectory(version) {
                 try await runProcess($0, environment: environment)
@@ -527,7 +539,7 @@ actor AgentEnvironment {
         let invocation = LocalAgentInvocation(
             executable: URL(fileURLWithPath: "/bin/zsh"), arguments: ["-lc", "printf %s \"$PATH\""],
             stdin: "", directory: LocalAgent.temporaryDirectory(), writesSystemPromptFile: false,
-            systemPrompt: "", answersToFile: false, timeout: .seconds(10))
+            systemPrompt: "", answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(10))
         let output = try? await LocalAgent.withPreparedDirectory(invocation) {
             try await LocalAgent.runProcess($0, environment: ProcessInfo.processInfo.environment)
         }

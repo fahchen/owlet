@@ -254,3 +254,33 @@ enum TestReplies {
 }
 
 final class Captured: @unchecked Sendable { var request: URLRequest? }
+
+/// BDR-0005: a translation's explanations use its own target; a polish's use the mapped target of the
+/// text it polished. A polish keeps the text's language, so reading the request's language verbatim
+/// would explain 润色英文 in English instead of the mapped 中文.
+@Test func aRecommendationIsExplainedInTheMappedLanguage() throws {
+    var client = ModelClient()
+    client.targetMapping = { TargetMapping(targets: ["en": "zh-Hans"], fallback: "zh-Hans") }
+
+    func prompt(_ operation: Operation, text language: String) throws -> String {
+        let request = try client.makeLearningRequest(
+            text: "Hello", operation: operation, targetLanguage: language, result: "你好",
+            config: testConfig)
+        let body = try #require(
+            try JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+        let messages = try #require(body["messages"] as? [[String: String]])
+        return try #require(messages.first?["content"])
+    }
+
+    // Compared through `LanguageCatalog.name` rather than a literal: the test bundle resolves a
+    // different language than the app does, so a hard-coded name would be fragile.
+    let chinese = LanguageCatalog.name(for: "zh-Hans")
+    let english = LanguageCatalog.name(for: "en")
+    #expect(chinese != english)
+
+    // 润色英文: the mapped target of the text's language, not the language itself.
+    #expect(try prompt(.polish, text: "en").contains(chinese))
+    #expect(!(try prompt(.polish, text: "en").contains("meaning is \(english)")))
+    // 翻译成英文: its own target, and the mapping must not override it.
+    #expect(try prompt(.translate, text: "en").contains("meaning is \(english)"))
+}

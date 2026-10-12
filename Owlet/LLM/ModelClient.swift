@@ -93,6 +93,9 @@ struct ModelClient: Sendable {
     /// Where a finished exchange goes for the debug page; off by default so ordinary use never keeps
     /// the user's text.
     var capture: DebugCapture = .live
+    /// The target mapping, for the language a recommendation is explained in (BDR-0005); injectable so
+    /// a test can act as a different mapping.
+    var targetMapping: @Sendable () -> TargetMapping = { SettingsStore.targetMapping() }
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
@@ -249,7 +252,13 @@ struct ModelClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        let meaningLanguage = LanguageCatalog.name(for: targetLanguage)
+        // BDR-0005: a translation is explained in its own target; a polish keeps the text's language, so
+        // its explanations use that language's mapped target instead — not the language itself.
+        let explainedIn =
+            operation == .polish
+            ? targetMapping().target(forSource: LanguageTag.key(targetLanguage))
+            : targetLanguage
+        let meaningLanguage = LanguageCatalog.name(for: explainedIn)
         let task = ModelPrompts.format(
             operation == .polish ? "learningTaskPolish" : "learningTaskTranslate", meaningLanguage)
         var system = promptForOperation(operation) + "\n\n"

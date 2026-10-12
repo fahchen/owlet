@@ -262,7 +262,8 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
     var client = ModelClient()
     client.targetMapping = { TargetMapping(targets: ["en": "zh-Hans"], fallback: "zh-Hans") }
 
-    func prompt(_ operation: Operation, text language: String) throws -> String {
+    // Qualified: `Foundation.Operation` is in scope here too, and the two are ambiguous unqualified.
+    func prompt(_ operation: Owlet.Operation, text language: String) throws -> String {
         let request = try client.makeLearningRequest(
             text: "Hello", operation: operation, targetLanguage: language, result: "你好",
             config: testConfig)

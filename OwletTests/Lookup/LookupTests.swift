@@ -974,7 +974,7 @@ final class LookupTransport: Sendable {
 
 /// BDR-0005 as revised: the meaning is requested in the language the settings ask for **now**, not
 /// the one the entry was collected with — changing the mapping and regenerating switches language.
-@Test func aMeaningIsRequestedInTheLanguageTheSettingsNowAskFor() async throws {
+@MainActor @Test func aMeaningIsRequestedInTheLanguageTheSettingsNowAskFor() async throws {
     let store = try makeVocabularyStore()
     let asked = Mutex("")
     let answer = learningBody(
@@ -1013,7 +1013,7 @@ final class LookupTransport: Sendable {
 }
 
 /// An entry with no meaning yet has its own 补充释义 entry, so it is never called stale.
-@Test func anEntryWithoutAMeaningIsNotCalledStale() throws {
+@MainActor @Test func anEntryWithoutAMeaningIsNotCalledStale() throws {
     let store = try makeVocabularyStore()
     let entry = try store.collect(
         VocabularyDraft(expression: "follow up", language: "en", context: "I will follow up."))

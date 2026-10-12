@@ -61,7 +61,7 @@ struct TargetMappingSettingsView: View {
                     Image(systemName: "info.circle")
                         .foregroundStyle(.secondary)
                         .accessibilityLabel(nativeExplanation)
-                        .hoverTip(nativeExplanation)
+                        .hoverTip(verbatim: nativeExplanation)
                 }
             }
         }

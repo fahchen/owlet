@@ -3,12 +3,15 @@ import SwiftUI
 import Security
 
 enum Provider: String, CaseIterable, Sendable {
-    case openAICompatible, deepSeek
+    case openAICompatible, deepSeek, claudeCode, codexCLI, piCLI
 
     var title: LocalizedStringResource {
         switch self {
         case .openAICompatible: "OpenAI Compatible"
         case .deepSeek: "DeepSeek"
+        case .claudeCode: "Claude Code"
+        case .codexCLI: "Codex CLI"
+        case .piCLI: "pi"
         }
     }
 
@@ -17,14 +20,29 @@ enum Provider: String, CaseIterable, Sendable {
         switch self {
         case .openAICompatible: nil
         case .deepSeek: ("https://api.deepseek.com", "deepseek-chat")
+        case .claudeCode, .codexCLI, .piCLI: nil
         }
     }
 
-    /// DeepSeek rejects `json_schema` and only accepts `json_object`.
-    var supportsJSONSchema: Bool { self != .deepSeek }
+    /// DeepSeek rejects `json_schema` and only accepts `json_object`; a local agent has no response
+    /// format parameter at all, so its shape travels in the prompt like DeepSeek's.
+    var supportsJSONSchema: Bool { self == .openAICompatible }
 
     /// OpenAI compatible keeps the pre-provider "default" account so existing keys still resolve.
     var keychainAccount: String { self == .openAICompatible ? "default" : rawValue }
+
+    /// The CLI this provider drives, or nil when the provider is an HTTP service.
+    var localAgent: LocalAgentKind? {
+        switch self {
+        case .openAICompatible, .deepSeek: nil
+        case .claudeCode: .claudeCode
+        case .codexCLI: .codexCLI
+        case .piCLI: .piCLI
+        }
+    }
+
+    /// A local agent needs no API key, so the settings pane asks it for an executable instead.
+    var isLocalAgent: Bool { localAgent != nil }
 }
 
 /// How hard the provider may think before answering. `.automatic` keeps the provider's own default
@@ -55,6 +73,9 @@ struct ServiceConfig: Sendable, Equatable {
     var apiKey: String
     var provider: Provider = .openAICompatible
     var effort: EffortLevel = .off
+    /// The agent CLI to run, for a local-agent provider; nil for an HTTP service. `baseURL` and `apiKey`
+    /// are then unused — the shared request builders still need a URL, and no key is involved.
+    var agentExecutable: URL? = nil
 }
 
 enum SettingsStore {
@@ -67,19 +88,52 @@ enum SettingsStore {
     static let defaultTargetLanguage = "zh-Hans"
     private static let keychainService = "dev.fahchen.owlet.apiKey"
 
-    /// Returns nil when any required setting is missing.
-    static func currentConfig() -> ServiceConfig? {
-        let defaults = UserDefaults.standard
+    /// Returns nil when any required setting is missing. A local agent needs an executable that is
+    /// really there instead of an API key, and may leave the model name to the agent's own default.
+    static func currentConfig() -> ServiceConfig? { currentConfig(in: .standard) }
+
+    /// The same, against a chosen store, so a test never reads the developer's own settings. The API
+    /// key still comes from the Keychain: a local agent has none, which is the only case a test needs.
+    static func currentConfig(in defaults: UserDefaults) -> ServiceConfig? {
         let provider = defaults.string(forKey: providerKey).flatMap(Provider.init) ?? .openAICompatible
+        let model = defaults.string(forKey: modelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+        if provider.isLocalAgent {
+            guard let path = agentPath(for: provider, in: defaults),
+                FileManager.default.isExecutableFile(atPath: path)
+            else { return nil }
+            return ServiceConfig(
+                baseURL: LocalAgent.unusedBaseURL, model: model, apiKey: "", provider: provider,
+                effort: effort(), agentExecutable: URL(fileURLWithPath: path))
+        }
         guard
             let base = defaults.string(forKey: baseURLKey)?.trimmingCharacters(in: .whitespaces),
             let url = URL(string: base), url.scheme != nil,
-            let model = defaults.string(forKey: modelKey)?.trimmingCharacters(in: .whitespaces),
             !model.isEmpty,
             let key = apiKey(for: provider), !key.isEmpty
         else { return nil }
         return ServiceConfig(
             baseURL: url, model: model, apiKey: key, provider: provider, effort: effort())
+    }
+
+    /// Where one local agent's executable lives. Kept per provider: a machine can have several of them,
+    /// and switching provider must not carry the other one's path along.
+    static func agentPathKey(for provider: Provider) -> String { "service.agentPath.\(provider.rawValue)" }
+
+    static func agentPath(for provider: Provider, in defaults: UserDefaults = .standard) -> String? {
+        guard let path = defaults.string(forKey: agentPathKey(for: provider)),
+            !path.trimmingCharacters(in: .whitespaces).isEmpty
+        else { return nil }
+        return path
+    }
+
+    static func setAgentPath(
+        _ path: String?, for provider: Provider, in defaults: UserDefaults = .standard
+    ) {
+        if let path, !path.trimmingCharacters(in: .whitespaces).isEmpty {
+            defaults.set(path, forKey: agentPathKey(for: provider))
+        } else {
+            defaults.removeObject(forKey: agentPathKey(for: provider))
+        }
     }
 
     static func apiKey(for provider: Provider) -> String? {

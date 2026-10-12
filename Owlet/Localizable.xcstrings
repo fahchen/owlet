@@ -233,6 +233,35 @@
         }
       }
     },
+    "%@ was not found on the login shell's PATH.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ was not found on the login shell's PATH."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログインシェルの PATH に %@ が見つかりません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在登录 shell 的 PATH 里没有找到 %@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在登入 shell 的 PATH 裡找不到 %@。"
+          }
+        }
+      }
+    },
     "%@ · %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1016,6 +1045,35 @@
         }
       }
     },
+    "Choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇"
+          }
+        }
+      }
+    },
     "Choose a language to add": {
       "extractionState": "manual",
       "localizations": {
@@ -1041,6 +1099,93 @@
           "stringUnit": {
             "state": "translated",
             "value": "選擇要新增的語言"
+          }
+        }
+      }
+    },
+    "Choose the agent's executable file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the agent's executable file."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agent の実行ファイルを選択してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择该 agent 的可执行文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇該 agent 的可執行檔。"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇…"
+          }
+        }
+      }
+    },
+    "Claude Code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
           }
         }
       }
@@ -1215,6 +1360,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "關閉視窗"
+          }
+        }
+      }
+    },
+    "Codex CLI": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex CLI"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex CLI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex CLI"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex CLI"
           }
         }
       }
@@ -1712,6 +1886,64 @@
         }
       }
     },
+    "Detect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detect"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検出"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检测"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偵測"
+          }
+        }
+      }
+    },
+    "Detected: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detected: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検出：%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已检测：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已偵測：%@"
+          }
+        }
+      }
+    },
     "Dismiss": {
       "extractionState": "manual",
       "localizations": {
@@ -1824,6 +2056,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "填寫服務商提供的模型名稱"
+          }
+        }
+      }
+    },
+    "Executable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executable"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行ファイル"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可执行文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可執行檔"
           }
         }
       }
@@ -2694,6 +2955,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "學習內容不包含你已經掌握的語言；它不改變釋義所用的語言。"
+          }
+        }
+      }
+    },
+    "Leave empty to use the agent's own default model": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave empty to use the agent's own default model"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空欄にすると agent 自身の既定モデルを使います"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空则使用该 agent 自己的默认模型"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空則使用該 agent 自己的預設模型"
           }
         }
       }
@@ -5888,6 +6178,35 @@
         }
       }
     },
+    "The agent uses its own sign-in, so no API key is needed here. Its tools, skills, project context and session files stay switched off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The agent uses its own sign-in, so no API key is needed here. Its tools, skills, project context and session files stay switched off."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この agent は自身のサインインを使うため、ここに API キーは不要です。ツール、スキル、プロジェクトのコンテキスト、セッションファイルは無効のままです。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该 agent 使用自己的登录状态，因此这里不需要 API Key；它的工具、技能、项目上下文与会话文件都保持关闭。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "該 agent 使用自己的登入狀態，因此這裡不需要 API Key；它的工具、技能、專案內容與工作階段檔案都保持關閉。"
+          }
+        }
+      }
+    },
     "The content cannot be empty; this change was not applied.": {
       "extractionState": "manual",
       "localizations": {
@@ -5942,6 +6261,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "首個差異在第 %lld 個字元：\n回傳 …%@…\n提交 …%@…"
+          }
+        }
+      }
+    },
+    "The local agent failed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The local agent failed: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカル agent の実行に失敗しました：%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 agent 运行失败：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機 agent 執行失敗：%@"
           }
         }
       }
@@ -7015,6 +7363,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "並取代"
+          }
+        }
+      }
+    },
+    "pi": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pi"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pi"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pi"
           }
         }
       }

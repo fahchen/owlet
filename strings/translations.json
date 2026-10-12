@@ -39,6 +39,11 @@
     "zh-Hans": "%@并替换",
     "zh-Hant": "%@並取代"
   },
+  "%@ was not found on the login shell's PATH.": {
+    "ja": "ログインシェルの PATH に %@ が見つかりません。",
+    "zh-Hans": "在登录 shell 的 PATH 里没有找到 %@。",
+    "zh-Hant": "在登入 shell 的 PATH 裡找不到 %@。"
+  },
   "%@ · %@": {
     "ja": "%@ · %@",
     "zh-Hans": "%@ · %@",
@@ -174,10 +179,30 @@
     "zh-Hans": "已取消处理",
     "zh-Hant": "已取消處理"
   },
+  "Choose": {
+    "ja": "選択",
+    "zh-Hans": "选择",
+    "zh-Hant": "選擇"
+  },
   "Choose a language to add": {
     "ja": "追加する言語を選択",
     "zh-Hans": "选择要添加的语言",
     "zh-Hant": "選擇要新增的語言"
+  },
+  "Choose the agent's executable file.": {
+    "ja": "agent の実行ファイルを選択してください。",
+    "zh-Hans": "选择该 agent 的可执行文件。",
+    "zh-Hant": "選擇該 agent 的可執行檔。"
+  },
+  "Choose…": {
+    "ja": "選択…",
+    "zh-Hans": "选择…",
+    "zh-Hant": "選擇…"
+  },
+  "Claude Code": {
+    "ja": "Claude Code",
+    "zh-Hans": "Claude Code",
+    "zh-Hant": "Claude Code"
   },
   "Clear": {
     "ja": "消去",
@@ -208,6 +233,11 @@
     "ja": "ウインドウを閉じる",
     "zh-Hans": "关闭窗口",
     "zh-Hant": "關閉視窗"
+  },
+  "Codex CLI": {
+    "ja": "Codex CLI",
+    "zh-Hans": "Codex CLI",
+    "zh-Hant": "Codex CLI"
   },
   "Configure Service": {
     "ja": "サービスを設定",
@@ -294,6 +324,16 @@
     "zh-Hans": "删除所选 %lld 条历史记录？",
     "zh-Hant": "刪除所選 %lld 筆歷史記錄？"
   },
+  "Detect": {
+    "ja": "検出",
+    "zh-Hans": "检测",
+    "zh-Hant": "偵測"
+  },
+  "Detected: %@": {
+    "ja": "検出：%@",
+    "zh-Hans": "已检测：%@",
+    "zh-Hant": "已偵測：%@"
+  },
   "Dismiss": {
     "ja": "閉じる",
     "zh-Hans": "关闭提示",
@@ -313,6 +353,11 @@
     "ja": "プロバイダが指定するモデル名を入力してください",
     "zh-Hans": "填写服务商提供的模型名称",
     "zh-Hant": "填寫服務商提供的模型名稱"
+  },
+  "Executable": {
+    "ja": "実行ファイル",
+    "zh-Hans": "可执行文件",
+    "zh-Hant": "可執行檔"
   },
   "Expression": {
     "ja": "表現",
@@ -463,6 +508,11 @@
     "ja": "すでに習得している言語の表現は学習内容に含まれません。解説に使う言語は変わりません。",
     "zh-Hans": "学习内容不包含你已经掌握的语言；它不改变释义所用的语言。",
     "zh-Hant": "學習內容不包含你已經掌握的語言；它不改變釋義所用的語言。"
+  },
+  "Leave empty to use the agent's own default model": {
+    "ja": "空欄にすると agent 自身の既定モデルを使います",
+    "zh-Hans": "留空则使用该 agent 自己的默认模型",
+    "zh-Hant": "留空則使用該 agent 自己的預設模型"
   },
   "Look Up": {
     "ja": "調べる",
@@ -1014,6 +1064,11 @@
     "zh-Hans": "API Key 存在钥匙串里；离开输入框后生效。",
     "zh-Hant": "API Key 存在鑰匙圈裡；離開輸入框後生效。"
   },
+  "The agent uses its own sign-in, so no API key is needed here. Its tools, skills, project context and session files stay switched off.": {
+    "ja": "この agent は自身のサインインを使うため、ここに API キーは不要です。ツール、スキル、プロジェクトのコンテキスト、セッションファイルは無効のままです。",
+    "zh-Hans": "该 agent 使用自己的登录状态，因此这里不需要 API Key；它的工具、技能、项目上下文与会话文件都保持关闭。",
+    "zh-Hant": "該 agent 使用自己的登入狀態，因此這裡不需要 API Key；它的工具、技能、專案內容與工作階段檔案都保持關閉。"
+  },
   "The content cannot be empty; this change was not applied.": {
     "ja": "内容を空にはできません。この変更は反映されませんでした。",
     "zh-Hans": "内容不能为空；这次改动没有生效。",
@@ -1023,6 +1078,11 @@
     "ja": "最初の違いは %lld 文字目です：\n返された …%@…\n送信した …%@…",
     "zh-Hans": "首个差异在第 %lld 个字符：\n返回 …%@…\n提交 …%@…",
     "zh-Hant": "首個差異在第 %lld 個字元：\n回傳 …%@…\n提交 …%@…"
+  },
+  "The local agent failed: %@": {
+    "ja": "ローカル agent の実行に失敗しました：%@",
+    "zh-Hans": "本地 agent 运行失败：%@",
+    "zh-Hant": "本機 agent 執行失敗：%@"
   },
   "The model service is not configured": {
     "ja": "モデルサービスが未設定です",
@@ -1208,6 +1268,11 @@
     "ja": "して置換",
     "zh-Hans": "并替换",
     "zh-Hant": "並取代"
+  },
+  "pi": {
+    "ja": "pi",
+    "zh-Hans": "pi",
+    "zh-Hant": "pi"
   },
   "日本語": {
     "ja": "日本語",

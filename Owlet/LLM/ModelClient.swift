@@ -15,6 +15,9 @@ enum ModelError: Error, Equatable {
     case targetMismatch(requested: String, returned: String)
     case truncated
     case refused
+    /// A local agent CLI could not be reached or did not answer: it is missing, exited with an error, or
+    /// ran past its time limit. The detail is the agent's own error output.
+    case localAgent(String)
 
     /// A failure reaches the user as its message, and that is all the panel keeps: the kind above
     /// decides what it means, this decides how it reads.
@@ -38,6 +41,7 @@ enum ModelError: Error, Equatable {
                 "The reply is in %@, which does not match the requested %@.", returned, requested)
         case .truncated: L10n.shared.string("The result was cut off for being too long.")
         case .refused: L10n.shared.string("The service refused to process this text.")
+        case .localAgent(let detail): L10n.shared.string("The local agent failed: %@", detail)
         }
     }
 
@@ -56,7 +60,7 @@ enum ModelError: Error, Equatable {
     var kind: Kind {
         switch self {
         case .format, .sourceMismatch, .targetMismatch: .contract
-        case .network, .unauthorized, .http: .connection
+        case .network, .unauthorized, .http, .localAgent: .connection
         case .emptyResponse, .truncated, .refused: .service
         }
     }
@@ -78,7 +82,7 @@ extension ModelClient {
     static func isCorrectable(_ error: ModelError) -> Bool {
         switch error {
         case .format, .sourceMismatch, .targetMismatch: true
-        case .network, .unauthorized, .http, .emptyResponse, .truncated, .refused: false
+        case .network, .unauthorized, .http, .localAgent, .emptyResponse, .truncated, .refused: false
         }
     }
 
@@ -87,6 +91,9 @@ extension ModelClient {
 
 struct ModelClient: Sendable {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// How a request reaches a local agent CLI. The HTTP providers never touch it, and the HTTP
+    /// transport is never touched for a local-agent provider.
+    var localAgent: LocalAgent = LocalAgent()
     /// Resolves the behavior prompt for an operation, so a saved custom prompt reaches assembly while
     /// a test can substitute a hostile one; the fixed contract is appended by `makeRequest` either way.
     var promptForOperation: @Sendable (Operation) -> String = { SettingsStore.prompt(for: $0) }
@@ -123,6 +130,7 @@ struct ModelClient: Sendable {
             text: text, operation: operation, targetLanguage: target, config: config)
         return try await perform(
             request, title: Self.debugTitle(operation: operation, target: target), submitted: text,
+            config: config,
             parse: { try TranslationResult.parse($0, submitted: text, targetLanguage: target) })
     }
 
@@ -187,6 +195,7 @@ struct ModelClient: Sendable {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return try await perform(
             request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
+            config: config,
             parse: { try LearningResult.item($0, expression: expression).meaning })
     }
 
@@ -203,7 +212,9 @@ struct ModelClient: Sendable {
         let request = try makeLearningRequest(
             text: text, operation: operation, targetLanguage: targetLanguage, result: result,
             config: config)
-        switch try await attempt(request, title: L10n.shared.string("Study Expressions"), submitted: text) {
+        switch try await attempt(
+            request, title: L10n.shared.string("Study Expressions"), submitted: text, config: config)
+        {
         case .success(let items):
             return learnable(items)
         case .failure(let error):
@@ -219,7 +230,8 @@ struct ModelClient: Sendable {
                 text: text, operation: operation, targetLanguage: targetLanguage, result: result,
                 config: config, correcting: error.content, reasons: reasons)
             switch try await attempt(
-                correction, title: L10n.shared.string("Study Expressions (corrected)"), submitted: text)
+                correction, title: L10n.shared.string("Study Expressions (corrected)"), submitted: text,
+                config: config)
             {
             case .success(let items): return learnable(items)
             case .failure(let retried): throw retried.error
@@ -230,9 +242,9 @@ struct ModelClient: Sendable {
     /// Sends one request and parses it; the parse failure carries the content back, because the
     /// corrective round has to show the model the reply it must fix. Everything else throws.
     private func attempt(
-        _ request: URLRequest, title: String, submitted: String
+        _ request: URLRequest, title: String, submitted: String, config: ServiceConfig
     ) async throws -> Result<[LearningResult.Item], ContractError> {
-        try await perform(request, title: title, submitted: submitted) {
+        try await perform(request, title: title, submitted: submitted, config: config) {
             (content: String) -> Result<[LearningResult.Item], ContractError> in
             do {
                 return .success(try LearningResult.parse(content))
@@ -348,7 +360,7 @@ struct ModelClient: Sendable {
     func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
         let request = try makeLookupRequest(query, config: config)
         let title = L10n.shared.string("Look Up · %@", query.definitionLanguage)
-        switch try await attemptLookup(request, query: query, title: title) {
+        switch try await attemptLookup(request, query: query, title: title, config: config) {
         case .success(let result):
             return result
         case .failure(let error):
@@ -361,7 +373,8 @@ struct ModelClient: Sendable {
             let correction = try makeLookupRequest(
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
-                correction, query: query, title: L10n.shared.string("%@ (corrected)", title))
+                correction, query: query, title: L10n.shared.string("%@ (corrected)", title),
+                config: config)
             {
             case .success(let result): return result
             case .failure(let retried): throw retried.error
@@ -371,7 +384,7 @@ struct ModelClient: Sendable {
 
     /// Sends one lookup and parses it; the parse failure carries the content back for correction.
     private func attemptLookup(
-        _ request: URLRequest, query: LookupQuery, title: String
+        _ request: URLRequest, query: LookupQuery, title: String, config: ServiceConfig
     ) async throws -> Result<LookupResult, ContractError> {
         func parsed(_ content: String) -> Result<LookupResult, ContractError> {
             do {
@@ -380,7 +393,8 @@ struct ModelClient: Sendable {
                 return .failure(ContractError(error: error, content: content))
             }
         }
-        return try await perform(request, title: title, submitted: query.text, parse: parsed)
+        return try await perform(
+            request, title: title, submitted: query.text, config: config, parse: parsed)
     }
 
     func makeLookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> URLRequest {
@@ -468,7 +482,7 @@ struct ModelClient: Sendable {
     func listModels(baseURL: URL, apiKey: String) async throws -> [String] {
         var request = URLRequest(url: baseURL.appending(path: "models"))
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        let data = try await send(request)
+        let data = try await sendHTTP(request)
         guard let list = try? JSONDecoder().decode(ModelList.self, from: data) else {
             throw ModelError.format
         }
@@ -493,7 +507,8 @@ struct ModelClient: Sendable {
     /// then parses the decoded content. Every request type goes through here so none is silently
     /// left off the debug page.
     private func perform<T>(
-        _ request: URLRequest, title: String, submitted: String, parse: (String) throws -> T
+        _ request: URLRequest, title: String, submitted: String, config: ServiceConfig,
+        parse: (String) throws -> T
     ) async throws -> T {
         let capture = capture
         let records = capture.isEnabled()
@@ -504,14 +519,15 @@ struct ModelClient: Sendable {
         defer {
             if records {
                 let exchange = DebugExchange(
-                    title: title, request: Self.prettyPrintedBody(request), submitted: submitted,
-                    response: response, failure: failure, failureKind: failureKind)
+                    title: title, request: requestDescription(request, config: config),
+                    submitted: submitted, response: response, failure: failure,
+                    failureKind: failureKind)
                 let record = capture.record
                 Task { await record(exchange) }
             }
         }
         do {
-            let content = try decodedContent(try await send(request))
+            let content = try decodedContent(try await send(request, config: config))
             response = content
             return try parse(content)
         } catch {
@@ -519,6 +535,15 @@ struct ModelClient: Sendable {
             failureKind = (error as? ModelError)?.kind
             throw error
         }
+    }
+
+    /// What the debug page shows as the request: the body for an HTTP provider, the command line for a
+    /// local agent — which is the thing that actually ran, and the only place the agent's switches show.
+    private func requestDescription(_ request: URLRequest, config: ServiceConfig) -> String {
+        guard let kind = config.provider.localAgent,
+            let command = localAgent.command(kind: kind, request: request, config: config)
+        else { return Self.prettyPrintedBody(request) }
+        return command
     }
 
     /// The shared chat body: model, messages and response format, plus the reasoning effort only when
@@ -531,13 +556,24 @@ struct ModelClient: Sendable {
             "messages": messages,
             "response_format": responseFormat,
         ]
-        if let value = ModelEffort.reasoningEffort(for: config.effort, model: config.model) {
+        // A local agent maps the level to its own switch, so the OpenAI-style field would only be a
+        // stray key in a body nothing sends.
+        if config.provider.localAgent == nil,
+            let value = ModelEffort.reasoningEffort(for: config.effort, model: config.model)
+        {
             body["reasoning_effort"] = value
         }
         return body
     }
 
-    private func send(_ request: URLRequest) async throws -> Data {
+    /// Reaches the model: an HTTP provider posts the request, a local agent runs it through its CLI.
+    /// Both hand back the same chat envelope, so everything downstream has one path.
+    private func send(_ request: URLRequest, config: ServiceConfig) async throws -> Data {
+        guard let kind = config.provider.localAgent else { return try await sendHTTP(request) }
+        return try await localAgent.complete(kind: kind, request: request, config: config)
+    }
+
+    private func sendHTTP(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {

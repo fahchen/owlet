@@ -8,7 +8,7 @@ Owlet 的仓库级约定。产品行为以 `spec/` 为准，本文只说「怎�
 mise run check    # lint + 生成工程 + 测试；pre-commit 与 CI 都跑它
 mise run format   # swift-format 就地格式化，改完 Swift 先跑再 check
 mise run dev      # 构建并重启本机 Owlet
-mise run prod     # Release 通用二进制，校验后打包到 dist/（版本取自 project.yml）
+mise run prod     # Release 构建，校验后打包到 dist/（默认同时产出 universal 与 arm64；版本取自 project.yml）
 scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/derived（可选）
 ```
 

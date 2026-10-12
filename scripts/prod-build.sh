@@ -14,9 +14,9 @@
 #                         [--out <dir>] [--notarise <keychain-profile>] [--no-package] [--help]
 #
 # Examples:
-#   scripts/prod-build.sh                                  # universal, signed as the project configures
+#   scripts/prod-build.sh                                  # both architectures, signed as the project configures
+#   scripts/prod-build.sh --arch universal                 # only the universal build
 #   scripts/prod-build.sh --arch arm64                     # this Mac's architecture only, smaller
-#   scripts/prod-build.sh --arch both                      # universal and arm64, one run each
 #   scripts/prod-build.sh --team Z98NKJSF69                # sign with that team explicitly
 #   scripts/prod-build.sh --team ABCDE12345 --notarise owlet-notary
 #
@@ -30,7 +30,9 @@ readonly project="Owlet.xcodeproj"
 
 identity="${OWLET_SIGN_IDENTITY:-}"
 team="${OWLET_TEAM:-}"
-arch="universal"
+# Two artifacts by default: the universal build for anyone else's Mac, and the arm64 one for this
+# machine's own use (smaller). `--arch` narrows it to one.
+arch="both"
 out_dir="dist"
 notarise_profile=""
 package=true

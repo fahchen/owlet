@@ -21,11 +21,12 @@
 | | Claude Code | Codex CLI | pi |
 | --- | --- | --- | --- |
 | 可执行文件 | `claude` | `codex` | `pi` |
-| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `-s read-only --disable shell_tool --disable hooks` | `--no-tools --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files` |
-| 用户级配置 | 由 `--safe-mode` 全部跳过，**保留登录态** | 不忽略用户配置；`-c approval_policy` 覆盖审批，`--disable hooks` 停掉用户自己的 hooks | `--no-approve` 忽略项目信任文件 |
+| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `--ignore-user-config -s read-only --disable shell_tool --disable hooks` | `--no-tools --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files` |
+| 用户级配置 | 由 `--safe-mode` 全部跳过，**保留登录态** | `--ignore-user-config` 不读 `config.toml`（因此没有用户的 MCP 服务器与 hooks），**登录态仍从 `auth.json` 读** | `--no-approve` 忽略项目信任文件 |
 | 系统提示词通道 | `--system-prompt` 参数 | 与原文合成一条，走标准输入 | `--system-prompt <文件>`（0600 临时文件） |
 | 原文通道 | 标准输入 | 标准输入 | 标准输入 |
 | 结果读取 | 标准输出 | `--output-last-message <文件>` | 标准输出 |
+| 响应 Schema | `--json-schema <json>` | `--output-schema <文件>` | 无，形状写在提示词里 |
 | 思考强度 | `--effort` | `-c model_reasoning_effort=` | `--thinking` |
 | 不落盘会话 | `--no-session-persistence` | `--ephemeral` | `--no-session` |
 
@@ -33,21 +34,29 @@ Codex 额外需要 `--skip-git-repo-check`（空目录不是仓库）与 `-C <�
 
 Claude Code 与 pi 还各拿一句**应用自己的**短指令作为位置参数（`Answer the request provided on standard input…`），真正的负载仍走标准输入：两者的文档只说「管道输入会附加到提示词」，没有承诺没有提示词时把标准输入当成提示词；这句话不含用户内容，`ps` 里看到它没有关系。Codex 用 `-` 明确要求从标准输入读提示词。
 
-真实调用暴露过三处 Codex 细节（2026-10-13 实测 codex 0.160.1）：`codex exec` 不接受 `--ask-for-approval`（那是顶层选项，子命令直接以 exit 2 拒绝），审批策略改用 `-c approval_policy="never"`；`--ephemeral` 并不阻止用户自己配置的 hooks 在每次请求里执行，所以要显式 `--disable hooks`；思考强度的枚举里有 `none`，但模型不认——`gpt-6.1-sol` 对 `none` 返回 HTTP 400 并列出 `low／medium／high／xhigh／max`，而「关闭」正是未改动安装的默认档，所以 Codex 的关闭取最低档 `low`。
+真实调用暴露过四处 Codex 细节（2026-10-13 实测 codex 0.160.1）：`codex exec` 不接受 `--ask-for-approval`（那是顶层选项，子命令直接以 exit 2 拒绝），审批策略改用 `-c approval_policy="never"`；`--ephemeral` 并不阻止用户自己配置的 hooks 在每次请求里执行，所以要显式 `--disable hooks`；思考强度的枚举里有 `none`，但模型不认——`gpt-6.1-sol` 对 `none` 返回 HTTP 400 并列出 `low／medium／high／xhigh／max`，而「关闭」正是未改动安装的默认档，所以 Codex 的关闭取最低档 `low`；`--ignore-user-config` 之外还会加载用户配置里的 **MCP 服务器**并在每次请求时连接、把它们的工具定义注入提示词——加上这个开关后实测 MCP 连接 0 次、hooks 0 次，同一条请求的 tokens 从约 3 万降到约 1.5 万。代价是**用户 `config.toml` 里的自定义 provider／模型不再生效**（登录态不受影响）。
 
 思考强度沿用「档位按模型映射、不支持时取最近的较低档」：Claude Code 的档位是 `low／medium／high／xhigh／max`，没有关闭档，`关闭` 取最低档；Codex 的开关值域相同（见上），`关闭` 也取 `low`；pi 是 `off／minimal／low／medium／high／xhigh／max`，`关闭` 就是 `off`。`自动` 一律不发送该参数。
 
-这三张表是**按 CLI 的档位**而不是按模型做的，因为本地 agent 的模型由它自己决定、应用甚至可以为空：某个模型只接受更窄的值域时，只有那一次请求失败（提示里带着 agent 自己的报错）。相比之下 HTTP 服务的表能按模型名细分。等真实使用暴露更多模型差异，再决定要不要给本地 agent 也加一张按模型的表。
+能反查档位的 provider 用**它自己的清单**：Codex 的 `codex debug models` 每个模型都带 `supported_reasoning_levels`，应用据此按模型映射（不支持的档位取该模型内最近的较低档；模型完全不支持推理时不发送该参数）。pi 只给出 `thinking: yes/no`，档位值域是它文档里的固定七档且由它自己 clamp；Claude Code 没有任何清单。所以「按模型」在 Codex 上是真数据，在 pi／Claude Code 上是静态表。
 
-### 3. 请求体仍是一份 JSON，agent 只是另一种投递
+### 3. 统一抽象：一个请求值，每个服务商各自投递
 
-三个 `make…Request` 组装的 OpenAI 风格 JSON body 仍是应用**唯一的请求 IR**：本地 agent 后端从 body 里取模型名、消息与思考强度，再翻译成命令行参数与标准输入；返回的最终文本套回同一份响应外壳。因此解码、截断／拒绝／空内容的判定、结构与原文拼接校验、纠正重试、调试页都只有一条代码路径，也不需要为每个 agent 各写一套解析。
+请求与投递分成两层（用户 2026-10-13 评审要求「统一抽象，然后每个 provider 分别实现」）：
 
-代价是一个诚实的不一致：`ServiceConfig` 仍带一个 `baseURL`，而本地 agent 从不请求它（它只是共享请求构造器的载体）。备选是引入一层 `Completion` 抽象并重写三处请求装配，收益只是命名，却要改掉十几个断言 URLRequest body 的测试，不采纳。
+- `ModelRequest` 是应用**唯一的请求值**：模型名、系统提示词、若干轮 `ModelTurn`（user／assistant）、响应格式、思考强度。
+- `ModelBackend` 是投递方式，每个服务商各自实现：`OpenAICompatibleBackend` 把它组建成 OpenAI 风格 body 并 POST；`LocalAgentBackend` 把它翻译成命令行参数与标准输入。
+- 请求构造（`translationRequest`／`learningRequest`／`lookupRequest`／`fillMeaning`）只产出 `ModelRequest`，因此它可以直接被断言，不必再经过一个假的 `URLRequest`。
 
-### 4. v1 不做结构化输出
+本地 agent 的答案就是进程输出的文本：它没有供应商外壳，所以**不再伪造一层 chat envelope 再解码**（这是评审 D2 的结论）。截断、拒绝与空内容由 HTTP backend 在自己的外壳里判定；本地 agent 的空输出就是空内容。
 
-本地 agent 一律按「只支持 `json_object`」处理：形状写在提示词里，本地校验完全不变。Codex 的 `--output-schema` 与 Claude Code 的 `--json-schema` 都能真正约束 schema，但都要按 CLI 版本与模型验证兼容性，留作后续增强，不在 v1 押注。
+`ServiceConfig` 仍带一个 `baseURL`，而本地 agent 从不请求它：它只是 HTTP backend 的输入，不是请求值的一部分。
+
+### 4. 结构化输出用能用的那一个
+
+能约束响应形状的 agent 就用它的开关（评审 D11 的结论）：Codex 写一份 schema 文件并传 `--output-schema`，Claude Code 传 `--json-schema <json>`；pi 没有这类开关（`--mode json` 是事件流，文档明确说它不约束模型返回），所以 pi 与 DeepSeek 走同一条路——形状写在提示词里。
+
+未支持的 provider 上，本地校验一点都不放松：`ModelRequest.format` 只是「这个服务商能不能被约束」，校验、纠正与写回判断都与它无关。实测 codex 0.160.1 + `--output-schema`：同一份 `$defs.result` schema 下直接返回契约形状的 JSON，逐句配对连 `source` 末尾空格都对。
 
 ### 5. 不需要 API Key
 
@@ -67,15 +76,21 @@ Claude Code 与 pi 还各拿一句**应用自己的**短指令作为位置参数
 
 设置页每次打开都主动扫一遍登录 shell 的 `PATH`：**没装的 agent 不出现在服务商列表里**，远程服务与本地 agent 之间用一条分隔线分成两组。选中某个 agent 时立刻找它——找得到就填好路径并显示版本，不需要先点「检测」；「检测」只是手动重来一次。用户手选的路径不会被扫描覆盖，只有在其不可执行时才改用扫描结果；有手选路径的 agent 即使不在 `PATH` 里也仍然列出，已选但已被删除的 agent 也保留在列表里，让人看到问题而不是一个空行。
 
-### 9. 模型名从 agent 自己的清单里选
+### 9. 能反查的能力按 provider 各自给出
 
-能列模型的 agent 把模型名做成下拉，第一项是「该 agent 自己的默认模型」——对 CLI 来说留空是一个真实选择，不是漏填。Codex 用 `codex debug models` 的目录（跳过 `visibility: "hide"` 的条目，值取 `slug`），pi 用 `--list-models` 的表格（值取 `provider/model`，同名模型在不同 provider 下才不歧义）。两者都是本地命令、不经过模型，所以打开设置页读一次很便宜；读取失败就在模型名行下就地提示并可重试，不改动已保存的值。
+每个 provider 给出它能给出的（评审 D4 的结论），应用不替它编：
 
-Claude Code 只有别名（`sonnet` 之类）而没有列举命令；静态写死一份别名清单会随 CLI 版本过期，比自由填写更糟，所以它保持文本框。
+| | 模型清单 | 强度清单 | 结构化输出 |
+| --- | --- | --- | --- |
+| Codex CLI | `codex debug models`（跳过 `visibility: "hide"`，值取 `slug`） | 同一份目录的 `supported_reasoning_levels`，**按模型** | `--output-schema <文件>` |
+| pi | `--list-models` 表格（值取 `provider/model`） | 只有 `thinking: yes/no`；值域是它文档里的固定七档，且由它自己 clamp | 无 |
+| Claude Code | 无列举命令 | 无 | `--json-schema <json>` |
+
+模型名做成下拉，第一项是「该 agent 自己的默认模型」——对 CLI 来说留空是一个真实选择，不是漏填。所有清单命令都是本地命令、不经过模型，所以打开设置页读一次很便宜；读取失败就在该行下就地提示并可重试，不改动已保存的值。Claude Code 只有别名（`sonnet` 之类）而没有列举命令；静态写死一份别名清单会随 CLI 版本过期，比自由填写更糟，所以它保持文本框。
 
 ## 备选与不采纳
 - **HTTP shim**：本地起一个常驻小服务，把 CLI 包成 `/v1/chat/completions`，应用零改动。不采纳：多一个要用户自己管的常驻进程，超时、取消与调试页都退化，而且「谁在用」变得不清楚。
-- **抽出 `protocol Completion` 重写请求装配**：概念更干净，但见 §3。
+- **保留「OpenAI 风格 body 即请求 IR」**：改动更小，但请求值只能通过一个假的 `URLRequest` 断言，且本地 agent 必须伪造一层响应外壳；评审要求统一抽象后改为 §3 的两层结构。
 - **Claude Code 的 `--bare`**：看着更干净，但它规定 auth 只能是 `ANTHROPIC_API_KEY` 或 apiKeyHelper，**不读 OAuth 与 keychain**——正好废掉「用订阅登录」这个前提，因此用 `--safe-mode` 加显式开关代替。
 - **让 agent 带着工具跑**：会读写用户文件，延迟与不确定性不可接受。
 - **长驻 RPC**（`pi --mode rpc`、`codex app-server`）：省启动开销、能流式输出，但要处理进程生命周期与协议版本漂移；留作后续。
@@ -84,6 +99,7 @@ Claude Code 只有别名（`sonnet` 之类）而没有列举命令；静态写�
 ## 后果与已知风险
 
 - CLI 参数是各 agent 的版本行为，升级后可能变化；缓解手段是探测版本号、把 agent 的 stderr 带进失败提示，并保留人工验收。
-- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒、pi 1.6 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。Codex 一次极小请求也要约 3 万 tokens（它自带很长的系统提示词与工具），额度成本明显高于直连。
+- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒、pi 1.6 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）。
+- **Codex 的 `--ignore-user-config` 有代价**：用户 `config.toml` 里配置的自定义 provider 与模型不再生效，应用只用它的内置默认（登录态照旧）。用自定义网关的用户会遇到这一条。
 - **不启用 App Sandbox 才能用**：受沙箱约束的应用无法执行用户本机的 CLI。这与 [规范范围边界](../../README.md) 里「本机签名自用，不启用 App Sandbox」一致；若将来上架并启用沙箱，这三个服务商要么移除，要么改走用户显式授权的路径。
-- 未验证：三个 agent 在真实登录态下的端到端译文质量与延迟；`--output-schema`／`--json-schema` 的可用性；各 CLI 后续版本对上述参数的兼容性。
+- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性。

@@ -1116,3 +1116,37 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] 新文案 4 条进 `strings/translations.json`，目录 239 → 243 条；顺带修掉 `TargetMappingSettingsView` footer 的 i18n 漏网。
 
 验证：`mise run lint` 退出码 0（格式、空白、目录与数据源一致）。**测试未能运行**——本机全工程无法编译（`swift-plugin-server` 报 malformed response，3600+ 个 `@Observable` macro 展开失败），按用户要求留到最后统一测试。
+
+## T61：本机 agent CLI 作为模型服务（Claude Code／Codex CLI／pi）
+
+依据 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) 与 [本地 agent 行为规格](../spec/settings/features/local-agent.feature)。用户 2026-10-12 要求「支持本地的 agent，比如 codex、pi 等来作为 llm provider」，并追问「还有 Claude Code」，确认三个一起做、先 spec 后实现。约束见 [LLM 契约](../spec/llm/contract.md) 的「本地 agent 作为服务」一节。
+
+范围与取舍：本地 agent 只当**一次性的纯补全后端**——每次请求起一个进程，工具／技能／MCP／项目上下文／会话落盘全关，工作目录是一次性空目录，Codex 另加只读沙箱。请求 IR 仍是现有 OpenAI 风格 JSON body，agent 后端只负责把它翻译成参数与标准输入，返回文本套回同一份响应外壳，因此契约校验、纠正重试、调试页与取消只有一条路径。v1 不接各家的结构化输出参数（`--output-schema`／`--json-schema`），一律走 `json_object` 路线。
+
+验收：
+
+- [x] `Provider` 新增 `.claudeCode`／`.codexCLI`／`.piCLI`；`ServiceConfig` 带该 agent 的可执行文件 URL；路径按服务商分别保存。
+- [x] 配置完整性改看「可执行文件存在且可执行」，本地 agent 不读 Keychain，模型名可留空。
+- [x] 三条配方与规格一致：Claude Code `--print --tools "" --safe-mode --strict-mcp-config --no-session-persistence`、pi `--print --no-tools --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --no-approve`、Codex `exec --ephemeral --skip-git-repo-check -s read-only -c approval_policy="never" --disable shell_tool --disable hooks -C <空目录> --output-last-message <文件>`。
+- [x] 系统提示词按各自通道交付；用户原文一律走标准输入，不进命令行参数。
+- [x] 思考强度按各 agent 的档位映射，`自动` 不发送；`关闭` 在 Claude Code 上取最低档。
+- [x] 返回套回同一响应外壳：截断、拒绝、空内容、结构、原文拼接、目标语言与纠正重试全部复用现有路径。
+- [x] 失败（不可执行、非零退出、超时）归 `ModelError.localAgent` 且 `kind == .connection`，提示带上该 agent 的 stderr；取消要结束子进程。
+- [x] 默认超时 180 秒；同时在跑的 agent 进程不超过 2 个。
+- [x] 临时目录用完删除；系统提示词文件 0600。
+- [x] 设置页本地 agent 分支：不再显示 Base URL 与 API Key，给出可执行文件行、「检测」（登录 shell 查找 + `--version` 显示版本）、模型名与思考强度；服务商列表按本机实际扫描结果给出（没装的不显示，远程与本地分两组），切到某个 agent 时自动找到它。
+- [x] 新文案进 `strings/translations.json` 并重新生成目录；`mise run lint` 与 `mise run check` 退出码 0。
+- [x] 测试不调用真实 CLI 与真实模型：配方、body 拆分、响应外壳、超时／取消／非零退出用 `/bin/sh` 与注入的假 runner 覆盖。
+
+结果（2026-10-12，真实调用与端到端补测见下）：
+
+- 实现：新增 [LocalAgent.swift](../Owlet/LLM/LocalAgent.swift)（三套配方、进程运行、超时与取消、并发闸 2、登录 shell `PATH`、检测与版本、一次性空目录），`Provider` 三个新 case 与 `ServiceConfig.agentExecutable`，`ModelClient.send` 按 provider 分派并把调试页的请求体换成实际命令行，本地 agent 不再往 body 里塞 OpenAI 风格的 `reasoning_effort`，[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 增加本地 agent 分支。`claude` 与 `pi` 的命令行只带一句应用自己的短指令，真正的负载走标准输入（两者都没有「无提示词时把 stdin 当提示词」的明确文档）；`codex` 用 `-`。
+- 测试：新增 `LocalAgentTests`（23 条）与 `AgentSettingsTests`（5 条）——配方、档位映射、body 拆分与纠正轮顺序、响应外壳、`ModelClient` 分派（注入假 runner，且断言 HTTP transport 从未被调用）、空返回、错误分类，以及用真实 `/bin/sh` 覆盖 stdin 投递、系统提示词文件、答案文件、非零退出、**stdout 里的失败说明**、超时、取消、目录清理与并发上限。全套 **388 项 / 48 个 suite 通过**，提交进仓库的测试不调用真实 CLI 与真实模型。
+- **真实端到端实测（2026-10-13，临时探针跑完即删）**：用应用自己的路径（`Provider` → `ServiceConfig` → 配方 → 进程 → 响应外壳 → 契约校验）对真实 agent 各跑一次——codex 0.160.1 翻译 6.7 秒得到 `早上好。 今天天气真好。`（source=en／target=zh-Hans，契约通过）；pi 1.0.4 翻译 1.6 秒得到 `早上好。今天天气很好。`；codex 查词 7.5 秒得到 `形容这一天美好、宜人。`、`lemma=beautiful`、词性=形容词（七键契约一次通过，未触发纠正）。claude 2.1.296 因周配额用尽失败，但正是它暴露出第四处问题：**CLI 把失败说明写在 stdout 时错误信息为空**（`exit 1: `），现在 stderr 为空会退回 stdout，实测报错变成 `本地 agent 运行失败：exit 1: You've hit your weekly limit · resets Oct 15 at 5am (Asia/Tokyo)`。延迟数据表明前面对「本地 agent 很慢」的担心被高估：两三句翻译在 2–7 秒量级。
+- **真实 CLI 参数实测（2026-10-13，用户先后报告 `exit 2: unexpected argument '--ask-for-approval'` 与 `Unsupported value: 'none'` 后补做）**：实测暴露并修掉三处 CLI 细节——`codex exec` 拒绝 `--ask-for-approval`（那是顶层选项，子命令 exit 2），审批策略改走 `-c approval_policy="never"`；`--ephemeral` 不阻止用户自己配置的 hooks 在每次请求里执行（stderr 出现两行 `hook: Stop`），加 `--disable hooks` 后归零；Codex 的思考强度枚举里有 `none`，但 `gpt-6.1-sol` 对它返回 HTTP 400 并列出 `low／medium／high／xhigh／max`，而「关闭」是未改动安装的默认档，所以 Codex 的关闭改取最低档 `low`。另记：codex 一次极小的请求也要约 3 万 tokens（它自带很长的系统提示词与工具），这是它额度成本的主要来源；但实测 6.7 秒的延迟仍可用。
+- 已知限制：本地 agent 的思考强度表按 CLI 的档位而不是按模型做（HTTP 服务那份能按模型名细分），因为本地 agent 用哪个模型由它自己决定、应用里甚至可以为空；某个模型值域更窄时那一次请求会失败，提示里带着 agent 自己的报错。
+- 设置页按用户要求改成主动扫描：服务商 `Picker(.menu)` 分两节（远程服务／本地 agent，之间有分隔线），每次打开扫一遍登录 shell 的 `PATH`，**没装的 agent 不出现**；切到某个 agent 时立刻找到它、填好可执行文件并显示版本，用户手选的路径不被覆盖（除非已不可执行），已选但被删除的 agent 仍保留在列表里以便看到问题。
+- 顺带修掉两处与本任务无关、但会让测试 target 无法编译的既有错误（在本机 HEAD `3c82ec8` 的干净 worktree 上复现同样报错，因此不是本次引入）：`ModelClientTests` 的 `Operation` 与 `Foundation.Operation` 歧义改为 `Owlet.Operation`；`LookupTests` 两个顶层测试补 `@MainActor`。建议这两处单独提交。
+- 未验证：claude 的真实返回（周配额用尽，只验到参数被接受与失败信息可读）、译文质量与人工观感（codex／pi 各只跑了 1 条翻译与 1 条查词，未做多语言、长文与学习契约）、`--output-schema`／`--json-schema`，以及各 CLI 后续版本对这批参数的兼容性。
+
+验证：`mise run check` 退出码 0（`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`，本机钥匙串不可用于非交互 shell）；`python3 scripts/check-i18n.py` 报告界面串三语全覆盖。

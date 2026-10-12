@@ -129,6 +129,11 @@ struct TextProcessingView: View {
                 .padding(.trailing, PanelMetrics.contentInset)
                 .padding(.bottom, PanelMetrics.contentInset)
         }
+        .overlay(alignment: .bottomLeading) {
+            learningAction
+                .padding(.leading, PanelMetrics.contentInset)
+                .padding(.bottom, PanelMetrics.contentInset)
+        }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: showsLearning)
         .workspaceCard()
@@ -262,6 +267,18 @@ struct TextProcessingView: View {
             if isBusy {
                 CardButton(title: "Cancel", symbol: "xmark", key: .cancel, action: model.cancel)
             }
+            if case .success(let text) = model.state {
+                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
+                    Clipboard.copy(text)
+                }
+            }
+        }
+    }
+
+    /// The learning column's toggle, at the leading edge. It opens and closes that column instead of
+    /// acting on the result, so it is not part of the run-and-copy group at the trailing edge.
+    private var learningAction: some View {
+        HStack(spacing: 8) {
             if showsLearning {
                 CardButton(title: "Back", symbol: "chevron.left", key: .learn) {
                     learning.isExpanded = false
@@ -270,11 +287,6 @@ struct TextProcessingView: View {
             } else if LearningRequest.from(model) != nil {
                 CardButton(title: "Study", symbol: "lamp.desk", key: .learn) {
                     learning.isExpanded = true
-                }
-            }
-            if case .success(let text) = model.state {
-                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
-                    Clipboard.copy(text)
                 }
             }
         }

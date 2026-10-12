@@ -10,12 +10,13 @@
 # another Mac needs a right-click Open.
 #
 # Usage:
-#   scripts/prod-build.sh [--identity <name>] [--team <id>] [--arch <arm64|x86_64|universal>]
+#   scripts/prod-build.sh [--identity <name>] [--team <id>] [--arch <arm64|x86_64|universal|both>]
 #                         [--out <dir>] [--notarise <keychain-profile>] [--no-package] [--help]
 #
 # Examples:
 #   scripts/prod-build.sh                                  # universal, signed as the project configures
 #   scripts/prod-build.sh --arch arm64                     # this Mac's architecture only, smaller
+#   scripts/prod-build.sh --arch both                      # universal and arm64, one run each
 #   scripts/prod-build.sh --team Z98NKJSF69                # sign with that team explicitly
 #   scripts/prod-build.sh --team ABCDE12345 --notarise owlet-notary
 #
@@ -49,10 +50,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# `--arch both` re-runs this script once per artifact, so one command yields both zips; every other
+# option is carried over. Done here, before anything is built, so each pass is an ordinary run.
+if [[ "$arch" == "both" ]]; then
+  carried=()
+  [[ -n "$identity" ]] && carried+=(--identity "$identity")
+  [[ -n "$team" ]] && carried+=(--team "$team")
+  [[ "$out_dir" != "dist" ]] && carried+=(--out "$out_dir")
+  [[ -n "$notarise_profile" ]] && carried+=(--notarise "$notarise_profile")
+  [[ "$package" == false ]] && carried+=(--no-package)
+  status=0
+  for target in universal arm64; do
+    echo "==> $target"
+    "$0" --arch "$target" ${carried[@]+"${carried[@]}"} || status=$?
+  done
+  exit "$status"
+fi
+
 case "$arch" in
   universal) architectures="arm64 x86_64" ;;
   arm64|x86_64) architectures="$arch" ;;
-  *) echo "--arch must be arm64, x86_64 or universal" >&2; exit 2 ;;
+  *) echo "--arch must be arm64, x86_64, universal or both" >&2; exit 2 ;;
 esac
 
 cd "$(dirname "$0")/.."
@@ -186,8 +204,12 @@ fi
 
 if [[ "$package" == true ]]; then
   mkdir -p "$out_dir"
-  suffix="$arch"
-  [[ "$built_archs" == "arm64 x86_64" || "$built_archs" == "x86_64 arm64" ]] && suffix="universal"
+  # Named from what the artifact actually contains, not from what was asked for: a requested universal
+  # build that came out single-architecture must not be handed over called "universal".
+  case "$built_archs" in
+    "arm64 x86_64"|"x86_64 arm64") suffix="universal" ;;
+    *) suffix="$built_archs" ;;
+  esac
   artifact="$out_dir/$app_name-$short_version-$suffix.zip"
   rm -f "$artifact"
   # ditto, not zip: it keeps the bundle's permissions, symlinks and extended attributes.

@@ -1097,3 +1097,22 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 
 **顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式。Xcode 的 console 是累积的，用户那份日志里混着此前跑测试的输出，因此出现了这条。
 **顺带澄清**：`layoutSubtreeIfNeeded` 那条警告**不来自应用**。全仓只有两处调用它——`OwletTests/App/Panel/PanelMetricsTests.swift` 与 `scripts/PanelPreview.swift` 的 `--screenshots` 模式，都是测试／预览路径。用户 console 里出现它，说明当时跑的是预览而非 app。
+
+## T60：母语只影响学习内容 + 释义语言按当下映射（已实现）
+
+依据 [BDR-0012](../spec/learning/decisions/BDR-0012-native-language.md)，以及 [BDR-0005](../spec/learning/decisions/BDR-0005-definition-language.md) 2026-10-12 的 §3 修订。用户要求「一起考虑」，决策经五轮问答定下（每轮一个），实现后由用户统一测试。
+
+范围与取舍：母语是「这是我的语言」这个**事实**的单选，不是一份排除名单——黑名单要求用户预先想到所有不学的语言。它**只影响学习内容包含哪些条目**，不参与释义语言的计算；两种操作的学习推荐都受它约束（润色母语文本不产生学习内容，也不发请求）。释义语言改为**生成与重新生成时按当下映射算**，条目上的语言字段改为记录已存释义实际的语言；旧条目不自动重算（映射一改就批量重发会触发 N 次调用且要处理部分失败），详情给一次一条的重新生成入口。
+
+验收：
+
+- [x] `SettingsStore.nativeLanguage`（默认空＝未指定）与 `learnsFrom(_:)`；比较用 `LanguageTag.same`，避免 `zh-Hans`／`zh-Hant` 前缀相混。
+- [x] 「语言」页映射表旁的单选，候选来自 `SettingsStore.languages()`；footer 说明它**不改变释义语言**。
+- [x] 学习请求按母语过滤：提示词条目 `learningSkipNative`（发给模型，不本地化）+ 返回后按 `item.language` 本地兜底。
+- [x] 润色母语文本：`LearningRequest.from` 返回 nil → 不发请求、不显示学习入口（入口与请求都由它派生）；历史详情用同一判据。
+- [x] `CollectionAction.fillMeaning` 与 `VocabularyEntry.lookupOrigin` 改用当下映射（`CollectionAction.mapping` 可注入）。
+- [x] 条目记已存释义的语言；`currentMeaningLanguage` / `meaningLanguageIsStale` 为纯函数；详情在两者不一致时显示「用%@重新生成」。
+- [x] 6 条测试（母语条目被丢弃、未设母语时全保留、润色母语不请求、翻译有一侧是母语仍请求、fillMeaning 按映射并更新条目语言、无释义不判过期）。
+- [x] 新文案 4 条进 `strings/translations.json`，目录 239 → 243 条；顺带修掉 `TargetMappingSettingsView` footer 的 i18n 漏网。
+
+验证：`mise run lint` 退出码 0（格式、空白、目录与数据源一致）。**测试未能运行**——本机全工程无法编译（`swift-plugin-server` 报 malformed response，3600+ 个 `@Observable` macro 展开失败），按用户要求留到最后统一测试。

@@ -121,3 +121,7 @@ T54 修掉查词分支首轮审阅的三个缺陷（语境语言归因、「无�
 ## T59 界面语言 i18n（已实现）
 
 四种界面语言（简体中文为源语言，另存 English／繁體中文／日本語），默认跟随系统、设置里可覆盖；目录由脚本生成并受 lint 与测试双重守护。决策见 [BDR-0011](../spec/settings/decisions/BDR-0011-interface-language.md)，验收与验证见 [todo.md](todo.md)。
+
+## T60 母语设置 + 释义语言按当下映射（已实现）
+
+新增「母语」单选（「语言」页映射表旁，默认未指定），只影响学习内容包含哪些条目：学习请求按它过滤（提示词约束 + 本地兜底），润色母语文本不产生学习内容也不发请求。释义语言改为生成／重新生成时按当下映射计算，条目上的语言字段只记录已存释义实际的语言，详情在不一致时提供一次一条的重新生成入口。决策见 [BDR-0012](../spec/learning/decisions/BDR-0012-native-language.md) 与 [BDR-0005](../spec/learning/decisions/BDR-0005-definition-language.md)，验收与验证见 [todo.md](todo.md)。

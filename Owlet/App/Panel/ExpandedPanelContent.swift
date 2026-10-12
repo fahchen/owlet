@@ -20,7 +20,10 @@ struct ExpandedPanelContent: View {
                 sourceEditor.padding(.bottom, 12)
             }
             if hasResultSection {
-                if showsSource { Divider() }
+                // The rule separates the editable source from the result, so it belongs with the source
+                // field: once 逐句对照 folds that field away it has nothing above it to separate, and
+                // it was left stranded above the pairs.
+                if showsSource && !showsAlignedPairs { Divider() }
                 resultSection.padding(.top, showsSource ? 12 : 0)
             }
             status

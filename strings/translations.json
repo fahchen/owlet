@@ -299,11 +299,6 @@
     "zh-Hans": "关闭提示",
     "zh-Hant": "關閉提示"
   },
-  "Edit Source": {
-    "ja": "原文を編集",
-    "zh-Hans": "编辑原文",
-    "zh-Hant": "編輯原文"
-  },
   "English": {
     "ja": "English",
     "zh-Hans": "English",
@@ -418,11 +413,6 @@
     "ja": "翻訳へ移動",
     "zh-Hans": "前往翻译",
     "zh-Hant": "前往翻譯"
-  },
-  "Hide Source": {
-    "ja": "原文を隠す",
-    "zh-Hans": "收起原文",
-    "zh-Hant": "收合原文"
   },
   "High": {
     "ja": "高",

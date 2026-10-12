@@ -13,13 +13,10 @@ struct ExpandedPanelContent: View {
     /// The pinned target language; an empty value means 自动.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
-    /// While 逐句对照 shows the response pairs, the source field is folded into them and only
-    /// 编辑原文 brings it back for a retry.
-    @State private var editingSource = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if showsSource && (!showsAlignedPairs || editingSource) {
+            if showsSource && !showsAlignedPairs {
                 sourceEditor.padding(.bottom, 12)
             }
             if hasResultSection {
@@ -33,12 +30,8 @@ struct ExpandedPanelContent: View {
         .fontWeight(PanelMetrics.textWeight)
         // A learning result describes one specific result, so changing the operation discards it,
         // and a finished result collapses the source field back into the pairs.
-        .onChange(of: model.operation) { _, _ in
-            learning.reset()
-            editingSource = false
-        }
+        .onChange(of: model.operation) { _, _ in learning.reset() }
         .onChange(of: model.input) { _, _ in learning.reset() }
-        .onChange(of: showsAlignedPairs) { _, _ in editingSource = false }
     }
 
     private var sourceEditor: some View {
@@ -78,11 +71,6 @@ struct ExpandedPanelContent: View {
                             LookupOrigin(language: model.languages?.source, definitionLanguage: $0.definitionLanguage)
                         },
                         targetOrigin: lookupOrigin)
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        Button(editingSource ? "Hide Source" : "Edit Source") { editingSource.toggle() }
-                            .buttonStyle(.glass)
-                    }
                 } else {
                     // Beside learning the result is justified, as the main window's result is.
                     LookupText(

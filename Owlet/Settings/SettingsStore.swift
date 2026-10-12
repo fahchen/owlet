@@ -338,24 +338,25 @@ extension SettingsStore {
         defaults.bool(forKey: learningKey(for: operation))
     }
 
-    static let nativeLanguageKey = "learning.nativeLanguage"
+    static let nativeLanguagesKey = "learning.nativeLanguages"
 
-    /// The user's own language, which learning content skips (BDR-0012). Empty means 未指定, and an
+    /// The languages the reader already speaks, which learning content skips (BDR-0012). More than one,
+    /// because a bilingual reader wants neither language taught back to them. Empty means 未指定, and an
     /// unset value behaves exactly as before the setting existed.
-    static func nativeLanguage(in defaults: UserDefaults = .standard) -> String {
-        defaults.string(forKey: nativeLanguageKey) ?? ""
+    static func nativeLanguages(in defaults: UserDefaults = .standard) -> [String] {
+        defaults.stringArray(forKey: nativeLanguagesKey) ?? []
     }
 
-    static func setNativeLanguage(_ tag: String, in defaults: UserDefaults = .standard) {
-        defaults.set(tag, forKey: nativeLanguageKey)
+    static func setNativeLanguages(_ tags: [String], in defaults: UserDefaults = .standard) {
+        defaults.set(tags, forKey: nativeLanguagesKey)
     }
 
-    /// Whether learning can say anything about text in `language`: it cannot when that language is the
-    /// user's own, which is the whole of a polish (原文与结果同语言) and one side of a translation.
+    /// Whether learning can say anything about text in `language`: it cannot when that language is one
+    /// the reader already speaks — the whole of a polish (原文与结果同语言) and one side of a translation.
     static func learnsFrom(_ language: String?, in defaults: UserDefaults = .standard) -> Bool {
-        let native = nativeLanguage(in: defaults)
+        let native = nativeLanguages(in: defaults)
         guard !native.isEmpty, let language else { return true }
-        return !LanguageTag.same(native, language)
+        return !native.contains { LanguageTag.same($0, language) }
     }
 }
 

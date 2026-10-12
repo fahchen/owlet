@@ -42,7 +42,7 @@ struct LearningAutoRequestTests {
         let main = await completedPolish()
         // 未指定母语：照常
         #expect(LearningRequest.from(main, defaults: defaults) != nil)
-        SettingsStore.setNativeLanguage("en", in: defaults)
+        SettingsStore.setNativeLanguages(["en"], in: defaults)
         #expect(LearningRequest.from(main, defaults: defaults) == nil)
     }
 
@@ -51,7 +51,7 @@ struct LearningAutoRequestTests {
     @Test func translatingStillAsksWhenOneSideIsTheReadersLanguage() async throws {
         let suite = "LearningAutoRequestTests.nativeTranslation.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        SettingsStore.setNativeLanguage("zh-Hans", in: defaults)
+        SettingsStore.setNativeLanguages(["zh-Hans"], in: defaults)
         let main = await completedTranslation()
         #expect(LearningRequest.from(main, defaults: defaults) != nil)
     }

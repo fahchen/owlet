@@ -459,10 +459,10 @@
     "zh-Hans": "语言",
     "zh-Hant": "語言"
   },
-  "Learning content skips your native language; it does not change the language explanations are written in.": {
-    "ja": "学習内容に母語の表現は含まれません。母語は解説に使う言語を変えません。",
-    "zh-Hans": "学习内容不包含母语表达；母语不改变释义所用的语言。",
-    "zh-Hant": "學習內容不包含母語表達；母語不改變釋義所用的語言。"
+  "Learning content skips the languages you already speak; it does not change the language explanations are written in.": {
+    "ja": "すでに習得している言語の表現は学習内容に含まれません。解説に使う言語は変わりません。",
+    "zh-Hans": "学习内容不包含你已经掌握的语言；它不改变释义所用的语言。",
+    "zh-Hant": "學習內容不包含你已經掌握的語言；它不改變釋義所用的語言。"
   },
   "Look Up": {
     "ja": "調べる",
@@ -544,7 +544,7 @@
     "zh-Hans": "我的积累",
     "zh-Hant": "我的累積"
   },
-  "Native Language": {
+  "Native Languages": {
     "ja": "母語",
     "zh-Hans": "母语",
     "zh-Hant": "母語"

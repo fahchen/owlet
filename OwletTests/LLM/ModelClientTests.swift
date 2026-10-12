@@ -290,7 +290,7 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
 @Test func recommendationsInTheReadersOwnLanguageAreDropped() async throws {
     var client = ModelClient()
     client.capture = .off
-    client.nativeLanguage = { "zh-Hans" }
+    client.nativeLanguages = { ["zh-Hans"] }
     client.transport = { request in
         let items =
             #"{"items":[{"text":"跳ね上がる","language":"ja","kind":"word","meaning":"上涨","context":"原油価格が跳ね上がる。"},{"text":"随后跟进","language":"zh-Hans","kind":"phrase","meaning":"follow up later","context":"随后跟进。"}]}"#
@@ -308,7 +308,7 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
 @Test func withNoNativeLanguageEveryRecommendationIsKept() async throws {
     var client = ModelClient()
     client.capture = .off
-    client.nativeLanguage = { "" }
+    client.nativeLanguages = { [] }
     client.transport = { request in
         let items =
             #"{"items":[{"text":"跳ね上がる","language":"ja","kind":"word","meaning":"上涨","context":"原油価格が跳ね上がる。"},{"text":"随后跟进","language":"zh-Hans","kind":"phrase","meaning":"follow up later","context":"随后跟进。"}]}"#

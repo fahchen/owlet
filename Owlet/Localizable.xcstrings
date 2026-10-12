@@ -2669,31 +2669,31 @@
         }
       }
     },
-    "Learning content skips your native language; it does not change the language explanations are written in.": {
+    "Learning content skips the languages you already speak; it does not change the language explanations are written in.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Learning content skips your native language; it does not change the language explanations are written in."
+            "value": "Learning content skips the languages you already speak; it does not change the language explanations are written in."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "学習内容に母語の表現は含まれません。母語は解説に使う言語を変えません。"
+            "value": "すでに習得している言語の表現は学習内容に含まれません。解説に使う言語は変わりません。"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "学习内容不包含母语表达；母语不改变释义所用的语言。"
+            "value": "学习内容不包含你已经掌握的语言；它不改变释义所用的语言。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "學習內容不包含母語表達；母語不改變釋義所用的語言。"
+            "value": "學習內容不包含你已經掌握的語言；它不改變釋義所用的語言。"
           }
         }
       }
@@ -3162,13 +3162,13 @@
         }
       }
     },
-    "Native Language": {
+    "Native Languages": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Native Language"
+            "value": "Native Languages"
           }
         },
         "ja": {

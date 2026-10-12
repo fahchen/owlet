@@ -96,8 +96,9 @@ struct ModelClient: Sendable {
     /// The target mapping, for the language a recommendation is explained in (BDR-0005); injectable so
     /// a test can act as a different mapping.
     var targetMapping: @Sendable () -> TargetMapping = { SettingsStore.targetMapping() }
-    /// The reader's own language, which recommendations skip (BDR-0012); empty means 未指定.
-    var nativeLanguage: @Sendable () -> String = { SettingsStore.nativeLanguage() }
+    /// The languages the reader already speaks, which recommendations skip (BDR-0012); empty means
+    /// 未指定.
+    var nativeLanguages: @Sendable () -> [String] = { SettingsStore.nativeLanguages() }
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
         async throws -> String
@@ -250,9 +251,9 @@ struct ModelClient: Sendable {
     /// model does not always comply, and a phrase the reader already speaks is not worth learning
     /// (BDR-0012) — so the filter is here rather than trusted to the reply.
     private func learnable(_ items: [LearningResult.Item]) -> [LearningResult.Item] {
-        let native = nativeLanguage()
+        let native = nativeLanguages()
         guard !native.isEmpty else { return items }
-        return items.filter { !LanguageTag.same(native, $0.language) }
+        return items.filter { item in !native.contains { LanguageTag.same($0, item.language) } }
     }
 
     func makeLearningRequest(
@@ -275,11 +276,12 @@ struct ModelClient: Sendable {
         var system = promptForOperation(operation) + "\n\n"
         // The prompt text is data; the indent keeps the bytes the literal used to carry.
         system += "            " + task + ModelPrompts["learningPreamble"] + "\n"
-        let native = nativeLanguage()
+        let native = nativeLanguages()
         if !native.isEmpty {
+            // Named, not "your language": the model is told exactly which ones to leave out.
+            let names = native.map(LanguageCatalog.name(for:)).joined(separator: "、")
             system +=
-                "            "
-                + ModelPrompts.format("learningSkipNative", LanguageCatalog.name(for: native)) + "\n"
+                "            " + ModelPrompts.format("learningSkipNative", names) + "\n"
         }
         system += "            " + ModelPrompts["learningShape"] + "\n"
         system += "            " + ModelPrompts.format("learningFields", meaningLanguage) + "\n"

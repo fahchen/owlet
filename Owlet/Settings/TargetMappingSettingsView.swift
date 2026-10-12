@@ -8,8 +8,10 @@ struct TargetMappingSettingsView: View {
     let languages: [String]
     @AppStorage(SettingsStore.targetLanguageKey) private var fallbackTarget =
         SettingsStore.defaultTargetLanguage
-    /// Empty means 未指定, which leaves learning exactly as it was before the setting existed.
-    @AppStorage(SettingsStore.nativeLanguageKey) private var nativeLanguage = ""
+    /// The languages the reader already speaks; empty means 未指定, which leaves learning exactly as it
+    /// was before the setting existed. Held as state with the mapping rows, so one `load`/`save` pair
+    /// owns this page's settings.
+    @State private var nativeLanguages: [String] = []
     @State private var rows: [Row] = []
 
     /// One mapping row; the `id` keeps a row stable while its two pickers change.
@@ -24,9 +26,16 @@ struct TargetMappingSettingsView: View {
             Picker(L10n.shared.string("Fallback Target"), selection: $fallbackTarget) {
                 ForEach(options) { Text($0.name).tag($0.tag) }
             }
-            Picker(L10n.shared.string("Native Language"), selection: $nativeLanguage) {
-                Text(L10n.shared.string("Not Specified")).tag("")
-                ForEach(options) { Text($0.name).tag($0.tag) }
+            // More than one (BDR-0012): a bilingual reader wants neither language taught back. A menu of
+            // toggles rather than a picker, because a picker holds one value.
+            LabeledContent(L10n.shared.string("Native Languages")) {
+                Menu {
+                    ForEach(options) { option in
+                        Toggle(option.name, isOn: nativeBinding(option.tag))
+                    }
+                } label: {
+                    Text(nativeSummary)
+                }
             }
             ForEach($rows) { $row in
                 mappingRow($row)
@@ -45,13 +54,14 @@ struct TargetMappingSettingsView: View {
                 ))
             Text(
                 L10n.shared.string(
-                    "Learning content skips your native language; it does not change the language explanations are written in."
+                    "Learning content skips the languages you already speak; it does not change the language explanations are written in."
                 ))
         }
         .onAppear(perform: load)
         // A language leaving the selection also leaves the table, so the rows are read again.
         .onChange(of: languages) { _, _ in load() }
         .onChange(of: rows) { _, _ in save() }
+        .onChange(of: nativeLanguages) { _, _ in SettingsStore.setNativeLanguages(nativeLanguages) }
         .onChange(of: fallbackTarget) { _, _ in save() }
     }
 
@@ -100,7 +110,32 @@ struct TargetMappingSettingsView: View {
     }
 
     /// Reads the saved mapping, listed by language name so the table does not depend on insertion order.
+    /// The chosen languages as names, or 未指定 when none is chosen.
+    private var nativeSummary: String {
+        let chosen = options.filter { nativeLanguages.contains($0.tag) }
+        return chosen.isEmpty
+            ? L10n.shared.string("Not Specified")
+            : chosen.map(\.name).joined(separator: "、")
+    }
+
+    private func nativeBinding(_ tag: String) -> Binding<Bool> {
+        Binding(
+            get: { nativeLanguages.contains(tag) },
+            set: { isOn in
+                if isOn {
+                    guard !nativeLanguages.contains(tag) else { return }
+                    nativeLanguages.append(tag)
+                } else {
+                    nativeLanguages.removeAll { $0 == tag }
+                }
+            })
+    }
+
     private func load() {
+        // A language leaving the 语言 selection leaves this list too, like the mapping rows.
+        nativeLanguages = SettingsStore.nativeLanguages().filter { tag in
+            options.contains { $0.tag == tag }
+        }
         rows =
             SettingsStore.targetMapping().targets
             .map { Row(source: $0.key, target: $0.value) }

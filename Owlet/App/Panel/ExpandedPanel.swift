@@ -31,9 +31,15 @@ struct ExpandedPanel: View {
 
     private var fullHeight: CGFloat { showsLearning ? learningHeight : translationHeight }
 
+    /// The panel is as tall as its content plus the inset above it and the band the floating actions
+    /// need below it. That band is `contentInset + actionRoom` — the same padding the content reserves
+    /// — so leaving `actionRoom` out of this sum made a short result 48pt too short: the buttons, which
+    /// are pinned to the bottom, then rode up over the text and the rule above it.
     private var translationHeight: CGFloat {
         min(
-            max(contentHeight + PanelMetrics.contentInset * 2, PanelMetrics.sourceBarHeight),
+            max(
+                contentHeight + PanelMetrics.contentInset * 2 + PanelMetrics.actionRoom,
+                PanelMetrics.sourceBarHeight),
             Self.maxHeight)
     }
 

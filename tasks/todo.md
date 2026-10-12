@@ -1150,3 +1150,24 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - 未验证：claude 的真实返回（周配额用尽，只验到参数被接受与失败信息可读）、译文质量与人工观感（codex／pi 各只跑了 1 条翻译与 1 条查词，未做多语言、长文与学习契约）、`--output-schema`／`--json-schema`，以及各 CLI 后续版本对这批参数的兼容性。
 
 验证：`mise run check` 退出码 0（`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`，本机钥匙串不可用于非交互 shell）；`python3 scripts/check-i18n.py` 报告界面串三语全覆盖。
+
+## T62：本地 agent 的模型名从它自己的清单里选
+
+依据 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §9，以及[本地 agent 行为规格](../spec/settings/features/local-agent.feature) 的「能列模型的 agent 把模型名做成列表」。用户 2026-10-13 要求「support select models」。
+
+范围与取舍：能列模型的 agent 给出下拉——Codex 用 `codex debug models` 的目录（跳过 `visibility: "hide"` 的条目，值取 `slug`），pi 用 `--list-models` 的表格（值取 `provider/model`，同名模型在不同 provider 下才不歧义）；第一项是「该 agent 自己的默认模型」，选中即留空。两条命令都是本地命令、不经过模型，所以打开设置页读一次很便宜。Claude Code 只有别名而没有列举命令，静态写死一份清单会随 CLI 版本过期，因此它保持自由填写。
+
+验收：
+
+- [x] `LocalAgentKind.modelListArguments`：codex `["debug","models"]`、pi `["--list-models"]`、claude 无。
+- [x] `LocalAgent.models(_:executable:)` 复用同一条进程、临时目录与环境路径；`parseModels` 是纯函数，测试用两边真实输出形状的样本（含 `visibility: hide` 与表头行）。
+- [x] 下拉复用 HTTP 服务那套：加载中有 `ProgressView`、失败在模型名行下就地提示并可重试、已保存但不在清单里的名字仍可选。
+- [x] 第一项是「该 agent 自己的默认模型」，选中后模型名为空，配方不发送 `--model`。
+- [x] 新文案进 `strings/translations.json`（256 → 257）并重新生成目录。
+- [x] `mise run check` 退出码 0。
+
+结果（2026-10-13）：`LocalAgentKind.modelListArguments` 与 `LocalAgent.models`/`parseModels` 落在 [LocalAgent.swift](../Owlet/LLM/LocalAgent.swift)；设置页的模型行在「服务商是能列模型的 agent」时改用 `Picker`，第一项为「该 agent 自己的默认模型」，其余沿用既有的清单状态机（加载中／失败 + 重试／保留已保存值）。新增 4 条测试（codex 目录跳过 hide、pi 表格配成 `provider/model`、claude 无清单、目录不可读报 `localAgent` 错），全套 **392 项 / 48 个 suite 通过**。
+
+临时探针用应用自己的代码读了两边真实清单（都是本地命令、不调用模型）后删除：codex 得到 7 个（`gpt-6.1-sol`／`gpt-6-astra`／`gpt-6-sol`／`gpt-6-luna`／`gpt-5.6-sol`／`gpt-5.6-terra`／`gpt-5.6-luna`，目录里 `visibility: hide` 的条目被滤掉），pi 得到 `deepseek/deepseek-flash`、`deepseek/deepseek-v4-pro`；再用下拉产出的 `deepseek/deepseek-flash` 发一次真实翻译，0.9 秒返回 `早上好。`，证明这个取值形式 pi 接受。
+
+验证：`mise run check` 退出码 0。

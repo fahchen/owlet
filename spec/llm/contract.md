@@ -60,7 +60,7 @@
 }
 ```
 
-`text` 是本次原文或结果里的实际词形：用到哪句就抄哪句，活用形、变位形都算，且必须逐字出现在 `context` 中。`lemma` 只在字典形与 `text` 不同且能确定时给（如日语 `text` 为 `跳ね上がっている`、`lemma` 为 `跳ね上がる`），两者相同、不适用或缺省时写 `null`；不要求为整句给原形，也不允许为凑字段重复 `text`（见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md)）。`meaning` 使用请求指定的释义语言：翻译为本次目标语言；润色按目标映射查原文语言，未命中用兜底目标；手动收藏后的补充与重新生成沿用条目已记的释义语言（见 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。 读音与词性由独立的按需请求补充：请求携带表达、语言与读音体系，返回 `pronunciation` 与 `part_of_speech`；「补充缺失」只请求空字段，单项「重新生成」只请求该项；整句不发起该请求（见 [BDR-0006](../vocabulary/decisions/BDR-0006-on-demand-enrichment.md)）。润色场景在此解释改善原因并区分语法错误与风格偏好。`context` 必须来自本次原文或结果。不强凑条目，允许 `items: []`。同一契约用于手动收藏后补充释义，不因学习关闭而禁止用户主动收藏。
+`text` 是本次原文或结果里的实际词形：用到哪句就抄哪句，活用形、变位形都算，且必须逐字出现在 `context` 中。`lemma` 只在字典形与 `text` 不同且能确定时给（如日语 `text` 为 `跳ね上がっている`、`lemma` 为 `跳ね上がる`），两者相同、不适用或缺省时写 `null`；不要求为整句给原形，也不允许为凑字段重复 `text`（见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md)）。`meaning` 使用请求指定的释义语言：翻译为本次目标语言；润色按目标映射查原文语言，未命中用兜底目标；手动收藏后的补充与重新生成按当下的映射表现算释义语言（见 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。 读音与词性由独立的按需请求补充：请求携带表达、语言与读音体系，返回 `pronunciation` 与 `part_of_speech`；「补充缺失」只请求空字段，单项「重新生成」只请求该项；整句不发起该请求（见 [BDR-0006](../vocabulary/decisions/BDR-0006-on-demand-enrichment.md)）。润色场景在此解释改善原因并区分语法错误与风格偏好。`context` 必须来自本次原文或结果。不强凑条目，允许 `items: []`。同一契约用于手动收藏后补充释义，不因学习关闭而禁止用户主动收藏。
 
 ## 阅读查词
 
@@ -105,4 +105,4 @@ JSON 解析失败、字段缺失／类型不符、空结果、源文拼接不一
 
 ## 当前实现范围
 
-翻译／润色与学习已有 Swift 模型客户端及本地校验；具体差距见 [未实现功能清单](../../docs/unimplemented-features.md)。查词请求、解码与本地校验已实现（`ModelClient.lookup`、`LookupResult`），首个消费者为浮窗结果（T48）。读音体系在发请求时读取设置「语言」分组的按语言配置（`SettingsStore.pronunciationSystem`），文本语言未知时让模型按各语言默认值给出。学习契约的 `lemma` 与释义语言随条目保存已实现（T53，见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md) 与 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。
+翻译／润色与学习已有 Swift 模型客户端及本地校验；具体差距见 [未实现功能清单](../../docs/unimplemented-features.md)。查词请求、解码与本地校验已实现（`ModelClient.lookup`、`LookupResult`），首个消费者为浮窗结果（T48）。读音体系在发请求时读取设置「语言」分组的按语言配置（`SettingsStore.pronunciationSystem`），文本语言未知时让模型按各语言默认值给出。学习契约的 `lemma` 已实现；释义语言按当下映射计算、条目上记录已存释义的语言（T53，见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md) 与 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。

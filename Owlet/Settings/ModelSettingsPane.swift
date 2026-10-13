@@ -336,7 +336,7 @@ struct ModelSettingsPane: View {
 
     /// The levels the selected model accepts, from the list the scan stored.
     private var selectedEfforts: [EffortLevel]? {
-        guard let kind = provider.localAgent, kind.modelSource != nil else { return nil }
+        guard provider.isLocalAgent else { return nil }
         return SettingsStore.supportedEfforts(for: provider, model: model)
     }
 
@@ -384,7 +384,7 @@ struct ModelSettingsPane: View {
             }
             return
         }
-        guard let kind = provider.localAgent, kind.modelSource != nil else {
+        guard let kind = provider.localAgent else {
             models = .idle
             return
         }

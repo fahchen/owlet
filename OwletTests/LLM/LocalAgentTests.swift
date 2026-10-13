@@ -448,8 +448,8 @@ struct LocalAgentTests {
     @Test func eachAgentNamesItsOwnModelSource() {
         #expect(LocalAgentKind.claudeCode.modelSource == .catalogFile)
         #expect(LocalAgentKind.codexCLI.modelSource == .command(["debug", "models"]))
-        #expect(LocalAgentKind.claudeCode.modelSource?.emptyAnswerIsFinal == false)
-        #expect(LocalAgentKind.codexCLI.modelSource?.emptyAnswerIsFinal == true)
+        #expect(LocalAgentKind.claudeCode.modelSource.emptyAnswerIsFinal == false)
+        #expect(LocalAgentKind.codexCLI.modelSource.emptyAnswerIsFinal == true)
     }
 
     @Test func anUnreadableCatalogIsALocalAgentFailure() {
@@ -494,10 +494,10 @@ struct LocalAgentTests {
     /// the row Claude Code had before the cache existed.
     @Test func anUnreadableClaudeCatalogIsJustNoList() throws {
         #expect(LocalAgent.claudeCatalog(in: URL(fileURLWithPath: "/nowhere/owlet-cache")).isEmpty)
-        #expect(LocalAgent.claudeCatalog(Data("not json".utf8)) == nil)
-        #expect(LocalAgent.claudeCatalog(Data(#"{"version":2}"#.utf8)) == nil)
-        #expect(LocalAgent.claudeCatalog(Data(#"{"catalog":{"config":{}}}"#.utf8)) == nil)
-        #expect(try LocalAgent.claudeCatalog(catalogData([])) == nil)
+        #expect(LocalAgent.claudeModels(Data("not json".utf8)) == nil)
+        #expect(LocalAgent.claudeModels(Data(#"{"version":2}"#.utf8)) == nil)
+        #expect(LocalAgent.claudeModels(Data(#"{"catalog":{"config":{}}}"#.utf8)) == nil)
+        #expect(try LocalAgent.claudeModels(catalogData([])) == nil)
         // The same, through the reader the pane uses: no list, and never a failure it has to show.
         #expect(try LocalAgent.parseModels(kind: .claudeCode, payload: Data("not json".utf8)).isEmpty)
         #expect(try LocalAgent.parseModels(kind: .claudeCode, payload: catalogData([])).isEmpty)

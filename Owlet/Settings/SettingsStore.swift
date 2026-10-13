@@ -137,21 +137,23 @@ enum SettingsStore {
 
     /// The model name each provider last used, so switching away and back restores what was there
     /// instead of starting over. Kept per provider for the same reason as the executable path.
-    static func modelKey(for provider: Provider) -> String { "service.model.\(provider.rawValue)" }
+    static func rememberedModelKey(for provider: Provider) -> String {
+        "service.model.\(provider.rawValue)"
+    }
 
     /// What one provider remembers; nil means it has never been chosen, and `Provider.defaultModel`
     /// then applies. An empty string is a remembered choice: a local agent's own default model.
     static func model(for provider: Provider, in defaults: UserDefaults = .standard) -> String? {
-        defaults.string(forKey: modelKey(for: provider))
+        defaults.string(forKey: rememberedModelKey(for: provider))
     }
 
     static func setModel(
         _ model: String?, for provider: Provider, in defaults: UserDefaults = .standard
     ) {
         if let model {
-            defaults.set(model, forKey: modelKey(for: provider))
+            defaults.set(model, forKey: rememberedModelKey(for: provider))
         } else {
-            defaults.removeObject(forKey: modelKey(for: provider))
+            defaults.removeObject(forKey: rememberedModelKey(for: provider))
         }
     }
 

@@ -47,10 +47,10 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// How this agent can enumerate models, or nil when it has no way at all. Claude Code has no listing
-    /// command: it only caches the catalog it fetched for its own model menu, so its list is a file read.
-    /// Either way `--model` takes the catalogue entry's own id, exactly as a hand-typed name would.
-    var modelSource: ModelSource? {
+    /// How this agent can enumerate models. Claude Code has no listing command: it only caches the
+    /// catalog it fetched for its own model menu, so its list is a file read. Either way `--model` takes
+    /// the catalogue entry's own id, exactly as a hand-typed name would.
+    var modelSource: ModelSource {
         switch self {
         case .claudeCode: .catalogFile
         case .codexCLI: .command(["debug", "models"])
@@ -263,7 +263,10 @@ extension LocalAgent {
         // Only a `json_schema` request carries one: a `json_object` shape travels in the prompt, so
         // there is nothing to put on the command line.
         let schema = schemaData(request.format)
-        let invocation = LocalAgentInvocation(
+        // Standard input is the user's turn alone for both agents: Claude Code takes the behavior
+        // prompt as `--system-prompt` and Codex reads it from `model_instructions_file`, so neither
+        // has it concatenated onto the text being processed.
+        var invocation = LocalAgentInvocation(
             executable: executable, arguments: [], stdin: prompt, directory: directory,
             systemPrompt: request.system,
             answersToFile: kind == .codexCLI, schema: schema,
@@ -277,16 +280,8 @@ extension LocalAgent {
         // explicitly; Claude Code takes the payload as context, so it needs a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
         arguments.append(kind == .codexCLI ? "-" : Self.stdinInstruction)
-        // Standard input is the user's turn alone for both agents: Claude Code takes the behavior
-        // prompt as `--system-prompt` and Codex reads it from `model_instructions_file`, so neither
-        // has it concatenated onto the text being processed.
-        return LocalAgentInvocation(
-            executable: executable, arguments: arguments,
-            stdin: prompt, directory: directory,
-            systemPrompt: request.system,
-            answersToFile: invocation.answersToFile, schema: schema,
-            writesSchemaFile: invocation.writesSchemaFile,
-            writesInstructionsFile: invocation.writesInstructionsFile, timeout: timeout)
+        invocation.arguments = arguments
+        return invocation
     }
 
     /// The response schema this provider can accept, if any. `json_object` means the shape travels in
@@ -386,7 +381,8 @@ extension LocalAgent {
     }
 
     /// The one place that prepares a directory for one call: created empty and private, written with the
-    /// prompt and — when this agent takes one — the response schema, then removed however it ends.
+    /// prompt and — when this agent takes them — the behavior-prompt file and the response schema, then
+    /// removed however it ends.
     static func withPreparedDirectory<T: Sendable>(
         _ invocation: LocalAgentInvocation, _ body: (LocalAgentInvocation) async throws -> T
     ) async throws -> T {
@@ -523,8 +519,6 @@ extension LocalAgent {
     /// never an error the user sees: this row is exactly what it was before the cache existed.
     static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [ModelOption] {
         switch kind.modelSource {
-        case nil:
-            return []
         case .catalogFile:
             return claudeCatalog(in: claudeCatalogDirectory)
         case .command(let arguments):
@@ -551,9 +545,8 @@ extension LocalAgent {
     /// cache it cannot read — no list, which is the free-form row.
     static func parseModels(kind: LocalAgentKind, payload: Data) throws -> [ModelOption] {
         switch kind.modelSource {
-        case nil: []
         case .command: try codexModels(payload)
-        case .catalogFile: claudeCatalog(payload) ?? []
+        case .catalogFile: claudeModels(payload) ?? []
         }
     }
 
@@ -623,7 +616,7 @@ extension LocalAgent {
         let accounts = files.filter { $0.hasSuffix("-cc.json") }.map { directory.appending(path: $0) }
         let others = files.filter { !$0.hasSuffix("-cc.json") }.map { directory.appending(path: $0) }
         for url in newestFirst(accounts) + newestFirst(others) {
-            guard let data = try? Data(contentsOf: url), let options = claudeCatalog(data) else {
+            guard let data = try? Data(contentsOf: url), let options = claudeModels(data) else {
                 continue
             }
             return options
@@ -633,7 +626,7 @@ extension LocalAgent {
 
     /// One catalog file's rows, or nil when this file is not that shape or names no model. Everything
     /// optional is optional to us: a file this app cannot read is the same as a file that is not there.
-    static func claudeCatalog(_ payload: Data) -> [ModelOption]? {
+    static func claudeModels(_ payload: Data) -> [ModelOption]? {
         guard let object = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
             let catalog = object["catalog"] as? [String: Any],
             let config = catalog["config"] as? [String: Any],

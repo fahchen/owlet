@@ -1272,3 +1272,29 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 真实调用一次（`claude 2.1.296`，2026-10-13）：命令行被接受，返回的是配额提示 `You've hit your weekly limit · resets Oct 15 at 5am (Asia/Tokyo)`，exit 1、写在标准输出、标准错误为空——与 BDR-0013 §7 记的一致。因此**没有**验证缓存里的新模型 id（`claude-opus-5-5`）与 `--effort medium` 是否被真实接受，也没有真实译文；这与 BDR-0013 未验证项里「Claude Code 的真实返回（周配额用尽）」是同一件事。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+
+## T67：模型名按服务商分别记住（已实现）
+
+依据[服务规格](../spec/settings/features/service.feature)的「每个服务商记住自己的模型名」。模型名此前只有一个共享键 `service.model`，切换服务商要么留下上一个服务商的名字（DeepSeek 的 `deepseek-chat` 落到 Codex CLI 上），要么把它清掉；用户要求的是「切回去要能恢复原值」，所以本轮改成每个服务商一个记忆槽。
+
+范围与取舍：
+
+- **沿仓库既有的按服务商分键风格**：`SettingsStore.modelKey(for:)` = `service.model.<rawValue>`，配 `model(for:in:)` / `setModel(_:for:in:)`，与 `agentPathKey(for:)` 同一形状。`service.model` 仍是「当前服务商的活值」，`currentConfig()` 一行未动，发起请求的路径零改动。
+- **空串是一个值**：`model(for:in:)` 只在键不存在时返回 nil；本机 agent 记住的 `""`（用它自己的默认模型）往返后仍是 `""`，不会被当成「没记录过」而回落。
+- **回落值收在 `Provider.defaultModel`**：`preset?.model ?? ""`，从 `preset` 读出来，所以回落值与预设模型不会各改一半。DeepSeek → `deepseek-chat`；OpenAI 兼容／Claude Code／Codex CLI → 空串。
+- **切换决策抽成纯函数** `ModelSettingsPane.switchedModel(from:to:current:in:)`：先把 `current` 存进 `old` 的槽（`provider` 此时已经是 `new`，所以必须显式用 `old`），再返回 `new` 槽里的值或 `new.defaultModel`。视图里只是 `model = Self.switchedModel(from: old, to: new, current: model)`。
+- **`baseURL` 与 `effort` 不动**：URL 仍只在 `new.preset` 存在时填回，`effort` 一行未改；扫描／检测与模型清单重载保持在原位，模型名不再经过 `preset` 的元组赋值，所以不会和 `loadModels()` 抢同一个值。
+
+验收：
+
+- [x] `Provider.defaultModel` 四个 case：DeepSeek 为预设模型名，其余三个为空串。
+- [x] `SettingsStore.modelKey(for:)` / `model(for:in:)` / `setModel(_:for:in:)` 按服务商分槽，nil 清除、空串保留。
+- [x] 两个服务商的值互不干扰；切走再切回恢复原值；没记录过的服务商用 `Provider.defaultModel`；存进的是**旧**服务商的槽。
+- [x] 视图 `onChange` 走同一个纯函数，扫描、检测与模型清单重载顺序不变。
+- [x] 既有断言未削弱，测试数只增不减（414 → 417，suite 仍 48 个）。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+- [ ] **需要人跑 `mise run dev`**：本环境不能看 GUI，无法确认字段里真的换了值。要在设置页给「OpenAI 兼容」填一个模型名 → 切到 DeepSeek（应显示 `deepseek-chat`）→ 切回（应恢复刚才的名字）；再切到一个没记录过的服务商，确认是它的默认值。
+
+结果（2026-10-13）：[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `Provider` 加 `defaultModel`（`preset?.model ?? ""`），`SettingsStore` 加 `modelKey(for:)`、`model(for:in:)`、`setModel(_:for:in:)`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的 `onChange(of: provider)` 改为 `model = Self.switchedModel(from: old, to: new, current: model)`，`baseURL` 仍只在 `preset` 存在时填回；[service.feature](../spec/settings/features/service.feature) 新增「每个服务商记住自己的模型名」；[ServiceModelOptionsTests.swift](../OwletTests/Settings/ServiceModelOptionsTests.swift) 新增 3 条（四个 `defaultModel`、按服务商往返、切换记住并恢复），测试 414 → 417 项 / 48 个 suite 通过；[liquid-glass-components.md](../docs/liquid-glass-components.md) 模型页逐屏行补一句。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：GUI 里的实际字段切换（需 `mise run dev` 人工看一眼）。

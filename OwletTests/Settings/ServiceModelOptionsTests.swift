@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import Owlet
@@ -70,5 +71,55 @@ struct ServiceModelOptionsTests {
         #expect(!ModelSettingsPane.listsModels(cache, models: .failed("x")))
         #expect(!ModelSettingsPane.listsModels(cache, models: .loaded([])))
         #expect(ModelSettingsPane.listsModels(cache, models: .loaded(listed)))
+    }
+
+    let suite = "ServiceModelOptionsTests.\(UUID().uuidString)"
+    var defaults: UserDefaults { UserDefaults(suiteName: suite)! }
+
+    /// What each provider's model name starts as the first time it is chosen: its preset model for an
+    /// HTTP service, and empty for anything that picks its own — the picker's first row.
+    @Test func everyProviderNamesItsDefaultModel() {
+        #expect(Provider.openAICompatible.defaultModel.isEmpty)
+        #expect(Provider.deepSeek.defaultModel == "deepseek-chat")
+        #expect(Provider.claudeCode.defaultModel.isEmpty)
+        #expect(Provider.codexCLI.defaultModel.isEmpty)
+    }
+
+    /// One slot per provider, and an empty string is a value like any other, so an agent's "own
+    /// default" survives a round trip instead of reading back as never chosen.
+    @Test func aRememberedModelRoundTripsPerProvider() {
+        SettingsStore.setModel("sonnet", for: .claudeCode, in: defaults)
+        #expect(SettingsStore.model(for: .claudeCode, in: defaults) == "sonnet")
+        #expect(SettingsStore.model(for: .codexCLI, in: defaults) == nil)
+
+        SettingsStore.setModel("", for: .codexCLI, in: defaults)
+        #expect(SettingsStore.model(for: .codexCLI, in: defaults) == "")
+
+        SettingsStore.setModel(nil, for: .claudeCode, in: defaults)
+        #expect(SettingsStore.model(for: .claudeCode, in: defaults) == nil)
+        // Clearing one provider must not touch the other's name.
+        #expect(SettingsStore.model(for: .codexCLI, in: defaults) == "")
+    }
+
+    /// A switch files the text under the provider it was typed for — `old`, not the provider now
+    /// selected — so switching back restores it instead of losing it to the new provider's slot.
+    @Test func switchingProvidersRemembersAndRestoresTheModelName() {
+        let toDeepSeek = ModelSettingsPane.switchedModel(
+            from: .openAICompatible, to: .deepSeek, current: "gpt-6-sol", in: defaults)
+        #expect(toDeepSeek == "deepseek-chat")
+        #expect(SettingsStore.model(for: .openAICompatible, in: defaults) == "gpt-6-sol")
+        #expect(SettingsStore.model(for: .deepSeek, in: defaults) == nil)
+
+        // A name typed for DeepSeek is not stored under the provider now selected.
+        let toAgent = ModelSettingsPane.switchedModel(
+            from: .deepSeek, to: .claudeCode, current: "deepseek-chat", in: defaults)
+        #expect(toAgent.isEmpty)
+        #expect(SettingsStore.model(for: .deepSeek, in: defaults) == "deepseek-chat")
+        #expect(SettingsStore.model(for: .claudeCode, in: defaults) == nil)
+
+        // Switching back restores the name rather than falling back to the default.
+        let back = ModelSettingsPane.switchedModel(
+            from: .claudeCode, to: .openAICompatible, current: "", in: defaults)
+        #expect(back == "gpt-6-sol")
     }
 }

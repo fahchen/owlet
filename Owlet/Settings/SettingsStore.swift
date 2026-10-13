@@ -23,6 +23,11 @@ enum Provider: String, CaseIterable, Sendable {
         }
     }
 
+    /// What the model name falls back to the first time this provider is chosen: its preset model, or
+    /// empty, which for a local agent is a real choice — the agent's own default. Read off `preset` so
+    /// the fallback and the preset cannot drift apart.
+    var defaultModel: String { preset?.model ?? "" }
+
     /// Whether the app can hand this provider a response schema. DeepSeek only accepts `json_object`,
     /// so for it the shape travels in the system prompt instead; the two agents that take a schema get
     /// it on the command line (`--output-schema`, `--json-schema`).
@@ -128,6 +133,26 @@ enum SettingsStore {
         else { return nil }
         return ServiceConfig(
             baseURL: url, model: model, apiKey: key, provider: provider, effort: effort())
+    }
+
+    /// The model name each provider last used, so switching away and back restores what was there
+    /// instead of starting over. Kept per provider for the same reason as the executable path.
+    static func modelKey(for provider: Provider) -> String { "service.model.\(provider.rawValue)" }
+
+    /// What one provider remembers; nil means it has never been chosen, and `Provider.defaultModel`
+    /// then applies. An empty string is a remembered choice: a local agent's own default model.
+    static func model(for provider: Provider, in defaults: UserDefaults = .standard) -> String? {
+        defaults.string(forKey: modelKey(for: provider))
+    }
+
+    static func setModel(
+        _ model: String?, for provider: Provider, in defaults: UserDefaults = .standard
+    ) {
+        if let model {
+            defaults.set(model, forKey: modelKey(for: provider))
+        } else {
+            defaults.removeObject(forKey: modelKey(for: provider))
+        }
     }
 
     /// Where one local agent's executable lives. Kept per provider: a machine can have several of them,

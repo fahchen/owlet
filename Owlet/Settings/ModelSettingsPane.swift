@@ -97,12 +97,11 @@ struct ModelSettingsPane: View {
         // Leaving the pane or closing the window also ends the edit, so a key typed and left alone
         // is not lost.
         .onDisappear(perform: commitKey)
-        // A different provider is a different key, its own preset and its own executable.
+        // A different provider is a different key, its own preset, its own executable and its own
+        // remembered model name.
         .onChange(of: provider) { old, new in
-            if let preset = new.preset { (baseURL, model) = preset }
-            // An HTTP model name means nothing to a CLI, and the agent's own default is the better
-            // starting point; a name typed for one agent survives a switch between two of them.
-            if new.isLocalAgent && !old.isLocalAgent { model = "" }
+            model = Self.switchedModel(from: old, to: new, current: model)
+            if let preset = new.preset { baseURL = preset.baseURL }
             apiKey = SettingsStore.apiKey(for: new) ?? ""
             agentExecutable = SettingsStore.agentPath(for: new) ?? ""
             agent = .idle
@@ -304,6 +303,17 @@ struct ModelSettingsPane: View {
         }
         return model.isEmpty || options.contains { $0.id == model }
             ? options : [ModelOption(id: model)] + options
+    }
+
+    /// What a provider switch leaves in the shared model field: the name the user had is remembered for
+    /// the provider it was typed for, then the new provider's remembered name takes its place — or its
+    /// default the first time round. It takes `old` explicitly because that is who the text belongs to,
+    /// and the pane's `provider` has already moved on by the time this runs.
+    static func switchedModel(
+        from old: Provider, to new: Provider, current: String, in defaults: UserDefaults = .standard
+    ) -> String {
+        SettingsStore.setModel(current, for: old, in: defaults)
+        return SettingsStore.model(for: new, in: defaults) ?? new.defaultModel
     }
 
     /// What the selected agent model said it accepts, next to the model it belongs to (E2). The value

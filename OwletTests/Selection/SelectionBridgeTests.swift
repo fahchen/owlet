@@ -389,16 +389,20 @@ struct SelectionBridgeTests {
     }
 
     /// Builds write-back seams that never touch accessibility, the pasteboard or real key events.
+    /// A test that does not hand in its own pasteboard gets a fresh in-memory one instead of the
+    /// general pasteboard: that one is process-wide, and the paste tests run in parallel, so one
+    /// test's snapshot could be restored over another's write while the user's own copy is lost.
     @MainActor func seams(
         activate: @escaping @MainActor (NSRunningApplication) async -> Bool = { _ in true },
         press: @escaping SelectionBridge.PasteSelection,
-        pasteboard: SelectionBridge.Pasteboard = .system,
+        pasteboard: SelectionBridge.Pasteboard? = nil,
         editable: @escaping @MainActor (AXUIElement) -> Bool? = { _ in true },
         value: @escaping @MainActor (AXUIElement) -> String? = { _ in "Hello" }
     ) -> SelectionBridge.WritebackSeams {
         SelectionBridge.WritebackSeams(
             trusted: { true }, editable: editable, value: value,
-            activate: activate, press: press, pasteboard: pasteboard, handover: .zero, settle: .zero)
+            activate: activate, press: press, pasteboard: pasteboard ?? FakePasteboard().seam(),
+            handover: .zero, settle: .zero)
     }
 
     /// In-memory pasteboard so the fallback tests never touch the real pasteboard.

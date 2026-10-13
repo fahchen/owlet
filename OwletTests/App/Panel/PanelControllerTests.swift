@@ -474,10 +474,14 @@ struct PanelControllerTests {
         panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.firstResponder === window)
-        await settle()
-        window.recalculateKeyViewLoop()
-        window.selectNextKeyView(nil)
-        await settle()
+        // The hosting view lays out and builds its key view loop asynchronously, and a full suite
+        // keeps the main queue busy, so traversal is retried until it reaches a control rather than
+        // after one fixed delay: how fast layout gets there is not what this test is about.
+        for _ in 0..<40 where window.firstResponder === window {
+            window.recalculateKeyViewLoop()
+            window.selectNextKeyView(nil)
+            await settle()
+        }
         #expect(window.firstResponder !== window)
         panel.close()
     }

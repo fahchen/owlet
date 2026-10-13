@@ -51,12 +51,21 @@ Feature: 把本机的 agent CLI 当作模型服务
       When 应用读取模型目录
       Then 思考强度按该模型声明的值域映射，不支持的档位取该模型内最近的较低档
       And 模型声明完全不支持推理时，请求不发送强度参数
-      And Claude Code 没有按模型的数据，沿用静态值域
+      And Claude Code 从它自己缓存的模型目录得到同一份按模型数据
 
-    Scenario: 不列举能力的 provider 保持自由填写或静态值域
+    Scenario: 从 Claude Code 自己缓存的模型目录里读清单
       Given 用户在设置里选了 Claude Code
-      Then 模型名是自由填写的文本框
+      When 应用能读到它缓存的模型目录
+      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      And 每个模型声明了思考强度值域时，强度行下就地显示它支持的档位
+      And 已保存但清单里没有的模型名仍可选
+
+    Scenario: 缓存读不出来时 Claude Code 保持自由填写
+      Given 用户在设置里选了 Claude Code
+      When 它缓存的模型目录缺失、为空或形状变了
+      Then 模型名是自由填写的文本框，不弹出错误
       And 留空表示使用它自己的默认模型
+      And 已保存的模型名不变，请求照旧可以发出
 
     Scenario: 清单读取失败
       When 读取模型清单失败

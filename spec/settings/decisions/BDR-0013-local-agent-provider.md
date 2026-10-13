@@ -113,12 +113,14 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 | | 模型清单 | 强度清单 | 结构化输出 |
 | --- | --- | --- | --- |
-| Codex CLI | `codex debug models`（跳过 `visibility: "hide"`，值取 `slug`） | 同一份目录的 `supported_reasoning_levels`，**按模型** | `--output-schema <文件>` |
-| Claude Code | 无列举命令 | 无 | `--json-schema <json>` |
+| Codex CLI | 跑一条列举命令 `codex debug models`（跳过 `visibility: "hide"`，值取 `slug`） | 同一份目录的 `supported_reasoning_levels`，**按模型** | `--output-schema <文件>` |
+| Claude Code | 读它自己缓存的目录文件 `~/.claude/cache/model-catalog/*-cc.json`（取最新一份能解析的，`catalog.config.models` 缺失或为空即忽略；值取 `id`，行文字取 `name`、退回 `short_name`） | 同一份缓存里每个模型的 `thinking.effort_options`，**按模型**（`type: "none"` 视为完全不推理） | `--json-schema <json>` |
 
-模型名做成下拉，第一项是「该 agent 自己的默认模型」——对 CLI 来说留空是一个真实选择，不是漏填。所有清单命令都是本地命令、不经过模型，所以打开设置页读一次很便宜；读取失败就在该行下就地提示并可重试，不改动已保存的值。Claude Code 只有别名（`sonnet` 之类）而没有列举命令；静态写死一份别名清单会随 CLI 版本过期，比自由填写更糟，所以它保持文本框。
+模型名做成下拉，第一项是「该 agent 自己的默认模型」——对 CLI 来说留空是一个真实选择，不是漏填。两条清单来源都是本地的、不经过模型，所以打开设置页读一次很便宜。**两者的失败形状不同，应用也如实区分**：Codex 的列举命令会当场回答，读不成是一次可以就地提示并重试的失败；Claude Code 读的是一份别的程序写的缓存，读不到只说明「现在没有清单」，该行退回自由填写的文本框、已保存的值一动不动，从不弹出错误。已保存但清单里没有的模型名仍然可选。
 
-应用侧把这份能力吃到请求里（评审 E2）：设置页扫描时记住每个模型声明的值域（`service.agentEfforts`），请求时读回放进 `ModelRequest.supportedEfforts`——强度只在该模型接受的集合里就近取较低档，**模型完全不支持推理时一个参数都不发**；Claude Code 没有这份数据，沿用静态值域。设置页在强度行下就地显示「该模型支持：…」或「该模型不使用思考强度」。实测（2026-10-13）codex 0.160.1 的 7 个可见模型都给出 `low,medium,high,max`。
+**Claude Code 的清单不是官方接口**：`~/.claude/cache/model-catalog/` 是 CLI 为自己的模型菜单抓取后落盘的缓存，没有文档承诺它的路径、文件名或字段。所以这份解析的**唯一契约是「读不出来就等于没有」**——目录不存在、文件为空、形状变了、`models` 为空，全部返回空清单并走自由填写；`--model` 送出的仍是缓存条目自己的 `id`，与手输模型名走同一条路。残留风险：缓存格式随版本变化或被清掉时，按模型的能力数据消失，退回自由填写与静态值域，功能不中断。
+
+应用侧把这份能力吃到请求里（评审 E2）：设置页扫描时记住每个模型声明的值域（`service.agentEfforts`），请求时读回放进 `ModelRequest.supportedEfforts`——强度只在该模型接受的集合里就近取较低档，**模型完全不支持推理时一个参数都不发**。设置页在强度行下就地显示「该模型支持：…」或「该模型不使用思考强度」。实测（2026-10-13）codex 0.160.1 的 7 个可见模型都给出 `low,medium,high,max`；Claude Code 的最新缓存（`86008f99-…-cc.json`，同日）列出 12 个模型，其中 11 个带 `thinking.type: "effort"`（有的到 `xhigh`、有的只到 `high`），`claude-haiku-4-5-20251001` 是 `type: "none"`，所以两个 agent 现在都有按模型的数据。
 
 图片与流式是后续需求（评审 E3），本轮不预建抽象：`ModelTurn` 将来加内容分片（文本今天、图片以后），由各 backend 各自映射；`ModelBackend` 在 `complete` 旁边加一个带默认实现的流式方法。两处都是局部改动。
 
@@ -133,7 +135,8 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 ## 后果与已知风险
 
 - CLI 参数是各 agent 的版本行为，升级后可能变化；缓解手段是探测版本号、把 agent 的 stderr 带进失败提示、**特性名与 `-c` override 逐版本扫描后缓存**（见 §2），并保留人工验收。
+- **Claude Code 的模型清单来自它自己的缓存文件，不是接口**（见 §9）：路径、文件名与字段都没有文档承诺，格式一变或缓存被清掉，模型下拉与按模型强度就退回自由填写与静态值域。失败模式是「少一份清单」，不会让请求失败。
 - 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）；再削掉 Codex 自己的基础指令、技能说明与 web_search 面后约 5.7k（见 §2）。
 - **Codex 的 `--ignore-user-config` 有代价**：用户 `config.toml` 里配置的自定义 provider 与模型不再生效，应用只用它的内置默认（登录态照旧）。用自定义网关的用户会遇到这一条。
 - **不启用 App Sandbox 才能用**：受沙箱约束的应用无法执行用户本机的 CLI。这与 [规范范围边界](../../README.md) 里「本机签名自用，不启用 App Sandbox」一致；若将来上架并启用沙箱，这两个服务商要么移除，要么改走用户显式授权的路径。
-- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性；`service_tier="fast"` 只各测 3 次（见 §2，样本小；用户已决定默认不开）；`model_instructions_file` 被未来版本移除时会静默失效（见 §2 末的残留风险）。
+- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性；Claude Code 的模型缓存（§9）只在写这份 BDR 的机器上看过一份，字段含义与它自己菜单的对应关系未经官方确认；`service_tier="fast"` 只各测 3 次（见 §2，样本小；用户已决定默认不开）；`model_instructions_file` 被未来版本移除时会静默失效（见 §2 末的残留风险）。

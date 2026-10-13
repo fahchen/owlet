@@ -1298,3 +1298,17 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-13）：[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `Provider` 加 `defaultModel`（`preset?.model ?? ""`），`SettingsStore` 加 `modelKey(for:)`、`model(for:in:)`、`setModel(_:for:in:)`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的 `onChange(of: provider)` 改为 `model = Self.switchedModel(from: old, to: new, current: model)`，`baseURL` 仍只在 `preset` 存在时填回；[service.feature](../spec/settings/features/service.feature) 新增「每个服务商记住自己的模型名」；[ServiceModelOptionsTests.swift](../OwletTests/Settings/ServiceModelOptionsTests.swift) 新增 3 条（四个 `defaultModel`、按服务商往返、切换记住并恢复），测试 414 → 417 项 / 48 个 suite 通过；[liquid-glass-components.md](../docs/liquid-glass-components.md) 模型页逐屏行补一句。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：GUI 里的实际字段切换（需 `mise run dev` 人工看一眼）。
+
+## T68 从菜单打开设置时把已存在的窗口提到最前
+
+问题：设置窗口已打开但在后面时，`openSettings()` 什么都不做，重复点击看起来「没反应」。同一菜单里「打开 Owlet」本来就先 `NSApp.activate()` 再 `openWindow`，设置这条漏了。
+
+做法：新增 `Owlet/App/SettingsWindow.swift`。`show(_:)` 先 `NSApp.activate()`，再调用 SwiftUI 的 `openSettings()`，然后**延后一拍**（`DispatchQueue.main.async`，不用 sleep）找到设置窗口并 `makeKeyAndOrderFront`——窗口可能是这一拍之后才由场景创建，所以不假设它已存在。四个入口全部改走它：菜单栏菜单的「设置…」、浮窗的设置按钮、提示词设置入口、模型页那条（先切 pane 再打开）。
+
+判定规则 `isSettingsWindow(identifier:className:)` 是纯函数（class 名或 identifier 含 `Settings`），测试直接钉住；窗口真正的提升需要 window server，单测覆盖不到。
+
+验收：
+
+- [x] `mise run format`、`mise run check` 退出码 0；测试 417 → 419
+- [x] **人跑 `mise run dev` 验收通过**（用户确认：设置窗口出现了）——打开设置 → 用别的窗口压住 → 从菜单栏菜单点「设置…」→ 回到最前
+- [ ] 浮窗（`.floating` 层级）开着时设置窗口是否仍被压在下面；若仍被压住，需要决定是否让浮窗让位（未做，属高风险改动，先不动核心交互）

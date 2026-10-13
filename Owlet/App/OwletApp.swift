@@ -134,7 +134,7 @@ private struct MainView: View {
     /// window comes up.
     private func openModelSettings() {
         UserDefaults.standard.set(SettingsPane.model.rawValue, forKey: SettingsStore.settingsPaneKey)
-        openSettings()
+        SettingsWindow.show { openSettings() }
     }
 }
 
@@ -280,7 +280,7 @@ private struct MenuBarLabel: View {
                 shortcuts.onAction = { perform($0) }
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
                 (NSApp.delegate as? AppDelegate)?.openMainWindow = { open.reopen() }
-                panel.openSettings = { openSettings() }
+                panel.openSettings = { SettingsWindow.show { openSettings() } }
                 panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
@@ -289,7 +289,7 @@ private struct MenuBarLabel: View {
                 // the service fields it used to open.
                 panel.openPromptSettings = { operation in
                     promptFocus = operation
-                    openSettings()
+                    SettingsWindow.show { openSettings() }
                 }
             }
     }
@@ -316,8 +316,8 @@ private struct MenuContent: View {
             Button(title(for: action)) { perform(action) }
                 .keyboardShortcut(shortcuts.shortcuts[action]?.menuShortcut)
         }
-        // The settings window manages itself, so this only has to open it; ⌘, lives in the App menu.
-        Button(L10n.shared.string("Settings…")) { openSettings() }
+        // Opening settings has to raise the window too, so it goes through the helper; ⌘, lives in the App menu.
+        Button(L10n.shared.string("Settings…")) { SettingsWindow.show { openSettings() } }
         Divider()
         Button(L10n.shared.string("Quit Owlet")) { NSApp.terminate(nil) }
     }

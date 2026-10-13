@@ -142,7 +142,7 @@ struct ModelClient: Sendable {
     }
 
     /// The format the provider can accept: a real schema where it takes one, `json_object` where the
-    /// shape must travel in the system prompt instead (DeepSeek, pi).
+    /// shape must travel in the system prompt instead (DeepSeek).
     private func format(name: String, schema: [String: Any], config: ServiceConfig) -> ModelResponseFormat {
         guard config.provider.supportsJSONSchema,
             let data = try? JSONSerialization.data(withJSONObject: schema)

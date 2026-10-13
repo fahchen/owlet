@@ -15,7 +15,7 @@ enum ModelTurn: Sendable, Equatable {
 }
 
 /// How the answer must be shaped. A provider that cannot constrain the shape carries it in the system
-/// prompt instead, which is what the app already does for DeepSeek and for pi.
+/// prompt instead, which is what the app already does for DeepSeek.
 enum ModelResponseFormat: Sendable, Equatable {
     case jsonObject
     case jsonSchema(name: String, schema: Data)

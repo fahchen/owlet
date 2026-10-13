@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// The three recipes, the one-shot prompt they receive, and the process plumbing that turns a CLI into
+/// The two recipes, the one-shot prompt they receive, and the process plumbing that turns a CLI into
 /// a model service (BDR-0013).
 ///
 /// No test here runs a real agent or reaches a model: the recipes are pure values, and the process tests
@@ -50,7 +50,7 @@ struct LocalAgentTests {
     func shell(_ command: String, stdin: String = "", answersToFile: Bool = false) -> LocalAgentInvocation {
         LocalAgentInvocation(
             executable: executable, arguments: ["-c", command], stdin: stdin,
-            directory: LocalAgent.temporaryDirectory(), writesSystemPromptFile: false,
+            directory: LocalAgent.temporaryDirectory(),
             systemPrompt: "", answersToFile: answersToFile, schema: nil, writesSchemaFile: false,
             timeout: .seconds(20))
     }
@@ -71,23 +71,7 @@ struct LocalAgentTests {
         #expect(invocation.stdin == "原文")
         // A short positional prompt makes the payload on stdin the thing to answer.
         #expect(invocation.arguments.last == LocalAgent.stdinInstruction)
-        #expect(!invocation.writesSystemPromptFile)
         #expect(!invocation.answersToFile)
-    }
-
-    @Test func piDropsToolsExtensionsAndContextFiles() {
-        let invocation = plan(.piCLI)
-        for flag in [
-            "--print", "--no-tools", "--no-extensions", "--no-mcp", "--no-skills",
-            "--no-prompt-templates", "--no-context-files", "--no-session", "--no-approve",
-        ] {
-            #expect(invocation.arguments.contains(flag))
-        }
-        // The system prompt goes through a private file instead of the command line.
-        #expect(value(after: "--system-prompt", in: invocation.arguments) == invocation.systemPromptFile.path)
-        #expect(invocation.writesSystemPromptFile)
-        #expect(invocation.stdin == "原文")
-        #expect(invocation.arguments.last == LocalAgent.stdinInstruction)
     }
 
     /// Codex has no system-prompt switch and reads its prompt from stdin only when it gets no prompt
@@ -109,7 +93,7 @@ struct LocalAgentTests {
     }
 
     /// A provider that takes a response schema gets this contract's, and the way it takes it differs:
-    /// Codex reads a file, Claude Code an argument, pi has no such switch.
+    /// Codex reads a file, Claude Code an argument.
     @Test func aSchemaTravelsTheWayEachAgentTakesIt() throws {
         let schema = try JSONSerialization.data(withJSONObject: ["type": "object"])
         let request = ModelRequest(
@@ -128,13 +112,6 @@ struct LocalAgentTests {
             timeout: .seconds(20))
         #expect(value(after: "--json-schema", in: claude.arguments) == String(decoding: schema, as: UTF8.self))
         #expect(!claude.writesSchemaFile)
-
-        let pi = LocalAgent.plan(
-            kind: .piCLI, executable: executable, request: request, directory: directory,
-            timeout: .seconds(20))
-        #expect(!pi.arguments.contains("--output-schema"))
-        #expect(!pi.arguments.contains("--json-schema"))
-        #expect(pi.schema == nil)
     }
 
     /// `json_object` means the shape travels in the prompt, so no agent gets a schema on its command line.
@@ -156,8 +133,8 @@ struct LocalAgentTests {
     }
 
     @Test func aModelNameIsPassedOnlyWhenTheUserSetOne() {
-        #expect(value(after: "--model", in: plan(.piCLI).arguments) == nil)
-        #expect(value(after: "--model", in: plan(.piCLI, model: "sonnet").arguments) == "sonnet")
+        #expect(value(after: "--model", in: plan(.claudeCode).arguments) == nil)
+        #expect(value(after: "--model", in: plan(.claudeCode, model: "sonnet").arguments) == "sonnet")
         #expect(value(after: "--model", in: plan(.codexCLI, model: "gpt-5").arguments) == "gpt-5")
     }
 
@@ -166,11 +143,9 @@ struct LocalAgentTests {
     @Test func effortMapsToEachAgentsOwnSwitch() {
         for kind in LocalAgentKind.allCases {
             #expect(value(after: "--effort", in: plan(kind).arguments) == nil)
-            #expect(value(after: "--thinking", in: plan(kind).arguments) == nil)
             // Codex carries its effort through `-c`, which is also how its approval policy travels.
             #expect(!plan(kind).arguments.contains { $0.hasPrefix("model_reasoning_effort") })
         }
-        #expect(value(after: "--thinking", in: plan(.piCLI, effort: .high).arguments) == "high")
         #expect(value(after: "--effort", in: plan(.claudeCode, effort: .medium).arguments) == "medium")
         // 关闭 is the untouched install's level. Codex's own enum accepts `none`, but its models do not:
         // `gpt-6.1-sol` answered HTTP 400 and listed low／medium／high／xhigh／max, so 关闭 is its lowest.
@@ -190,7 +165,7 @@ struct LocalAgentTests {
             turns: [.user("DATA"), .assistant("BAD"), .user("TRY AGAIN")],
             format: .jsonObject, effort: .automatic)
         let invocation = LocalAgent.plan(
-            kind: .piCLI, executable: executable, request: request, directory: directory,
+            kind: .claudeCode, executable: executable, request: request, directory: directory,
             timeout: .seconds(180))
         #expect(invocation.stdin.contains("Previous reply (rejected):\nBAD"))
         let positions = ["DATA", "BAD", "TRY AGAIN"].compactMap {
@@ -205,7 +180,7 @@ struct LocalAgentTests {
     @Test func theAgentsAnswerIsReturnedAsPlainText() async throws {
         let agent = LocalAgent(run: { _ in "  plain answer  " })
         let answer = try await agent.complete(
-            kind: .piCLI, request: request(model: "m"), config: agentConfig)
+            kind: .claudeCode, request: request(model: "m"), config: agentConfig)
         #expect(answer == "  plain answer  ")
     }
 
@@ -213,7 +188,7 @@ struct LocalAgentTests {
 
     var agentConfig: ServiceConfig {
         ServiceConfig(
-            baseURL: LocalAgent.unusedBaseURL, model: "", apiKey: "", provider: .piCLI,
+            baseURL: LocalAgent.unusedBaseURL, model: "", apiKey: "", provider: .claudeCode,
             effort: .high, agentExecutable: executable)
     }
 
@@ -258,9 +233,9 @@ struct LocalAgentTests {
         let request = try client.translationRequest(
             text: "Hello", to: "zh-Hans", config: agentConfig)
         let command = try #require(
-            LocalAgent().command(kind: .piCLI, request: request, config: agentConfig))
+            LocalAgent().command(kind: .claudeCode, request: request, config: agentConfig))
         #expect(command.contains(executable.path))
-        #expect(command.contains("--no-tools"))
+        #expect(command.contains("--safe-mode"))
         #expect(command.contains("Hello"))
         #expect(command.contains("standard input"))
     }
@@ -313,33 +288,12 @@ struct LocalAgentTests {
             ])
     }
 
-    /// The real shape `pi --list-models` prints: a header row, then one row per model. pi takes
-    /// `provider/id`, which is the only unambiguous form when two providers share a model name.
-    @Test func piModelsPairTheProviderWithTheModel() throws {
-        let table = """
-            provider  model            context  max-out  thinking  images
-            deepseek  deepseek-flash   1M       384K     yes       yes
-            deepseek  deepseek-v4-pro  1M       384K     yes       no
-            openai    gpt-6.1-sol      1M       384K     no        yes
-            """
-        let models = try LocalAgent.parseModels(kind: .piCLI, output: table)
-        #expect(
-            models == [
-                ModelOption(id: "deepseek/deepseek-flash"),
-                ModelOption(id: "deepseek/deepseek-v4-pro"),
-                // `thinking no` is the only effort fact the table gives, and it is the one that means
-                // the model does not reason — the `images` column next to it says something else.
-                ModelOption(id: "openai/gpt-6.1-sol", efforts: []),
-            ])
-    }
-
     /// Claude Code only takes an alias or a full name, so its model stays free-form rather than being
     /// guessed at from a list this app would have to invent.
     @Test func claudeCodeOffersNoModelList() throws {
         #expect(try LocalAgent.parseModels(kind: .claudeCode, output: "anything").isEmpty)
         #expect(LocalAgentKind.claudeCode.modelListArguments == nil)
         #expect(LocalAgentKind.codexCLI.modelListArguments == ["debug", "models"])
-        #expect(LocalAgentKind.piCLI.modelListArguments == ["--list-models"])
     }
 
     @Test func anUnreadableCatalogIsALocalAgentFailure() {
@@ -365,18 +319,18 @@ struct LocalAgentTests {
     }
 
     /// When the agent said nothing about the model, the static per-CLI table decides, exactly as it did
-    /// before there was a catalogue: Codex has no `none`, so 关闭 becomes its lowest level.
+    /// before there was a catalogue: Claude Code has no `none`, so 关闭 becomes its lowest level.
     @Test func aModelWithNoWordFromTheAgentKeepsTheStaticTable() {
+        #expect(LocalAgentKind.claudeCode.effortValue(.off) == "low")
         #expect(LocalAgentKind.codexCLI.effortValue(.off) == "low")
         #expect(LocalAgentKind.codexCLI.effortValue(.max) == "max")
-        #expect(LocalAgentKind.piCLI.effortValue(.off) == "off")
     }
 
     /// An empty list is the agent saying the model does not reason: no effort switch is passed at all.
     @Test func aModelThatDoesNotReasonGetsNoEffortSwitch() {
         for level in EffortLevel.allCases where level != .automatic {
+            #expect(LocalAgentKind.claudeCode.effortValue(level, supported: []) == nil)
             #expect(LocalAgentKind.codexCLI.effortValue(level, supported: []) == nil)
-            #expect(LocalAgentKind.piCLI.effortValue(level, supported: []) == nil)
         }
     }
 
@@ -406,16 +360,6 @@ struct LocalAgentTests {
         #expect(answer == "原文")
         // The temporary directory goes with the answer, so nothing of the user's text is left behind.
         #expect(!FileManager.default.fileExists(atPath: invocation.directory.path))
-    }
-
-    @Test func theSystemPromptFileIsWrittenForPi() async throws {
-        let directory = LocalAgent.temporaryDirectory()
-        let invocation = LocalAgentInvocation(
-            executable: executable, arguments: ["-c", "cat system.txt"], stdin: "",
-            directory: directory, writesSystemPromptFile: true, systemPrompt: "SYSTEM",
-            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
-        let answer = try await LocalAgent.spawn(invocation, environment: shellEnvironment)
-        #expect(answer == "SYSTEM")
     }
 
     @Test func anAnswerThatArrivesInAFileIsRead() async throws {

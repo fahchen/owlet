@@ -1,5 +1,5 @@
 Feature: 把本机的 agent CLI 当作模型服务
-  已在本机登录的 Claude Code、Codex CLI 或 pi 可以直接当模型服务用：应用只向它要一次回答，
+  已在本机登录的 Claude Code 或 Codex CLI 可以直接当模型服务用：应用只向它要一次回答，
   不把它当成会读写代码的编码 agent（BDR-0013）。
 
   Rule: 本地 agent 与 HTTP 服务并列可选
@@ -41,7 +41,7 @@ Feature: 把本机的 agent CLI 当作模型服务
 
   Rule: 能反查的能力按 provider 各自给出
     Scenario: 从 agent 自己的清单里选模型
-      Given 用户在设置里选了 Codex CLI 或 pi
+      Given 用户在设置里选了 Codex CLI
       When 应用读取该 agent 的模型清单
       Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
       And 清单里标记为不公开的模型不出现
@@ -51,7 +51,7 @@ Feature: 把本机的 agent CLI 当作模型服务
       When 应用读取模型目录
       Then 思考强度按该模型声明的值域映射，不支持的档位取该模型内最近的较低档
       And 模型声明完全不支持推理时，请求不发送强度参数
-      And pi 与 Claude Code 没有按模型的数据，沿用各自的静态值域
+      And Claude Code 没有按模型的数据，沿用静态值域
 
     Scenario: 不列举能力的 provider 保持自由填写或静态值域
       Given 用户在设置里选了 Claude Code
@@ -71,18 +71,17 @@ Feature: 把本机的 agent CLI 当作模型服务
       And 本地校验与纠正重试完全不放松
 
     Scenario: 不接受 Schema 的 provider 把形状写在提示词里
-      Given 所选 provider 是 pi、DeepSeek 或其他只支持 json_object 的服务
+      Given 所选 provider 是 DeepSeek 或其他只支持 json_object 的服务
       Then 请求只要求 JSON
       And 形状仍由提示词承载、由本地校验兜住
 
   Rule: 只借用模型，不用它的工具与上下文
-    Scenario: 三个 agent 都关掉工具与上下文
+    Scenario: 两个 agent 都关掉工具与上下文
       Given 用户在设置里选了任一本地 agent
       When 应用发起一次请求
       Then Claude Code 以禁用全部工具与全部自定义的方式运行
-      And pi 以禁用工具、扩展、MCP、技能与上下文文件的方式运行
       And Codex 不读用户配置，因此它的 MCP 服务器不被连接、用户 hooks 不执行，shell 工具关闭
-      And 三者的工作目录都是一次性的空目录
+      And 两者的工作目录都是一次性的空目录
 
     Scenario: 不读取用户的会话与项目文件
       When 应用发起一次请求

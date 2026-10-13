@@ -3,7 +3,7 @@ import SwiftUI
 import Security
 
 enum Provider: String, CaseIterable, Sendable {
-    case openAICompatible, deepSeek, claudeCode, codexCLI, piCLI
+    case openAICompatible, deepSeek, claudeCode, codexCLI
 
     var title: LocalizedStringResource {
         switch self {
@@ -11,7 +11,6 @@ enum Provider: String, CaseIterable, Sendable {
         case .deepSeek: "DeepSeek"
         case .claudeCode: "Claude Code"
         case .codexCLI: "Codex CLI"
-        case .piCLI: "pi"
         }
     }
 
@@ -20,17 +19,17 @@ enum Provider: String, CaseIterable, Sendable {
         switch self {
         case .openAICompatible: nil
         case .deepSeek: ("https://api.deepseek.com", "deepseek-chat")
-        case .claudeCode, .codexCLI, .piCLI: nil
+        case .claudeCode, .codexCLI: nil
         }
     }
 
-    /// Whether the app can hand this provider a response schema. DeepSeek and pi only accept
-    /// `json_object`, so for them the shape travels in the system prompt instead; the two agents that
-    /// take a schema get it on the command line (`--output-schema`, `--json-schema`).
+    /// Whether the app can hand this provider a response schema. DeepSeek only accepts `json_object`,
+    /// so for it the shape travels in the system prompt instead; the two agents that take a schema get
+    /// it on the command line (`--output-schema`, `--json-schema`).
     var supportsJSONSchema: Bool {
         switch self {
         case .openAICompatible, .claudeCode, .codexCLI: true
-        case .deepSeek, .piCLI: false
+        case .deepSeek: false
         }
     }
 
@@ -43,7 +42,6 @@ enum Provider: String, CaseIterable, Sendable {
         case .openAICompatible, .deepSeek: nil
         case .claudeCode: .claudeCode
         case .codexCLI: .codexCLI
-        case .piCLI: .piCLI
         }
     }
 

@@ -4,14 +4,13 @@ import Foundation
 /// A local agent CLI the app can drive as its model service (BDR-0013). Its tools, skills, MCP servers
 /// and project context are all switched off: the app wants one answer to one prompt, not a session.
 enum LocalAgentKind: String, CaseIterable, Sendable {
-    case claudeCode, codexCLI, piCLI
+    case claudeCode, codexCLI
 
     /// The executable a normal install provides; the settings pane looks this name up on `PATH`.
     var executableName: String {
         switch self {
         case .claudeCode: "claude"
         case .codexCLI: "codex"
-        case .piCLI: "pi"
         }
     }
 
@@ -23,12 +22,7 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
     /// behind it do not: `gpt-6.1-sol` answers HTTP 400 `Unsupported value: 'none'` and lists
     /// `low／medium／high／xhigh／max`, and 关闭 is what an untouched install asks for.
     var effortValues: [EffortLevel: String] {
-        switch self {
-        case .claudeCode, .codexCLI:
-            [.off: "low", .low: "low", .medium: "medium", .high: "high", .max: "max"]
-        // pi clamps the level to the model's own range itself, and does have `off`.
-        case .piCLI: [.off: "off", .low: "low", .medium: "medium", .high: "high", .max: "max"]
-        }
+        [.off: "low", .low: "low", .medium: "medium", .high: "high", .max: "max"]
     }
 
     /// The command that lists the model names this agent can reach, or nil when it has none. Claude
@@ -39,13 +33,10 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         case .claudeCode: nil
         // The catalog as JSON, which is where the slugs and the visibility of each model live.
         case .codexCLI: ["debug", "models"]
-        // A table with one row per model, `provider  model  context  max-out  thinking  images`.
-        case .piCLI: ["--list-models"]
         }
     }
 
-    /// How this agent takes a response schema, or nil when it takes none: `pi` can only be told the
-    /// shape in the prompt, and it says so itself (`--mode json` is an event stream, not a constraint).
+    /// How this agent takes a response schema, or nil when it takes none.
     enum SchemaDelivery: Sendable {
         case file
         case argument
@@ -55,7 +46,6 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         switch self {
         case .codexCLI: .file
         case .claudeCode: .argument
-        case .piCLI: nil
         }
     }
 
@@ -85,8 +75,7 @@ struct LocalAgentInvocation: Sendable, Equatable {
     var arguments: [String]
     var stdin: String
     var directory: URL
-    /// `pi` reads its system prompt from a file; the others take it as an argument or on stdin.
-    var writesSystemPromptFile: Bool
+    /// The behavior prompt: Claude Code takes it as an argument, Codex composes it into standard input.
     var systemPrompt: String
     /// `codex` writes its final message where `--output-last-message` points instead of to stdout.
     var answersToFile: Bool
@@ -98,7 +87,6 @@ struct LocalAgentInvocation: Sendable, Equatable {
 
     var stdinFile: URL { directory.appending(path: "stdin.txt") }
     var schemaFile: URL { directory.appending(path: "schema.json") }
-    var systemPromptFile: URL { directory.appending(path: "system.txt") }
     var stdoutFile: URL { directory.appending(path: "stdout.txt") }
     var stderrFile: URL { directory.appending(path: "stderr.txt") }
     var answerFile: URL { directory.appending(path: "answer.txt") }
@@ -120,7 +108,7 @@ enum AgentDetection: Sendable, Equatable {
 
 /// The local agent backend: one process per request, the final answer, and nothing else.
 ///
-/// The three agents differ only in how a prompt is handed over and how the answer comes back, so those
+/// The two agents differ only in how a prompt is handed over and how the answer comes back, so those
 /// differences are a recipe here, and everything else — the JSON contract, the corrective round, the
 /// debug page, cancellation — is shared with the HTTP providers.
 struct LocalAgent: Sendable {
@@ -178,31 +166,30 @@ extension LocalAgent {
     /// behavior prompt travels, and where the answer appears.
     ///
     /// The user's text never reaches the command line — arguments are visible to every process on the
-    /// machine through `ps` — so it is always written to the process's standard input; `pi` gets the
-    /// system prompt through a 0600 file for the same reason.
+    /// machine through `ps` — so it is always written to the process's standard input.
     static func plan(
         kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL, timeout: Duration
     ) -> LocalAgentInvocation {
         let prompt = request.turns.map(\.content).joined(separator: "\n\n")
         // Only an agent that takes a schema carries one: an invocation describes what this agent will
-        // actually be given, and pi can only be told the shape in the prompt.
+        // actually be given, and an agent with no such switch can only be told the shape in the prompt.
         let schema = kind.schemaDelivery == nil ? nil : schemaData(request.format)
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: [], stdin: prompt, directory: directory,
-            writesSystemPromptFile: kind == .piCLI, systemPrompt: request.system,
+            systemPrompt: request.system,
             answersToFile: kind == .codexCLI, schema: schema,
             writesSchemaFile: schema != nil && kind.schemaDelivery == .file, timeout: timeout)
         var arguments = arguments(
             kind: kind, model: request.model, effort: request.effort,
             supported: request.supportedEfforts, invocation: invocation)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
-        // explicitly; the other two take the payload as context, so they need a short positional prompt
+        // explicitly; Claude Code takes the payload as context, so it needs a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
         arguments.append(kind == .codexCLI ? "-" : Self.stdinInstruction)
         return LocalAgentInvocation(
             executable: executable, arguments: arguments,
             stdin: stdin(kind: kind, system: request.system, prompt: prompt), directory: directory,
-            writesSystemPromptFile: invocation.writesSystemPromptFile, systemPrompt: request.system,
+            systemPrompt: request.system,
             answersToFile: invocation.answersToFile, schema: schema,
             writesSchemaFile: invocation.writesSchemaFile, timeout: timeout)
     }
@@ -242,12 +229,6 @@ extension LocalAgent {
                 "--output-last-message", invocation.answerFile.path,
             ]
             if invocation.schema != nil { arguments += ["--output-schema", invocation.schemaFile.path] }
-        case .piCLI:
-            arguments = [
-                "--print", "--no-tools", "--no-extensions", "--no-mcp", "--no-skills",
-                "--no-prompt-templates", "--no-context-files", "--no-session", "--no-approve",
-                "--system-prompt", invocation.systemPromptFile.path,
-            ]
         }
         if !model.isEmpty { arguments += ["--model", model] }
         if let value = kind.effortValue(effort, supported: supported) {
@@ -255,7 +236,6 @@ extension LocalAgent {
             case .claudeCode: arguments += ["--effort", value]
             // Quoted, because `-c` parses the value as TOML; the quotes make it a string for certain.
             case .codexCLI: arguments += ["--config", "model_reasoning_effort=\"\(value)\""]
-            case .piCLI: arguments += ["--thinking", value]
             }
         }
         return arguments
@@ -299,8 +279,7 @@ extension LocalAgent {
     }
 
     /// The one place that prepares a directory for one call: created empty and private, written with the
-    /// prompt and — when this agent wants them — the system prompt file and the response schema, then
-    /// removed however it ends.
+    /// prompt and — when this agent takes one — the response schema, then removed however it ends.
     static func withPreparedDirectory<T: Sendable>(
         _ invocation: LocalAgentInvocation, _ body: (LocalAgentInvocation) async throws -> T
     ) async throws -> T {
@@ -309,9 +288,6 @@ extension LocalAgent {
             attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: invocation.directory) }
         try write(invocation.stdin, to: invocation.stdinFile, permissions: 0o600)
-        if invocation.writesSystemPromptFile {
-            try write(invocation.systemPrompt, to: invocation.systemPromptFile, permissions: 0o600)
-        }
         if invocation.writesSchemaFile, let schema = invocation.schema {
             try write(String(decoding: schema, as: UTF8.self), to: invocation.schemaFile, permissions: 0o600)
         }
@@ -392,7 +368,7 @@ extension LocalAgent {
         guard let arguments = kind.modelListArguments else { return [] }
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: arguments, stdin: "",
-            directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
+            directory: temporaryDirectory(), systemPrompt: "",
             answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(60))
         let environment = await AgentEnvironment.shared.value(for: executable)
         let output = try await withPreparedDirectory(invocation) {
@@ -404,13 +380,12 @@ extension LocalAgent {
         return try parseModels(kind: kind, output: output.stdout)
     }
 
-    /// Reads each agent's own listing format. Pure, so the fixtures in the tests are the real shapes
-    /// these two commands print.
+    /// Reads each agent's own listing format. Pure, so the fixture in the tests is the real shape this
+    /// command prints.
     static func parseModels(kind: LocalAgentKind, output: String) throws -> [ModelOption] {
         switch kind {
         case .claudeCode: []
         case .codexCLI: try codexModels(output)
-        case .piCLI: piModels(output)
         }
     }
 
@@ -453,18 +428,6 @@ extension LocalAgent {
         default: nil
         }
     }
-
-    /// `pi --list-models` prints a table whose columns are provider, model, context, max-out, thinking
-    /// and images. pi takes either the bare id or `provider/id`, and only the paired form is
-    /// unambiguous when two providers offer a model of the same name; the `thinking` column is the only
-    /// effort fact it gives.
-    private static func piModels(_ output: String) -> [ModelOption] {
-        output.split(whereSeparator: \.isNewline).compactMap { line in
-            let columns = line.split(whereSeparator: \.isWhitespace)
-            guard columns.count >= 5, columns[0] != "provider" else { return nil }
-            return ModelOption(id: "\(columns[0])/\(columns[1])", efforts: columns[4] == "no" ? [] : nil)
-        }
-    }
 }
 
 extension LocalAgent {
@@ -474,7 +437,7 @@ extension LocalAgent {
         let invocation = LocalAgentInvocation(
             executable: URL(fileURLWithPath: "/bin/zsh"),
             arguments: ["-lc", "command -v \(kind.executableName)"], stdin: "",
-            directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
+            directory: temporaryDirectory(), systemPrompt: "",
             answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         let output = try? await withPreparedDirectory(invocation) {
             try await runProcess($0, environment: ProcessInfo.processInfo.environment)
@@ -497,7 +460,7 @@ extension LocalAgent {
         }
         let version = LocalAgentInvocation(
             executable: executable, arguments: ["--version"], stdin: "",
-            directory: temporaryDirectory(), writesSystemPromptFile: false, systemPrompt: "",
+            directory: temporaryDirectory(), systemPrompt: "",
             answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         do {
             let reported = try await withPreparedDirectory(version) {
@@ -548,8 +511,9 @@ actor AgentGate {
 }
 
 /// The `PATH` a child process needs. An app launched from Finder inherits only
-/// `/usr/bin:/bin:/usr/sbin:/sbin`, but `pi` is a Node script whose shebang is `/usr/bin/env node`, so
-/// the directories a login shell would have must be added or the CLI cannot start at all.
+/// `/usr/bin:/bin:/usr/sbin:/sbin`, but these CLIs are usually installed by a package manager and are
+/// Node scripts (`#!/usr/bin/env node`), so the directories a login shell would have must be added or
+/// the CLI cannot start at all.
 actor AgentEnvironment {
     static let shared = AgentEnvironment()
 
@@ -573,8 +537,8 @@ actor AgentEnvironment {
         if let resolved { return resolved }
         let invocation = LocalAgentInvocation(
             executable: URL(fileURLWithPath: "/bin/zsh"), arguments: ["-lc", "printf %s \"$PATH\""],
-            stdin: "", directory: LocalAgent.temporaryDirectory(), writesSystemPromptFile: false,
-            systemPrompt: "", answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(10))
+            stdin: "", directory: LocalAgent.temporaryDirectory(), systemPrompt: "",
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(10))
         let output = try? await LocalAgent.withPreparedDirectory(invocation) {
             try await LocalAgent.runProcess($0, environment: ProcessInfo.processInfo.environment)
         }

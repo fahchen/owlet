@@ -13,12 +13,12 @@ struct AgentSettingsTests {
     var defaults: UserDefaults { UserDefaults(suiteName: suite)! }
 
     @Test func aLocalAgentNeedsAnExecutableInsteadOfAKey() throws {
-        defaults.set(Provider.piCLI.rawValue, forKey: SettingsStore.providerKey)
+        defaults.set(Provider.claudeCode.rawValue, forKey: SettingsStore.providerKey)
         #expect(SettingsStore.currentConfig(in: defaults) == nil)
 
-        SettingsStore.setAgentPath("/bin/sh", for: .piCLI, in: defaults)
+        SettingsStore.setAgentPath("/bin/sh", for: .claudeCode, in: defaults)
         let config = try #require(SettingsStore.currentConfig(in: defaults))
-        #expect(config.provider == .piCLI)
+        #expect(config.provider == .claudeCode)
         #expect(config.model.isEmpty)
         #expect(config.apiKey.isEmpty)
         #expect(config.agentExecutable?.path == "/bin/sh")
@@ -44,14 +44,15 @@ struct AgentSettingsTests {
     }
 
     @Test func eachAgentKeepsItsOwnExecutable() {
-        SettingsStore.setAgentPath("/bin/sh", for: .piCLI, in: defaults)
+        SettingsStore.setAgentPath("/bin/sh", for: .claudeCode, in: defaults)
         SettingsStore.setAgentPath("/bin/ls", for: .codexCLI, in: defaults)
-        #expect(SettingsStore.agentPath(for: .piCLI, in: defaults) == "/bin/sh")
+        #expect(SettingsStore.agentPath(for: .claudeCode, in: defaults) == "/bin/sh")
         #expect(SettingsStore.agentPath(for: .codexCLI, in: defaults) == "/bin/ls")
-        #expect(SettingsStore.agentPath(for: .claudeCode, in: defaults) == nil)
 
-        SettingsStore.setAgentPath(nil, for: .piCLI, in: defaults)
-        #expect(SettingsStore.agentPath(for: .piCLI, in: defaults) == nil)
+        SettingsStore.setAgentPath(nil, for: .claudeCode, in: defaults)
+        #expect(SettingsStore.agentPath(for: .claudeCode, in: defaults) == nil)
+        // Clearing one agent must not touch the other's path.
+        #expect(SettingsStore.agentPath(for: .codexCLI, in: defaults) == "/bin/ls")
     }
 
     /// What an agent said a model accepts is kept per provider and per model, so switching either one
@@ -63,7 +64,7 @@ struct AgentSettingsTests {
             SettingsStore.supportedEfforts(for: .codexCLI, model: "gpt-6.1-sol", in: defaults)
                 == [.low, .high])
         #expect(SettingsStore.supportedEfforts(for: .codexCLI, model: "gpt-6-sol", in: defaults) == nil)
-        #expect(SettingsStore.supportedEfforts(for: .piCLI, model: "gpt-6.1-sol", in: defaults) == nil)
+        #expect(SettingsStore.supportedEfforts(for: .claudeCode, model: "gpt-6.1-sol", in: defaults) == nil)
     }
 
     /// An empty list is a fact — the model does not reason — and must not read back as "the agent said
@@ -83,13 +84,12 @@ struct AgentSettingsTests {
 
     @Test func twoProvidersKeepTheirOwnEfforts() {
         SettingsStore.setSupportedEfforts([.high], for: .codexCLI, model: "m", in: defaults)
-        SettingsStore.setSupportedEfforts([], for: .piCLI, model: "m", in: defaults)
+        SettingsStore.setSupportedEfforts([], for: .claudeCode, model: "m", in: defaults)
         #expect(SettingsStore.supportedEfforts(for: .codexCLI, model: "m", in: defaults) == [.high])
-        #expect(SettingsStore.supportedEfforts(for: .piCLI, model: "m", in: defaults) == [])
+        #expect(SettingsStore.supportedEfforts(for: .claudeCode, model: "m", in: defaults) == [])
     }
 
     @Test func providersCarryTheirOwnCapabilities() {
-        #expect(Provider.piCLI.localAgent == LocalAgentKind.piCLI)
         #expect(Provider.claudeCode.localAgent == LocalAgentKind.claudeCode)
         #expect(Provider.codexCLI.localAgent == LocalAgentKind.codexCLI)
         #expect(Provider.deepSeek.localAgent == nil)
@@ -97,10 +97,13 @@ struct AgentSettingsTests {
 
         #expect(Provider.claudeCode.isLocalAgent)
         #expect(Provider.openAICompatible.supportsJSONSchema)
-        // No local agent has a response-format parameter, so its shape travels in the prompt.
-        #expect(!Provider.piCLI.supportsJSONSchema)
+        // Both local agents take a schema on the command line.
+        #expect(Provider.claudeCode.supportsJSONSchema)
+        #expect(Provider.codexCLI.supportsJSONSchema)
+        // DeepSeek only takes `json_object`, so its shape travels in the prompt.
         #expect(!Provider.deepSeek.supportsJSONSchema)
         // A local agent has no API key, so no preset URL or model is filled in for it.
-        #expect(Provider.piCLI.preset == nil)
+        #expect(Provider.claudeCode.preset == nil)
+        #expect(Provider.codexCLI.preset == nil)
     }
 }

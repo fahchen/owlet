@@ -95,11 +95,11 @@
 
 ## 本地 agent 作为服务
 
-本机 agent（Claude Code、Codex CLI、pi）只是「模型服务的另一种到达方式」：应用每次请求起一个进程、要一次回答，然后结束它。它不承担编码 agent 的角色——工具、技能、MCP、项目上下文与会话落盘一律关闭，工作目录是一次性的空目录（Codex 不读用户配置，因此它的 MCP 服务器不被连接、用户 hooks 不执行），见 [BDR-0013](../settings/decisions/BDR-0013-local-agent-provider.md)。
+本机 agent（Claude Code、Codex CLI）只是「模型服务的另一种到达方式」：应用每次请求起一个进程、要一次回答，然后结束它。它不承担编码 agent 的角色——工具、技能、MCP、项目上下文与会话落盘一律关闭，工作目录是一次性的空目录（Codex 不读用户配置，因此它的 MCP 服务器不被连接、用户 hooks 不执行），见 [BDR-0013](../settings/decisions/BDR-0013-local-agent-provider.md)。
 
-请求与投递分成两层：`ModelRequest`（模型名、系统提示词、若干轮 user／assistant、响应格式、思考强度）是应用唯一的请求值，`ModelBackend` 是投递方式——HTTP 服务把它组建成 OpenAI 风格 body 再 POST，本地 agent 把它翻译成参数与标准输入。行为提示词与固定契约按各 agent 的通道交付（系统提示词参数或 0600 临时文件），**用户原文一律走标准输入，不进命令行参数**（`ps` 对同机进程可见）。
+请求与投递分成两层：`ModelRequest`（模型名、系统提示词、若干轮 user／assistant、响应格式、思考强度）是应用唯一的请求值，`ModelBackend` 是投递方式——HTTP 服务把它组建成 OpenAI 风格 body 再 POST，本地 agent 把它翻译成参数与标准输入。行为提示词与固定契约按各 agent 的通道交付（系统提示词参数，或与原文合成后走标准输入），**用户原文一律走标准输入，不进命令行参数**（`ps` 对同机进程可见）。
 
-能约束形状的 agent 拿到的就是上文那份 Schema：Codex 用 `--output-schema`、Claude Code 用 `--json-schema`；pi 与只支持 `json_object` 的服务一样，形状由提示词承载。本地校验、纠正重试与「不得在校验失败后退回原始文本」在任何 provider 上都相同。
+能约束形状的 agent 拿到的就是上文那份 Schema：Codex 用 `--output-schema`、Claude Code 用 `--json-schema`；只支持 `json_object` 的服务（如 DeepSeek）没有这类开关，形状由提示词承载。本地校验、纠正重试与「不得在校验失败后退回原始文本」在任何 provider 上都相同。
 
 本地 agent 的答案就是进程输出的文本，不再套一层响应外壳：截断与拒绝只存在于 HTTP 服务的外壳里，空输出直接按空内容处理。失败归为连接类：不可执行、非零退出与超过超时上限都提示本地 agent 运行失败，并带上该 agent 自己的错误输出（先取标准错误，为空时退回标准输出）；取消要结束子进程，迟到输出不得写回。调试页记下实际命令行与提示词（命令行本来就不含原文）以及模型的原始返回，记录里不含任何密钥。
 

@@ -391,7 +391,7 @@ struct LocalAgentTests {
         """
 
     @Test func codexModelsComeFromItsCatalogAndSkipHiddenOnes() throws {
-        let models = try LocalAgent.parseModels(kind: .codexCLI, output: codexCatalog)
+        let models = try LocalAgent.parseModels(kind: .codexCLI, payload: Data(codexCatalog.utf8))
         #expect(
             models == [
                 // `minimal` is the app's lowest reasoning level, `ultra` its highest, in app order.
@@ -403,18 +403,157 @@ struct LocalAgentTests {
             ])
     }
 
-    /// Claude Code only takes an alias or a full name, so its model stays free-form rather than being
-    /// guessed at from a list this app would have to invent.
-    @Test func claudeCodeOffersNoModelList() throws {
-        #expect(try LocalAgent.parseModels(kind: .claudeCode, output: "anything").isEmpty)
-        #expect(LocalAgentKind.claudeCode.modelListArguments == nil)
-        #expect(LocalAgentKind.codexCLI.modelListArguments == ["debug", "models"])
+    /// The real shape one per-account file in `~/.claude/cache/model-catalog` has, trimmed to the fields
+    /// the picker reads: one entry with the whole range, one that stops lower, one that does not reason,
+    /// and one that says nothing about effort.
+    let claudeCatalog = """
+        {"version":2,"fetchedAt":1,"staleAt":2,
+         "catalog":{"surface":"cc",
+          "config":{"id":"cc","models":[
+           {"id":"claude-opus-5-5","name":"Opus 5.5","short_name":"Opus","section":"main",
+            "description":"…","capabilities":{"web_search":true},
+            "thinking":{"type":"effort","description":"…","effort_options":[
+              {"id":"low","name":"Low"},{"id":"medium","name":"Medium"},
+              {"id":"high","name":"High"},{"id":"xhigh","name":"Extra"},
+              {"id":"max","name":"Max"}]}},
+           {"id":"claude-opus-4-6","name":"Opus 4.6","short_name":"Opus","section":"overflow",
+            "thinking":{"type":"effort","effort_options":[
+              {"id":"low","name":"Low"},{"id":"high","name":"High"},{"id":"max","name":"Max"}]}},
+           {"id":"claude-haiku-4-5-20251001","name":"Haiku 4.5","short_name":"Haiku",
+            "section":"overflow","thinking":{"type":"none"}},
+           {"id":"claude-mystery","short_name":"Mystery","section":"overflow"}
+          ],"settings_vocabulary":{"effort_level":{"low":1,"medium":2,"high":3,"xhigh":4,"max":5}}},
+          "state":{"model":"claude-opus-5-5",
+                   "thinking_by_model":[{"id":"claude-fable-5-1","thinking":{"type":"effort","effort":"high"}}]}}}
+        """
+
+    /// Claude Code has no listing command: its list is a catalog file it cached for its own model menu.
+    /// `xhigh` is the app's highest level, a model without `xhigh` still reaches `max`, `type: "none"` is
+    /// a model that does not reason, and a missing `name` falls back to the short name.
+    @Test func claudeModelsComeFromItsCachedCatalog() throws {
+        let models = try LocalAgent.parseModels(
+            kind: .claudeCode, payload: Data(claudeCatalog.utf8))
+        #expect(
+            models == [
+                ModelOption(
+                    id: "claude-opus-5-5", label: "Opus 5.5",
+                    efforts: [.low, .medium, .high, .max]),
+                ModelOption(id: "claude-opus-4-6", label: "Opus 4.6", efforts: [.low, .high, .max]),
+                ModelOption(id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", efforts: []),
+                ModelOption(id: "claude-mystery", label: "Mystery"),
+            ])
+    }
+
+    /// Each agent names its own kind of source, and only the cached one may read nothing as "no list".
+    @Test func eachAgentNamesItsOwnModelSource() {
+        #expect(LocalAgentKind.claudeCode.modelSource == .catalogFile)
+        #expect(LocalAgentKind.codexCLI.modelSource == .command(["debug", "models"]))
+        #expect(LocalAgentKind.claudeCode.modelSource?.emptyAnswerIsFinal == false)
+        #expect(LocalAgentKind.codexCLI.modelSource?.emptyAnswerIsFinal == true)
     }
 
     @Test func anUnreadableCatalogIsALocalAgentFailure() {
         #expect(throws: ModelError.localAgent("the model catalog is unreadable")) {
-            try LocalAgent.parseModels(kind: .codexCLI, output: "not json")
+            try LocalAgent.parseModels(kind: .codexCLI, payload: Data("not json".utf8))
         }
+    }
+
+    // MARK: - The cached Claude Code catalog
+
+    /// A directory of its own, so no test reads the developer's real cache.
+    func catalogDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "owlet-catalog-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// One per-account catalog file holding just the models a test names, in the real nested shape.
+    func catalogData(_ models: [(id: String, name: String?)]) throws -> Data {
+        let entries: [[String: Any]] = models.map { model in
+            var entry: [String: Any] = ["id": model.id]
+            if let name = model.name { entry["name"] = name }
+            return entry
+        }
+        let object: [String: Any] = [
+            "version": 2, "fetchedAt": 1, "staleAt": 2,
+            "catalog": ["surface": "cc", "config": ["id": "cc", "models": entries]],
+        ]
+        return try JSONSerialization.data(withJSONObject: object)
+    }
+
+    func write(_ payload: Data, named name: String, at date: Date, in directory: URL) throws {
+        let url = directory.appending(path: name)
+        try payload.write(to: url)
+        // The modification date is what "newest" means, so the fixture states it instead of letting it
+        // depend on how fast the test wrote its files.
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
+    }
+
+    /// A cache that is not there, or is not a catalog, is no list — not an error and not a crash. This is
+    /// the row Claude Code had before the cache existed.
+    @Test func anUnreadableClaudeCatalogIsJustNoList() throws {
+        #expect(LocalAgent.claudeCatalog(in: URL(fileURLWithPath: "/nowhere/owlet-cache")).isEmpty)
+        #expect(LocalAgent.claudeCatalog(Data("not json".utf8)) == nil)
+        #expect(LocalAgent.claudeCatalog(Data(#"{"version":2}"#.utf8)) == nil)
+        #expect(LocalAgent.claudeCatalog(Data(#"{"catalog":{"config":{}}}"#.utf8)) == nil)
+        #expect(try LocalAgent.claudeCatalog(catalogData([])) == nil)
+        // The same, through the reader the pane uses: no list, and never a failure it has to show.
+        #expect(try LocalAgent.parseModels(kind: .claudeCode, payload: Data("not json".utf8)).isEmpty)
+        #expect(try LocalAgent.parseModels(kind: .claudeCode, payload: catalogData([])).isEmpty)
+    }
+
+    /// Newest first, but only among the files that can actually be read: a corrupt newest file must not
+    /// hide the one behind it.
+    @Test func theNewestReadableClaudeCatalogWins() throws {
+        let directory = try catalogDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let now = Date()
+        try write(
+            catalogData([("older-model", "Older")]), named: "a-cc.json",
+            at: now.addingTimeInterval(-600), in: directory)
+        try write(
+            Data("not json".utf8), named: "b-cc.json", at: now, in: directory)
+        #expect(
+            LocalAgent.claudeCatalog(in: directory)
+                == [ModelOption(id: "older-model", label: "Older")])
+
+        try write(
+            catalogData([("newer-model", "Newer")]), named: "c-cc.json",
+            at: now.addingTimeInterval(600), in: directory)
+        #expect(
+            LocalAgent.claudeCatalog(in: directory)
+                == [ModelOption(id: "newer-model", label: "Newer")])
+    }
+
+    /// The directory also holds published documents with a different shape. Only the per-account
+    /// `*-cc.json` files describe this account's models, so one of those wins even when it is older.
+    @Test func thePerAccountCatalogIsPreferred() throws {
+        let directory = try catalogDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let now = Date()
+        try write(
+            catalogData([("account-model", "Account")]), named: "a-cc.json", at: now, in: directory)
+        try write(
+            catalogData([("published-model", "Published")]), named: "published-zz.json",
+            at: now.addingTimeInterval(600), in: directory)
+        #expect(
+            LocalAgent.claudeCatalog(in: directory)
+                == [ModelOption(id: "account-model", label: "Account")])
+    }
+
+    /// Every file is the wrong shape or names no model: the row stays free-form rather than showing an
+    /// empty list.
+    @Test func aDirectoryOfUnusableCatalogsIsNoList() throws {
+        let directory = try catalogDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let now = Date()
+        try write(catalogData([]), named: "empty-cc.json", at: now, in: directory)
+        try write(
+            Data(#"{"version":1,"sources":[]}"#.utf8), named: "published-floor.json", at: now,
+            in: directory)
+        try write(Data("not json".utf8), named: "notes.txt", at: now, in: directory)
+        #expect(LocalAgent.claudeCatalog(in: directory).isEmpty)
     }
 
     // MARK: - Effort

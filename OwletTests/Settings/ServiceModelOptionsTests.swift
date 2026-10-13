@@ -39,4 +39,36 @@ struct ServiceModelOptionsTests {
     @Test func nothingIsOfferedWhenNoModelIsSaved() {
         #expect(ModelSettingsPane.modelOptions(for: .loading, model: "").isEmpty)
     }
+
+    /// A name saved before the cache changed is still the one in the field, and the picker still offers
+    /// it rather than dropping a configuration that works.
+    @Test func aSavedClaudeModelTheCatalogDoesNotOfferStaysSelectable() {
+        let listed = [ModelOption(id: "claude-opus-5-5", label: "Opus 5.5", efforts: [.low, .high])]
+        #expect(
+            ModelSettingsPane.modelOptions(for: .loaded(listed), model: "claude-opus-4-6")
+                == [ModelOption(id: "claude-opus-4-6")] + listed)
+    }
+
+    /// Only an agent that really has a list gets the picker. A listing command answers on demand, so its
+    /// picker stands whatever the load is doing; a cached catalog only gets one once it produced rows,
+    /// because an empty picker would read as "this agent has no models" when nothing was readable.
+    @Test func onlyAnAgentWithAListGetsThePicker() {
+        let command = LocalAgentKind.codexCLI.modelSource
+        let cache = LocalAgentKind.claudeCode.modelSource
+        let listed = options(["claude-opus-5-5"])
+
+        // No model source at all: an HTTP service, or a provider that only lists through its API.
+        #expect(!ModelSettingsPane.listsModels(nil, models: .loaded(listed)))
+
+        #expect(ModelSettingsPane.listsModels(command, models: .idle))
+        #expect(ModelSettingsPane.listsModels(command, models: .loading))
+        #expect(ModelSettingsPane.listsModels(command, models: .failed("x")))
+        #expect(ModelSettingsPane.listsModels(command, models: .loaded([])))
+
+        #expect(!ModelSettingsPane.listsModels(cache, models: .idle))
+        #expect(!ModelSettingsPane.listsModels(cache, models: .loading))
+        #expect(!ModelSettingsPane.listsModels(cache, models: .failed("x")))
+        #expect(!ModelSettingsPane.listsModels(cache, models: .loaded([])))
+        #expect(ModelSettingsPane.listsModels(cache, models: .loaded(listed)))
+    }
 }

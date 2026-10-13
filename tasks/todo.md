@@ -1243,3 +1243,32 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-13）：[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 新增 `CodexFeatures`（desired／fallback／overrides／parse／intersect／sendable）与 `LocalAgent.codexScan`；`LocalAgentInvocation` 恢复 `instructionsFile`（0600）与 `writesInstructionsFile`；[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 新增 `service.agentFeatures`／`service.agentOverrides` 与 `ServiceConfig.agentFeatures／agentOverrides`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 在检测成功后 `scanFlags`。实测（codex 0.160.1，同一 composite 系统提示词 + 翻译 schema + 一句英文）：上一轮配方 13,576／13,578／13,578 → 最终配方 5,655／5,655／5,655，墙钟仍在 8.9–15.4 s 噪声区间（不宣称提速）。测试 400 → 407 项。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+
+## T66：Claude Code 从本地缓存读模型清单（已实现）
+
+依据 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §9 与[本地 agent 行为规格](../spec/settings/features/local-agent.feature)的「能反查的能力按 provider 各自给出」。此前 Claude Code 被记为「无列举命令」，模型名只能是自由填写的文本框；它其实会把自己抓到的模型目录缓存在本机，本轮读的就是这份缓存。
+
+范围与取舍：
+
+- **不伪造一条 CLI 命令**：Codex 用 `codex debug models` 现场列举，Claude Code 没有这种命令，所以 `LocalAgentKind.modelListArguments` 换成 `LocalAgentKind.ModelSource`（`.command([String])` / `.catalogFile`），两种来源在类型里就分得开；设置页只问这个来源「空结果算不算最终答案」，不区分是哪一种。
+- **读的位置**：`~/.claude/cache/model-catalog/`，先 `*-cc.json`、再其他 JSON，各组内按修改时间取最新能解析的一份；`catalog.config.models` 缺失或为空的文件直接跳过。值取条目自己的 `id`（`--model` 送的仍是这个值，与手输同一个），行文字取 `name`、退回 `short_name`。
+- **强度按模型，两个 agent 现在都有**：缓存里 `thinking.type == "effort"` 的条目带 `effort_options[].id`（`low／medium／high／xhigh／max`），映射成应用档位后写入既有的 `service.agentEfforts`；`type: "none"` 是「完全不推理」，请求不发强度参数；没有 `thinking` 表示没说，沿用静态表。实测本机缓存 12 个模型中 11 个是 `effort`（有的到 `xhigh`、有的只到 `high`），`claude-haiku-4-5-20251001` 是 `none`。
+- **这不是官方接口**：路径、文件名、字段都是这份缓存的现状，没有任何文档承诺（BDR-0013 §9 已记为残留风险）。因此**读不出来就等于没有**——目录不存在、文件为空、形状变了、`models` 为空，统统返回空清单，该行退回自由填写、不弹错误、不动已保存的值；`LocalAgent.models` 对缓存来源从不抛错。Codex 那条路仍会把列举命令的坏输出报成可重试的错误，两者的失败形状不同是有意的。
+- 解析保持纯函数（吃 `Data` 与目录 `URL`），测试用临时目录里的 fixture，不读开发者本机缓存；`~/.claude.json`（含凭据）从头到尾没有被读过，日志里也不会有它的内容。
+
+验收：
+
+- [x] `LocalAgentKind.ModelSource` 与 `modelSource`；Codex = `.command(["debug", "models"])`，Claude Code = `.catalogFile`；`emptyAnswerIsFinal` 区分「命令会当场回答」与「缓存读不到只说明没清单」。
+- [x] `LocalAgent.claudeCatalog(in:)` 取最新可解析的一份，`claudeCatalog(_ payload:)` 读单个文件的 `Data`；目录缺失、坏 JSON、形状不符、`models` 为空都返回空清单。
+- [x] `LocalAgent.parseModels(kind:payload:)` 覆盖两种来源：Codex 的坏 JSON 仍是 `ModelError.localAgent("the model catalog is unreadable")`，Claude Code 的坏缓存只是空清单。
+- [x] 设置页在「来源有清单且缓存确实给出模型」时用 `Picker`，否则保持 `TextField`；第一行仍是「该 agent 自己的默认模型」（空值）。
+- [x] 模型声明了档位时，强度行下就地显示「该模型支持：…」或「该模型不使用思考强度」。
+- [x] 测试：真实形状的 fixture → 期望的 id／label／efforts；最新可解析文件的选择与 `*-cc.json` 优先；缺失目录、坏 JSON、空 `models` 均返回空；已保存但清单里没有的 Claude 模型仍可选；`listsModels` 的四态判定。既有断言未削弱（`claudeCodeOffersNoModelList` 按新行为重写为 `claudeModelsComeFromItsCachedCatalog` + `eachAgentNamesItsOwnModelSource`）。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+- [ ] **需要人跑 `mise run dev`**：本环境不能看 GUI。要在设置页选 Claude Code，确认模型名变成下拉、第一项是「该 agent 自己的默认模型」、强度行下出现「该模型支持：…」；再把缓存目录临时改名，确认该行退回文本框且不弹错误。
+
+结果（2026-10-13）：[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 的 `modelListArguments` 换成 `ModelSource`／`modelSource`，新增 `claudeCatalogDirectory`／`claudeCatalog(in:)`／`claudeCatalog(_:)`／`claudeEfforts`，`parseModels` 改吃 `payload: Data`，两个 `codexEfforts`／`claudeEfforts` 合用一个 `efforts(named:)` 映射；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的模型行改问 `listsModels(_:models:)`（命令来源恒为 `Picker`，缓存来源只在真的读到模型时才是 `Picker`），`selectedEfforts` 与 `loadModels` 的准入条件改为 `modelSource != nil`。规格与文档同步：BDR-0013 §9 的能力表、残留风险与未验证项；`local-agent.feature` 重写「Claude Code 保持自由填写」，新增缓存可读／不可读两条；`docs/liquid-glass-components.md` 逐屏表、`spec/product.md`、`docs/unimplemented-features.md`。测试 407 → 414 项（`LocalAgentTests` +5、`ServiceModelOptionsTests` +2），全套 414 项 / 48 个 suite 通过。
+
+真实调用一次（`claude 2.1.296`，2026-10-13）：命令行被接受，返回的是配额提示 `You've hit your weekly limit · resets Oct 15 at 5am (Asia/Tokyo)`，exit 1、写在标准输出、标准错误为空——与 BDR-0013 §7 记的一致。因此**没有**验证缓存里的新模型 id（`claude-opus-5-5`）与 `--effort medium` 是否被真实接受，也没有真实译文；这与 BDR-0013 未验证项里「Claude Code 的真实返回（周配额用尽）」是同一件事。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。

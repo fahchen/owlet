@@ -25,14 +25,35 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         [.off: "low", .low: "low", .medium: "medium", .high: "high", .max: "max"]
     }
 
-    /// The command that lists the model names this agent can reach, or nil when it has none. Claude
-    /// Code only takes an alias (`sonnet`) or a full name and offers no way to enumerate them, so its
-    /// model stays free-form rather than guessed at from a list this app would have to invent.
-    var modelListArguments: [String]? {
+    /// Where this agent's model list comes from. Both sources are local — neither reaches a model —
+    /// but they are not the same kind of thing, and the two fail differently.
+    enum ModelSource: Sendable, Equatable {
+        /// A listing command this CLI runs on demand. The catalog as JSON is where the slugs and the
+        /// visibility of each model live.
+        case command([String])
+        /// The catalog this CLI caches on disk for its own model menu. Undocumented: the path, the file
+        /// names and the fields are all this app's reading of a cache another program wrote, so any of
+        /// them may be absent or change shape (BDR-0013 §9).
+        case catalogFile
+
+        /// Whether an empty answer is itself the answer. A listing command always answers, so nothing
+        /// back means this agent has no models; a cache that yields nothing only means it could not be
+        /// read, and the settings row then stays free-form instead of showing an empty picker.
+        var emptyAnswerIsFinal: Bool {
+            switch self {
+            case .command: true
+            case .catalogFile: false
+            }
+        }
+    }
+
+    /// How this agent can enumerate models, or nil when it has no way at all. Claude Code has no listing
+    /// command: it only caches the catalog it fetched for its own model menu, so its list is a file read.
+    /// Either way `--model` takes the catalogue entry's own id, exactly as a hand-typed name would.
+    var modelSource: ModelSource? {
         switch self {
-        case .claudeCode: nil
-        // The catalog as JSON, which is where the slugs and the visibility of each model live.
-        case .codexCLI: ["debug", "models"]
+        case .claudeCode: .catalogFile
+        case .codexCLI: .command(["debug", "models"])
         }
     }
 
@@ -494,39 +515,53 @@ extension LocalAgent {
         return (status: output.status, stdout: output.stdout)
     }
 
-    /// The models this agent offers, in its own order, with what the agent says each one accepts. A
-    /// listing command is local — it never reaches a model — so opening the pane stays cheap.
+    /// The models this agent offers, in its own order, with what the agent says each one accepts. Both
+    /// sources are local — neither reaches a model — so opening the pane stays cheap.
+    ///
+    /// `executable` is what the command source runs; the catalog source ignores it, because the cache
+    /// belongs to the CLI the settings pane already found. A cache that cannot be read is no list at all,
+    /// never an error the user sees: this row is exactly what it was before the cache existed.
     static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [ModelOption] {
-        guard let arguments = kind.modelListArguments else { return [] }
-        let invocation = LocalAgentInvocation(
-            executable: executable, arguments: arguments, stdin: "",
-            directory: temporaryDirectory(), systemPrompt: "",
-            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(60))
-        let environment = await AgentEnvironment.shared.value(for: executable)
-        let output = try await withPreparedDirectory(invocation) {
-            try await runProcess($0, environment: environment)
+        switch kind.modelSource {
+        case nil:
+            return []
+        case .catalogFile:
+            return claudeCatalog(in: claudeCatalogDirectory)
+        case .command(let arguments):
+            let invocation = LocalAgentInvocation(
+                executable: executable, arguments: arguments, stdin: "",
+                directory: temporaryDirectory(), systemPrompt: "",
+                answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(60))
+            let environment = await AgentEnvironment.shared.value(for: executable)
+            let output = try await withPreparedDirectory(invocation) {
+                try await runProcess($0, environment: environment)
+            }
+            guard output.status == 0 else {
+                throw ModelError.localAgent("exit \(output.status): \(tail(output.stderr))")
+            }
+            return try parseModels(kind: kind, payload: Data(output.stdout.utf8))
         }
-        guard output.status == 0 else {
-            throw ModelError.localAgent("exit \(output.status): \(tail(output.stderr))")
-        }
-        return try parseModels(kind: kind, output: output.stdout)
     }
 
-    /// Reads each agent's own listing format. Pure, so the fixture in the tests is the real shape this
-    /// command prints.
-    static func parseModels(kind: LocalAgentKind, output: String) throws -> [ModelOption] {
-        switch kind {
-        case .claudeCode: []
-        case .codexCLI: try codexModels(output)
+    /// Reads each agent's own listing format from the payload its source produced. Pure, so the fixture
+    /// in the tests is the real shape that source gives.
+    ///
+    /// The two sources fail differently on purpose: a listing command that prints nonsense is an error
+    /// worth showing and retrying, while a catalog file that is not the shape this app knows is just a
+    /// cache it cannot read — no list, which is the free-form row.
+    static func parseModels(kind: LocalAgentKind, payload: Data) throws -> [ModelOption] {
+        switch kind.modelSource {
+        case nil: []
+        case .command: try codexModels(payload)
+        case .catalogFile: claudeCatalog(payload) ?? []
         }
     }
 
     /// `codex debug models` prints the catalog as JSON. A model the picker should not offer is marked
     /// `visibility: "hide"`; `--model` takes the slug, and the same entry carries the levels the model
     /// accepts.
-    private static func codexModels(_ output: String) throws -> [ModelOption] {
-        guard let data = output.data(using: .utf8),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    private static func codexModels(_ payload: Data) throws -> [ModelOption] {
+        guard let object = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
             let models = object["models"] as? [[String: Any]]
         else { throw ModelError.localAgent("the model catalog is unreadable") }
         return models.compactMap { model in
@@ -544,8 +579,14 @@ extension LocalAgent {
     /// reason at all, and then no effort parameter may be sent.
     private static func codexEfforts(_ raw: Any?) -> [EffortLevel]? {
         guard let levels = raw as? [[String: Any]] else { return nil }
-        let named = levels.compactMap { $0["effort"] as? String }.compactMap(effortLevel)
-        return EffortLevel.allCases.filter { named.contains($0) }
+        return efforts(named: levels.compactMap { $0["effort"] as? String })
+    }
+
+    /// The app's own levels for the names a catalogue used, in the app's own order. A name no CLI uses is
+    /// dropped rather than guessed at, and a list that maps to nothing sends no parameter at all.
+    private static func efforts(named names: [String]) -> [EffortLevel] {
+        let levels = names.compactMap(effortLevel)
+        return EffortLevel.allCases.filter { levels.contains($0) }
     }
 
     /// The app level a CLI effort name stands for. `none` is the only real off, and a level weaker than
@@ -559,6 +600,85 @@ extension LocalAgent {
         case "xhigh", "max", "ultra": .max
         default: nil
         }
+    }
+}
+
+extension LocalAgent {
+    /// Where Claude Code caches the model catalog it fetched for its own model menu. Undocumented: this
+    /// is a cache another program writes, so it can be missing, stale, or reshaped by any release. Every
+    /// reader below treats all three the same way — no list.
+    static var claudeCatalogDirectory: URL {
+        URL(fileURLWithPath: NSHomeDirectory()).appending(path: ".claude/cache/model-catalog")
+    }
+
+    /// The newest catalog in `directory` that can be read, as picker rows. Empty when the directory is
+    /// missing, holds no catalog, or every catalog is a shape this app does not know.
+    ///
+    /// Per-account catalogs (`*-cc.json`) are tried before anything else — the directory also holds
+    /// published documents with a different shape — and inside each group newest first, so a stale or
+    /// unreadable file never hides the one behind it.
+    static func claudeCatalog(in directory: URL) -> [ModelOption] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        let files = names.filter { $0.hasSuffix(".json") }
+        let accounts = files.filter { $0.hasSuffix("-cc.json") }.map { directory.appending(path: $0) }
+        let others = files.filter { !$0.hasSuffix("-cc.json") }.map { directory.appending(path: $0) }
+        for url in newestFirst(accounts) + newestFirst(others) {
+            guard let data = try? Data(contentsOf: url), let options = claudeCatalog(data) else {
+                continue
+            }
+            return options
+        }
+        return []
+    }
+
+    /// One catalog file's rows, or nil when this file is not that shape or names no model. Everything
+    /// optional is optional to us: a file this app cannot read is the same as a file that is not there.
+    static func claudeCatalog(_ payload: Data) -> [ModelOption]? {
+        guard let object = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
+            let catalog = object["catalog"] as? [String: Any],
+            let config = catalog["config"] as? [String: Any],
+            let models = config["models"] as? [[String: Any]]
+        else { return nil }
+        let options = models.compactMap { model -> ModelOption? in
+            guard let id = model["id"] as? String, !id.isEmpty else { return nil }
+            // `name` is what the CLI's own menu shows; the short name is the fallback label and the id
+            // the last one, so a row always reads as something.
+            return ModelOption(
+                id: id, label: model["name"] as? String ?? model["short_name"] as? String,
+                efforts: claudeEfforts(model["thinking"]))
+        }
+        return options.isEmpty ? nil : options
+    }
+
+    /// The levels one cached entry accepts. `effort_options` carries the same words the other agents
+    /// use; `type: "none"` is a model that does not reason at all, and anything else says nothing about
+    /// effort, which leaves the static per-CLI table in charge.
+    private static func claudeEfforts(_ raw: Any?) -> [EffortLevel]? {
+        guard let thinking = raw as? [String: Any], let type = thinking["type"] as? String else {
+            return nil
+        }
+        switch type {
+        case "none": return []
+        case "effort":
+            let options = thinking["effort_options"] as? [[String: Any]] ?? []
+            return efforts(named: options.compactMap { $0["id"] as? String })
+        default: return nil
+        }
+    }
+
+    /// Newest first by modification date. A file whose date cannot be read sorts last instead of failing
+    /// the whole lookup.
+    private static func newestFirst(_ urls: [URL]) -> [URL] {
+        urls.sorted { left, right in
+            (modified(left) ?? .distantPast) > (modified(right) ?? .distantPast)
+        }
+    }
+
+    private static func modified(_ url: URL) -> Date? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) else {
+            return nil
+        }
+        return attributes[.modificationDate] as? Date
     }
 }
 

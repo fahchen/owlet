@@ -250,9 +250,9 @@ struct ModelSettingsPane: View {
             Picker(L10n.shared.string("Model Name"), selection: $model) {
                 ForEach(modelOptions, id: \.self) { Text(verbatim: $0.label).tag($0.id) }
             }
-        } else if let kind = provider.localAgent, kind.modelListArguments != nil {
-            // An agent that can list its models gets the same picker as the HTTP services, with its own
-            // default as a real first choice; Claude Code has no such command and stays free-form.
+        } else if listsModels {
+            // An agent whose list this app can read gets the same picker as the HTTP services, with its
+            // own default as a real first choice.
             Picker(L10n.shared.string("Model Name"), selection: $model) {
                 ForEach(agentModelOptions, id: \.self) { modelRow($0) }
             }
@@ -260,6 +260,20 @@ struct ModelSettingsPane: View {
             TextField(
                 L10n.shared.string("Model Name"), text: $model, prompt: Text(modelPrompt))
         }
+    }
+
+    /// Whether the model name is a picker, from what the agent can offer and what the last read made of
+    /// it. A command source always gets one: it answers on demand, so the saved name is a real option
+    /// even before the answer. A cached catalog only gets one once it really produced a list, and
+    /// otherwise keeps the free-form field — an empty picker would read as "this agent has no models"
+    /// when the truth is that nothing could be read.
+    private var listsModels: Bool { Self.listsModels(provider.localAgent?.modelSource, models: models) }
+
+    static func listsModels(_ source: LocalAgentKind.ModelSource?, models: Models) -> Bool {
+        guard let source else { return false }
+        if source.emptyAnswerIsFinal { return true }
+        guard case .loaded(let options) = models else { return false }
+        return !options.isEmpty
     }
 
     private var modelPrompt: String {
@@ -312,7 +326,7 @@ struct ModelSettingsPane: View {
 
     /// The levels the selected model accepts, from the list the scan stored.
     private var selectedEfforts: [EffortLevel]? {
-        guard let kind = provider.localAgent, kind.modelListArguments != nil else { return nil }
+        guard let kind = provider.localAgent, kind.modelSource != nil else { return nil }
         return SettingsStore.supportedEfforts(for: provider, model: model)
     }
 
@@ -337,8 +351,8 @@ struct ModelSettingsPane: View {
         loadModels()
     }
 
-    /// Reads the list a provider can offer: DeepSeek's `GET /models` once a key is stored, or the
-    /// agent's own listing command once its executable is known. Providers with neither stay free-form.
+    /// Reads the list a provider can offer: DeepSeek's `GET /models` once a key is stored, or the list
+    /// the agent's own source gives once its executable is known. Providers with neither stay free-form.
     private func loadModels() {
         if provider == .deepSeek {
             guard let url = URL(string: baseURL), let key = SettingsStore.apiKey(for: provider),
@@ -360,7 +374,7 @@ struct ModelSettingsPane: View {
             }
             return
         }
-        guard let kind = provider.localAgent, kind.modelListArguments != nil else {
+        guard let kind = provider.localAgent, kind.modelSource != nil else {
             models = .idle
             return
         }

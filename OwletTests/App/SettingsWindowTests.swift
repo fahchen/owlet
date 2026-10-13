@@ -13,7 +13,7 @@ import Testing
         #expect(!SettingsWindow.isSettingsWindow(identifier: "main", className: "NSWindow"))
     }
 
-    /// Reset between runs, because the app under test shares the standard domain.
+    /// No windows means nothing to raise, and the app must not invent one.
     @Test func noSettingsWindowIsReportedWhenThereIsNone() {
         #expect(SettingsWindow.existing(in: []) == nil)
     }

@@ -21,9 +21,9 @@
 | | Claude Code | Codex CLI |
 | --- | --- | --- |
 | 可执行文件 | `claude` | `codex` |
-| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `--ignore-user-config -s read-only --disable shell_tool --disable hooks -c instructions="" --disable <精选的工具／应用特性>` |
+| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `--ignore-user-config -s read-only --disable <该版本确实有的特性> -c skills.include_instructions=false -c 'web_search="disabled"' -c include_environment_context=false -c include_permissions_instructions=false -c include_collaboration_mode_instructions=false` |
 | 用户级配置 | 由 `--safe-mode` 全部跳过，**保留登录态** | `--ignore-user-config` 不读 `config.toml`（因此没有用户的 MCP 服务器与 hooks），**登录态仍从 `auth.json` 读** |
-| 系统提示词通道 | `--system-prompt` 参数 | 与原文合成一条，走标准输入 |
+| 系统提示词通道 | `--system-prompt` 参数 | `-c model_instructions_file=<0600 文件>`，与原文分开 |
 | 原文通道 | 标准输入 | 标准输入 |
 | 结果读取 | 标准输出 | `--output-last-message <文件>` |
 | 响应 Schema | `--json-schema <json>` | `--output-schema <文件>` |
@@ -36,7 +36,37 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 真实调用暴露过四处 Codex 细节（2026-10-13 实测 codex 0.160.1）：`codex exec` 不接受 `--ask-for-approval`（那是顶层选项，子命令直接以 exit 2 拒绝），审批策略改用 `-c approval_policy="never"`；`--ephemeral` 并不阻止用户自己配置的 hooks 在每次请求里执行，所以要显式 `--disable hooks`；思考强度的枚举里有 `none`，但模型不认——`gpt-6.1-sol` 对 `none` 返回 HTTP 400 并列出 `low／medium／high／xhigh／max`，而「关闭」正是未改动安装的默认档，所以 Codex 的关闭取最低档 `low`；`--ignore-user-config` 之外还会加载用户配置里的 **MCP 服务器**并在每次请求时连接、把它们的工具定义注入提示词——加上这个开关后实测 MCP 连接 0 次、hooks 0 次，同一条请求的 tokens 从约 3 万降到约 1.5 万。代价是**用户 `config.toml` 里的自定义 provider／模型不再生效**（登录态不受影响）。
 
-提示词面还要再削一刀（2026-10-13 同一版本实测，单行提示词）：一条极小的请求也要预填 21,724 input tokens，其中最大的一块是 Codex 自己的编码 agent 基础指令，`-c instructions=""` 把它换成空串后降到 15,952；再关掉 18 个只增加提示词或工具／应用面的默认特性后是 13,300（只关特性为 17,518）。一次纯补全用不到它的工具、应用与浏览器面，形状又由 `--output-schema` 与应用自己的本地校验保证，所以这一刀不损失什么。清单保持精选而不是把 53 个默认特性全关：特性名随 CLI 版本变化，`--disable` 一个该版本没有的名字会让 CLI 直接 exit 2，这 18 个名字都对照过 codex 0.160.1 的 `codex features list`；`code_mode_host` 故意不关——只省两个 token，却让每条请求多一行 fail-closed 错误。
+提示词面还要再削一刀（2026-10-13 同一版本实测，单行提示词）：一条极小的请求也要预填 21,724 input tokens，其中最大的一块是 Codex 自己的编码 agent 基础指令，`-c instructions=""` 把它换成空串后降到 15,952；再关掉 18 个只增加提示词或工具／应用面的默认特性后是 13,300（只关特性为 17,518）。一次纯补全用不到它的工具、应用与浏览器面，形状又由 `--output-schema` 与应用自己的本地校验保证，所以这一刀不损失什么。`code_mode_host` 故意不关——只省两个 token，却让每条请求多一行 fail-closed 错误。
+
+**第二轮（T65，2026-10-13，同一台 Mac，codex 0.160.1，同一份 composite 系统提示词 + 翻译 `--output-schema` + 一句英文，读 `codex exec --json` 的 `usage.input_tokens`；除非另注，exit 0、stderr 为空、答案通过契约校验）：**
+
+| 变体 | input tokens | 墙钟 |
+| --- | --- | --- |
+| 上一轮配方（`instructions=""` + 18 个 `--disable`） | 13,576 / 13,578 / 13,578（逐 token 相同） | 12.2 / 12.5 / 12.4 s |
+| `model_instructions_file` 取代 `instructions=""` | 13,581 | 9.5 s |
+| 两者**叠加** | 13,585 | 7.6 s，**答案错**：`source` 末尾多一个换行，拼接校验失败 |
+| + `skills.include_instructions=false` | 8,479（−5,099） | 11.5 s |
+| + `web_search="disabled"` | 11,124（−2,452） | 12.9 s |
+| + `include_collaboration_mode_instructions=false` | 13,402（−174） | 6.2 s |
+| + `include_environment_context=false` | 13,457（−119） | 10.5 s |
+| + `include_permissions_instructions=false` | 13,517（−59） | 11.0 s |
+| + `include_apps_instructions=false` | 13,580（**Δ0，未采纳**） | 10.9 s |
+| + `project_doc_max_bytes=0` | 13,586（**Δ0，未采纳**） | 11.8 s |
+| + `--disable plugins／memories／tool_search_always_defer_mcp_tools` | 13,586（**Δ0，未采纳**） | 9.8 s |
+| 五个 override 全开（`instructions=""` 通道） | 5,652 / 5,652 / 5,652 | 10.8 / 10.6 / 9.0 s |
+| **最终配方**（五个 override + `model_instructions_file`） | 5,655 / 5,655 / 5,655 | 10.9 / 8.9 / 15.4 s |
+
+- **五个 override 修的是一个规格违背，不只是省 token**：`spec/llm/contract.md` 要求「工具、技能、MCP、项目上下文一律关闭」，而此前把 `~/.codex/skills` 与插件缓存里的技能目录整段注入（`codex debug prompt-input` 本地渲染证实那 5,097 来自 `<skills_instructions>`）——`--disable skill_search` 只关了技能的**工具**，没关技能**说明**；`web_search="disabled"` 同理，它去掉的是一个契约本来就不许用的工具。干净 `CODEX_HOME`（只放 `auth.json`）下同一配方是 11,765（4 次相同），差额正是用户 `~/.codex` 里这些面。
+- **抖动消失**：同一配方曾在 13,586 与 15,782 两态之间跳，量级与 `web_search` 工具描述相同；`web_search="disabled"` 之后 5,652／5,655 三次逐 token 相同。**确定本身就是收益**，代价为零。
+- **`model_instructions_file` 按 token 中立如实记录**：本机 13,581 vs 13,578，另一台早先测到的 15,164 vs 15,780 未能复现，差额属于上面的抖动。采纳理由只有两条：它是官方文档的入口（`instructions` 已标 reserved），且把我们的提示词放进 system 位置、标准输入只留用户原文。**绝不与 `instructions=""` 叠加**。
+- 墙钟仍在同一噪声区间（最终配方 8.9–15.4 s，上一轮 12.2–12.5 s，最慢一次超过 1 分钟是服务商侧排队），**不宣称提速**。`service_tier="fast"`（CLI 描述为 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s，不带它 10.86／8.93／15.42 s，input tokens 完全相同（5,655）；样本小、两次测量未交错，**不写进配方**，作为「更高额度换更快」的用户取舍待人工决定。
+
+**开关名单是自适应的（T65）：** 特性名与 `-c` 键都是**该 CLI 版本的行为**，硬编码就等于把一次 CLI 升级变成「每条请求都失败」。实测 codex 0.160.1：`--disable <该版本没有的名字>` 是硬错误（`Error: Unknown feature flag`，exit 2），`--disable` 一个 stage 为 `removed` 的名字却仍被接受；`-c` 的**未知键**被静默忽略（exit 0），但**已知键的错误取值**是硬错误（`web_search="nonsense"` → `unknown variant ... expected one of disabled, cached, indexed, live`）。因此：
+
+- 设置页扫描时（`LocalAgent.detect` 之后、同一次「检测／切换服务商」里）跑两条**本地命令**、从不调用模型：`codex features list` 给出该版本拥有的特性名，我们想要的 18 个与之取交集；五个 `-c` override 先合并成一次 `codex features list -c …` 探测，被拒才逐个探测，只留下被接受的。
+- 结果缓存进 `UserDefaults` 的 `service.agentFeatures`／`service.agentOverrides`（沿用 `service.agent*` 命名，按 provider 分表）；请求时只读缓存、不再起进程。
+- **没有缓存时只发 `shell_tool`／`hooks` 两个长期存在的名字，不发任何 `-c` override**——绝不猜。扫描失败保留上一次的结果，所以失败模式永远是「这次少关几个」，而不是「请求失败」。
+- 残留风险：`model_instructions_file` 未做存在性探测（它是官方入口，且探测要求文件真实存在），若未来版本移除该键，`-c` 会静默忽略它、系统提示词随之丢失；届时需要回到「合成进标准输入」的通道。这一条列入「未验证」。
 
 思考强度沿用「档位按模型映射、不支持时取最近的较低档」：Claude Code 的档位是 `low／medium／high／xhigh／max`，没有关闭档，`关闭` 取最低档；Codex 的开关值域相同（见上），`关闭` 也取 `low`。`自动` 一律不发送该参数。
 能反查档位的 provider 用**它自己的清单**：Codex 的 `codex debug models` 每个模型都带 `supported_reasoning_levels`，应用据此按模型映射（不支持的档位取该模型内最近的较低档；模型完全不支持推理时不发送该参数）。Claude Code 没有任何清单，所以「按模型」在 Codex 上是真数据，在 Claude Code 上是静态表。
@@ -102,8 +132,8 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 ## 后果与已知风险
 
-- CLI 参数是各 agent 的版本行为，升级后可能变化；缓解手段是探测版本号、把 agent 的 stderr 带进失败提示，并保留人工验收。
-- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）；再削掉 Codex 自己的基础指令与工具面后约 1.3 万（见 §2）。
+- CLI 参数是各 agent 的版本行为，升级后可能变化；缓解手段是探测版本号、把 agent 的 stderr 带进失败提示、**特性名与 `-c` override 逐版本扫描后缓存**（见 §2），并保留人工验收。
+- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）；再削掉 Codex 自己的基础指令、技能说明与 web_search 面后约 5.7k（见 §2）。
 - **Codex 的 `--ignore-user-config` 有代价**：用户 `config.toml` 里配置的自定义 provider 与模型不再生效，应用只用它的内置默认（登录态照旧）。用自定义网关的用户会遇到这一条。
 - **不启用 App Sandbox 才能用**：受沙箱约束的应用无法执行用户本机的 CLI。这与 [规范范围边界](../../README.md) 里「本机签名自用，不启用 App Sandbox」一致；若将来上架并启用沙箱，这两个服务商要么移除，要么改走用户显式授权的路径。
-- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性。
+- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性；`service_tier="fast"` 只各测 3 次（见 §2，样本小、未做默认，待人工决定）；`model_instructions_file` 被未来版本移除时会静默失效（见 §2 末的残留风险）。

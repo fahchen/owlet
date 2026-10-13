@@ -1228,7 +1228,7 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - **五个 `-c` override 修的是规格违背**：`skills.include_instructions=false`（`~/.codex/skills` 与插件缓存的技能目录此前被整段注入，实测 5,097 tokens）与 `web_search="disabled"`（2,452）是两个大头，另有三个 `include_*_instructions=false`（−174／−119／−59）。总量 13,578 → 5,652／5,655，三次逐 token 相同，抖动（13.58k／15.78k 两态）消失。
 - **自适应 `--disable` 名单是本轮重点**：`--disable` 一个该版本没有的名字是硬错误 exit 2，所以扫描 `codex features list`（本地命令）取交集，五个 override 用 `codex features list -c …` 探测取值是否被接受，结果缓存进 `service.agentFeatures`／`service.agentOverrides`；请求只读缓存。无缓存时只发 `shell_tool`／`hooks`、不发 override。失败模式是「这次少关几个」，不是「请求失败」。
 - Δ≈0 的 `include_apps_instructions=false`、`project_doc_max_bytes=0`、`--disable plugins／memories／tool_search_always_defer_mcp_tools` **未采纳**。
-- `service_tier="fast"`（CLI 描述 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s vs 不带它 10.86／8.93／15.42 s，tokens 相同；样本小，**不写进配方**，作为用户取舍待人工决定。
+- `service_tier="fast"`（CLI 描述 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s vs 不带它 10.86／8.93／15.42 s，tokens 相同；样本小，**不写进配方**；用户 2026-10-13 决定默认不开。
 
 验收：
 

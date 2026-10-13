@@ -59,7 +59,7 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 - **五个 override 修的是一个规格违背，不只是省 token**：`spec/llm/contract.md` 要求「工具、技能、MCP、项目上下文一律关闭」，而此前把 `~/.codex/skills` 与插件缓存里的技能目录整段注入（`codex debug prompt-input` 本地渲染证实那 5,097 来自 `<skills_instructions>`）——`--disable skill_search` 只关了技能的**工具**，没关技能**说明**；`web_search="disabled"` 同理，它去掉的是一个契约本来就不许用的工具。干净 `CODEX_HOME`（只放 `auth.json`）下同一配方是 11,765（4 次相同），差额正是用户 `~/.codex` 里这些面。
 - **抖动消失**：同一配方曾在 13,586 与 15,782 两态之间跳，量级与 `web_search` 工具描述相同；`web_search="disabled"` 之后 5,652／5,655 三次逐 token 相同。**确定本身就是收益**，代价为零。
 - **`model_instructions_file` 按 token 中立如实记录**：本机 13,581 vs 13,578，另一台早先测到的 15,164 vs 15,780 未能复现，差额属于上面的抖动。采纳理由只有两条：它是官方文档的入口（`instructions` 已标 reserved），且把我们的提示词放进 system 位置、标准输入只留用户原文。**绝不与 `instructions=""` 叠加**。
-- 墙钟仍在同一噪声区间（最终配方 8.9–15.4 s，上一轮 12.2–12.5 s，最慢一次超过 1 分钟是服务商侧排队），**不宣称提速**。`service_tier="fast"`（CLI 描述为 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s，不带它 10.86／8.93／15.42 s，input tokens 完全相同（5,655）；样本小、两次测量未交错，**不写进配方**，作为「更高额度换更快」的用户取舍待人工决定。
+- 墙钟仍在同一噪声区间（最终配方 8.9–15.4 s，上一轮 12.2–12.5 s，最慢一次超过 1 分钟是服务商侧排队），**不宣称提速**。`service_tier="fast"`（CLI 描述为 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s，不带它 10.86／8.93／15.42 s，input tokens 完全相同（5,655）；样本小、两次测量未交错，**不写进配方**；用户 2026-10-13 决定默认不开。
 
 **开关名单是自适应的（T65）：** 特性名与 `-c` 键都是**该 CLI 版本的行为**，硬编码就等于把一次 CLI 升级变成「每条请求都失败」。实测 codex 0.160.1：`--disable <该版本没有的名字>` 是硬错误（`Error: Unknown feature flag`，exit 2），`--disable` 一个 stage 为 `removed` 的名字却仍被接受；`-c` 的**未知键**被静默忽略（exit 0），但**已知键的错误取值**是硬错误（`web_search="nonsense"` → `unknown variant ... expected one of disabled, cached, indexed, live`）。因此：
 
@@ -136,4 +136,4 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 - 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）；再削掉 Codex 自己的基础指令、技能说明与 web_search 面后约 5.7k（见 §2）。
 - **Codex 的 `--ignore-user-config` 有代价**：用户 `config.toml` 里配置的自定义 provider 与模型不再生效，应用只用它的内置默认（登录态照旧）。用自定义网关的用户会遇到这一条。
 - **不启用 App Sandbox 才能用**：受沙箱约束的应用无法执行用户本机的 CLI。这与 [规范范围边界](../../README.md) 里「本机签名自用，不启用 App Sandbox」一致；若将来上架并启用沙箱，这两个服务商要么移除，要么改走用户显式授权的路径。
-- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性；`service_tier="fast"` 只各测 3 次（见 §2，样本小、未做默认，待人工决定）；`model_instructions_file` 被未来版本移除时会静默失效（见 §2 末的残留风险）。
+- 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性；`service_tier="fast"` 只各测 3 次（见 §2，样本小；用户已决定默认不开）；`model_instructions_file` 被未来版本移除时会静默失效（见 §2 末的残留风险）。

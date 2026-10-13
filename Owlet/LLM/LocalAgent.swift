@@ -221,10 +221,36 @@ extension LocalAgent {
             // `--ignore-user-config` is what keeps the user's own MCP servers out of a translation
             // request: without it codex contacts them on every run and puts their tools in the prompt
             // (measured on codex 0.160.1: about 30k tokens with, about 15k without).
+            //
+            // `instructions=""` drops Codex's own coding-agent instructions, the largest single block
+            // it prefills; a one-shot completion needs none of them, and our system prompt and the
+            // fixed contract ride along in the stdin prompt instead. The shape still comes from
+            // `--output-schema` and the app's local validation, so nothing is lost. The features below
+            // can only add prompt text or tools this request never uses; the list stays curated rather
+            // than "all of them" because feature names move between CLI versions and `--disable` with
+            // a name this build does not have exits 2. `code_mode_host` is deliberately left on: it
+            // saves two tokens and makes every run print a fail-closed error.
             arguments = [
                 "exec", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only",
                 "--ignore-user-config", "--config", "approval_policy=\"never\"",
                 "--disable", "shell_tool", "--disable", "hooks",
+                "--config", "instructions=\"\"",
+                "--disable", "apps",
+                "--disable", "auth_elicitation",
+                "--disable", "browser_use",
+                "--disable", "browser_use_external",
+                "--disable", "browser_use_full_cdp_access",
+                "--disable", "computer_use",
+                "--disable", "image_generation",
+                "--disable", "in_app_browser",
+                "--disable", "multi_agent",
+                "--disable", "skill_mcp_dependency_install",
+                "--disable", "skill_search",
+                "--disable", "sleep_tool",
+                "--disable", "shell_snapshot",
+                "--disable", "tool_call_mcp_elicitation",
+                "--disable", "tool_suggest",
+                "--disable", "view_image",
                 "--cd", invocation.directory.path,
                 "--output-last-message", invocation.answerFile.path,
             ]

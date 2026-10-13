@@ -21,7 +21,7 @@
 | | Claude Code | Codex CLI |
 | --- | --- | --- |
 | 可执行文件 | `claude` | `codex` |
-| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `--ignore-user-config -s read-only --disable shell_tool --disable hooks` |
+| 关工具与上下文 | `--tools "" --safe-mode --strict-mcp-config` | `--ignore-user-config -s read-only --disable shell_tool --disable hooks -c instructions="" --disable <精选的工具／应用特性>` |
 | 用户级配置 | 由 `--safe-mode` 全部跳过，**保留登录态** | `--ignore-user-config` 不读 `config.toml`（因此没有用户的 MCP 服务器与 hooks），**登录态仍从 `auth.json` 读** |
 | 系统提示词通道 | `--system-prompt` 参数 | 与原文合成一条，走标准输入 |
 | 原文通道 | 标准输入 | 标准输入 |
@@ -36,8 +36,9 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 真实调用暴露过四处 Codex 细节（2026-10-13 实测 codex 0.160.1）：`codex exec` 不接受 `--ask-for-approval`（那是顶层选项，子命令直接以 exit 2 拒绝），审批策略改用 `-c approval_policy="never"`；`--ephemeral` 并不阻止用户自己配置的 hooks 在每次请求里执行，所以要显式 `--disable hooks`；思考强度的枚举里有 `none`，但模型不认——`gpt-6.1-sol` 对 `none` 返回 HTTP 400 并列出 `low／medium／high／xhigh／max`，而「关闭」正是未改动安装的默认档，所以 Codex 的关闭取最低档 `low`；`--ignore-user-config` 之外还会加载用户配置里的 **MCP 服务器**并在每次请求时连接、把它们的工具定义注入提示词——加上这个开关后实测 MCP 连接 0 次、hooks 0 次，同一条请求的 tokens 从约 3 万降到约 1.5 万。代价是**用户 `config.toml` 里的自定义 provider／模型不再生效**（登录态不受影响）。
 
-思考强度沿用「档位按模型映射、不支持时取最近的较低档」：Claude Code 的档位是 `low／medium／high／xhigh／max`，没有关闭档，`关闭` 取最低档；Codex 的开关值域相同（见上），`关闭` 也取 `low`。`自动` 一律不发送该参数。
+提示词面还要再削一刀（2026-10-13 同一版本实测，单行提示词）：一条极小的请求也要预填 21,724 input tokens，其中最大的一块是 Codex 自己的编码 agent 基础指令，`-c instructions=""` 把它换成空串后降到 15,952；再关掉 18 个只增加提示词或工具／应用面的默认特性后是 13,300（只关特性为 17,518）。一次纯补全用不到它的工具、应用与浏览器面，形状又由 `--output-schema` 与应用自己的本地校验保证，所以这一刀不损失什么。清单保持精选而不是把 53 个默认特性全关：特性名随 CLI 版本变化，`--disable` 一个该版本没有的名字会让 CLI 直接 exit 2，这 18 个名字都对照过 codex 0.160.1 的 `codex features list`；`code_mode_host` 故意不关——只省两个 token，却让每条请求多一行 fail-closed 错误。
 
+思考强度沿用「档位按模型映射、不支持时取最近的较低档」：Claude Code 的档位是 `low／medium／high／xhigh／max`，没有关闭档，`关闭` 取最低档；Codex 的开关值域相同（见上），`关闭` 也取 `low`。`自动` 一律不发送该参数。
 能反查档位的 provider 用**它自己的清单**：Codex 的 `codex debug models` 每个模型都带 `supported_reasoning_levels`，应用据此按模型映射（不支持的档位取该模型内最近的较低档；模型完全不支持推理时不发送该参数）。Claude Code 没有任何清单，所以「按模型」在 Codex 上是真数据，在 Claude Code 上是静态表。
 
 ### 3. 统一抽象：一个请求值，每个服务商各自投递
@@ -102,7 +103,7 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 ## 后果与已知风险
 
 - CLI 参数是各 agent 的版本行为，升级后可能变化；缓解手段是探测版本号、把 agent 的 stderr 带进失败提示，并保留人工验收。
-- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）。
+- 延迟高于 HTTP 服务，但没有想象中严重：两三句翻译实测 codex 6.7 秒，查词 7.5 秒（本机 2026-10-13）。学习与查词会各自再起一个进程，同时在跑的进程限 2 个。加上 `--ignore-user-config` 后 codex 的同一请求从约 3 万 tokens 降到约 1.5 万（不再注入用户 MCP 服务器的工具定义）；再削掉 Codex 自己的基础指令与工具面后约 1.3 万（见 §2）。
 - **Codex 的 `--ignore-user-config` 有代价**：用户 `config.toml` 里配置的自定义 provider 与模型不再生效，应用只用它的内置默认（登录态照旧）。用自定义网关的用户会遇到这一条。
 - **不启用 App Sandbox 才能用**：受沙箱约束的应用无法执行用户本机的 CLI。这与 [规范范围边界](../../README.md) 里「本机签名自用，不启用 App Sandbox」一致；若将来上架并启用沙箱，这两个服务商要么移除，要么改走用户显式授权的路径。
 - 未验证：Claude Code 的真实返回（周配额用尽）、它的 `--json-schema` 是否接受这份 schema、各 CLI 后续版本对上述参数的兼容性。

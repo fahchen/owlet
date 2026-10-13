@@ -125,11 +125,24 @@ struct LocalAgentTests {
     /// `codex exec` rejects `--ask-for-approval` with exit 2 — the option belongs to the top level, not
     /// the subcommand — and the user's own hooks ran on every request until they were switched off. Both
     /// were seen against codex 0.160.1; this is what keeps them from coming back.
-    @Test func codexGetsItsApprovalPolicyAndNoHooks() {
+    ///
+    /// `instructions=""` and these disables are the prompt-surface trim: Codex prefills its own coding
+    /// agent instructions and a tool/app surface a one-shot completion never uses, and dropping both cut
+    /// the same one-line request from 21,724 to 13,300 input tokens on codex 0.160.1. Every name here is
+    /// in that build's `codex features list`; one that is not would make the CLI exit 2.
+    @Test func codexGetsItsApprovalPolicyAndNoToolSurface() {
         let invocation = plan(.codexCLI)
         #expect(!invocation.arguments.contains("--ask-for-approval"))
         #expect(value(after: "--config", in: invocation.arguments) == "approval_policy=\"never\"")
-        #expect(hasPair("--disable", "hooks", in: invocation.arguments))
+        #expect(hasPair("--config", "instructions=\"\"", in: invocation.arguments))
+        for feature in [
+            "shell_tool", "hooks", "apps", "auth_elicitation", "browser_use", "browser_use_external",
+            "browser_use_full_cdp_access", "computer_use", "image_generation", "in_app_browser",
+            "multi_agent", "skill_mcp_dependency_install", "skill_search", "sleep_tool",
+            "shell_snapshot", "tool_call_mcp_elicitation", "tool_suggest", "view_image",
+        ] {
+            #expect(hasPair("--disable", feature, in: invocation.arguments), "\(feature) is not disabled")
+        }
     }
 
     @Test func aModelNameIsPassedOnlyWhenTheUserSetOne() {

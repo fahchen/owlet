@@ -59,15 +59,22 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
-    func effortValue(_ level: EffortLevel) -> String? {
+    /// The value to send for this level. `supported` is what the agent said this model accepts: nil
+    /// means it said nothing (the static table decides), an empty list means the model does not reason
+    /// at all, so no parameter is sent.
+    func effortValue(_ level: EffortLevel, supported: [EffortLevel]? = nil) -> String? {
         guard level != .automatic, let start = EffortLevel.ordered.firstIndex(of: level) else {
             return nil
         }
         let table = effortValues
+        let available = supported ?? EffortLevel.ordered
+        // Walk down to the nearest level this model takes; below its lowest, that lowest is sent.
         for index in stride(from: start, through: 0, by: -1) {
-            if let value = table[EffortLevel.ordered[index]] { return value }
+            let candidate = EffortLevel.ordered[index]
+            if available.contains(candidate), let value = table[candidate] { return value }
         }
-        return nil
+        guard let lowest = EffortLevel.ordered.first(where: available.contains) else { return nil }
+        return table[lowest]
     }
 }
 
@@ -186,7 +193,8 @@ extension LocalAgent {
             answersToFile: kind == .codexCLI, schema: schema,
             writesSchemaFile: schema != nil && kind.schemaDelivery == .file, timeout: timeout)
         var arguments = arguments(
-            kind: kind, model: request.model, effort: request.effort, invocation: invocation)
+            kind: kind, model: request.model, effort: request.effort,
+            supported: request.supportedEfforts, invocation: invocation)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
         // explicitly; the other two take the payload as context, so they need a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
@@ -207,7 +215,8 @@ extension LocalAgent {
     }
 
     private static func arguments(
-        kind: LocalAgentKind, model: String, effort: EffortLevel, invocation: LocalAgentInvocation
+        kind: LocalAgentKind, model: String, effort: EffortLevel, supported: [EffortLevel]?,
+        invocation: LocalAgentInvocation
     ) -> [String] {
         var arguments: [String]
         switch kind {
@@ -241,7 +250,7 @@ extension LocalAgent {
             ]
         }
         if !model.isEmpty { arguments += ["--model", model] }
-        if let value = kind.effortValue(effort) {
+        if let value = kind.effortValue(effort, supported: supported) {
             switch kind {
             case .claudeCode: arguments += ["--effort", value]
             // Quoted, because `-c` parses the value as TOML; the quotes make it a string for certain.
@@ -377,9 +386,9 @@ extension LocalAgent {
 }
 
 extension LocalAgent {
-    /// The model names this agent offers, in its own order, for the settings pane's picker. A listing
-    /// command is local — it never reaches a model — so opening the pane stays cheap.
-    static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [String] {
+    /// The models this agent offers, in its own order, with what the agent says each one accepts. A
+    /// listing command is local — it never reaches a model — so opening the pane stays cheap.
+    static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [ModelOption] {
         guard let arguments = kind.modelListArguments else { return [] }
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: arguments, stdin: "",
@@ -397,7 +406,7 @@ extension LocalAgent {
 
     /// Reads each agent's own listing format. Pure, so the fixtures in the tests are the real shapes
     /// these two commands print.
-    static func parseModels(kind: LocalAgentKind, output: String) throws -> [String] {
+    static func parseModels(kind: LocalAgentKind, output: String) throws -> [ModelOption] {
         switch kind {
         case .claudeCode: []
         case .codexCLI: try codexModels(output)
@@ -406,8 +415,9 @@ extension LocalAgent {
     }
 
     /// `codex debug models` prints the catalog as JSON. A model the picker should not offer is marked
-    /// `visibility: "hide"`; `--model` takes the slug.
-    private static func codexModels(_ output: String) throws -> [String] {
+    /// `visibility: "hide"`; `--model` takes the slug, and the same entry carries the levels the model
+    /// accepts.
+    private static func codexModels(_ output: String) throws -> [ModelOption] {
         guard let data = output.data(using: .utf8),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let models = object["models"] as? [[String: Any]]
@@ -416,18 +426,43 @@ extension LocalAgent {
             guard model["visibility"] as? String != "hide", let slug = model["slug"] as? String,
                 !slug.isEmpty
             else { return nil }
-            return slug
+            return ModelOption(
+                id: slug, label: model["display_name"] as? String,
+                efforts: codexEfforts(model["supported_reasoning_levels"]))
         }
     }
 
-    /// `pi --list-models` prints a table whose first two columns are the provider and the model. pi
-    /// takes either the bare id or `provider/id`, and only the paired form is unambiguous when two
-    /// providers offer a model of the same name.
-    private static func piModels(_ output: String) -> [String] {
+    /// The levels one catalogue entry accepts, in the app's own levels. An entry without the key says
+    /// nothing, so the static table stays in charge; a present but empty list means the model does not
+    /// reason at all, and then no effort parameter may be sent.
+    private static func codexEfforts(_ raw: Any?) -> [EffortLevel]? {
+        guard let levels = raw as? [[String: Any]] else { return nil }
+        let named = levels.compactMap { $0["effort"] as? String }.compactMap(effortLevel)
+        return EffortLevel.allCases.filter { named.contains($0) }
+    }
+
+    /// The app level a CLI effort name stands for. `none` is the only real off, and a level weaker than
+    /// `low` is the app's lowest reasoning level.
+    static func effortLevel(_ name: String) -> EffortLevel? {
+        switch name {
+        case "none": .off
+        case "minimal", "low": .low
+        case "medium": .medium
+        case "high": .high
+        case "xhigh", "max", "ultra": .max
+        default: nil
+        }
+    }
+
+    /// `pi --list-models` prints a table whose columns are provider, model, context, max-out, thinking
+    /// and images. pi takes either the bare id or `provider/id`, and only the paired form is
+    /// unambiguous when two providers offer a model of the same name; the `thinking` column is the only
+    /// effort fact it gives.
+    private static func piModels(_ output: String) -> [ModelOption] {
         output.split(whereSeparator: \.isNewline).compactMap { line in
             let columns = line.split(whereSeparator: \.isWhitespace)
-            guard columns.count >= 2, columns[0] != "provider" else { return nil }
-            return "\(columns[0])/\(columns[1])"
+            guard columns.count >= 5, columns[0] != "provider" else { return nil }
+            return ModelOption(id: "\(columns[0])/\(columns[1])", efforts: columns[4] == "no" ? [] : nil)
         }
     }
 }

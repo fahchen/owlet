@@ -54,6 +54,40 @@ struct AgentSettingsTests {
         #expect(SettingsStore.agentPath(for: .piCLI, in: defaults) == nil)
     }
 
+    /// What an agent said a model accepts is kept per provider and per model, so switching either one
+    /// cannot carry the other's levels along.
+    @Test func theEffortsAnAgentReportedReadBackPerProviderAndModel() {
+        SettingsStore.setSupportedEfforts(
+            [.low, .high], for: .codexCLI, model: "gpt-6.1-sol", in: defaults)
+        #expect(
+            SettingsStore.supportedEfforts(for: .codexCLI, model: "gpt-6.1-sol", in: defaults)
+                == [.low, .high])
+        #expect(SettingsStore.supportedEfforts(for: .codexCLI, model: "gpt-6-sol", in: defaults) == nil)
+        #expect(SettingsStore.supportedEfforts(for: .piCLI, model: "gpt-6.1-sol", in: defaults) == nil)
+    }
+
+    /// An empty list is a fact — the model does not reason — and must not read back as "the agent said
+    /// nothing", or an effort level the model rejects would be sent to it.
+    @Test func aModelThatDoesNotReasonReadsBackAsAnEmptyList() throws {
+        SettingsStore.setSupportedEfforts([], for: .codexCLI, model: "gpt-6-sol", in: defaults)
+        let levels = try #require(
+            SettingsStore.supportedEfforts(for: .codexCLI, model: "gpt-6-sol", in: defaults))
+        #expect(levels.isEmpty)
+    }
+
+    @Test func removingWhatAnAgentSaidLeavesNoEntry() {
+        SettingsStore.setSupportedEfforts([.high], for: .codexCLI, model: "m", in: defaults)
+        SettingsStore.setSupportedEfforts(nil, for: .codexCLI, model: "m", in: defaults)
+        #expect(SettingsStore.supportedEfforts(for: .codexCLI, model: "m", in: defaults) == nil)
+    }
+
+    @Test func twoProvidersKeepTheirOwnEfforts() {
+        SettingsStore.setSupportedEfforts([.high], for: .codexCLI, model: "m", in: defaults)
+        SettingsStore.setSupportedEfforts([], for: .piCLI, model: "m", in: defaults)
+        #expect(SettingsStore.supportedEfforts(for: .codexCLI, model: "m", in: defaults) == [.high])
+        #expect(SettingsStore.supportedEfforts(for: .piCLI, model: "m", in: defaults) == [])
+    }
+
     @Test func providersCarryTheirOwnCapabilities() {
         #expect(Provider.piCLI.localAgent == LocalAgentKind.piCLI)
         #expect(Provider.claudeCode.localAgent == LocalAgentKind.claudeCode)

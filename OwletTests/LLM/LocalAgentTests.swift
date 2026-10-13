@@ -285,18 +285,32 @@ struct LocalAgentTests {
 
     // MARK: - Model lists
 
-    /// The real shape `codex debug models` prints, trimmed to the fields the picker reads.
+    /// The real shape `codex debug models` prints, trimmed to the fields the picker reads: one entry
+    /// with the levels it accepts, one with a present but empty list, and one that says nothing at all.
     let codexCatalog = """
         {"models":[
-          {"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"list"},
+          {"slug":"gpt-6.1-sol","display_name":"GPT-6.1-Sol","visibility":"list",
+           "supported_reasoning_levels":[
+             {"effort":"minimal"},{"effort":"low"},{"effort":"high"},{"effort":"ultra"}
+           ]},
           {"slug":"gpt-reserve","display_name":"GPT-Reserve","visibility":"hide"},
-          {"slug":"gpt-6-sol","display_name":"GPT-6-Sol","visibility":"list"}
+          {"slug":"gpt-6-sol","display_name":"GPT-6-Sol","visibility":"list",
+           "supported_reasoning_levels":[]},
+          {"slug":"gpt-6-codex","visibility":"list"}
         ]}
         """
 
     @Test func codexModelsComeFromItsCatalogAndSkipHiddenOnes() throws {
-        let names = try LocalAgent.parseModels(kind: .codexCLI, output: codexCatalog)
-        #expect(names == ["gpt-6.1-sol", "gpt-6-sol"])
+        let models = try LocalAgent.parseModels(kind: .codexCLI, output: codexCatalog)
+        #expect(
+            models == [
+                // `minimal` is the app's lowest reasoning level, `ultra` its highest, in app order.
+                ModelOption(id: "gpt-6.1-sol", label: "GPT-6.1-Sol", efforts: [.low, .high, .max]),
+                // A list that is there but empty is the catalogue saying the model does not reason.
+                ModelOption(id: "gpt-6-sol", label: "GPT-6-Sol", efforts: []),
+                // No key at all: the catalogue said nothing, and the label falls back to the slug.
+                ModelOption(id: "gpt-6-codex"),
+            ])
     }
 
     /// The real shape `pi --list-models` prints: a header row, then one row per model. pi takes
@@ -306,9 +320,17 @@ struct LocalAgentTests {
             provider  model            context  max-out  thinking  images
             deepseek  deepseek-flash   1M       384K     yes       yes
             deepseek  deepseek-v4-pro  1M       384K     yes       no
+            openai    gpt-6.1-sol      1M       384K     no        yes
             """
-        let names = try LocalAgent.parseModels(kind: .piCLI, output: table)
-        #expect(names == ["deepseek/deepseek-flash", "deepseek/deepseek-v4-pro"])
+        let models = try LocalAgent.parseModels(kind: .piCLI, output: table)
+        #expect(
+            models == [
+                ModelOption(id: "deepseek/deepseek-flash"),
+                ModelOption(id: "deepseek/deepseek-v4-pro"),
+                // `thinking no` is the only effort fact the table gives, and it is the one that means
+                // the model does not reason — the `images` column next to it says something else.
+                ModelOption(id: "openai/gpt-6.1-sol", efforts: []),
+            ])
     }
 
     /// Claude Code only takes an alias or a full name, so its model stays free-form rather than being
@@ -323,6 +345,56 @@ struct LocalAgentTests {
     @Test func anUnreadableCatalogIsALocalAgentFailure() {
         #expect(throws: ModelError.localAgent("the model catalog is unreadable")) {
             try LocalAgent.parseModels(kind: .codexCLI, output: "not json")
+        }
+    }
+
+    // MARK: - Effort
+
+    /// The names the CLIs use for a level, mapped to the app's own; a name no CLI uses is rejected
+    /// rather than guessed at.
+    @Test func anAgentEffortNameMapsToAnAppLevel() {
+        #expect(LocalAgent.effortLevel("none") == .off)
+        #expect(LocalAgent.effortLevel("minimal") == .low)
+        #expect(LocalAgent.effortLevel("low") == .low)
+        #expect(LocalAgent.effortLevel("medium") == .medium)
+        #expect(LocalAgent.effortLevel("high") == .high)
+        #expect(LocalAgent.effortLevel("xhigh") == .max)
+        #expect(LocalAgent.effortLevel("max") == .max)
+        #expect(LocalAgent.effortLevel("ultra") == .max)
+        #expect(LocalAgent.effortLevel("turbo") == nil)
+    }
+
+    /// When the agent said nothing about the model, the static per-CLI table decides, exactly as it did
+    /// before there was a catalogue: Codex has no `none`, so 关闭 becomes its lowest level.
+    @Test func aModelWithNoWordFromTheAgentKeepsTheStaticTable() {
+        #expect(LocalAgentKind.codexCLI.effortValue(.off) == "low")
+        #expect(LocalAgentKind.codexCLI.effortValue(.max) == "max")
+        #expect(LocalAgentKind.piCLI.effortValue(.off) == "off")
+    }
+
+    /// An empty list is the agent saying the model does not reason: no effort switch is passed at all.
+    @Test func aModelThatDoesNotReasonGetsNoEffortSwitch() {
+        for level in EffortLevel.allCases where level != .automatic {
+            #expect(LocalAgentKind.codexCLI.effortValue(level, supported: []) == nil)
+            #expect(LocalAgentKind.piCLI.effortValue(level, supported: []) == nil)
+        }
+    }
+
+    /// A level above what the model takes walks down to the nearest one it does; below all of them, the
+    /// lowest is sent. Either way the string is the CLI's own word for that level.
+    @Test func aSupportedSubsetClampsToItsOwnRange() {
+        let supported: [EffortLevel] = [.low, .medium, .high]
+        #expect(LocalAgentKind.codexCLI.effortValue(.max, supported: supported) == "high")
+        #expect(LocalAgentKind.codexCLI.effortValue(.high, supported: supported) == "high")
+        #expect(LocalAgentKind.codexCLI.effortValue(.medium, supported: supported) == "medium")
+        #expect(LocalAgentKind.codexCLI.effortValue(.off, supported: supported) == "low")
+    }
+
+    @Test func automaticNeverSendsAnEffortSwitch() {
+        for kind in LocalAgentKind.allCases {
+            #expect(kind.effortValue(.automatic) == nil)
+            #expect(kind.effortValue(.automatic, supported: []) == nil)
+            #expect(kind.effortValue(.automatic, supported: [.low, .high]) == nil)
         }
     }
 

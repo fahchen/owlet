@@ -21,6 +21,21 @@ enum ModelResponseFormat: Sendable, Equatable {
     case jsonSchema(name: String, schema: Data)
 }
 
+/// One row of a model picker: the value the provider takes, the text a person reads, and — when the
+/// provider says so — the effort levels that model accepts. `efforts` is nil when the provider says
+/// nothing about it, and empty when the model does not reason at all.
+struct ModelOption: Sendable, Equatable, Hashable {
+    var id: String
+    var label: String
+    var efforts: [EffortLevel]?
+
+    init(id: String, label: String? = nil, efforts: [EffortLevel]? = nil) {
+        self.id = id
+        self.label = label ?? id
+        self.efforts = efforts
+    }
+}
+
 /// One model call, provider-agnostic (BDR-0013 §3): the same value goes to an HTTP service or to a
 /// local agent CLI, and each backend turns it into its own request.
 struct ModelRequest: Sendable, Equatable {
@@ -30,6 +45,9 @@ struct ModelRequest: Sendable, Equatable {
     var turns: [ModelTurn]
     var format: ModelResponseFormat
     var effort: EffortLevel
+    /// What the provider said the chosen model accepts, when it said anything: the effort switch takes
+    /// the nearest lower level in this list, and no level at all when the list is empty.
+    var supportedEfforts: [EffortLevel]? = nil
 }
 
 /// How the app reaches a model. Every provider implements this, so nothing above it knows whether the

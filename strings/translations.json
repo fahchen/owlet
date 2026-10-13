@@ -1174,6 +1174,16 @@
     "zh-Hans": "这条释义来自另一句",
     "zh-Hant": "這條釋義來自另一句"
   },
+  "This model does not use reasoning effort": {
+    "ja": "このモデルは思考強度を使いません",
+    "zh-Hans": "该模型不使用思考强度",
+    "zh-Hant": "該模型不使用思考強度"
+  },
+  "This model supports: %@": {
+    "ja": "このモデルの対応：%@",
+    "zh-Hans": "该模型支持：%@",
+    "zh-Hant": "該模型支援：%@"
+  },
   "Time: %@": {
     "ja": "時刻：%@",
     "zh-Hans": "时间：%@",

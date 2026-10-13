@@ -28,7 +28,7 @@ struct ModelSettingsPane: View {
 
     enum Models: Equatable {
         case idle, loading
-        case loaded([String])
+        case loaded([ModelOption])
         case failed(String)
     }
 
@@ -82,6 +82,7 @@ struct ModelSettingsPane: View {
                         Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
                     }
                 }
+                effortSupport
             }
             PromptSettingsView(promptFocus: $promptFocus)
         }
@@ -235,7 +236,7 @@ struct ModelSettingsPane: View {
             // The row keeps the same control whatever the list is doing, instead of turning the name
             // into a loading field.
             Picker(L10n.shared.string("Model Name"), selection: $model) {
-                ForEach(modelOptions, id: \.self) { Text($0).tag($0) }
+                ForEach(modelOptions, id: \.self) { Text(verbatim: $0.label).tag($0.id) }
             }
         } else if let kind = provider.localAgent, kind.modelListArguments != nil {
             // An agent that can list its models gets the same picker as the HTTP services, with its own
@@ -257,23 +258,50 @@ struct ModelSettingsPane: View {
 
     /// The agent's own default comes first: leaving the model empty is a real choice for a CLI that
     /// picks its own model, not an omission.
-    private var agentModelOptions: [String] { [""] + modelOptions }
+    private var agentModelOptions: [ModelOption] { [ModelOption(id: "")] + modelOptions }
 
-    @ViewBuilder private func modelRow(_ name: String) -> some View {
-        if name.isEmpty {
+    @ViewBuilder private func modelRow(_ option: ModelOption) -> some View {
+        if option.id.isEmpty {
             Text(L10n.shared.string("The agent's own default")).tag("")
         } else {
-            Text(verbatim: name).tag(name)
+            Text(verbatim: option.label).tag(option.id)
         }
     }
 
-    private var modelOptions: [String] { Self.modelOptions(for: models, model: model) }
+    private var modelOptions: [ModelOption] { Self.modelOptions(for: models, model: model) }
 
     /// What the picker offers: the last list that loaded, plus the saved model so a name the list no
     /// longer offers stays selectable. Before the first list arrives that is just the saved name.
-    static func modelOptions(for models: Models, model: String) -> [String] {
-        guard case .loaded(let ids) = models else { return model.isEmpty ? [] : [model] }
-        return model.isEmpty || ids.contains(model) ? ids : [model] + ids
+    static func modelOptions(for models: Models, model: String) -> [ModelOption] {
+        guard case .loaded(let options) = models else {
+            return model.isEmpty ? [] : [ModelOption(id: model)]
+        }
+        return model.isEmpty || options.contains { $0.id == model }
+            ? options : [ModelOption(id: model)] + options
+    }
+
+    /// What the selected agent model said it accepts, next to the model it belongs to (E2). The value
+    /// sent is the nearest lower level in that list; a model that reasons not at all gets no parameter.
+    @ViewBuilder private var effortSupport: some View {
+        if let efforts = selectedEfforts {
+            if efforts.isEmpty {
+                Text(L10n.shared.string("This model does not use reasoning effort"))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(
+                    L10n.shared.string(
+                        "This model supports: %@",
+                        efforts.map { L10n.shared.string($0.title.key) }.joined(separator: "／"))
+                )
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// The levels the selected model accepts, from the list the scan stored.
+    private var selectedEfforts: [EffortLevel]? {
+        guard let kind = provider.localAgent, kind.modelListArguments != nil else { return nil }
+        return SettingsStore.supportedEfforts(for: provider, model: model)
     }
 
     /// The failure sits under the control rather than replacing it, so a bad key never changes what
@@ -310,7 +338,10 @@ struct ModelSettingsPane: View {
             models = .loading
             Task {
                 do {
-                    models = .loaded(try await ModelClient().listModels(baseURL: url, apiKey: key))
+                    models = .loaded(
+                        try await ModelClient().listModels(baseURL: url, apiKey: key).map {
+                            ModelOption(id: $0)
+                        })
                 } catch {
                     models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
                 }
@@ -329,7 +360,15 @@ struct ModelSettingsPane: View {
         models = .loading
         Task {
             do {
-                models = .loaded(try await LocalAgent.models(kind, executable: URL(fileURLWithPath: path)))
+                let options = try await LocalAgent.models(
+                    kind, executable: URL(fileURLWithPath: path))
+                // Remember what each model accepts, so a request never sends a level it rejects.
+                for option in options {
+                    SettingsStore.setSupportedEfforts(
+                        option.efforts, for: provider, model: option.id)
+                }
+                SettingsStore.setSupportedEfforts(nil, for: provider, model: "")
+                models = .loaded(options)
             } catch {
                 models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
             }

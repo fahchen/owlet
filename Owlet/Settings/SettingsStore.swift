@@ -79,6 +79,9 @@ struct ServiceConfig: Sendable, Equatable {
     var apiKey: String
     var provider: Provider = .openAICompatible
     var effort: EffortLevel = .off
+    /// What the provider said the chosen model accepts, when it said anything (BDR-0013 §9). The
+    /// effort switch takes the nearest lower level here, and sends nothing when the list is empty.
+    var supportedEfforts: [EffortLevel]? = nil
     /// The agent CLI to run, for a local-agent provider; nil for an HTTP service. `baseURL` and `apiKey`
     /// are then unused — the shared request builders still need a URL, and no key is involved.
     var agentExecutable: URL? = nil
@@ -109,7 +112,8 @@ enum SettingsStore {
             else { return nil }
             return ServiceConfig(
                 baseURL: LocalAgent.unusedBaseURL, model: model, apiKey: "", provider: provider,
-                effort: effort(), agentExecutable: URL(fileURLWithPath: path))
+                effort: effort(), supportedEfforts: supportedEfforts(for: provider, model: model),
+                agentExecutable: URL(fileURLWithPath: path))
         }
         guard
             let base = defaults.string(forKey: baseURLKey)?.trimmingCharacters(in: .whitespaces),
@@ -140,6 +144,34 @@ enum SettingsStore {
         } else {
             defaults.removeObject(forKey: agentPathKey(for: provider))
         }
+    }
+
+    static let agentEffortsKey = "service.agentEfforts"
+
+    /// What the agent said this model accepts, as the settings scan last learned it (BDR-0013 §9). An
+    /// absent entry means the agent said nothing, so the static per-CLI table stays in charge; an empty
+    /// list means the model does not reason, and then no effort parameter is sent at all.
+    static func supportedEfforts(
+        for provider: Provider, model: String, in defaults: UserDefaults = .standard
+    ) -> [EffortLevel]? {
+        let table = defaults.dictionary(forKey: agentEffortsKey) as? [String: [String: [String]]]
+        guard let levels = table?[provider.rawValue]?[model] else { return nil }
+        return levels.compactMap(EffortLevel.init(rawValue:))
+    }
+
+    static func setSupportedEfforts(
+        _ levels: [EffortLevel]?, for provider: Provider, model: String,
+        in defaults: UserDefaults = .standard
+    ) {
+        var table = defaults.dictionary(forKey: agentEffortsKey) as? [String: [String: [String]]] ?? [:]
+        var byModel = table[provider.rawValue] ?? [:]
+        if let levels {
+            byModel[model] = levels.map(\.rawValue)
+        } else {
+            byModel.removeValue(forKey: model)
+        }
+        table[provider.rawValue] = byModel
+        defaults.set(table, forKey: agentEffortsKey)
     }
 
     static func apiKey(for provider: Provider) -> String? {

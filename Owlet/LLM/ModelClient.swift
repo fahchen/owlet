@@ -175,7 +175,7 @@ struct ModelClient: Sendable {
             model: config.model, system: system,
             turns: [.user(String(decoding: payload, as: UTF8.self))],
             format: format(name: "meaning", schema: LearningResult.providerSchema, config: config),
-            effort: config.effort)
+            effort: config.effort, supportedEfforts: config.supportedEfforts)
         return try await perform(
             request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
             config: config,
@@ -303,7 +303,7 @@ struct ModelClient: Sendable {
         return ModelRequest(
             model: config.model, system: system, turns: turns,
             format: format(name: "learning", schema: LearningResult.providerSchema, config: config),
-            effort: config.effort)
+            effort: config.effort, supportedEfforts: config.supportedEfforts)
     }
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
@@ -409,7 +409,7 @@ struct ModelClient: Sendable {
         return ModelRequest(
             model: config.model, system: system, turns: turns,
             format: format(name: "lookup", schema: LookupResult.providerSchema, config: config),
-            effort: config.effort)
+            effort: config.effort, supportedEfforts: config.supportedEfforts)
     }
 
     /// The OpenAI-style model list, which belongs to the HTTP services; a local agent lists its models
@@ -481,7 +481,7 @@ struct ModelClient: Sendable {
             format: format(
                 name: operation == .translate ? "translation" : "polish",
                 schema: TranslationResult.providerSchema, config: config),
-            effort: config.effort)
+            effort: config.effort, supportedEfforts: config.supportedEfforts)
     }
 }
 

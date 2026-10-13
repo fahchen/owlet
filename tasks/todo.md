@@ -1199,3 +1199,21 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 第 2 轮评审（E1 同意保留 `--ignore-user-config`、E2 同意强度清单只显示且挨着 model、E3 记录「后面要支持图片与流式」）后的补完：Codex 的每模型强度清单已接进应用——`ModelOption.efforts` → `service.agentEfforts` → `ServiceConfig.supportedEfforts` → `LocalAgentKind.effortValue(_:supported:)`，设置页在强度行下就地显示该模型支持的档位或「不使用思考强度」；模型完全不推理时不发送该参数。真实清单实测：codex 7 个模型各得 `low,medium,high,max`，Claude Code 为未知（沿用静态表）。测试 402 项通过。E3 的扩展点（`ModelTurn` 将来加内容分片、`ModelBackend` 在 `complete` 旁加带默认实现的流式方法）写进 BDR，未预建空抽象。
 
 验证：`mise run check` 退出码 0。
+
+## T64：玻璃强度指向系统设置（已实现）
+
+依据 [BDR-0014](../spec/settings/decisions/BDR-0014-system-liquid-glass-intensity.md) 与[浮窗玻璃规格](../spec/settings/features/panel-glass.feature)。用户 2026-10-13 决定应用不再提供自己的液态玻璃强度控制。
+
+范围与取舍：`SwiftUICore.Glass` 只有 `regular`／`clear`／`identity`，`NSGlassEffectView` 只有 `style` 与圆角／tint，没有连续强度的公开符号；真正的强度滑杆在「系统设置 › 外观」并且系统级生效，浮窗玻璃由 window server 绘制、已经跟随它。因此保留原有两选一 `Picker`，只在它下面加一行次级说明与一个原生 `Link` 打开外观面板。先前试过的五档 `Material` 滑杆与「自动跟随系统无障碍开关」都已被用户否决并回退，`PanelGlassEffect` 仍是两选一。
+
+验收：
+
+- [x] 「浮窗」分组的玻璃效果 Picker 下有一行次级 `Text`（说明液态玻璃及其强度在「系统设置 › 外观」中调整）与一个打开该面板的 `Link`；两者都是系统组件，没有自定义颜色、填充、边框、渐变或 `ButtonStyle`。
+- [x] 两条新界面串进 `strings/translations.json`（258 → 260）并重新生成 `Owlet/Localizable.xcstrings`。
+- [x] 新增一条测试钉住打开的就是外观面板（`SettingsStore.appearanceSettingsURL` 的 scheme 与 `Appearance-Settings`）；`PanelGlassEffectTests` 原有持久化用例不变。
+- [x] 同步 `spec/product.md`、`spec/README.md` 的决策索引、`docs/liquid-glass-components.md` 的逐屏表与 T43 行（记为指向既有系统设置，不新增 HIG 引用）。
+- [ ] **视觉验收需要人跑 `mise run dev`**：本环境不能启动 GUI，链接的实际跳转与行内排版未在原生窗口看过。
+
+结果（2026-10-13）：[GeneralSettingsPane.swift](../Owlet/Settings/GeneralSettingsPane.swift) 在「浮窗」分组加 `VStack(alignment: .leading)`（次级说明 + `Link`）；[PanelGlassEffect.swift](../Owlet/Settings/PanelGlassEffect.swift) 新增可选常量 `SettingsStore.appearanceSettingsURL` = `x-apple.systempreferences:com.apple.Appearance-Settings.extension`（不强制解包，取不到就不画链接）。目录 258 → 260 条，全套 **400 项测试通过**（原 399 项 + 新增 1 项）。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；`scripts/check-i18n.py` 报告三语全覆盖。

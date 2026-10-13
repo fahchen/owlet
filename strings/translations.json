@@ -514,6 +514,11 @@
     "zh-Hans": "留空则使用该 agent 自己的默认模型",
     "zh-Hant": "留空則使用該 agent 自己的預設模型"
   },
+  "Liquid Glass and its intensity are adjusted in System Settings › Appearance.": {
+    "ja": "リキッドグラスとその強度は「システム設定 › 外観」で調整します。",
+    "zh-Hans": "液态玻璃及其强度在「系统设置 › 外观」中调整。",
+    "zh-Hant": "液態玻璃及其強度在「系統設定 › 外觀」中調整。"
+  },
   "Look Up": {
     "ja": "調べる",
     "zh-Hans": "查询",
@@ -698,6 +703,11 @@
     "ja": "Owlet を開く",
     "zh-Hans": "打开 Owlet",
     "zh-Hant": "打開 Owlet"
+  },
+  "Open System Settings": {
+    "ja": "システム設定を開く",
+    "zh-Hans": "打开系统设置",
+    "zh-Hant": "打開系統設定"
   },
   "Operation": {
     "ja": "処理方法",

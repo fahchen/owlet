@@ -41,6 +41,20 @@ struct GeneralSettingsPane: View {
                     }
                 }
 
+                // The picker above only chooses between the two glass variants; the intensity itself is
+                // a system-wide setting, so this points there rather than pretending to own it.
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        L10n.shared.string(
+                            "Liquid Glass and its intensity are adjusted in System Settings › Appearance."
+                        )
+                    )
+                    .foregroundStyle(.secondary)
+                    if let url = SettingsStore.appearanceSettingsURL {
+                        Link(L10n.shared.string("Open System Settings"), destination: url)
+                    }
+                }
+
                 Picker(L10n.shared.string("Panel Position"), selection: $panelPosition) {
                     ForEach(PanelPosition.allCases, id: \.self) {
                         Text(verbatim: L10n.shared.string($0.title.key)).tag($0)

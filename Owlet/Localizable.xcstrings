@@ -2988,6 +2988,35 @@
         }
       }
     },
+    "Liquid Glass and its intensity are adjusted in System Settings › Appearance.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liquid Glass and its intensity are adjusted in System Settings › Appearance."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リキッドグラスとその強度は「システム設定 › 外観」で調整します。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "液态玻璃及其强度在「系统设置 › 外观」中调整。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "液態玻璃及其強度在「系統設定 › 外觀」中調整。"
+          }
+        }
+      }
+    },
     "Look Up": {
       "extractionState": "manual",
       "localizations": {
@@ -4057,6 +4086,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "打開 Owlet"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム設定を開く"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开系统设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打開系統設定"
           }
         }
       }

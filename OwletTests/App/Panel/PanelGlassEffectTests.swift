@@ -23,4 +23,12 @@ struct PanelGlassEffectTests {
         reopened.wrappedValue = .contrast
         #expect(defaults.string(forKey: SettingsStore.panelGlassEffectKey) == "contrast")
     }
+
+    /// The hint's link is the app's only path to the intensity it cannot set, so the URL has to be the
+    /// Appearance pane rather than, say, Accessibility: a typo here opens the wrong pane silently.
+    @Test func theGlassHintOpensTheAppearancePane() throws {
+        let url = try #require(SettingsStore.appearanceSettingsURL)
+        #expect(url.scheme == "x-apple.systempreferences")
+        #expect(url.absoluteString.contains("Appearance-Settings"))
+    }
 }

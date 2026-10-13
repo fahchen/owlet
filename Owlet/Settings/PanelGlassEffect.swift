@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 enum PanelGlassEffect: String, CaseIterable {
@@ -27,4 +28,10 @@ enum PanelGlassEffect: String, CaseIterable {
 
 extension SettingsStore {
     static let panelGlassEffectKey = "panel.glassEffect"
+
+    /// System Settings › Appearance, where Liquid Glass and its intensity are chosen system-wide. The
+    /// app can only pick between the two glass variants, so it points here instead of offering an
+    /// intensity of its own.
+    static let appearanceSettingsURL = URL(
+        string: "x-apple.systempreferences:com.apple.Appearance-Settings.extension")
 }

@@ -94,7 +94,7 @@
 | --- | --- |
 | `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 侧栏切换 · 内容区顶边的 `TabView`（`Tab(标题, systemImage:)`，四周留边距）· 每个 pane 里两个 `GroupBox`（靠背景区隔，不画分割线；标题位放的是控件——原文一侧 `Picker(.menu)` 选源语言、译文一侧是「译文／学习」分段控件；目标语言 `Picker(.menu)` 在译文组内）· 内容右下角浮起的两颗独立玻璃图标按钮（`复制结果`、`翻译`／`润色`，处理中换成 `取消`；`.labelStyle(.iconOnly)` + `.help()`，不套 `GlassEffectContainer`，见 §2.2）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；两侧同时可见并各自滚动（宽窗口左右平分宽度、窄窗口上下平分高度），学习表达跟在译文／润色下面；这一页没有底部操作栏 |
 | `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | 设置窗口的快捷键页：`Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示 |
-| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）；工具栏一页为快捷键页 |
+| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）与「浮窗」分组（玻璃效果 `Picker`，其下一行次级 `Text` + 系统 `Link` 指向「系统设置 › 外观」，见 BDR-0014）；工具栏一页为快捷键页 |
 | `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
 | `settings-model.png` / `settings-model-openai.png` / `settings-model-agent.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试`。编辑器分组标题的行尾是 `默认` 标记，改过之后换成小方块 `恢复默认` 按钮。服务商 `Picker(.menu)` 分两节：远程服务与本地 agent 之间有分隔线，没装的 agent 不出现（T61）。`settings-model-agent` 是本地 agent 的同一页：Base URL 与 `SecureField` 换成 `LabeledContent` 的可执行文件行 + `检测`／`选择…` 两个按钮 + 就地显示的检测结果（版本或失败原因），footer 说明不需要 API Key；Codex 的模型名是 `Picker(.menu)`（第一项「该 agent 自己的默认模型」），Claude Code 没有列举命令、仍是 `TextField`（T62） |
 | `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：`List(.inset)` + 系统 `DisclosureGroup`，每次交换一行（指示器、动效与无障碍状态都由系统给出），行内是操作名、原文摘要 `.lineLimit(1)` 与时间；展开后是失败行、原文差异与三段可选中原文；没有记录时用 `ContentUnavailableView` |
@@ -263,7 +263,7 @@ T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt
 
 浮窗组合操作的 NSSegmentedControl 关闭 cell 自带边框（isBordered = false），由单层 `.glassEffect(.regular)` 提供背景；避免叠层，同时保持背景清晰。
 
-T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。
+T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。玻璃强度仍不归应用：`SwiftUICore.Glass` 只有 `regular`／`clear`／`identity`，`NSGlassEffectView` 只有 `style` 与圆角／tint，没有连续强度的公开符号，所以该分组在 Picker 下只用次级 `Text` + 系统 `Link` 指向「系统设置 › 外观」（BDR-0014）。这是指向既有系统设置，不是新的 HIG 主张，本表不为它新增引用条目。
 
 预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五个主状态及收藏／取消收藏两态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收。窗口未激活时系统按钮会显示非活跃颜色。
 

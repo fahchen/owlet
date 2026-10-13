@@ -36,13 +36,13 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// How this agent takes a response schema, or nil when it takes none.
+    /// How this agent takes a response schema.
     enum SchemaDelivery: Sendable {
         case file
         case argument
     }
 
-    var schemaDelivery: SchemaDelivery? {
+    var schemaDelivery: SchemaDelivery {
         switch self {
         case .codexCLI: .file
         case .claudeCode: .argument
@@ -171,9 +171,9 @@ extension LocalAgent {
         kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL, timeout: Duration
     ) -> LocalAgentInvocation {
         let prompt = request.turns.map(\.content).joined(separator: "\n\n")
-        // Only an agent that takes a schema carries one: an invocation describes what this agent will
-        // actually be given, and an agent with no such switch can only be told the shape in the prompt.
-        let schema = kind.schemaDelivery == nil ? nil : schemaData(request.format)
+        // Only a `json_schema` request carries one: a `json_object` shape travels in the prompt, so
+        // there is nothing to put on the command line.
+        let schema = schemaData(request.format)
         let invocation = LocalAgentInvocation(
             executable: executable, arguments: [], stdin: prompt, directory: directory,
             systemPrompt: request.system,

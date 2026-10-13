@@ -213,7 +213,7 @@ macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应�
 
 ## 10. 参考
 
-HIG 参考资料位于 `.pi/skills/apple-design/references/hig/`：`liquid-glass.md`（`Where the material belongs` / `Which variant` / `Color on glass` / `Review checklist`）、`materials.md`、`color.md`、`layout.md`、`designing-for-macos.md`、`sidebars.md`、`toolbars.md`、`windows.md`、`panels.md`、`split-views.md`、`settings.md`、`the-menu-bar.md`、`buttons.md`、`segmented-controls.md`、`pop-up-buttons.md`、`menus.md`、`search-fields.md`、`lists-and-tables.md`、`boxes.md`、`labels.md`、`text-views.md`、`toggles.md`、`pickers.md`、`progress-indicators.md`、`feedback.md`、`writing.md`、`accessibility.md`、`focus-and-selection.md`、`dark-mode.md`、`generative-ai.md`。组件分类依 Apple 官方目录：<https://developer.apple.com/design/human-interface-guidelines/components>
+HIG 参考资料取自 Apple 官方文档 <https://developer.apple.com/design/human-interface-guidelines>：`liquid-glass`（`Where the material belongs` / `Which variant` / `Color on glass` / `Review checklist`）、`materials`、`color`、`layout`、`designing-for-macos`、`sidebars`、`toolbars`、`windows`、`panels`、`split-views`、`settings`、`the-menu-bar`、`buttons`、`segmented-controls`、`pop-up-buttons`、`menus`、`search-fields`、`lists-and-tables`、`boxes`、`labels`、`text-views`、`toggles`、`pickers`、`progress-indicators`、`feedback`、`writing`、`accessibility`、`focus-and-selection`、`dark-mode`、`generative-ai`。组件分类依 Apple 官方目录：<https://developer.apple.com/design/human-interface-guidelines/components>
 
 T33 材质：导航与工具栏采用系统默认 Liquid Glass；内容区不叠玻璃，使用 GroupBox／Form 的系统背景。动作使用系统 `.glass`／`.glassProminent`，图标来自 SF Symbols。窄窗工作台通过原生 ScrollView 保持编辑器和学习区可达。
 

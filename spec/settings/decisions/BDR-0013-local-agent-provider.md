@@ -1,6 +1,6 @@
 # BDR-0013：本机 agent CLI 作为模型服务
 
-状态：已实现（T61，2026-10-12）；后来 pi 不再受支持，本决策现在只覆盖 Claude Code 与 Codex CLI。来源：用户要求「支持本地的 agent，比如 codex、pi 等来作为 llm provider」，并补充「还有 Claude Code」。
+状态：已实现（T61，2026-10-12）。来源：用户要求「支持本地的 agent CLI 作为 llm provider」，随后确定只支持 Claude Code 与 Codex CLI。
 
 范围只涉及「一次模型请求怎么到达模型」。JSON 契约、本地校验、纠正重试、写回、学习与查词的行为都不变，见 [LLM 契约](../../llm/contract.md)。
 

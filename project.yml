@@ -41,7 +41,7 @@ targets:
         MARKETING_VERSION: "0.2.0"
         # The build number: raise it for every artifact handed out under the same version, so it
         # restarts with a new version.
-        CURRENT_PROJECT_VERSION: "1"
+        CURRENT_PROJECT_VERSION: "2"
   OwletTests:
     type: bundle.unit-test
     platform: macOS

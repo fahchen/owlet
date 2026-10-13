@@ -1196,6 +1196,6 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 
 真实调用实测：codex 0.160.1 + `--output-schema` 用 `$defs.result` 直接返回契约形状 JSON（逐句配对与 `source` 末尾空格都对）；`--ignore-user-config` 前后对比同一条请求的 tokens 与 MCP/hooks 计数。
 
-未完成（等用户对 E2／E3 的答复）：把 Codex 的每模型强度清单读进应用、在设置页显示、并据此避免发送模型拒绝的档位。
+第 2 轮评审（E1 同意保留 `--ignore-user-config`、E2 同意强度清单只显示且挨着 model、E3 记录「后面要支持图片与流式」）后的补完：Codex 的每模型强度清单已接进应用——`ModelOption.efforts` → `service.agentEfforts` → `ServiceConfig.supportedEfforts` → `LocalAgentKind.effortValue(_:supported:)`，设置页在强度行下就地显示该模型支持的档位或「不使用思考强度」；模型完全不推理时不发送该参数。真实清单实测：codex 7 个模型各得 `low,medium,high,max`，pi 两个为未知（静态表 + pi 自行 clamp）。测试 402 项通过。E3 的扩展点（`ModelTurn` 将来加内容分片、`ModelBackend` 在 `complete` 旁加带默认实现的流式方法）写进 BDR，未预建空抽象。
 
 验证：`mise run check` 退出码 0。

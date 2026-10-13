@@ -89,6 +89,53 @@ struct AgentSettingsTests {
         #expect(SettingsStore.supportedEfforts(for: .claudeCode, model: "m", in: defaults) == [])
     }
 
+    /// What the CLI said its feature switches are, and which `-c` overrides it accepted, are cached per
+    /// provider so a request sends only what that build proved it has (BDR-0013 §2).
+    @Test func whatTheScanLearnedAboutTheCLIReadsBackPerProvider() throws {
+        #expect(SettingsStore.agentFeatures(for: .codexCLI, in: defaults) == nil)
+        #expect(SettingsStore.agentOverrides(for: .codexCLI, in: defaults) == nil)
+
+        SettingsStore.setAgentFeatures(["shell_tool", "hooks"], for: .codexCLI, in: defaults)
+        SettingsStore.setAgentOverrides(
+            ["skills.include_instructions=false", "web_search=\"disabled\""],
+            for: .codexCLI, in: defaults)
+        #expect(SettingsStore.agentFeatures(for: .codexCLI, in: defaults) == ["shell_tool", "hooks"])
+        #expect(
+            SettingsStore.agentOverrides(for: .codexCLI, in: defaults)
+                == ["skills.include_instructions=false", "web_search=\"disabled\""])
+        #expect(SettingsStore.agentFeatures(for: .claudeCode, in: defaults) == nil)
+
+        // An empty answer is a fact — this build has none of the names we want — and must not read back
+        // as "not scanned yet", which would send the guessed fallback instead.
+        SettingsStore.setAgentFeatures([], for: .codexCLI, in: defaults)
+        #expect(try #require(SettingsStore.agentFeatures(for: .codexCLI, in: defaults)).isEmpty)
+        SettingsStore.setAgentOverrides([], for: .codexCLI, in: defaults)
+        #expect(try #require(SettingsStore.agentOverrides(for: .codexCLI, in: defaults)).isEmpty)
+
+        SettingsStore.setAgentFeatures(nil, for: .codexCLI, in: defaults)
+        SettingsStore.setAgentOverrides(nil, for: .codexCLI, in: defaults)
+        #expect(SettingsStore.agentFeatures(for: .codexCLI, in: defaults) == nil)
+        #expect(SettingsStore.agentOverrides(for: .codexCLI, in: defaults) == nil)
+        // Clearing one provider must not touch the other's answer.
+        #expect(SettingsStore.agentFeatures(for: .claudeCode, in: defaults) == nil)
+    }
+
+    /// The scan's answer is what reaches a request: the config carries the cached names and overrides,
+    /// and a request assembled without a scan carries nothing.
+    @Test func theScannedFlagsReachTheRequest() throws {
+        defaults.set(Provider.codexCLI.rawValue, forKey: SettingsStore.providerKey)
+        SettingsStore.setAgentPath("/bin/sh", for: .codexCLI, in: defaults)
+        let unscanned = try #require(SettingsStore.currentConfig(in: defaults))
+        #expect(unscanned.agentFeatures == nil)
+        #expect(unscanned.agentOverrides == nil)
+
+        SettingsStore.setAgentFeatures(["shell_tool"], for: .codexCLI, in: defaults)
+        SettingsStore.setAgentOverrides(["web_search=\"disabled\""], for: .codexCLI, in: defaults)
+        let scanned = try #require(SettingsStore.currentConfig(in: defaults))
+        #expect(scanned.agentFeatures == ["shell_tool"])
+        #expect(scanned.agentOverrides == ["web_search=\"disabled\""])
+    }
+
     @Test func providersCarryTheirOwnCapabilities() {
         #expect(Provider.claudeCode.localAgent == LocalAgentKind.claudeCode)
         #expect(Provider.codexCLI.localAgent == LocalAgentKind.codexCLI)

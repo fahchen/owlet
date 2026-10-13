@@ -83,6 +83,11 @@ struct ServiceConfig: Sendable, Equatable {
     /// The agent CLI to run, for a local-agent provider; nil for an HTTP service. `baseURL` and `apiKey`
     /// are then unused — the shared request builders still need a URL, and no key is involved.
     var agentExecutable: URL? = nil
+    /// The `--disable` names the installed agent reported, as the settings scan last learned them
+    /// (BDR-0013 §2). nil means no scan has run, and the request sends only names old enough to be safe.
+    var agentFeatures: [String]? = nil
+    /// The `-c` overrides the installed agent accepted at scan time; nil means none were proven.
+    var agentOverrides: [String]? = nil
 }
 
 enum SettingsStore {
@@ -111,7 +116,9 @@ enum SettingsStore {
             return ServiceConfig(
                 baseURL: LocalAgent.unusedBaseURL, model: model, apiKey: "", provider: provider,
                 effort: effort(), supportedEfforts: supportedEfforts(for: provider, model: model),
-                agentExecutable: URL(fileURLWithPath: path))
+                agentExecutable: URL(fileURLWithPath: path),
+                agentFeatures: agentFeatures(for: provider, in: defaults),
+                agentOverrides: agentOverrides(for: provider, in: defaults))
         }
         guard
             let base = defaults.string(forKey: baseURLKey)?.trimmingCharacters(in: .whitespaces),
@@ -170,6 +177,53 @@ enum SettingsStore {
         }
         table[provider.rawValue] = byModel
         defaults.set(table, forKey: agentEffortsKey)
+    }
+
+    static let agentFeaturesKey = "service.agentFeatures"
+    static let agentOverridesKey = "service.agentOverrides"
+
+    /// The `--disable` names the installed agent reported in its own listing, as the settings scan last
+    /// learned them (BDR-0013 §2). An absent entry means no scan has run — not that the build has no
+    /// features — and a request then sends only the names old enough to predate the scan.
+    static func agentFeatures(
+        for provider: Provider, in defaults: UserDefaults = .standard
+    ) -> [String]? {
+        let table = defaults.dictionary(forKey: agentFeaturesKey) as? [String: [String]]
+        return table?[provider.rawValue]
+    }
+
+    static func setAgentFeatures(
+        _ names: [String]?, for provider: Provider, in defaults: UserDefaults = .standard
+    ) {
+        var table = defaults.dictionary(forKey: agentFeaturesKey) as? [String: [String]] ?? [:]
+        if let names {
+            table[provider.rawValue] = names
+        } else {
+            table.removeValue(forKey: provider.rawValue)
+        }
+        defaults.set(table, forKey: agentFeaturesKey)
+    }
+
+    /// The `-c` overrides the installed agent accepted when it was scanned (BDR-0013 §2). An override
+    /// this build rejects is a hard config error, so only a proven one is ever sent; an absent entry
+    /// means none were proven yet.
+    static func agentOverrides(
+        for provider: Provider, in defaults: UserDefaults = .standard
+    ) -> [String]? {
+        let table = defaults.dictionary(forKey: agentOverridesKey) as? [String: [String]]
+        return table?[provider.rawValue]
+    }
+
+    static func setAgentOverrides(
+        _ overrides: [String]?, for provider: Provider, in defaults: UserDefaults = .standard
+    ) {
+        var table = defaults.dictionary(forKey: agentOverridesKey) as? [String: [String]] ?? [:]
+        if let overrides {
+            table[provider.rawValue] = overrides
+        } else {
+            table.removeValue(forKey: provider.rawValue)
+        }
+        defaults.set(table, forKey: agentOverridesKey)
     }
 
     static func apiKey(for provider: Provider) -> String? {

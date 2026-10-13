@@ -68,6 +68,56 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
     }
 }
 
+/// The Codex feature switches the app wants off, and how that list survives a CLI upgrade (BDR-0013 §2).
+///
+/// `--disable` with a name the installed build does not have exits 2 and fails the whole request, while
+/// a name whose stage is `removed` is still accepted. So no name is taken on faith: the settings scan
+/// reads that build's own `codex features list`, and a request only ever sends what it reported.
+enum CodexFeatures {
+    /// What one completion never needs, in the order it is sent. A name the installed build does not
+    /// report is dropped instead of being sent and rejected.
+    static let desired = [
+        "shell_tool", "hooks", "apps", "auth_elicitation", "browser_use", "browser_use_external",
+        "browser_use_full_cdp_access", "computer_use", "image_generation", "in_app_browser",
+        "multi_agent", "skill_mcp_dependency_install", "skill_search", "sleep_tool", "shell_snapshot",
+        "tool_call_mcp_elicitation", "tool_suggest", "view_image",
+    ]
+
+    /// What a request sends when no scan has run yet: two names every recent build has carried.
+    static let fallback = ["shell_tool", "hooks"]
+
+    /// The `-c` overrides that drop prompt sections a one-shot completion never uses, in the order they
+    /// are sent. The first two carry the weight: `skills.include_instructions=false` stops this build
+    /// from injecting the whole skill catalog of `~/.codex/skills` and its plugin caches, and
+    /// `web_search="disabled"` drops a tool the contract forbids anyway. Each is kept only when this
+    /// build accepts it — `web_search` takes an enum, and a value it does not know fails the whole
+    /// request — so an override is never sent on faith.
+    static let overrides = [
+        "skills.include_instructions=false",
+        "web_search=\"disabled\"",
+        "include_environment_context=false",
+        "include_permissions_instructions=false",
+        "include_collaboration_mode_instructions=false",
+    ]
+
+    /// The names a listing reports. `codex features list` prints `name  stage  enabled` per line, so the
+    /// first field is the name and the rest is that build's own state, which this app does not read.
+    static func parse(_ listing: String) -> [String] {
+        listing.split(whereSeparator: \.isNewline).compactMap {
+            $0.split(whereSeparator: \.isWhitespace).first.map(String.init)
+        }
+    }
+
+    /// What this build has of what we want, in the order we want to send it.
+    static func intersect(desired: [String] = desired, available: [String]) -> [String] {
+        let known = Set(available)
+        return desired.filter(known.contains)
+    }
+
+    /// What one request sends: the scan's answer once there is one, otherwise the long-lived fallback.
+    static func sendable(cached: [String]?) -> [String] { cached ?? fallback }
+}
+
 /// One planned CLI call: what to run, with which arguments, and what to write to its stdin. Every path
 /// is inside `directory`, and nothing here touches the file system, so each recipe is directly testable.
 struct LocalAgentInvocation: Sendable, Equatable {
@@ -75,7 +125,7 @@ struct LocalAgentInvocation: Sendable, Equatable {
     var arguments: [String]
     var stdin: String
     var directory: URL
-    /// The behavior prompt: Claude Code takes it as an argument, Codex composes it into standard input.
+    /// The behavior prompt: Claude Code takes it as `--system-prompt`, Codex reads it from a file.
     var systemPrompt: String
     /// `codex` writes its final message where `--output-last-message` points instead of to stdout.
     var answersToFile: Bool
@@ -83,10 +133,16 @@ struct LocalAgentInvocation: Sendable, Equatable {
     var schema: Data?
     /// `codex` reads the schema from a file; `claude` takes it as an argument.
     var writesSchemaFile: Bool
+    /// Whether the behavior prompt goes into `instructionsFile`. Codex reads `model_instructions_file`,
+    /// which is what keeps our prompt in the system position instead of concatenated onto the user's
+    /// turn; Claude Code takes `--system-prompt` instead, so no file is written for it.
+    var writesInstructionsFile: Bool = false
     var timeout: Duration
 
     var stdinFile: URL { directory.appending(path: "stdin.txt") }
     var schemaFile: URL { directory.appending(path: "schema.json") }
+    /// Where `-c model_instructions_file` points; written 0600 beside the prompt, deleted with the rest.
+    var instructionsFile: URL { directory.appending(path: "instructions.txt") }
     var stdoutFile: URL { directory.appending(path: "stdout.txt") }
     var stderrFile: URL { directory.appending(path: "stderr.txt") }
     var answerFile: URL { directory.appending(path: "answer.txt") }
@@ -138,7 +194,8 @@ extension LocalAgent {
         let answer = try await run(
             Self.plan(
                 kind: kind, executable: executable, request: request,
-                directory: Self.temporaryDirectory(), timeout: timeout))
+                directory: Self.temporaryDirectory(), timeout: timeout,
+                features: config.agentFeatures, overrides: config.agentOverrides))
         // An agent with nothing to say is an empty reply, not a broken contract. It has to fail here:
         // a `.format` failure is correctable, and the app would spend a second process asking the model
         // to fix an answer it never gave.
@@ -154,12 +211,22 @@ extension LocalAgent {
         guard let executable = config.agentExecutable else { return nil }
         let invocation = Self.plan(
             kind: kind, executable: executable, request: request,
-            directory: Self.temporaryDirectory(), timeout: timeout)
-        return """
+            directory: Self.temporaryDirectory(), timeout: timeout,
+            features: config.agentFeatures, overrides: config.agentOverrides)
+        var shown = """
             $ \(invocation.executable.path) \(invocation.arguments.joined(separator: " "))
             --- the prompt below is written to the process's standard input ---
             \(invocation.stdin)
             """
+        // Codex never sees the behavior prompt in its argument list or on standard input, so without
+        // this the debug page would show the request with its instructions missing.
+        if invocation.writesInstructionsFile, !invocation.systemPrompt.isEmpty {
+            shown += """
+                --- the behavior prompt below is written to \(invocation.instructionsFile.path) ---
+                \(invocation.systemPrompt)
+                """
+        }
+        return shown
     }
 
     /// The recipe for one kind: the switches that turn an agent into a plain completion service, how the
@@ -168,7 +235,8 @@ extension LocalAgent {
     /// The user's text never reaches the command line — arguments are visible to every process on the
     /// machine through `ps` — so it is always written to the process's standard input.
     static func plan(
-        kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL, timeout: Duration
+        kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL,
+        timeout: Duration, features: [String]? = nil, overrides: [String]? = nil
     ) -> LocalAgentInvocation {
         let prompt = request.turns.map(\.content).joined(separator: "\n\n")
         // Only a `json_schema` request carries one: a `json_object` shape travels in the prompt, so
@@ -178,20 +246,26 @@ extension LocalAgent {
             executable: executable, arguments: [], stdin: prompt, directory: directory,
             systemPrompt: request.system,
             answersToFile: kind == .codexCLI, schema: schema,
-            writesSchemaFile: schema != nil && kind.schemaDelivery == .file, timeout: timeout)
+            writesSchemaFile: schema != nil && kind.schemaDelivery == .file,
+            writesInstructionsFile: kind == .codexCLI, timeout: timeout)
         var arguments = arguments(
             kind: kind, model: request.model, effort: request.effort,
-            supported: request.supportedEfforts, invocation: invocation)
+            supported: request.supportedEfforts, features: features, overrides: overrides,
+            invocation: invocation)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
         // explicitly; Claude Code takes the payload as context, so it needs a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
         arguments.append(kind == .codexCLI ? "-" : Self.stdinInstruction)
+        // Standard input is the user's turn alone for both agents: Claude Code takes the behavior
+        // prompt as `--system-prompt` and Codex reads it from `model_instructions_file`, so neither
+        // has it concatenated onto the text being processed.
         return LocalAgentInvocation(
             executable: executable, arguments: arguments,
-            stdin: stdin(kind: kind, system: request.system, prompt: prompt), directory: directory,
+            stdin: prompt, directory: directory,
             systemPrompt: request.system,
             answersToFile: invocation.answersToFile, schema: schema,
-            writesSchemaFile: invocation.writesSchemaFile, timeout: timeout)
+            writesSchemaFile: invocation.writesSchemaFile,
+            writesInstructionsFile: invocation.writesInstructionsFile, timeout: timeout)
     }
 
     /// The response schema this provider can accept, if any. `json_object` means the shape travels in
@@ -203,7 +277,7 @@ extension LocalAgent {
 
     private static func arguments(
         kind: LocalAgentKind, model: String, effort: EffortLevel, supported: [EffortLevel]?,
-        invocation: LocalAgentInvocation
+        features: [String]?, overrides: [String]?, invocation: LocalAgentInvocation
     ) -> [String] {
         var arguments: [String]
         switch kind {
@@ -222,35 +296,26 @@ extension LocalAgent {
             // request: without it codex contacts them on every run and puts their tools in the prompt
             // (measured on codex 0.160.1: about 30k tokens with, about 15k without).
             //
-            // `instructions=""` drops Codex's own coding-agent instructions, the largest single block
-            // it prefills; a one-shot completion needs none of them, and our system prompt and the
-            // fixed contract ride along in the stdin prompt instead. The shape still comes from
-            // `--output-schema` and the app's local validation, so nothing is lost. The features below
-            // can only add prompt text or tools this request never uses; the list stays curated rather
-            // than "all of them" because feature names move between CLI versions and `--disable` with
-            // a name this build does not have exits 2. `code_mode_host` is deliberately left on: it
-            // saves two tokens and makes every run print a fail-closed error.
+            // Neither the feature names nor the `-c` overrides are hard-coded into the command line:
+            // both come from what the settings scan read out of this build (BDR-0013 §2). A
+            // `--disable` name this build lacks exits 2, so an old cache or no cache at all costs
+            // flags, never the request. `code_mode_host` is deliberately left on: it saves two tokens
+            // and makes every run print a fail-closed error.
             arguments = [
                 "exec", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only",
                 "--ignore-user-config", "--config", "approval_policy=\"never\"",
-                "--disable", "shell_tool", "--disable", "hooks",
-                "--config", "instructions=\"\"",
-                "--disable", "apps",
-                "--disable", "auth_elicitation",
-                "--disable", "browser_use",
-                "--disable", "browser_use_external",
-                "--disable", "browser_use_full_cdp_access",
-                "--disable", "computer_use",
-                "--disable", "image_generation",
-                "--disable", "in_app_browser",
-                "--disable", "multi_agent",
-                "--disable", "skill_mcp_dependency_install",
-                "--disable", "skill_search",
-                "--disable", "sleep_tool",
-                "--disable", "shell_snapshot",
-                "--disable", "tool_call_mcp_elicitation",
-                "--disable", "tool_suggest",
-                "--disable", "view_image",
+            ]
+            for feature in CodexFeatures.sendable(cached: features) {
+                arguments += ["--disable", feature]
+            }
+            for override in overrides ?? [] {
+                arguments += ["--config", override]
+            }
+            // The behavior prompt goes into the system position rather than being concatenated onto
+            // the user's turn; `instructions` is a reserved key and is deliberately not combined with
+            // this — together they make the model read the instruction text as the source.
+            arguments += [
+                "--config", "model_instructions_file=\"\(invocation.instructionsFile.path)\"",
                 "--cd", invocation.directory.path,
                 "--output-last-message", invocation.answerFile.path,
             ]
@@ -265,11 +330,6 @@ extension LocalAgent {
             }
         }
         return arguments
-    }
-
-    /// Codex has no system-prompt switch, so it gets the two composed into one prompt.
-    private static func stdin(kind: LocalAgentKind, system: String, prompt: String) -> String {
-        kind == .codexCLI && !system.isEmpty ? system + "\n\n" + prompt : prompt
     }
 
     static func temporaryDirectory() -> URL {
@@ -314,6 +374,9 @@ extension LocalAgent {
             attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: invocation.directory) }
         try write(invocation.stdin, to: invocation.stdinFile, permissions: 0o600)
+        if invocation.writesInstructionsFile {
+            try write(invocation.systemPrompt, to: invocation.instructionsFile, permissions: 0o600)
+        }
         if invocation.writesSchemaFile, let schema = invocation.schema {
             try write(String(decoding: schema, as: UTF8.self), to: invocation.schemaFile, permissions: 0o600)
         }
@@ -388,6 +451,49 @@ extension LocalAgent {
 }
 
 extension LocalAgent {
+    /// What the installed Codex has and accepts, read where the settings pane already looks the CLI up
+    /// (BDR-0013 §2): the feature names it reports, and the `-c` overrides it does not reject. Only
+    /// local commands — no model is ever called — so one request never pays for this. nil means the
+    /// listing itself could not be read; a caller then keeps whatever it already had.
+    static func codexScan(executable: URL) async -> (features: [String], overrides: [String])? {
+        guard let listing = try? await scanOutput(executable, arguments: ["features", "list"]),
+            listing.status == 0
+        else { return nil }
+        // One combined probe settles the common case; only a build that rejects something pays for
+        // asking about the overrides one at a time, and a rejected one is simply not sent.
+        let combined = ["features", "list"] + CodexFeatures.overrides.flatMap { ["-c", $0] }
+        var accepted: [String]
+        if let probe = try? await scanOutput(executable, arguments: combined), probe.status == 0 {
+            accepted = CodexFeatures.overrides
+        } else {
+            accepted = []
+            for override in CodexFeatures.overrides {
+                let arguments = ["features", "list", "-c", override]
+                guard let probe = try? await scanOutput(executable, arguments: arguments),
+                    probe.status == 0
+                else { continue }
+                accepted.append(override)
+            }
+        }
+        return (CodexFeatures.intersect(available: CodexFeatures.parse(listing.stdout)), accepted)
+    }
+
+    /// One scan command and what it printed. The prepared directory and the login-shell environment are
+    /// the same ones a real request uses, so the scan sees the CLI the request will run.
+    private static func scanOutput(
+        _ executable: URL, arguments: [String]
+    ) async throws -> (status: Int32, stdout: String) {
+        let invocation = LocalAgentInvocation(
+            executable: executable, arguments: arguments, stdin: "",
+            directory: temporaryDirectory(), systemPrompt: "",
+            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
+        let environment = await AgentEnvironment.shared.value(for: executable)
+        let output = try await withPreparedDirectory(invocation) {
+            try await runProcess($0, environment: environment)
+        }
+        return (status: output.status, stdout: output.stdout)
+    }
+
     /// The models this agent offers, in its own order, with what the agent says each one accepts. A
     /// listing command is local — it never reaches a model — so opening the pane stays cheap.
     static func models(_ kind: LocalAgentKind, executable: URL) async throws -> [ModelOption] {

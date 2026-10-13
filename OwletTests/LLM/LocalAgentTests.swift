@@ -23,11 +23,12 @@ struct LocalAgentTests {
     }
 
     func plan(
-        _ kind: LocalAgentKind, model: String = "", effort: EffortLevel = .automatic
+        _ kind: LocalAgentKind, model: String = "", effort: EffortLevel = .automatic,
+        features: [String]? = nil, overrides: [String]? = nil
     ) -> LocalAgentInvocation {
         LocalAgent.plan(
             kind: kind, executable: executable, request: request(model: model, effort: effort),
-            directory: directory, timeout: .seconds(180))
+            directory: directory, timeout: .seconds(180), features: features, overrides: overrides)
     }
 
     /// The argument that follows a flag, which is how every recipe passes a value.
@@ -47,12 +48,15 @@ struct LocalAgentTests {
         }
     }
 
-    func shell(_ command: String, stdin: String = "", answersToFile: Bool = false) -> LocalAgentInvocation {
+    func shell(
+        _ command: String, stdin: String = "", answersToFile: Bool = false,
+        system: String = "", writesInstructionsFile: Bool = false
+    ) -> LocalAgentInvocation {
         LocalAgentInvocation(
             executable: executable, arguments: ["-c", command], stdin: stdin,
             directory: LocalAgent.temporaryDirectory(),
-            systemPrompt: "", answersToFile: answersToFile, schema: nil, writesSchemaFile: false,
-            timeout: .seconds(20))
+            systemPrompt: system, answersToFile: answersToFile, schema: nil, writesSchemaFile: false,
+            writesInstructionsFile: writesInstructionsFile, timeout: .seconds(20))
     }
 
     // MARK: - Recipes
@@ -74,8 +78,9 @@ struct LocalAgentTests {
         #expect(!invocation.answersToFile)
     }
 
-    /// Codex has no system-prompt switch and reads its prompt from stdin only when it gets no prompt
-    /// argument, which is why the recipe ends with `-`.
+    /// Codex has no system-prompt switch: `model_instructions_file` puts the behavior prompt in the
+    /// system position, and standard input then carries the user's turn alone. The prompt is a file
+    /// here, so it ends the recipe the way the payload does — with `-`.
     @Test func codexRunsReadOnlyAndAnswersIntoAFile() {
         let invocation = plan(.codexCLI)
         #expect(invocation.arguments.first == "exec")
@@ -89,7 +94,14 @@ struct LocalAgentTests {
         #expect(value(after: "--output-last-message", in: invocation.arguments) == invocation.answerFile.path)
         #expect(invocation.arguments.last == "-")
         #expect(invocation.answersToFile)
-        #expect(invocation.stdin == "SYSTEM\n\n原文")
+        // The behavior prompt travels as a file, and standard input is the user's turn alone.
+        #expect(invocation.writesInstructionsFile)
+        #expect(
+            hasPair(
+                "--config", "model_instructions_file=\"\(invocation.instructionsFile.path)\"",
+                in: invocation.arguments))
+        #expect(!invocation.arguments.contains("instructions=\"\""))
+        #expect(invocation.stdin == "原文")
     }
 
     /// A provider that takes a response schema gets this contract's, and the way it takes it differs:
@@ -126,15 +138,15 @@ struct LocalAgentTests {
     /// the subcommand — and the user's own hooks ran on every request until they were switched off. Both
     /// were seen against codex 0.160.1; this is what keeps them from coming back.
     ///
-    /// `instructions=""` and these disables are the prompt-surface trim: Codex prefills its own coding
-    /// agent instructions and a tool/app surface a one-shot completion never uses, and dropping both cut
-    /// the same one-line request from 21,724 to 13,300 input tokens on codex 0.160.1. Every name here is
-    /// in that build's `codex features list`; one that is not would make the CLI exit 2.
+    /// The feature names and the `-c` overrides are what the scan read out of the installed build, so
+    /// this pins what a fully scanned 0.160.1 sends: every name in its `codex features list`, and the
+    /// five overrides it accepted. An empty `instructions` is deliberately absent — combining it with
+    /// `model_instructions_file` makes the model read the instruction text as the source.
     @Test func codexGetsItsApprovalPolicyAndNoToolSurface() {
-        let invocation = plan(.codexCLI)
+        let invocation = plan(
+            .codexCLI, features: CodexFeatures.desired, overrides: CodexFeatures.overrides)
         #expect(!invocation.arguments.contains("--ask-for-approval"))
         #expect(value(after: "--config", in: invocation.arguments) == "approval_policy=\"never\"")
-        #expect(hasPair("--config", "instructions=\"\"", in: invocation.arguments))
         for feature in [
             "shell_tool", "hooks", "apps", "auth_elicitation", "browser_use", "browser_use_external",
             "browser_use_full_cdp_access", "computer_use", "image_generation", "in_app_browser",
@@ -143,6 +155,77 @@ struct LocalAgentTests {
         ] {
             #expect(hasPair("--disable", feature, in: invocation.arguments), "\(feature) is not disabled")
         }
+        for override in [
+            "skills.include_instructions=false", "web_search=\"disabled\"",
+            "include_environment_context=false", "include_permissions_instructions=false",
+            "include_collaboration_mode_instructions=false",
+        ] {
+            #expect(hasPair("--config", override, in: invocation.arguments), "\(override) is not sent")
+        }
+        #expect(!invocation.arguments.contains("instructions=\"\""))
+    }
+
+    /// A `--disable` name this build does not have exits 2, so the list is the scan's answer, not ours:
+    /// only the names the CLI itself reported are sent, and the unknown one never reaches the command.
+    @Test func onlyTheFeatureNamesThisBuildReportsAreDisabled() {
+        let cached = CodexFeatures.intersect(
+            desired: ["shell_tool", "hooks", "view_image"],
+            available: ["shell_tool", "view_image", "some_future_feature"])
+        #expect(cached == ["shell_tool", "view_image"])
+
+        let invocation = plan(.codexCLI, features: cached)
+        #expect(hasPair("--disable", "shell_tool", in: invocation.arguments))
+        #expect(hasPair("--disable", "view_image", in: invocation.arguments))
+        #expect(!hasPair("--disable", "hooks", in: invocation.arguments))
+        #expect(!invocation.arguments.contains("some_future_feature"))
+    }
+
+    /// Before any scan, and with no guessed name, only the two that have been in every recent build are
+    /// sent. A build that lacks even those costs flags, not the request.
+    @Test func withoutAScanOnlyTheLongLivedNamesAreDisabled() {
+        #expect(CodexFeatures.sendable(cached: nil) == ["shell_tool", "hooks"])
+        let invocation = plan(.codexCLI)
+        #expect(invocation.arguments.filter { $0 == "--disable" }.count == 2)
+        #expect(hasPair("--disable", "shell_tool", in: invocation.arguments))
+        #expect(hasPair("--disable", "hooks", in: invocation.arguments))
+        // Nothing was proven about the overrides either, so none is sent.
+        #expect(!invocation.arguments.contains(where: { $0.hasPrefix("skills.") }))
+        // An empty cache is a fact — this build has none of the names we want — and sends none.
+        #expect(CodexFeatures.sendable(cached: []) == [])
+    }
+
+    /// The listing the scan reads, in the real shape (`name  stage  enabled`), and the one override it
+    /// can reject: `web_search` takes an enum, so a wrong value is a hard config error rather than a
+    /// warning, and a build that does not know it must simply not be asked for it.
+    @Test func theFeatureListingIsReadByNameAndNothingIsGuessed() {
+        let listing = """
+            shell_tool                               stable             true
+            code_mode_host                           stable             true
+            hooks                                    stable             true
+            tool_search_always_defer_mcp_tools       removed            true
+            """
+        #expect(
+            CodexFeatures.parse(listing)
+                == ["shell_tool", "code_mode_host", "hooks", "tool_search_always_defer_mcp_tools"])
+        #expect(CodexFeatures.parse("") == [])
+        #expect(CodexFeatures.desired.contains("web_search") == false)
+        #expect(
+            CodexFeatures.overrides.contains("skills.include_instructions=false")
+                && CodexFeatures.overrides.contains("web_search=\"disabled\""))
+    }
+
+    /// The behavior prompt is handed over as a private file for Codex, and not at all for Claude Code,
+    /// which takes it as `--system-prompt`.
+    @Test func theSystemPromptFileIsPrivateAndOnlyCodexGetsOne() async throws {
+        let invocation = shell(
+            "stat -f '%Lp' instructions.txt; cat instructions.txt",
+            system: "SYSTEM", writesInstructionsFile: true)
+        let answer = try await LocalAgent.spawn(invocation, environment: shellEnvironment)
+        #expect(answer == "600\nSYSTEM")
+
+        #expect(plan(.codexCLI).writesInstructionsFile)
+        #expect(!plan(.claudeCode).writesInstructionsFile)
+        #expect(!FileManager.default.fileExists(atPath: plan(.claudeCode).instructionsFile.path))
     }
 
     @Test func aModelNameIsPassedOnlyWhenTheUserSetOne() {
@@ -251,6 +334,25 @@ struct LocalAgentTests {
         #expect(command.contains("--safe-mode"))
         #expect(command.contains("Hello"))
         #expect(command.contains("standard input"))
+    }
+
+    /// Codex's behavior prompt is in neither the argument list nor standard input, so the debug page has
+    /// to name the file it went into; otherwise the recorded request reads as if it had no instructions.
+    @Test func theDebugPageShowsWhereCodexReadsItsInstructions() throws {
+        var client = ModelClient()
+        client.promptForOperation = { $0.prompt }
+        let config = ServiceConfig(
+            baseURL: LocalAgent.unusedBaseURL, model: "", apiKey: "", provider: .codexCLI,
+            effort: .high, agentExecutable: executable, agentFeatures: CodexFeatures.desired,
+            agentOverrides: CodexFeatures.overrides)
+        let request = try client.translationRequest(text: "Hello", to: "zh-Hans", config: config)
+        let command = try #require(
+            LocalAgent().command(kind: .codexCLI, request: request, config: config))
+        #expect(command.contains("model_instructions_file="))
+        #expect(command.contains("instructions.txt"))
+        #expect(command.contains("--disable shell_tool"))
+        #expect(command.contains("skills.include_instructions=false"))
+        #expect(command.contains("Hello"))
     }
 
     /// An empty answer must fail as an empty reply, not as a broken contract: `.format` is correctable,

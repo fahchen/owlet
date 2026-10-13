@@ -1217,3 +1217,29 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-13）：[GeneralSettingsPane.swift](../Owlet/Settings/GeneralSettingsPane.swift) 在「浮窗」分组加 `VStack(alignment: .leading)`（次级说明 + `Link`）；[PanelGlassEffect.swift](../Owlet/Settings/PanelGlassEffect.swift) 新增可选常量 `SettingsStore.appearanceSettingsURL` = `x-apple.systempreferences:com.apple.Appearance-Settings.extension`（不强制解包，取不到就不画链接）。目录 258 → 260 条，全套 **400 项测试通过**（原 399 项 + 新增 1 项）。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；`scripts/check-i18n.py` 报告三语全覆盖。
+
+## T65：Codex 配方第二轮（提示词通道 + 自适应开关名单）
+
+依据 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §2 与[本地 agent 行为规格](../spec/settings/features/local-agent.feature)的「换了一个 CLI 版本仍然能发出请求」。用户 2026-10-13 要求继续优化 Codex 配方，先测量再改代码。
+
+范围与取舍：
+
+- **提示词通道换了**：系统提示词写进一次性目录里的 0600 文件，走 `-c model_instructions_file="<绝对路径>"`，标准输入只留用户原文——我们的提示词由此回到 system 位置。**不叠加 `instructions=""`**（实测叠加会让 `source` 末尾多一个换行，拼接校验失败，答案错）。按 token 中立如实记录（13,581 vs 13,578），采纳理由是官方入口 + 通道正确。
+- **五个 `-c` override 修的是规格违背**：`skills.include_instructions=false`（`~/.codex/skills` 与插件缓存的技能目录此前被整段注入，实测 5,097 tokens）与 `web_search="disabled"`（2,452）是两个大头，另有三个 `include_*_instructions=false`（−174／−119／−59）。总量 13,578 → 5,652／5,655，三次逐 token 相同，抖动（13.58k／15.78k 两态）消失。
+- **自适应 `--disable` 名单是本轮重点**：`--disable` 一个该版本没有的名字是硬错误 exit 2，所以扫描 `codex features list`（本地命令）取交集，五个 override 用 `codex features list -c …` 探测取值是否被接受，结果缓存进 `service.agentFeatures`／`service.agentOverrides`；请求只读缓存。无缓存时只发 `shell_tool`／`hooks`、不发 override。失败模式是「这次少关几个」，不是「请求失败」。
+- Δ≈0 的 `include_apps_instructions=false`、`project_doc_max_bytes=0`、`--disable plugins／memories／tool_search_always_defer_mcp_tools` **未采纳**。
+- `service_tier="fast"`（CLI 描述 2× 速度、更高额度占用）在最终配方上各测 3 次：5.60／5.33／5.97 s vs 不带它 10.86／8.93／15.42 s，tokens 相同；样本小，**不写进配方**，作为用户取舍待人工决定。
+
+验收：
+
+- [x] `LocalAgentInvocation` 恢复系统提示词文件（0600，随一次性目录删除），Claude Code 不写该文件；`LocalAgent.stdin` 不再为 Codex 拼接系统提示词。
+- [x] Codex 配方：`exec --ephemeral --skip-git-repo-check --sandbox read-only --ignore-user-config -c approval_policy="never"` + 缓存的 `--disable` + 缓存的 `-c` override + `-c model_instructions_file=<file>` + `--cd` + `--output-last-message` + `[--output-schema]` + `[--model]` + `model_reasoning_effort` + 结尾 `-`，且**不含** `instructions=""`。
+- [x] `CodexFeatures.parse／intersect／sendable` 纯函数；`LocalAgent.codexScan` 只跑本地命令，接进设置页既有的检测路径（`look(adopt:)` 的 `.found` 分支），失败保留上次结果。
+- [x] `SettingsStore.agentFeatures`／`agentOverrides` 按 provider 缓存的往返测试，空数组与「未扫描」两种状态可区分；`ServiceConfig` 把它们带进请求。
+- [x] 新增测试钉住新配方（含 `model_instructions_file`、不含 `instructions`）、交集与无缓存回退两条路径、提示词文件 0600 且只给 Codex；既有断言未削弱。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+- [ ] **需要人跑 `mise run dev`**：GUI 里切到 Codex CLI、点「检测」，确认设置页仍能正常扫描（本轮多了 1–6 条本地命令），并确认真实翻译一次通过契约。
+
+结果（2026-10-13）：[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 新增 `CodexFeatures`（desired／fallback／overrides／parse／intersect／sendable）与 `LocalAgent.codexScan`；`LocalAgentInvocation` 恢复 `instructionsFile`（0600）与 `writesInstructionsFile`；[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 新增 `service.agentFeatures`／`service.agentOverrides` 与 `ServiceConfig.agentFeatures／agentOverrides`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 在检测成功后 `scanFlags`。实测（codex 0.160.1，同一 composite 系统提示词 + 翻译 schema + 一句英文）：上一轮配方 13,576／13,578／13,578 → 最终配方 5,655／5,655／5,655，墙钟仍在 8.9–15.4 s 噪声区间（不宣称提速）。测试 400 → 407 项。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。

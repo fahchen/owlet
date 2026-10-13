@@ -209,11 +209,23 @@ struct ModelSettingsPane: View {
             }
             installed.insert(provider)
             agent = .found(version: version)
+            await scanFlags(executable)
         case .failed(let message):
             agent = .failed(message)
         }
         // The model list comes from the executable, so it is read once that is known.
         loadModels()
+    }
+
+    /// Caches what this CLI version has and accepts, so a request never sends a `--disable` name it
+    /// would reject (BDR-0013 §2). A scan that fails leaves the last answer in place, which keeps the
+    /// failure mode at "fewer flags this run".
+    private func scanFlags(_ executable: URL) async {
+        guard provider == .codexCLI,
+            let scan = await LocalAgent.codexScan(executable: executable)
+        else { return }
+        SettingsStore.setAgentFeatures(scan.features, for: provider)
+        SettingsStore.setAgentOverrides(scan.overrides, for: provider)
     }
 
     private func chooseExecutable() {

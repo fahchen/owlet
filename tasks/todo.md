@@ -1171,3 +1171,31 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 临时探针用应用自己的代码读了两边真实清单（都是本地命令、不调用模型）后删除：codex 得到 7 个（`gpt-6.1-sol`／`gpt-6-astra`／`gpt-6-sol`／`gpt-6-luna`／`gpt-5.6-sol`／`gpt-5.6-terra`／`gpt-5.6-luna`，目录里 `visibility: hide` 的条目被滤掉），pi 得到 `deepseek/deepseek-flash`、`deepseek/deepseek-v4-pro`；再用下拉产出的 `deepseek/deepseek-flash` 发一次真实翻译，0.9 秒返回 `早上好。`，证明这个取值形式 pi 接受。
 
 验证：`mise run check` 退出码 0。
+
+## T63：按 Suikou 第 1 轮评审改造模型调用层（统一抽象 + 结构化输出 + Codex 隔离）
+
+依据 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §2–§4、§9，以及[本地 agent 行为规格](../spec/settings/features/local-agent.feature)。用户 2026-10-13 在 Suikou 评审里给出 9 条意见，其中三条要求改造：D1「我希望统一抽象，然后每个 provider 分别实现」、D4「我们能通过 cli 反查模型和强度列表吗」、D11「agent 能输出结构化数据吗」。
+
+范围与取舍：
+
+- **D1／D2**：请求与投递分成两层——`ModelRequest`（模型名、系统提示词、轮次、响应格式、思考强度）是唯一请求值，`ModelBackend` 由每个服务商各自实现；请求构造只产出 `ModelRequest`，测试直接断言它。本地 agent 的返回不再伪造 chat 外壳（D2 的疑问随之消失）。
+- **D11**：能约束形状的 agent 就用它的开关——Codex `--output-schema <文件>`、Claude Code `--json-schema <json>`；pi 没有这类开关（`--mode json` 是事件流，其文档明确说不约束返回），与 DeepSeek 一样把形状写在提示词里。三种情况下本地校验与纠正重试完全相同。
+- **D5 顺带**：`--ephemeral` 不阻止用户配置里的 MCP 服务器被连接与注入工具定义，因此 Codex 加 `--ignore-user-config`；代价（自定义 provider／模型不再生效）已写进 BDR，作为待用户拍板的 E1。
+- **D4 第一半**：能力矩阵查清并写进 BDR——Codex 的模型目录同时给出每模型的 `supported_reasoning_levels`，pi 只给 `thinking: yes/no`，Claude Code 都没有。
+- **回归修复**：本地 agent 的空回答在去掉外壳后会掉到契约解析并报 `.format`，而 `.format` 可纠正——那正是「空响应不触发纠正」要避免的，因此回到 `ModelError.emptyResponse`。
+
+验收：
+
+- [x] `ModelRequest`／`ModelBackend`／`OpenAICompatibleBackend`／`LocalAgentBackend` 落地；请求构造返回 `ModelRequest`；调试页仍分别显示实际 body 与实际命令行。
+- [x] 本地 agent 的空回答报 `ModelError.emptyResponse`（`kind == .service`，不触发纠正）。
+- [x] Codex 传 `--output-schema`、Claude Code 传 `--json-schema`、pi 不传；`Provider.supportsJSONSchema` 按此更新。
+- [x] Codex 加 `--ignore-user-config`：实测 MCP 连接 0 次、hooks 0 次、tokens 约 3 万 → 1.5 万。
+- [x] 测试覆盖新行为（schema 投递三种形态、空回答、Codex 参数），全套 392 项通过；`mise run check` 退出码 0。
+
+结果（2026-10-13）：提交 `7cabdeb`（规格）、`f11e350`（改造）。新增 [ModelBackend.swift](../Owlet/LLM/ModelBackend.swift)；[ModelClient.swift](../Owlet/LLM/ModelClient.swift) 的请求构造与投递分离，`LocalAgent` 的 `plan`／`complete`／`command` 改吃 `ModelRequest`，`split(body:)` 与 `envelope(_:)` 删除。测试改动集中在 6 个文件（子代理执行，我复核）：请求形状断言改为断言 `ModelRequest`，URL／header 断言经 `posted(_:config:)` 走真实 `OpenAICompatibleBackend`，`reasoning_effort` 与 `response_format` 经 `body(for:config:)` 与 `request.format`。
+
+真实调用实测：codex 0.160.1 + `--output-schema` 用 `$defs.result` 直接返回契约形状 JSON（逐句配对与 `source` 末尾空格都对）；`--ignore-user-config` 前后对比同一条请求的 tokens 与 MCP/hooks 计数。
+
+未完成（等用户对 E2／E3 的答复）：把 Codex 的每模型强度清单读进应用、在设置页显示、并据此避免发送模型拒绝的档位。
+
+验证：`mise run check` 退出码 0。

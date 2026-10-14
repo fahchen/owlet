@@ -30,6 +30,10 @@ struct Selection {
     let range: SelectedRange?
     /// Selection rect in AX coordinates (top-left origin, y down); nil when not requested or unavailable.
     var bounds: CGRect? = nil
+    /// True when `text` is the focused field's whole value with nothing selected. The write-back then
+    /// has no selection to paste over and must select the field first: pasting at the insertion point
+    /// would append the result instead of replacing it.
+    var wholeField: Bool = false
 }
 
 /// A selection's offset and length, as the owning app reported them.
@@ -53,8 +57,16 @@ enum SelectionBridge {
     /// tests never post real key events.
     typealias CopySelection = () -> String?
 
-    /// Presses ⌘V; injectable so tests never post real key events.
-    typealias PasteSelection = () -> Void
+    /// A synthetic shortcut the write-back can ask the focused app to run.
+    enum WritebackShortcut: Equatable {
+        /// ⌘A: select the whole field, so the whole-field paste has something to cover.
+        case selectAll
+        /// ⌘V: paste the result over whatever is selected.
+        case paste
+    }
+
+    /// Sends one write-back shortcut; injectable so tests never post real key events.
+    typealias PressShortcut = (WritebackShortcut) -> Void
 
     /// Pasteboard seam for the copy and paste fallbacks, so tests never touch the real pasteboard.
     struct Pasteboard: Sendable {
@@ -89,10 +101,15 @@ enum SelectionBridge {
         /// The element's text, read before and after the paste to tell a replacement that landed
         /// from one the app ignored.
         var value: @MainActor (AXUIElement) -> String? = { SelectionBridge.value(of: $0) }
+        /// The element's selected range, read after ⌘A in the whole-field path: the shortcut is only
+        /// a request, so the paste runs only once the field is seen to hold a selection.
+        var selectedRange: @MainActor (AXUIElement) -> SelectedRange? = {
+            SelectionBridge.selectedRange(of: $0)
+        }
         var activate: @MainActor (NSRunningApplication) async -> Bool = {
             await SelectionBridge.bringForward($0)
         }
-        var press: PasteSelection = SelectionBridge.pasteSelection()
+        var press: PressShortcut = SelectionBridge.pressShortcut
         var pasteboard: Pasteboard = .system
         /// How long the system is given to move the keyboard off the panel before the keystroke.
         var handover: Duration = .milliseconds(150)
@@ -155,7 +172,8 @@ enum SelectionBridge {
                     completion(
                         result.map {
                             Selection(
-                                text: $0.text, element: $0.element, app: app, range: $0.range, bounds: rect)
+                                text: $0.text, element: $0.element, app: app, range: $0.range,
+                                bounds: rect, wholeField: $0.wholeField)
                         })
                 }
             }
@@ -167,12 +185,16 @@ enum SelectionBridge {
     /// field's whole text is used if the caller asked for it and the field can hold editable text;
     /// otherwise it falls back to copying the selection with ⌘C. `copySelection` therefore only runs
     /// once the field is known not to be secure and no readable selection or field text was found.
+    /// The returned `wholeField` says which branch produced the text, so the write-back knows whether
+    /// it has a selection to paste over or must select the field itself.
     static func capture(
         _ appElement: AXUIElement, copy: Reader,
         marker: MarkerString = SelectionBridge.markerString,
         copySelection: CopySelection? = nil,
         wholeFieldText: Bool = false
-    ) -> Result<(text: String, element: AXUIElement, range: SelectedRange?), SelectionError> {
+    ) -> Result<
+        (text: String, element: AXUIElement, range: SelectedRange?, wholeField: Bool), SelectionError
+    > {
         guard let element = focusedElement(appElement, copy: copy) else {
             return .failure(.unreadable)
         }
@@ -181,15 +203,15 @@ enum SelectionBridge {
         if subrole as? String == kAXSecureTextFieldSubrole { return .failure(.secure) }
         if let found = search(element, copy: copy, marker: marker) {
             return classify(trusted: true, subrole: nil, text: found.text).map { text in
-                (text, found.element, selectedRange(found.element, copy: copy))
+                (text, found.element, selectedRange(found.element, copy: copy), false)
             }
         }
         if wholeFieldText, let text = focusedFieldText(element, copy: copy) {
-            return .success((text, element, selectedRange(element, copy: copy)))
+            return .success((text, element, selectedRange(element, copy: copy), true))
         }
         guard let copied = copySelection?() else { return .failure(.unreadable) }
         return classify(trusted: true, subrole: nil, text: copied).map { text in
-            (text, element, selectedRange(element, copy: copy))
+            (text, element, selectedRange(element, copy: copy), false)
         }
     }
 

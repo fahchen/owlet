@@ -121,6 +121,21 @@ struct SelectionBridgeTests {
         let captured = try? result.get()
         #expect(captured?.text == "  whole field\n")
         #expect(captured.map { CFEqual($0.element, field) } == true)
+        #expect(captured?.wholeField == true)
+    }
+
+    /// Which path produced the text travels with it, so the write path never has to guess by
+    /// comparing strings; a selection and a ⌘C read both stay on the old, narrower replacement.
+    @Test func captureMarksWhetherTheTextCameFromTheWholeField() {
+        let selected = try? SelectionBridge.capture(
+            app, copy: reader(fieldReader(value: "whole field", selected: "picked"), log: Log()),
+            wholeFieldText: true
+        ).get()
+        #expect(selected?.wholeField == false)
+        let copied = try? SelectionBridge.capture(
+            app, copy: reader([:], log: Log()), copySelection: { "copied" }
+        ).get()
+        #expect(copied?.wholeField == false)
     }
 
     /// A field with no text is not an input: the fallback and its failure path stay exactly as before.
@@ -308,6 +323,81 @@ struct SelectionBridgeTests {
             range: SelectedRange(location: 0, length: 5))
     }
 
+    /// The whole-field case: the text is the focused field's value and nothing is selected, so the
+    /// write-back has no selection to paste over and has to select the field itself.
+    var wholeFieldSelection: Selection {
+        Selection(
+            text: "hello world", element: field, app: .current,
+            range: SelectedRange(location: 0, length: 0), wholeField: true)
+    }
+
+    /// The whole-field path selects everything first, then pastes: the result replaces the field
+    /// instead of joining it at the insertion point.
+    @Test @MainActor func wholeFieldReplaceSelectsAllThenPastes() async {
+        let pressed = Mutex([SelectionBridge.WritebackShortcut]())
+        let fake = FakePasteboard("user text")
+        let outcome = await SelectionBridge.replace(
+            wholeFieldSelection, with: "你好，世界",
+            seams: seams(
+                press: { shortcut in pressed.withLock { $0.append(shortcut) } },
+                pasteboard: fake.seam(),
+                value: { _ in pressed.withLock { $0.contains(.paste) } ? "你好，世界" : "hello world" },
+                selectedRange: { _ in SelectedRange(location: 0, length: 11) }))
+        #expect(outcome == .pasted)
+        #expect(pressed.withLock { $0 } == [.selectAll, .paste])
+        #expect(fake.text == "user text")
+    }
+
+    /// A real selection already has something for the paste to cover, so it is never widened to the
+    /// whole field: no ⌘A is sent and the replacement stays inside the selection.
+    @Test @MainActor func aRealSelectionIsNeverWidenedToTheWholeField() async {
+        let pressed = Mutex([SelectionBridge.WritebackShortcut]())
+        let outcome = await SelectionBridge.replace(
+            selection, with: "你好",
+            seams: seams(
+                press: { shortcut in pressed.withLock { $0.append(shortcut) } },
+                value: { _ in pressed.withLock { $0.contains(.paste) } ? "你好" : "Hello" },
+                selectedRange: { _ in SelectedRange(location: 0, length: 5) }))
+        #expect(outcome == .pasted)
+        #expect(pressed.withLock { $0 } == [.paste])
+    }
+
+    /// ⌘A is only a request: a field that reports no selection, or a partial one, must not reach the
+    /// paste, because that paste would land at the insertion point and append. Nothing is typed and
+    /// the user's pasteboard comes back.
+    @Test @MainActor func wholeFieldReplaceRefusesWhenSelectAllDoesNotTake() async {
+        let ranges: [SelectedRange?] = [nil, SelectedRange(location: 0, length: 5)]
+        for range in ranges {
+            let pressed = Mutex([SelectionBridge.WritebackShortcut]())
+            let fake = FakePasteboard("user text")
+            let outcome = await SelectionBridge.replace(
+                wholeFieldSelection, with: "你好，世界",
+                seams: seams(
+                    press: { shortcut in pressed.withLock { $0.append(shortcut) } },
+                    pasteboard: fake.seam(),
+                    value: { _ in "hello world" },
+                    selectedRange: { _ in range }))
+            #expect(outcome == .refused)
+            #expect(pressed.withLock { $0 } == [.selectAll])
+            #expect(fake.text == "user text")
+        }
+    }
+
+    /// Even a confirmed select-all is not trusted blindly: a paste that leaves more than the result
+    /// in the field is reported as unwritten rather than passed off as a replacement.
+    @Test @MainActor func wholeFieldReplaceDoesNotCallAnAppendAPaste() async {
+        let pasted = Mutex(false)
+        let outcome = await SelectionBridge.replace(
+            wholeFieldSelection, with: "你好，世界",
+            seams: seams(
+                press: { shortcut in
+                    if shortcut == .paste { pasted.withLock { $0 = true } }
+                },
+                value: { _ in pasted.withLock { $0 } ? "hello world你好，世界" : "hello world" },
+                selectedRange: { _ in SelectedRange(location: 0, length: 11) }))
+        #expect(outcome == .refused)
+    }
+
     /// The replacement is a paste, and the user's own pasteboard comes back afterwards.
     @Test @MainActor func pasteReplacesTheSelectionAndRestoresTheClipboard() async {
         let pressed = Mutex(false)
@@ -315,7 +405,7 @@ struct SelectionBridgeTests {
         let outcome = await SelectionBridge.replace(
             selection, with: "你好",
             seams: seams(
-                press: { pressed.withLock { $0 = true } },
+                press: { _ in pressed.withLock { $0 = true } },
                 pasteboard: fake.seam(),
                 value: { _ in pressed.withLock { $0 } ? "你好" : "Hello" }))
         #expect(outcome == .pasted)
@@ -329,7 +419,7 @@ struct SelectionBridgeTests {
         let outcome = await SelectionBridge.replace(
             selection, with: "你好",
             seams: seams(
-                press: { pressed.withLock { $0 = true } },
+                press: { _ in pressed.withLock { $0 = true } },
                 value: { _ in "Hello" }))
         #expect(outcome == .refused)
         #expect(pressed.withLock { $0 })
@@ -339,7 +429,7 @@ struct SelectionBridgeTests {
     /// failure: the paste went to wherever the app really has focus, not to this captured element.
     @Test @MainActor func unreadableElementIsNotEvidenceOfFailure() async {
         let outcome = await SelectionBridge.replace(
-            selection, with: "你好", seams: seams(press: {}, value: { _ in nil }))
+            selection, with: "你好", seams: seams(press: { _ in }, value: { _ in nil }))
         #expect(outcome == .pasted)
     }
 
@@ -353,7 +443,7 @@ struct SelectionBridgeTests {
                     order.withLock { $0.append("activate") }
                     return true
                 },
-                press: { order.withLock { $0.append("press") } },
+                press: { _ in order.withLock { $0.append("press") } },
                 value: { _ in order.withLock { $0.contains("press") } ? "你好" : "Hello" }))
         #expect(outcome == .pasted)
         #expect(order.withLock { $0 } == ["activate", "press"])
@@ -382,7 +472,7 @@ struct SelectionBridgeTests {
         let outcome = await SelectionBridge.replace(
             selection, with: "你好",
             seams: seams(
-                press: { pressed.withLock { $0 = true } },
+                press: { _ in pressed.withLock { $0 = true } },
                 pasteboard: fake.seam(),
                 editable: { _ in false }))
         #expect(outcome == .unwritable)
@@ -397,7 +487,7 @@ struct SelectionBridgeTests {
         let outcome = await SelectionBridge.replace(
             selection, with: "你好",
             seams: seams(
-                press: { pressed.withLock { $0 = true } },
+                press: { _ in pressed.withLock { $0 = true } },
                 editable: { _ in nil },
                 value: { _ in pressed.withLock { $0 } ? "你好" : "Hello" }))
         #expect(outcome == .pasted)
@@ -409,7 +499,7 @@ struct SelectionBridgeTests {
         let pressed = Mutex(false)
         let outcome = await SelectionBridge.replace(
             selection, with: "Hello",
-            seams: seams(press: { pressed.withLock { $0 = true } }, value: { _ in "Hello" }))
+            seams: seams(press: { _ in pressed.withLock { $0 = true } }, value: { _ in "Hello" }))
         #expect(outcome == .pasted)
         #expect(pressed.withLock { $0 } == false)
     }
@@ -434,7 +524,7 @@ struct SelectionBridgeTests {
             selection, with: "你好",
             seams: seams(
                 activate: { _ in false },
-                press: { pressed.withLock { $0 = true } },
+                press: { _ in pressed.withLock { $0 = true } },
                 pasteboard: fake.seam()))
         #expect(outcome == .refused)
         #expect(pressed.withLock { $0 } == false)
@@ -467,13 +557,14 @@ struct SelectionBridgeTests {
     /// test's snapshot could be restored over another's write while the user's own copy is lost.
     @MainActor func seams(
         activate: @escaping @MainActor (NSRunningApplication) async -> Bool = { _ in true },
-        press: @escaping SelectionBridge.PasteSelection,
+        press: @escaping SelectionBridge.PressShortcut,
         pasteboard: SelectionBridge.Pasteboard? = nil,
         editable: @escaping @MainActor (AXUIElement) -> Bool? = { _ in true },
-        value: @escaping @MainActor (AXUIElement) -> String? = { _ in "Hello" }
+        value: @escaping @MainActor (AXUIElement) -> String? = { _ in "Hello" },
+        selectedRange: @escaping @MainActor (AXUIElement) -> SelectedRange? = { _ in nil }
     ) -> SelectionBridge.WritebackSeams {
         SelectionBridge.WritebackSeams(
-            trusted: { true }, editable: editable, value: value,
+            trusted: { true }, editable: editable, value: value, selectedRange: selectedRange,
             activate: activate, press: press, pasteboard: pasteboard ?? FakePasteboard().seam(),
             handover: .zero, settle: .zero)
     }

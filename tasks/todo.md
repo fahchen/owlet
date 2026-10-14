@@ -1338,3 +1338,27 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-14）：[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 新增 `wholeFieldTextKey = "selection.wholeFieldText"` 与 `usesWholeFieldText(in:)`；[SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift) 的 `capture` 新增 `wholeFieldText` 分支与纯函数 `focusedFieldText(_:copy:)`，`read(bounds:wholeFieldText:completion:)` 透传；[PanelController.swift](../Owlet/App/Panel/PanelController.swift) 的 `read` 闭包从设置读取；[GeneralSettingsPane.swift](../Owlet/Settings/GeneralSettingsPane.swift) 在「浮窗」分组加 `Toggle`；三条译文进 `strings/translations.json` 并重新生成 catalog（261 条）；[translation.feature](../spec/processing/features/translation.feature) 新增一条 Rule 两个 scenario；[liquid-glass-components.md](../docs/liquid-glass-components.md) 的 `settings-general` 逐屏行补开关、`selection-error` 行补「开启后不再进入该态」。测试 419 → 425 项 / 49 个 suite 通过。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0（lint 261 条 catalog 一致，`Test run with 425 tests in 49 suites passed`）。未验证：GUI 里的实际快捷键行为（需 `mise run dev` 人工看一眼）。
+
+## T70：整段文本的替换要覆盖整个输入框（已实现）
+
+问题：T69 只改了**输入**怎么读，没改**写回**怎么落。原文来自「焦点输入框全文」时输入框里没有任何选区，而 `SelectionBridge.replace` 的写回是「把译文放上剪贴板，前置应用，按 ⌘V」；没有选区可盖，⌘V 就落在插入点，于是 `hello world` + ⌘A 未按 + 译文 `你好，世界` 得到 `hello world你好，世界`——**追加**而不是替换。这正是 T69 只做了一半的那一半。
+
+范围与取舍：
+
+- **来源随 `Selection` 一起传到写回**：`capture` 的返回元组增加 `wholeField: Bool`，`Selection` 增加 `wholeField`（默认 `false`），只有 `focusedFieldText` 那条分支为真。写回据此决定要不要先全选；**不比对文本**（面板取得焦点后应用常重建 AX 树，文本比对不可靠，仓库里已经吃过这个亏）。
+- **走既有的按键缝，而不是 AX 写入**：`WritebackSeams.press` 从 `() -> Void` 改成 `(WritebackShortcut) -> Void`（`.selectAll` / `.paste`），真实实现分别发 ⌘A（keycode 0）与 ⌘V。选 AX `kAXValue` 直写会退回「应用接受了写入却什么都没改」的老问题，而 `kAXSelectedTextRange` 写入在浏览器／Electron 里并不可靠；⌘A 是这些应用都认的路径。
+- **⌘A 之后必须看到选区才允许粘贴**：新增 `WritebackSeams.selectedRange` 缝，读回 `kAXSelectedTextRangeAttribute`（元素不报区间但报 `AXSelectedText` 时回退用它的长度）。只有当 `location == 0` 且 `length` 等于字段全文长度（长度读不到时至少非空）才继续；不满足就恢复剪贴板并返回 `.refused`——**不发送粘贴**，因此不可能退化为追加。
+- **整段路径的成功判定更严**：普通路径仍只看「值变了」；整段路径要求写回后 `AXValue` 恰好等于粘贴的文本，否则按未写回处理。这样即使某个应用无视选区仍然追加，也会显示「未能写回」而不是静默给错结果。
+
+验收：
+
+- [x] `SelectionBridge.capture` 在整段分支返回 `wholeField: true`，选区与 ⌘C 回退分支返回 `false`；`Selection.wholeField` 默认 `false`，既有构造点不用改。
+- [x] `WritebackSeams.press` 改成 `(WritebackShortcut) -> Void`；真实 `pressShortcut` 发 ⌘A / ⌘V，新增 `pressCommandA` 与 `aKey`（keycode 0）。
+- [x] `WritebackSeams.selectedRange` 缝 + 真实 `SelectionBridge.selectedRange(of:)`；`selectWholeField` 先按 ⌘A，轮询确认全选覆盖整段，失败则不按 ⌘V。
+- [x] 测试（`SelectionBridgeTests`，全部走注入 `press`／`FakePasteboard`／`value`／`selectedRange` 缝，不碰真实按键、剪贴板或应用）：整段 → 先 `.selectAll` 再 `.paste`、字段只剩译文；真实选区 → 只发 `.paste`，不扩大到整段；全选未生效（无选区／只选一部分）→ `.refused`、只发了 `.selectAll`、剪贴板还原；确认全选但结果仍是追加文本 → `.refused`；`capture` 的来源标记三态。既有断言未削弱，测试 425 → 430（49 个 suite）。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
+- [ ] **需要人跑 `mise run dev`**：本环境不能看 GUI。在一个可编辑输入框（备忘／浏览器文本框）里放 `hello world`、不放选区，开启「未选中文字时使用焦点所在输入框的全部文本」，按**翻译并替换**快捷键；译文生成后输入框里必须**只剩译文**，不能出现 `hello world你好，世界`。再关掉开关重复一次（应回到读取失败／手动输入的旧行为），并在选中一段文字时替换，确认仍然只替换选中的那一段。
+
+结果（2026-10-14）：根因是 T69 只改了读、没改写回。[SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift) 的 `Selection` 与 `capture` 增加 `wholeField` 来源标记，`WritebackSeams` 的 `press` 改为 `(WritebackShortcut) -> Void` 并新增 `selectedRange` 缝；[SelectionWriteback.swift](../Owlet/Selection/SelectionWriteback.swift) 在整段路径先 `press(.selectAll)` 并读回选区确认覆盖整段，确认不了就 `.refused` 且不按 ⌘V，写回后还要求 `AXValue` 恰好等于译文；新增 `pressCommandA` / `aKey`（0）与 `selectedRange(of:)`。规格同步：[replacement.feature](../spec/processing/features/replacement.feature) 新增「原文来自焦点输入框全文时替换整个输入框」与「无法确认全选时不得退化为追加」两条 scenario；[translation.feature](../spec/processing/features/translation.feature) 的 T69 scenario 补上替换覆盖整段的两行；[liquid-glass-components.md](../docs/liquid-glass-components.md) 的 `direct-*` 行补一句。测试 425 → 430 项 / 49 个 suite 通过。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：GUI 里的实际快捷键行为（需 `mise run dev` 人工看一眼）。

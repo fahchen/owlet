@@ -10,7 +10,9 @@ extension SelectionBridge {
     /// Writes `text` over the selection once, by pasting: the accessibility write is deliberately
     /// not used, because an app can accept that write, change nothing, and report success — which is
     /// how a replacement used to disappear without a word. A selection that provably cannot hold
-    /// text is never typed into at all, because the keystroke would land somewhere else.
+    /// text is never typed into at all, because the keystroke would land somewhere else. When the
+    /// source was the whole focused field there is no selection, so the field is selected with ⌘A
+    /// before the paste; if that cannot be confirmed, nothing is typed.
     @MainActor static func replace(
         _ selection: Selection, with text: String,
         seams: WritebackSeams
@@ -39,6 +41,29 @@ extension SelectionBridge {
         attribute(kAXValueAttribute, of: element) as? String
     }
 
+    /// The element's selected range, read straight through the accessibility API: the whole-field
+    /// write-back has to see that ⌘A landed before it presses paste. A field that publishes no range
+    /// but does publish its selected text is read that way instead; the assumed start is the field's
+    /// beginning, so only a selection as long as the whole text counts as select-all.
+    static func selectedRange(of element: AXUIElement) -> SelectedRange? {
+        timed(element)
+        var value: AnyObject?
+        if AXUIElementCopyAttributeValue(
+            element, kAXSelectedTextRangeAttribute as CFString, &value) == .success,
+            let value, CFGetTypeID(value) == AXValueGetTypeID()
+        {
+            let axValue = unsafeDowncast(value, to: AXValue.self)
+            var range = CFRange()
+            if AXValueGetType(axValue) == .cfRange, AXValueGetValue(axValue, .cfRange, &range) {
+                return SelectedRange(location: range.location, length: range.length)
+            }
+        }
+        guard let selected = attribute(kAXSelectedTextAttribute, of: element) as? String,
+            isNotBlank(selected)
+        else { return nil }
+        return SelectedRange(location: 0, length: selected.utf16.count)
+    }
+
     /// Roles that hold editable text. Page text, a PDF or an image cannot take a paste, and typing at
     /// one would send the keystroke somewhere the user did not choose.
     private static let editableRoles: Set<String> = [
@@ -63,7 +88,10 @@ extension SelectionBridge {
 
     /// Puts `text` on the pasteboard, brings `app` forward and presses ⌘V, then hands the previous
     /// pasteboard back. The paste is only reported once the element's text is seen to change, so a
-    /// keystroke the app ignored is not mistaken for a replacement.
+    /// keystroke the app ignored is not mistaken for a replacement. When the source was the whole
+    /// field there is nothing selected to paste over, so ⌘A runs first and must be seen to select the
+    /// whole text: pasting at the insertion point would append the result, which is the wrong result
+    /// this path exists to prevent.
     @MainActor private static func paste(
         _ text: String, to app: NSRunningApplication, selection: Selection, seams: WritebackSeams
     ) async -> ReplaceOutcome {
@@ -77,19 +105,53 @@ extension SelectionBridge {
         // The keystroke follows the keyboard, and the panel only just let it go, so the app is given
         // a moment to own it before the press.
         try? await Task.sleep(for: seams.handover)
-        seams.press()
+        if selection.wholeField,
+            !(await selectWholeField(selection.element, whole: before?.utf16.count, seams: seams))
+        {
+            seams.pasteboard.restore(saved)
+            return .refused
+        }
+        seams.press(.paste)
         // The app reads the pasteboard after the keystroke, so nothing may overwrite it until it has.
         try? await Task.sleep(for: seams.settle / 2)
         // An element that does not report its text cannot be checked, and the paste went to wherever
         // the app really has focus rather than to this captured element, so unreadable is not failure.
-        var applied = before == nil || seams.value(selection.element) != before
+        // The whole-field result has to be exactly the pasted text: anything else means the paste did
+        // not cover the field, and calling that success would hide an append.
+        let landed: @MainActor () -> Bool = {
+            let after = seams.value(selection.element)
+            return selection.wholeField ? after == text : (before == nil || after != before)
+        }
+        var applied = landed()
         for _ in 0..<pastePolls where !applied {
             try? await Task.sleep(for: seams.settle / 2 / pastePolls)
-            applied = seams.value(selection.element) != before
+            applied = landed()
         }
         seams.pasteboard.restore(saved)
         return applied ? .pasted : .refused
     }
+
+    /// Asks the focused element to select everything and waits for it to report a selection covering
+    /// the whole field. ⌘A is only a request: a field that ignores it, or selects only part, must not
+    /// reach the paste, because that paste would land at the insertion point and append.
+    @MainActor private static func selectWholeField(
+        _ element: AXUIElement, whole: Int?, seams: WritebackSeams
+    ) async -> Bool {
+        seams.press(.selectAll)
+        for _ in 0..<selectAllPolls {
+            if let range = seams.selectedRange(element), range.location == 0, range.length > 0,
+                whole == nil || range.length == whole
+            {
+                return true
+            }
+            try? await Task.sleep(for: seams.settle / 2 / selectAllPolls)
+        }
+        return false
+    }
+
+    /// Twelve polls inside the settle window: long enough for a busy app to answer ⌘A, short enough
+    /// that the paste is not held back long when the field ignores it.
+    private static let selectAllPolls = 12
 
     /// Twelve polls inside the settle window: long enough for a busy app, short enough to keep the
     /// clipboard held only briefly.
@@ -113,8 +175,13 @@ extension SelectionBridge {
         return false
     }
 
-    /// Real ⌘V press; the caller owns placing the result on the pasteboard.
-    static func pasteSelection() -> PasteSelection { pressCommandV }
+    /// Real shortcut press; the caller owns placing the result on the pasteboard.
+    static func pressShortcut(_ shortcut: WritebackShortcut) {
+        switch shortcut {
+        case .selectAll: pressCommandA()
+        case .paste: pressCommandV()
+        }
+    }
 
     /// Real ⌘C read: keeps the previous pasteboard, presses ⌘C, waits briefly for the pasteboard to
     /// change and hands the previous contents back; nil and no copy when nothing changed.
@@ -145,6 +212,9 @@ extension SelectionBridge {
 
     /// Synthetic ⌘C; keycode 8 is the C key in every layout.
     static func pressCommandC() { postCommand(keyCode: cKey) }
+
+    /// Synthetic ⌘A; keycode 0 is the A key in every layout.
+    static func pressCommandA() { postCommand(keyCode: aKey) }
 
     /// Synthetic ⌘V; keycode 9 is the V key in every layout.
     static func pressCommandV() { postCommand(keyCode: vKey) }
@@ -180,7 +250,8 @@ extension SelectionBridge {
     /// Left Command, which every layout puts in the same place.
     static let leftCommandKey: CGKeyCode = 55
 
-    /// Keycode 8 is the C key and 9 the V key, in every layout.
+    /// Keycode 0 is the A key, 8 the C key and 9 the V key, in every layout.
+    static let aKey: CGKeyCode = 0
     static let cKey: CGKeyCode = 8
     static let vKey: CGKeyCode = 9
 

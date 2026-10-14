@@ -1148,6 +1148,7 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - 设置页按用户要求改成主动扫描：服务商 `Picker(.menu)` 分两节（远程服务／本地 agent，之间有分隔线），每次打开扫一遍登录 shell 的 `PATH`，**没装的 agent 不出现**；切到某个 agent 时立刻找到它、填好可执行文件并显示版本，用户手选的路径不被覆盖（除非已不可执行），已选但被删除的 agent 仍保留在列表里以便看到问题。
 - 顺带修掉两处与本任务无关、但会让测试 target 无法编译的既有错误（在本机 HEAD `3c82ec8` 的干净 worktree 上复现同样报错，因此不是本次引入）：`ModelClientTests` 的 `Operation` 与 `Foundation.Operation` 歧义改为 `Owlet.Operation`；`LookupTests` 两个顶层测试补 `@MainActor`。建议这两处单独提交。
 - 未验证：claude 的真实返回（周配额用尽，只验到参数被接受与失败信息可读）、译文质量与人工观感（codex 只跑了 1 条翻译与 1 条查词，未做多语言、长文与学习契约）、`--output-schema`／`--json-schema`，以及各 CLI 后续版本对这批参数的兼容性。
+- **复核（2026-10-14 21:18 JST，claude 2.1.296，临时探针跑完即删）**：`LocalAgent.locate(.claudeCode)` 找到 `/Users/fahchen/.local/share/mise/installs/claude-code/2.1.296/claude`，`detect` 的 `--version` 回 `2.1.296 (Claude Code)`；真实返回**仍然拿不到**——周配额未恢复，实测 `本地 agent 运行失败：exit 1: You've hit your weekly limit · resets 5am (Asia/Tokyo)`（CLI 把它写在标准输出、标准错误为空；比 10-13 记录的文案少了日期）。查词按约定不再发（配额不允许），因此延迟仍未测到。这次请求已经走到模型调用这一步，说明命令行里的 `--print --tools "" --safe-mode --strict-mcp-config --no-session-persistence --system-prompt <契约提示词> --json-schema <translation schema> --model claude-sonnet-5-5 --effort low` 都被这个版本收下（被拒会是 exit 2）——`--json-schema` 因此只验证到「参数被接受」，是否真的约束输出仍未知。
 
 验证：`mise run check` 退出码 0（`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`，本机钥匙串不可用于非交互 shell）；`python3 scripts/check-i18n.py` 报告界面串三语全覆盖。
 
@@ -1270,6 +1271,8 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-13）：[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 的 `modelListArguments` 换成 `ModelSource`／`modelSource`，新增 `claudeCatalogDirectory`／`claudeCatalog(in:)`／`claudeCatalog(_:)`／`claudeEfforts`，`parseModels` 改吃 `payload: Data`，两个 `codexEfforts`／`claudeEfforts` 合用一个 `efforts(named:)` 映射；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的模型行改问 `listsModels(_:models:)`（命令来源恒为 `Picker`，缓存来源只在真的读到模型时才是 `Picker`），`selectedEfforts` 与 `loadModels` 的准入条件改为 `modelSource != nil`。规格与文档同步：BDR-0013 §9 的能力表、残留风险与未验证项；`local-agent.feature` 重写「Claude Code 保持自由填写」，新增缓存可读／不可读两条；`docs/liquid-glass-components.md` 逐屏表、`spec/product.md`、`docs/unimplemented-features.md`。测试 407 → 414 项（`LocalAgentTests` +5、`ServiceModelOptionsTests` +2），全套 414 项 / 48 个 suite 通过。
 
 真实调用一次（`claude 2.1.296`，2026-10-13）：命令行被接受，返回的是配额提示 `You've hit your weekly limit · resets Oct 15 at 5am (Asia/Tokyo)`，exit 1、写在标准输出、标准错误为空——与 BDR-0013 §7 记的一致。因此**没有**验证缓存里的新模型 id（`claude-opus-5-5`）与 `--effort medium` 是否被真实接受，也没有真实译文；这与 BDR-0013 未验证项里「Claude Code 的真实返回（周配额用尽）」是同一件事。
+
+复核（2026-10-14 21:18 JST，同一探针跑完即删）：`LocalAgent.models(.claudeCode, executable:)` 仍从最新一份 `*-cc.json`（`86008f99-…-cc.json`）读出 **12 个模型**，其中 11 个带 `thinking.type: "effort"`（映射后应用侧都是 `low,medium,high,max`），`claude-haiku-4-5-20251001` 是 `type: "none"`（efforts 为空）；清单读取本身不变。真实调用仍被周配额挡下，实测 `本地 agent 运行失败：exit 1: You've hit your weekly limit · resets 5am (Asia/Tokyo)`（文案比 10-13 少了日期），所以缓存里的 id（本次用 `claude-sonnet-5-5`）与 `--effort low` 在模型侧是否被接受依然**未验证**；不过命令行被 CLI 接受，`--json-schema` 只验证到参数形式被收下。查词未跑。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。
 

@@ -87,6 +87,13 @@ Feature: 自行配置模型服务
       When 用户恢复润色默认 Prompt 并离开编辑框
       Then 后续润色使用显示的默认内容
 
+    Scenario: 恢复默认入口的可用性
+      Given 用户未修改翻译 System Prompt
+      Then 翻译 Prompt 编辑器行的恢复默认按钮不可用
+      When 用户编辑翻译 Prompt
+      Then 该按钮可用
+      And 润色 Prompt 编辑器行的恢复默认按钮不受影响
+
     Scenario: 拒绝空白 Prompt
       When 用户尝试提交仅含空白的 System Prompt
       Then 提示不能生效

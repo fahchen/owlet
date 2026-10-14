@@ -571,7 +571,8 @@ extension SettingsStore {
         return true
     }
 
-    /// Whether the saved text differs from the built-in default, which is what the settings badge shows.
+    /// Whether the persisted text differs from the built-in default. This is the storage rule the
+    /// prompt editors commit by, not what the editor currently holds.
     static func isCustomized(_ operation: Operation, in defaults: UserDefaults = .standard) -> Bool {
         guard let saved = defaults.string(forKey: promptKey(for: operation)) else { return false }
         return !isBlank(saved) && saved != defaultPrompt(for: operation)

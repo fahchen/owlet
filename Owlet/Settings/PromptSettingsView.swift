@@ -9,8 +9,6 @@ struct PromptSettingsView: View {
     @Binding var promptFocus: Operation?
     @State private var translateDraft = ""
     @State private var polishDraft = ""
-    /// Operations whose saved prompt differs from the built-in default, which is what the badge shows.
-    @State private var customized: Set<Operation> = []
     /// Operation whose draft was blank when it last tried to commit.
     @State private var invalid: Operation?
     @FocusState private var focused: Operation?
@@ -36,10 +34,15 @@ struct PromptSettingsView: View {
     @ViewBuilder private func editor(_ operation: Operation, text: Binding<String>) -> some View {
         let defaultPrompt = SettingsStore.defaultPrompt(for: operation)
         Section {
+            // The editor is one row of the grouped form, not a surface of its own: the default
+            // `TextEditor` chrome paints an inset white block that reads as a hole in the card, so the
+            // system styles are asked to leave the form's own background showing through.
             TextEditor(text: text)
                 .font(.system(size: 12))
                 .lineSpacing(3)
                 .frame(minHeight: 120)
+                .textEditorStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .focused($focused, equals: operation)
                 .accessibilityLabel(L10n.shared.string("%@ System Prompt", operation.name))
             if invalid == operation {
@@ -51,16 +54,16 @@ struct PromptSettingsView: View {
             HStack(spacing: 8) {
                 Text(L10n.shared.string("%@ System Prompt", operation.name))
                 Spacer(minLength: 0)
-                // The restore is only worth offering once there is something to restore.
-                if customized.contains(operation) {
-                    Button(L10n.shared.string("Restore Default"), systemImage: "arrow.uturn.backward") {
-                        text.wrappedValue = defaultPrompt
-                    }
-                    .buttonStyle(.borderless)
-                } else {
-                    Text(L10n.shared.string("Default"))
-                        .foregroundStyle(.secondary)
+                // The restore action rests in the same spot whether or not it can do anything, so the
+                // header does not move as the text changes; it is enabled exactly while the editor
+                // holds something other than the built-in default, so it never does nothing.
+                Button(L10n.shared.string("Restore Default"), systemImage: "arrow.counterclockwise") {
+                    text.wrappedValue = defaultPrompt
                 }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .disabled(text.wrappedValue == defaultPrompt)
+                .accessibilityLabel(L10n.shared.string("Restore Default"))
             }
         }
     }
@@ -68,19 +71,13 @@ struct PromptSettingsView: View {
     /// Writes one editor's text; a blank draft is refused so the previous text stays in force.
     private func commit(_ operation: Operation) {
         let draft = operation == .translate ? translateDraft : polishDraft
-        if SettingsStore.setPrompt(draft, for: operation) {
-            invalid = nil
-            customized = Set(Operation.allCases.filter { SettingsStore.isCustomized($0) })
-        } else {
-            invalid = operation
-        }
+        invalid = SettingsStore.setPrompt(draft, for: operation) ? nil : operation
     }
 
-    /// Loads the effective prompts into the editors and remembers which ones are customised.
+    /// Loads the effective prompts into the editors.
     private func load() {
         translateDraft = SettingsStore.prompt(for: .translate)
         polishDraft = SettingsStore.prompt(for: .polish)
-        customized = Set(Operation.allCases.filter { SettingsStore.isCustomized($0) })
         invalid = nil
     }
 

@@ -1420,3 +1420,30 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-14）：[OwletApp.swift](../Owlet/App/OwletApp.swift) 的 `MenuBarLabel` 在 `Image("OwletMark")` 上新增 `.renderingMode(.template)`（附一句 why 注释）；`OwletMark` 资源保持 `template-rendering-intent: original`。[liquid-glass-components.md](../docs/liquid-glass-components.md) 菜单栏标记行与 `menubar` 逐屏行同步。测试 441 → 441 项 / 49 个 suite。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：菜单栏在浅色／深色外观下的实际着色（需人跑 `mise run dev` 看一眼）。
+
+## T73：设置里的 Prompt 编辑器跟随表单行；恢复默认改为图标按钮（已实现）
+
+问题（截图）：设置「模型」页的两组 System Prompt 编辑器在浅灰的分组卡片里各是一块白色内嵌方块，像「中间挖了一块」——`TextEditor` 自绘的白底与内缩默认样式盖住了 `Form` 行。同一行尾的「默认」是纯文字标注，会随内容在「默认」文字与「恢复默认」按钮之间切换。
+
+范围与取舍：
+
+- **表面**：白底来自系统默认的 `TextEditor` 样式与滚动背景，不是行背景。[PromptSettingsView.swift](../Owlet/Settings/PromptSettingsView.swift) 的 `editor(_:text:)`（翻译与润色共用这一个 builder）加 `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)`，让分组 `Form` 行自己的背景透出；不新增颜色、填充、边框、圆角、渐变或阴影，也不写自定义 `TextEditorStyle`。
+- **`minHeight: 120` 保留**：`TextEditor` 不按内容长高，去掉它会塌成一行，长 Prompt 的滚动就没了；120pt 只定行高，不制造内嵌观感。
+- **只动这一处**：两个编辑器共用同一 builder，因此天然一致；工作台原文的 `TextEditor`（`Owlet/Processing/TextProcessingView.swift`）是另一块玻璃表面，未改。
+- **「默认」改成动作按钮**：原实现是 `customized ? 恢复默认按钮 : Text("默认")`。经确认这是**动作**（把该 operation 的内置默认提示词填回编辑器），不是状态标注，因此改成始终可见的原生图标按钮 `Button(L10n.shared.string("Restore Default"), systemImage: "arrow.counterclockwise")` + `.labelStyle(.iconOnly)` + `.buttonStyle(.borderless)`，沿用设置页既有图标按钮写法（`LanguageSettingsView` 的删除按钮同款）；无障碍标签沿用同一句 `恢复默认`。
+- **禁用而非隐藏**：编辑器内容等于内置默认时 `.disabled`（判据 `text.wrappedValue == defaultPrompt`），其余时候可用。始终可见让行尾控件位置稳定、不随内容跳动；禁用避免出现点了没反应的死控件；判据用编辑器**当前文本**而不是已持久化的值，这样按钮反映的正是「点下去会不会改变内容」。因此视图里的 `customized` 状态不再需要，已删除；`SettingsStore.isCustomized` 保留（它仍是提交检查的存储规则，测试也依赖它）。
+- **已知代价**：恢复默认直接覆盖编辑器文本，丢掉当前编辑。本环境不能跑 GUI，**未能验证**编辑器撤销（⌘Z）是否覆盖这次替换；替换走的是绑定赋值，与原来那个恢复默认按钮完全相同、未新增撤销登记，因此按「大概率不能覆盖」处理，不偷偷加确认弹窗（那属于另一个决定）。
+
+验收：
+
+- [x] 两个编辑器都加 `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)`，未加任何自绘样式；`minHeight: 120` 不变，长 Prompt 仍由编辑器自身滚动。
+- [x] 行尾是原生图标按钮，动作＝把该编辑器恢复成对应 operation 的内置默认（翻译／润色各自对应，不串）；内容等于默认时 `.disabled`，否则可用；`.accessibilityLabel` 走 `L10n.shared.string("Restore Default")`。
+- [x] 提交／回滚、焦点绑定（`promptFocus`、`@FocusState`）、失焦提交与 `onDisappear` 提交、空白拒绝均未改；未新增或改动任何快捷键。
+- [x] 复用既有键 `Restore Default`（已有 en 源键 + ja／zh-Hans／zh-Hant），未新增界面串，`Localizable.xcstrings` 仍 262 条；未移除不再使用的 `Default` 键。
+- [x] `spec/llm/contract.md` 的标题行说明改为「位置固定的恢复默认图标按钮、内容等于默认时禁用」；`spec/settings/features/service.feature` 新增「恢复默认入口的可用性」scenario；`docs/liquid-glass-components.md` 的模型页逐屏行同步。
+- [ ] **需要人看设置「模型」页的两行 Prompt**：浅色与深色外观下各看一眼，编辑器应与分组卡片同面（不再有白色内嵌块），行尾是一个与行对齐的 `arrow.counterclockwise` 图标按钮；默认内容时按钮变灰不可点，改几个字后变可用，点它恢复默认。本环境看不到 GUI，无法代验。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；测试 441 项不变。这是视图样式与行尾控件外观的改动，没有可断言的单元测试：编辑器与按钮由 `private` builder 产出，禁用条件读的是视图绑定，仓库也没有视图快照测试，故不造测试；提交／存储语义仍由 `PromptSettingsTests` 覆盖。
+
+结果（2026-10-15）：[PromptSettingsView.swift](../Owlet/Settings/PromptSettingsView.swift) 的共用 `editor(_:text:)` 加 `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)`，行尾的「默认」文字换成 `arrow.counterclockwise` 图标按钮并加 `.disabled(text.wrappedValue == defaultPrompt)` 与无障碍标签；删除视图里的 `customized` 状态，[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `isCustomized` 注释改为描述存储规则。[spec/llm/contract.md](../spec/llm/contract.md)、[service.feature](../spec/settings/features/service.feature)、[liquid-glass-components.md](../docs/liquid-glass-components.md) 同步。测试 441 → 441 项 / 49 个 suite。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：编辑器在浅色／深色外观下的实际观感、图标按钮的禁用／可用与点击、以及 ⌘Z 是否覆盖恢复默认（需人跑 `mise run dev` 看一眼）。

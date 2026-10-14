@@ -271,11 +271,11 @@ private struct MenuBarLabel: View {
 
     var body: some View {
         Image("OwletMark")
-            // Template rendering is scoped to the menu bar so the system tints the mark like its
-            // neighbours; the asset stays in colour for any other use. The fixed frame keeps the
-            // standard menu bar size independent of the image's intrinsic size.
+            // The template mark follows the menu bar's semantic foreground in either appearance.
+            // Keep the standard menu bar size independent of the image's intrinsic size.
             .renderingMode(.template)
             .resizable()
+            .foregroundStyle(.primary)
             .scaledToFit()
             .frame(width: 18, height: 18)
             .accessibilityLabel(L10n.shared.string("Owlet"))

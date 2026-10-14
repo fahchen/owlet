@@ -112,9 +112,11 @@ enum SelectionBridge {
 
     /// Reads the selection off the main thread; `completion` runs on main, only if the
     /// frontmost app is still the one read. Past `budget` AX steps are skipped. `bounds` also
-    /// reads the selection rect, costing one more AX call.
+    /// reads the selection rect, costing one more AX call. `wholeFieldText` is the panel's
+    /// opt-in fallback to the focused field's whole text when nothing is selected.
     @MainActor static func read(
         bounds wantsBounds: Bool = false,
+        wholeFieldText: Bool = false,
         completion: @escaping @MainActor (Result<Selection, SelectionError>) -> Void
     ) {
         guard AXIsProcessTrusted() else { return completion(.failure(.permission)) }
@@ -135,7 +137,8 @@ enum SelectionBridge {
             }
             // AX handles stay with this one operation; handed to main exactly once.
             nonisolated(unsafe) let result = capture(
-                appElement, copy: bounded, copySelection: copySelection())
+                appElement, copy: bounded, copySelection: copySelection(),
+                wholeFieldText: wholeFieldText)
             let rect: CGRect? =
                 if wantsBounds, ContinuousClock.now < deadline, case .success(let captured) = result,
                     let range = captured.range
@@ -160,13 +163,15 @@ enum SelectionBridge {
     }
 
     /// Reads the focused element of `appElement`, checking the secure subrole before any text is
-    /// touched, then searches outwards for the selection and falls back to copying it with ⌘C when
-    /// the search finds nothing. `copySelection` therefore only runs once the field is known not to
-    /// be secure.
+    /// touched, then searches outwards for the selection. When nothing is selected, the focused
+    /// field's whole text is used if the caller asked for it and the field can hold editable text;
+    /// otherwise it falls back to copying the selection with ⌘C. `copySelection` therefore only runs
+    /// once the field is known not to be secure and no readable selection or field text was found.
     static func capture(
         _ appElement: AXUIElement, copy: Reader,
         marker: MarkerString = SelectionBridge.markerString,
-        copySelection: CopySelection? = nil
+        copySelection: CopySelection? = nil,
+        wholeFieldText: Bool = false
     ) -> Result<(text: String, element: AXUIElement, range: SelectedRange?), SelectionError> {
         guard let element = focusedElement(appElement, copy: copy) else {
             return .failure(.unreadable)
@@ -179,10 +184,23 @@ enum SelectionBridge {
                 (text, found.element, selectedRange(found.element, copy: copy))
             }
         }
+        if wholeFieldText, let text = focusedFieldText(element, copy: copy) {
+            return .success((text, element, selectedRange(element, copy: copy)))
+        }
         guard let copied = copySelection?() else { return .failure(.unreadable) }
         return classify(trusted: true, subrole: nil, text: copied).map { text in
             (text, element, selectedRange(element, copy: copy))
         }
+    }
+
+    /// The whole text of the focused field, and only when it can hold editable text and has some:
+    /// nil keeps the caller on today's path, so a web page, a PDF, a read-only element or a blank
+    /// field behaves exactly as it did before the setting existed.
+    static func focusedFieldText(_ element: AXUIElement, copy: Reader) -> String? {
+        guard isEditable(role: copy(element, kAXRoleAttribute) as? String) == true,
+            let text = copy(element, kAXValueAttribute) as? String, isNotBlank(text)
+        else { return nil }
+        return text
     }
 
     /// Where a selection can hide, in the order worth paying for: the focused element itself

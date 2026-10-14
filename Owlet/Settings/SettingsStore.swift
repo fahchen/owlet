@@ -489,6 +489,16 @@ extension SettingsStore {
     }
 }
 
+/// Reading the whole text of the focused field when nothing is selected; opt-in, off by default.
+extension SettingsStore {
+    static let wholeFieldTextKey = "selection.wholeFieldText"
+
+    /// Whether a shortcut with nothing selected takes the focused field's whole text as the input.
+    static func usesWholeFieldText(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: wholeFieldTextKey)
+    }
+}
+
 /// Per-operation 学习表达 switches; an absent key reads as off, so learning stays opt-in.
 extension SettingsStore {
     static let translateLearningKey = "learning.auto.translate"

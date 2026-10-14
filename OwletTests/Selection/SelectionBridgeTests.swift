@@ -93,6 +93,79 @@ struct SelectionBridgeTests {
         #expect(wrongRange?.range == nil)
     }
 
+    // MARK: Focused-field text
+
+    /// Attributes of the focused field, so each case names only what it cares about.
+    func fieldReader(role: String? = kAXTextFieldRole, value: String? = "whole field", selected: String? = nil)
+        -> [String: AnyObject]
+    {
+        var attrs: [String: AnyObject] = [:]
+        if let role { attrs[kAXRoleAttribute] = role as CFString }
+        if let value { attrs[kAXValueAttribute] = value as CFString }
+        if let selected { attrs[kAXSelectedTextAttribute] = selected as CFString }
+        return attrs
+    }
+
+    /// Off, nothing changes: a field with text and no selection still goes to the ⌘C fallback.
+    @Test func wholeFieldTextOffKeepsTheCopyFallback() {
+        let result = SelectionBridge.capture(
+            app, copy: reader(fieldReader(), log: Log()), copySelection: { "copied from the field" })
+        #expect(result.map(\.text) == .success("copied from the field"))
+    }
+
+    /// On and nothing is selected, an editable field's whole text is the input, from this element.
+    @Test func wholeFieldTextUsesTheFocusedEditableField() {
+        let result = SelectionBridge.capture(
+            app, copy: reader(fieldReader(value: "  whole field\n"), log: Log()),
+            copySelection: { "copied" }, wholeFieldText: true)
+        let captured = try? result.get()
+        #expect(captured?.text == "  whole field\n")
+        #expect(captured.map { CFEqual($0.element, field) } == true)
+    }
+
+    /// A field with no text is not an input: the fallback and its failure path stay exactly as before.
+    @Test func wholeFieldTextIgnoresABlankField() {
+        for blank in [nil, "", " \n"] {
+            let result = SelectionBridge.capture(
+                app, copy: reader(fieldReader(value: blank), log: Log()),
+                copySelection: { "copied" }, wholeFieldText: true)
+            #expect(result.map(\.text) == .success("copied"))
+        }
+    }
+
+    /// An element that cannot hold editable text is untouched, even when it reports a value.
+    @Test func wholeFieldTextIgnoresANonEditableElement() {
+        for role in [kAXStaticTextRole, "AXWebArea", nil] {
+            let result = SelectionBridge.capture(
+                app, copy: reader(fieldReader(role: role, value: "page text"), log: Log()),
+                copySelection: { "copied" }, wholeFieldText: true)
+            #expect(result.map(\.text) == .success("copied"))
+        }
+    }
+
+    /// A real selection is still the input: the field fallback only runs when nothing is selected.
+    @Test func aSelectionStillWinsOverTheFieldText() {
+        let result = SelectionBridge.capture(
+            app, copy: reader(fieldReader(value: "whole field", selected: "picked"), log: Log()),
+            wholeFieldText: true)
+        #expect(result.map(\.text) == .success("picked"))
+    }
+
+    /// The decision reads only the injected accessibility seam: it never presses ⌘C, so the real
+    /// pasteboard and the user's own copy are untouched.
+    @Test func wholeFieldTextNeverTouchesThePasteboard() {
+        let fake = FakePasteboard("user text")
+        let pressed = Mutex(false)
+        let result = SelectionBridge.capture(
+            app, copy: reader(fieldReader(), log: Log()),
+            copySelection: SelectionBridge.copySelection(
+                pasteboard: fake.seam(), press: { pressed.withLock { $0 = true } }, sleep: {}),
+            wholeFieldText: true)
+        #expect(result.map(\.text) == .success("whole field"))
+        #expect(pressed.withLock { $0 } == false)
+        #expect(fake.text == "user text")
+    }
+
     // MARK: Selection search
 
     /// A web page keeps the selection on the web area, one level above the focused element.

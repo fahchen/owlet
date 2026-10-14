@@ -101,7 +101,9 @@ final class PanelController {
         // Selection bounds cost an extra AX call, so they are read only when placement uses them.
         read = { completion in
             SelectionBridge.read(
-                bounds: SettingsStore.panelPosition(in: defaults) == .followSelection, completion: completion)
+                bounds: SettingsStore.panelPosition(in: defaults) == .followSelection,
+                wholeFieldText: SettingsStore.usesWholeFieldText(in: defaults),
+                completion: completion)
         }
     }
 

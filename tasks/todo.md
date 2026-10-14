@@ -1312,3 +1312,29 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 - [x] `mise run format`、`mise run check` 退出码 0；测试 417 → 419
 - [x] **人跑 `mise run dev` 验收通过**（用户确认：设置窗口出现了）——打开设置 → 用别的窗口压住 → 从菜单栏菜单点「设置…」→ 回到最前
 - [ ] 浮窗（`.floating` 层级）开着时设置窗口是否仍被压在下面；若仍被压住，需要决定是否让浮窗让位（未做，属高风险改动，先不动核心交互）
+
+## T69：未选中文字时使用焦点输入框的全文（已实现）
+
+依据[翻译规格](../spec/processing/features/translation.feature)的「未选中文字时可用焦点输入框的全文（默认关闭）」。这是评审中提出并确认的新设置（默认关闭）：开启后，快捷键发起的翻译／润色在「没有选中任何文字」但键盘焦点落在**可编辑输入框**且里面有文本时，用该输入框的**整段文本**作为原文；不满足条件（不可编辑、没有文本）时行为与今天完全一致，不新增失败路径或错误文案。规格写成 scenario、没有开 BDR：这是一个默认关闭的纯功能开关，唯一需要取舍的是「整段文本」的长度语义，作为假设记在下面，不需要新的决策记录。
+
+范围与取舍：
+
+- **规则只写一处**：`SelectionBridge.capture` 里，搜索选区失败之后、⌘C 回退之前插入 `wholeFieldText` 分支，判定收在纯函数 `SelectionBridge.focusedFieldText(_:copy:)`（`isEditable(role:) == true` 且 `AXValue` 非空白）。`PanelController` 只负责把 `SettingsStore.usesWholeFieldText(in:)` 传进 `SelectionBridge.read`，两个调用点都不重复这条规则。
+- **用 `kAXValueAttribute` 的整段文本，不做截断**：这就是「整段文本」的最直接读法，不需要任何新 UI；代价是超长输入框（例如整个文档）会整段发给模型。若用户想要「只取可见部分」，这是一处需要人确认的假设，已在下面标出。
+- **不新增失败路径**：条件不满足时 `focusedFieldText` 返回 nil，控制流原样走到 ⌘C 回退（或 `.unreadable`），`selection-error` 这一态保持不变。
+- **不碰真实剪贴板**：命中字段全文时不按 ⌘C，既不覆盖用户剪贴板，也不依赖任何全局状态；判定全部走注入的 `copy`／`copySelection` 缝。
+
+验收：
+
+- [x] `SettingsStore.wholeFieldTextKey`（`selection.wholeFieldText`，按用户得到的东西命名）默认 `false`；`usesWholeFieldText(in:)` 走注入的 `UserDefaults`。
+- [x] 通用页「浮窗」分组新增原生 `Toggle`「未选中文字时使用焦点所在输入框的全部文本」，紧接「浮窗位置」`Picker`；英文键进 `strings/translations.json`（260 → 261）并重新生成 `Owlet/Localizable.xcstrings`。
+- [x] 规则在 `SelectionBridge.capture` 表达一次，纯函数 `focusedFieldText` 可单测；`read` 新增 `wholeFieldText` 参数，`PanelController` 从设置读取。
+- [x] 测试（`SelectionBridgeTests`，全部走既有 `reader`／`FakePasteboard` 缝）：关 → 维持 ⌘C 回退；开 + 可编辑有文本 + 无选区 → 整段文本且元素就是焦点元素；开 + 空／纯空白 → 回退不变；开 + 不可编辑／无角色 → 回退不变；有选区时选区仍优先；命中字段全文时不按 ⌘C、真实剪贴板不动。`seams(...)` 仍默认每测试一个 `FakePasteboard`，既有断言未改。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；测试 419 → 425（49 个 suite）。
+- [ ] **需要人跑 `mise run dev` 验收 GUI**：开启通用页新开关，在一个可编辑输入框（如备忘／浏览器文本框）里放一段文字、不放选区，按翻译快捷键，确认浮窗用整段文本翻译；再关掉开关、重按，确认回到「读取失败/手动输入」的旧行为；不可编辑区域（网页正文、PDF）确认不受开关影响。
+
+**假设（请评审确认）：**「整段文本」按 `AXValue` 的完整值实现——**不做长度上限、不截断、不新增确认 UI**，即使输入框内容很长也会整段作为原文发出。如果期望的是「只取可见部分」或「超长先截断/确认」，请指出，这条假设可单独修改。
+
+结果（2026-10-14）：[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 新增 `wholeFieldTextKey = "selection.wholeFieldText"` 与 `usesWholeFieldText(in:)`；[SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift) 的 `capture` 新增 `wholeFieldText` 分支与纯函数 `focusedFieldText(_:copy:)`，`read(bounds:wholeFieldText:completion:)` 透传；[PanelController.swift](../Owlet/App/Panel/PanelController.swift) 的 `read` 闭包从设置读取；[GeneralSettingsPane.swift](../Owlet/Settings/GeneralSettingsPane.swift) 在「浮窗」分组加 `Toggle`；三条译文进 `strings/translations.json` 并重新生成 catalog（261 条）；[translation.feature](../spec/processing/features/translation.feature) 新增一条 Rule 两个 scenario；[liquid-glass-components.md](../docs/liquid-glass-components.md) 的 `settings-general` 逐屏行补开关、`selection-error` 行补「开启后不再进入该态」。测试 419 → 425 项 / 49 个 suite 通过。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0（lint 261 条 catalog 一致，`Test run with 425 tests in 49 suites passed`）。未验证：GUI 里的实际快捷键行为（需 `mise run dev` 人工看一眼）。

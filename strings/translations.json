@@ -1274,6 +1274,11 @@
     "zh-Hans": "可使用工具栏删除所选内容。",
     "zh-Hant": "可使用工具列刪除所選內容。"
   },
+  "Use the whole text of the focused field when nothing is selected": {
+    "ja": "何も選択していないとき、フォーカス中の入力欄の全文を使う",
+    "zh-Hans": "未选中文字时，使用焦点所在输入框的全部文本",
+    "zh-Hant": "未選取文字時，使用焦點所在輸入框的全部文字"
+  },
   "Used when filling in a reading or looking a word up while reading; a change affects later requests only.": {
     "ja": "単語帳の読みの補完と閲覧中の調べ物に使われます。変更は今後のリクエストにのみ影響します。",
     "zh-Hans": "用于生词本补充读音与阅读查词；改动只影响之后的请求。",

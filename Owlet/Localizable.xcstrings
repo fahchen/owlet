@@ -7396,6 +7396,35 @@
         }
       }
     },
+    "Use the whole text of the focused field when nothing is selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the whole text of the focused field when nothing is selected"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何も選択していないとき、フォーカス中の入力欄の全文を使う"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未选中文字时，使用焦点所在输入框的全部文本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未選取文字時，使用焦點所在輸入框的全部文字"
+          }
+        }
+      }
+    },
     "Used when filling in a reading or looking a word up while reading; a change affects later requests only.": {
       "extractionState": "manual",
       "localizations": {

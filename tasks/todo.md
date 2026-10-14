@@ -1397,3 +1397,26 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-14）：根因是查找只跑一次 `zsh -lc` 且不读 `.zshrc`，而 `.zshrc` 是那台机器唯一加 `~/.local/bin` 的地方；同时未检测到即隐藏让用户没有手动出口。[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 新增注入缝 `AgentLookup` 与三层查找（`-lc` → `-ilc` → 直查），`detect` 用查找环境跑 `--version`；[AgentEnvironment](../Owlet/LLM/LocalAgent.swift) 的目录列表扩为单一真源，新增 `lookupEnvironment`／`mergedPATH` 与 nvm 枚举。[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 始终列出全部本地 agent，扫不到的标注「未检测到」，`adoptsFoundPath` 收敛「手选不被覆盖」。[local-agent.feature](../spec/settings/features/local-agent.feature) 与 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §8／§10 同步；[liquid-glass-components.md](../docs/liquid-glass-components.md) 模型页两行同步；catalog 261 → 262 条。测试 430 → 441 项，全部走注入缝。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：第二台机器上的真实 PATH 与手动选择行为（需人跑 `mise run dev` 或安装新构建）。
+
+## T72：菜单栏标记改用模板渲染（已实现）
+
+问题：菜单栏里的 Owlet 猫头鹰标记是原色图（`OwletMark` 本体几乎全白，只有紫色眼睛、橙色喙和粉色腮红），在浅色菜单栏上几乎只剩一个白块，夹在一排被系统着色的邻居（ChatGPT 等模板图）之间很突兀。资源 `OwletMark.imageset` 的 `template-rendering-intent` 是 `original`，`MenuBarLabel` 直接 `Image("OwletMark")` 输出原色。
+
+范围与取舍：
+
+- **只在菜单栏改渲染模式**：`MenuBarLabel` 的 `Image` 加 `.renderingMode(.template)`。全仓库 `Image("OwletMark")` 只此一处（逐屏对照里写的「面板用该标记」并不存在，面板只用 SF Symbols）；`OwletLogo` 两个图集没有任何代码引用。因此也可以直接改资源的 `template-rendering-intent`，但放在使用点更明确、不改动资源语义，故资源保持 `original`，其它用途仍可彩色。
+- **几何不变**：仍是 `.resizable().scaledToFit().frame(width: 18, height: 18)`，不依赖图片固有尺寸，模板化后仍是标准 18pt。
+- **不新增颜色／描边／阴影／自绘**：模板图由系统着色（浅色栏深色、深色栏浅色），符合 `spec/DESIGN.md` 的只用原生组件约束。
+
+代价：模板渲染只取 alpha 通道，18pt 下只剩实心剪影——紫色眼睛、橙色喙、粉色腮红全部丢失，和相邻模板图一样。剪影本身（圆头 + 两只耳羽 + 下颌一点）可辨认，因此不需要新素材。
+
+验收：
+
+- [x] `MenuBarLabel` 的 `Image("OwletMark")` 加 `.renderingMode(.template)`，其余修饰符与 18×18 尺寸不变。
+- [x] `docs/liquid-glass-components.md` 的菜单栏标记行改为「模板图、由系统着色」，并修正原文「面板也用该标记」的说法；`menubar` 逐屏行补一句。
+- [ ] **需要人看菜单栏**：浅色外观下标记应是深色剪影、深色外观下应是浅色剪影，与相邻模板图一致；两种外观各看一眼（`mise run dev` 或装新构建）。本环境看不到 GUI，无法代验。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；测试 441 项不变。渲染模式改动没有可断言的单元测试：`MenuBarLabel` 是 `private struct`，测试取不到，`.renderingMode` 也不是可读的视图属性，仓库也没有视图快照测试，故不造测试。
+
+结果（2026-10-14）：[OwletApp.swift](../Owlet/App/OwletApp.swift) 的 `MenuBarLabel` 在 `Image("OwletMark")` 上新增 `.renderingMode(.template)`（附一句 why 注释）；`OwletMark` 资源保持 `template-rendering-intent: original`。[liquid-glass-components.md](../docs/liquid-glass-components.md) 菜单栏标记行与 `menubar` 逐屏行同步。测试 441 → 441 项 / 49 个 suite。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：菜单栏在浅色／深色外观下的实际着色（需人跑 `mise run dev` 看一眼）。

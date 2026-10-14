@@ -61,6 +61,27 @@ Feature: 自行配置模型服务
       And 换成还没记录过的服务商时用该服务商的默认，即 HTTP 服务用它的预设模型、本机 agent 留空表示用它自己的默认模型
       And 切换与恢复都与其他设置一样立即持久化
 
+    Scenario: 选择服务商预设
+      Given 用户打开模型标签页
+      When 用户从服务列表选择 Moonshot / Kimi
+      Then 基础 URL 填成该服务公开的地址
+      And 模型名填成该服务的默认模型
+      And 用户仍可修改基础 URL 与模型名
+      And 该选择立即持久化
+
+    Scenario: 自定义服务仍然可用
+      When 用户选择 OpenAI Compatible
+      Then 基础 URL、模型名与 API Key 都由用户自己填写
+      And 选择该入口不修改用户已填的地址与模型名
+
+    Scenario: 返回格式能力跟着所选服务走
+      Given 用户选择只接受 json_object 的服务商
+      When 应用组装一次请求
+      Then 请求的返回格式为 json_object
+      And 返回形状写在 System Prompt 里
+      When 用户选择支持 JSON Schema 的服务商
+      Then 请求携带 JSON Schema
+
   Rule: 私密凭证与本地内容受保护
     Scenario: 凭证不随内容导出
       Given 用户已配置 API Key 并收藏表达

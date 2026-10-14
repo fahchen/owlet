@@ -96,16 +96,36 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
     #expect(wire.value(forHTTPHeaderField: "Authorization") == "Bearer sk-test")
 }
 
-@Test func deepSeekUsesJSONObjectFormat() async throws {
+@Test func aServiceWithoutSchemaSupportUsesJSONObjectFormat() async throws {
     let config = ServiceConfig(
         baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-chat", apiKey: "k",
-        provider: .deepSeek)
+        supportsJSONSchema: false)
     let request = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
     #expect(request.format == .jsonObject)
     #expect(request.system.contains("json"))
     let wire = try await posted(request, config: config)
     #expect(wire.url?.absoluteString == "https://api.deepseek.com/chat/completions")
+}
+
+/// The capability the chosen preset hands the config decides the format; nil falls back to the wire
+/// protocol's own default, which is what the custom entry and the two local agents use (BDR-0015 §3).
+@Test func theConfiguredCapabilityDecidesTheResponseFormat() throws {
+    var config = testConfig
+    config.supportsJSONSchema = false
+    let plain = try ModelClient().translationRequest(
+        text: "Hello", to: "zh-Hans", config: config)
+    #expect(plain.format == .jsonObject)
+
+    config.supportsJSONSchema = true
+    let full = try ModelClient().translationRequest(
+        text: "Hello", to: "zh-Hans", config: config)
+    #expect(schema(of: full) != nil)
+
+    config.supportsJSONSchema = nil
+    let fallback = try ModelClient().translationRequest(
+        text: "Hello", to: "zh-Hans", config: config)
+    #expect(schema(of: fallback) != nil)
 }
 
 @Test func automaticEffortOmitsTheReasoningParameter() throws {
@@ -127,7 +147,7 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
 @Test func aChosenEffortRidesOnTheMainAndLearningRequests() throws {
     let config = ServiceConfig(
         baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
-        provider: .deepSeek, effort: .low)
+        effort: .low)
     let main = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
     #expect(try wireBody(main, config: config)["reasoning_effort"] as? String == "low")
@@ -140,7 +160,7 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
 @Test func effortOffReachesTheProviderAsNone() throws {
     let config = ServiceConfig(
         baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
-        provider: .deepSeek, effort: .off)
+        effort: .off)
     let request = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
     #expect(try wireBody(request, config: config)["reasoning_effort"] as? String == "none")
@@ -150,24 +170,17 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
 @Test func theModelMappingDecidesTheSentValue() throws {
     let config = ServiceConfig(
         baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
-        provider: .deepSeek, effort: .medium)
+        effort: .medium)
     let request = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
     #expect(try wireBody(request, config: config)["reasoning_effort"] as? String == "high")
-}
-
-@Test func deepSeekPresetMatchesDocs() {
-    #expect(Provider.deepSeek.preset?.baseURL == "https://api.deepseek.com")
-    #expect(Provider.openAICompatible.preset == nil)
-    #expect(Provider.openAICompatible.keychainAccount == "default")
 }
 
 @Test func deepSeekResponseParses() async throws {
     let content = #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Hi","target":"你好"}]}"#
     let client = ModelClient(transport: stub(body: chatBody(content)))
     let config = ServiceConfig(
-        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-chat", apiKey: "k",
-        provider: .deepSeek)
+        baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-chat", apiKey: "k")
     #expect(try await client.translate("Hi", to: "zh-Hans", config: config) == "你好")
 }
 

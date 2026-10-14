@@ -70,7 +70,7 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 - 契约失败要能诊断：`ModelError` 区分 `format` / `targetMismatch` / `sourceMismatch`，
   原始请求与返回记录在隐藏调试页（`Owlet/Debug/`，设置里的「调试」开关控制，默认关闭、
   只在内存、不含 API Key）。
-- 供应商差异走 `Provider` 的能力开关（如 DeepSeek 只支持 `json_object`，不支持 `json_schema`）。
+- `Provider` 只表示协议与两个本地 agent；HTTP 厂商的差异走 `ServicePreset`（`Owlet/Settings/ServicePreset.swift`）的能力开关，经 `ServiceConfig.supportsJSONSchema` 到达请求（如 DeepSeek 只支持 `json_object`，不支持 `json_schema`）。加一家厂商是加一行预设数据，不是加一个 `Provider` case。
 
 ## Swift 与测试
 

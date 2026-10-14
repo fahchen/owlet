@@ -139,7 +139,6 @@ struct AgentSettingsTests {
     @Test func providersCarryTheirOwnCapabilities() {
         #expect(Provider.claudeCode.localAgent == LocalAgentKind.claudeCode)
         #expect(Provider.codexCLI.localAgent == LocalAgentKind.codexCLI)
-        #expect(Provider.deepSeek.localAgent == nil)
         #expect(Provider.openAICompatible.localAgent == nil)
 
         #expect(Provider.claudeCode.isLocalAgent)
@@ -147,10 +146,9 @@ struct AgentSettingsTests {
         // Both local agents take a schema on the command line.
         #expect(Provider.claudeCode.supportsJSONSchema)
         #expect(Provider.codexCLI.supportsJSONSchema)
-        // DeepSeek only takes `json_object`, so its shape travels in the prompt.
-        #expect(!Provider.deepSeek.supportsJSONSchema)
-        // A local agent has no API key, so no preset URL or model is filled in for it.
-        #expect(Provider.claudeCode.preset == nil)
-        #expect(Provider.codexCLI.preset == nil)
+        // OpenAI compatible keeps the pre-provider "default" keychain account; the agents use their own.
+        #expect(Provider.openAICompatible.keychainAccount == "default")
+        #expect(Provider.claudeCode.keychainAccount == "claudeCode")
+        #expect(Provider.codexCLI.keychainAccount == "codexCLI")
     }
 }

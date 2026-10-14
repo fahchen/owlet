@@ -304,6 +304,11 @@
     "zh-Hans": "调试",
     "zh-Hant": "除錯"
   },
+  "DeepSeek": {
+    "ja": "DeepSeek",
+    "zh-Hans": "DeepSeek",
+    "zh-Hant": "DeepSeek"
+  },
   "Default": {
     "ja": "既定",
     "zh-Hans": "默认",
@@ -504,6 +509,11 @@
     "zh-Hans": "韩语",
     "zh-Hant": "韓語"
   },
+  "LM Studio (Local)": {
+    "ja": "LM Studio（ローカル）",
+    "zh-Hans": "LM Studio（本地）",
+    "zh-Hant": "LM Studio（本機）"
+  },
   "Languages": {
     "ja": "言語",
     "zh-Hans": "语言",
@@ -593,6 +603,11 @@
     "ja": "モデルの生の返答",
     "zh-Hans": "模型原始返回",
     "zh-Hant": "模型原始回傳"
+  },
+  "Moonshot / Kimi": {
+    "ja": "Moonshot / Kimi",
+    "zh-Hans": "Moonshot / Kimi",
+    "zh-Hant": "Moonshot / Kimi"
   },
   "More Transparent": {
     "ja": "より透明",
@@ -699,6 +714,11 @@
     "zh-Hans": "关闭",
     "zh-Hant": "關閉"
   },
+  "Ollama (Local)": {
+    "ja": "Ollama（ローカル）",
+    "zh-Hans": "Ollama（本地）",
+    "zh-Hant": "Ollama（本機）"
+  },
   "Only the languages chosen here appear in the target, the fallback and the mapping; keep at least one.": {
     "ja": "ここで選んだ言語だけが翻訳先・既定の翻訳先・対応表に表示されます。少なくとも 1 つ必要です。",
     "zh-Hans": "只有这里选中的语言会出现在目标语言、兜底目标和映射表里；至少保留一种。",
@@ -713,6 +733,16 @@
     "ja": "システム設定を開く",
     "zh-Hans": "打开系统设置",
     "zh-Hant": "打開系統設定"
+  },
+  "OpenAI Compatible": {
+    "ja": "OpenAI Compatible",
+    "zh-Hans": "OpenAI Compatible",
+    "zh-Hant": "OpenAI Compatible"
+  },
+  "OpenRouter": {
+    "ja": "OpenRouter",
+    "zh-Hans": "OpenRouter",
+    "zh-Hant": "OpenRouter"
   },
   "Operation": {
     "ja": "処理方法",
@@ -808,6 +838,11 @@
     "ja": "Owlet を終了",
     "zh-Hans": "退出 Owlet",
     "zh-Hant": "結束 Owlet"
+  },
+  "Qwen (DashScope)": {
+    "ja": "Qwen (DashScope)",
+    "zh-Hans": "Qwen (DashScope)",
+    "zh-Hant": "Qwen (DashScope)"
   },
   "Reading Notation": {
     "ja": "読みの表記",
@@ -1294,6 +1329,11 @@
     "zh-Hans": "昨天 %@",
     "zh-Hant": "昨天 %@"
   },
+  "Zhipu GLM": {
+    "ja": "Zhipu GLM",
+    "zh-Hans": "Zhipu GLM",
+    "zh-Hant": "Zhipu GLM"
+  },
   "Zhuyin": {
     "ja": "注音符号",
     "zh-Hans": "注音",
@@ -1303,6 +1343,11 @@
     "ja": "して置換",
     "zh-Hans": "并替换",
     "zh-Hant": "並取代"
+  },
+  "xAI": {
+    "ja": "xAI",
+    "zh-Hans": "xAI",
+    "zh-Hant": "xAI"
   },
   "日本語": {
     "ja": "日本語",

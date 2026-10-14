@@ -14,6 +14,7 @@
 - [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
 - [屏幕区域 OCR 输入方案](../docs/screen-region-input.md)：未实现的输入来源设计提案，不改现有读取路径。
 - [连续语音输入方案](../docs/speech-input.md)：未实现的输入来源设计提案，本轮不做。
+- [模型返回的流式显示方案](../docs/streaming-output.md)：未实现的呈现设计提案，只改「何时看见」，不改请求契约、本地校验与写回；是否实现取决于人对替换入口 UI 的决定。
 - [替换行为决策](processing/decisions/BDR-0001-explicit-replacement-intent.md)。
 - [错误呈现决策](processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)：已展开的工具栏遇错保持展开。
 - [翻译目标映射决策](settings/decisions/BDR-0003-translation-target-mapping.md)：按检测到的源语言查表决定目标，未命中用兜底；润色与快捷键不变。
@@ -28,6 +29,7 @@
 - [母语决策](learning/decisions/BDR-0012-native-language.md)：设置里的「母语」只影响学习内容包含哪些条目（两种操作都受约束），不参与释义语言的计算。
 - [本机 agent 决策](settings/decisions/BDR-0013-local-agent-provider.md)：Claude Code、Codex CLI 作为模型服务时只当一次性的纯补全后端——工具、技能、MCP、项目上下文与会话落盘全关；返回仍走同一份契约，配置完整性改看可执行文件而不是 API Key。
 - [玻璃强度决策](settings/decisions/BDR-0014-system-liquid-glass-intensity.md)：液态玻璃及其强度由系统设置 › 外观统一调整；应用的「玻璃效果」只区分两种玻璃变体，并给出一句说明与打开该面板的入口，不提供自己的强度控件。
+- [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md)：`Provider` 只表示协议与两个本地 agent；HTTP 厂商是数据表 `ServicePreset`，选中即填好公开的 Base URL 与默认模型，返回格式能力跟着预设走，模型记忆按服务分槽。
 
 Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。`tasks/plan.md` 与 `tasks/todo.md` 负责实现顺序；技术选型不作为领域场景。
 

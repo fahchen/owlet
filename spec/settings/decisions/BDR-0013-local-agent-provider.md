@@ -89,6 +89,8 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 未支持的 provider 上，本地校验一点都不放松：`ModelRequest.format` 只是「这个服务商能不能被约束」，校验、纠正与写回判断都与它无关。实测 codex 0.160.1 + `--output-schema`：同一份 `$defs.result` schema 下直接返回契约形状的 JSON，逐句配对连 `source` 末尾空格都对。
 
+**2026-10-15 更新（T75）**：HTTP 厂商的这项能力改由 [BDR-0015](BDR-0015-provider-presets.md) 的 `ServicePreset` 携带，经 `ServiceConfig.supportsJSONSchema` 进入请求；本地 agent 仍取 `Provider` 的协议默认（两者都接受 Schema），本节对它们的结论不变。
+
 ### 5. 不需要 API Key
 
 配置完整性从「Keychain 里有 Key」改成「可执行文件存在且可执行」；模型名可以留空，表示用该 agent 自己的默认模型。Keychain 对本地 agent 不参与，也不会因此多写一条记录。

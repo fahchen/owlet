@@ -142,9 +142,11 @@ struct ModelClient: Sendable {
     }
 
     /// The format the provider can accept: a real schema where it takes one, `json_object` where the
-    /// shape must travel in the system prompt instead (DeepSeek).
+    /// shape must travel in the system prompt instead. A vendor preset answers through the config; nil
+    /// falls back to the wire protocol's own default (BDR-0015 §3).
     private func format(name: String, schema: [String: Any], config: ServiceConfig) -> ModelResponseFormat {
-        guard config.provider.supportsJSONSchema,
+        let supported = config.supportsJSONSchema ?? config.provider.supportsJSONSchema
+        guard supported,
             let data = try? JSONSerialization.data(withJSONObject: schema)
         else { return .jsonObject }
         return .jsonSchema(name: name, schema: data)

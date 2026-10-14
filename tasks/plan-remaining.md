@@ -133,3 +133,7 @@ T54 修掉查词分支首轮审阅的三个缺陷（语境语言归因、「无�
 ## T72 菜单栏标记改为模板渲染（已实现）
 
 只改渲染模式：`MenuBarLabel` 的 `Image("OwletMark")` 加 `.renderingMode(.template)`，由系统按浅／深色外观着色，与相邻菜单栏模板图一致；资源本身保持 `template-rendering-intent: original`，其它用途不受影响。几何仍是 18×18，不新增任何自绘元素。验收与验证见 [todo.md](todo.md)。未验证项：菜单栏在浅色／深色外观下的实际着色（需 `mise run dev` 人工看一眼）。
+
+## T75 服务商预设（已实现）
+
+把 `Provider` 收敛为「协议 + 两个本地 agent」，厂商改成数据表 `ServicePreset`：设置「模型」页的服务列表除自定义入口外提供 DeepSeek、Moonshot／Kimi、智谱 GLM、Qwen／DashScope、xAI、OpenRouter、Ollama、LM Studio，选中即写入其公开 Base URL 与默认模型，仍可编辑。返回格式能力（`json_schema` 或 `json_object`）跟着预设经 `ServiceConfig` 走到请求，只有文档核对的 Moonshot／Kimi、xAI 标为 schema-capable；模型记忆按服务 id，旧 `service.provider` 只作迁移输入。决策见 [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)，验收与验证见 [todo.md](todo.md)。未验证项：所有真实厂商的端到端调用与设置页观感（需 `mise run dev` 与真实 Key）。

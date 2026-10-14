@@ -1447,3 +1447,58 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-15）：[PromptSettingsView.swift](../Owlet/Settings/PromptSettingsView.swift) 的共用 `editor(_:text:)` 加 `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)`，行尾的「默认」文字换成 `arrow.counterclockwise` 图标按钮并加 `.disabled(text.wrappedValue == defaultPrompt)` 与无障碍标签；删除视图里的 `customized` 状态，[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `isCustomized` 注释改为描述存储规则。[spec/llm/contract.md](../spec/llm/contract.md)、[service.feature](../spec/settings/features/service.feature)、[liquid-glass-components.md](../docs/liquid-glass-components.md) 同步。测试 441 → 441 项 / 49 个 suite。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：编辑器在浅色／深色外观下的实际观感、图标按钮的禁用／可用与点击、以及 ⌘Z 是否覆盖恢复默认（需人跑 `mise run dev` 看一眼）。
+
+## T74：模型返回的流式显示（设计就绪，未实现；等待人决定替换 UI）
+
+**状态：**设计完成，**未实现**。方案、逐后端实测与取舍见 [模型返回的流式显示方案](../docs/streaming-output.md)。开始实现前需人先回答问题文档「决策」第 1 条：替换入口选 A（仅面板流式、原子替换）、B（A + 流中显式禁用替换）、C（B + 校验失败时用纠正结果原地替换 partial）、D（不可见流式）。**文档建议 B**。其余三条（partial 是否进历史、查词卡是否流式、是否按 provider 自动降级）文档各有建议（分别建议：不进、先不、是），需确认或按建议默认采纳。
+
+**为什么做：**今天整段延迟约 7–15 s（本机 Claude Code／Codex CLI）／1–3 s（HTTP 兼容服务），面板全程只有处理态（`PanelController.Notice.translating`）；流式把首个字符压到 1 s 以内（预期，**待实测**）。不减少总时长，也不改变「校验通过才算结果」。
+
+**范围与取舍：**
+
+- `ModelBackend` 新增带默认实现的流式方法，默认实现调用现有 `complete` 整段 yield，不能流式的后端零改动继续工作；`complete` 不删（`Owlet/LLM/ModelBackend.swift:55-60`）。
+- 面板只在 `.success`（即 `parse` 通过）后进入可替换／可复制状态；流式期间是独立的「正在接收」状态，partial 永不进 `parse`、不写回、不进历史。
+- 学习请求不流式（后台请求，`spec/llm/contract.md` 已定主结果不等它）；查词卡与按需补充释义默认不流式。
+- 调试页只记最终文本（或块数类计数），不记整条流。
+
+**验收（待实现后逐条落实）：**
+
+- [ ] 不能流式的后端行为与今天完全一致（默认实现路径有测试）。
+- [ ] partial 不写回、不进历史、不可复制或替换；取消或切换请求后不残留。
+- [ ] 流中按替换快捷键有可见、诚实的反馈，不是静默无反应。
+- [ ] 流结束后校验失败，partial 丢弃并进入现有契约错误与纠正路径。
+- [ ] 调试页不出现整条流的未校验片段，且仍不含 Key。
+- [ ] 三个 provider（HTTP／Claude Code／Codex CLI）的实际到达行为与文档「必须实测」一节核对后回填。
+
+**依赖：**人的决定（文档决策 1–4）。无新增前置任务。
+
+**待实测：**见方案文档「必须实测」一节（OpenAI 兼容服务的真实 SSE 字段、一次成功的 Claude `stream-json`、首字延迟与总时长）。
+
+## T75：服务商预设（已实现）
+
+问题：`Provider` 同时承担「怎么说话」（协议）与「说的是谁」（厂商），`.deepSeek` 把 `("https://api.deepseek.com", "deepseek-chat")` 硬编码在枚举里；想用 Moonshot／Kimi、智谱 GLM、通义千问／DashScope、xAI、OpenRouter、Ollama、LM Studio 的用户得自己查 Base URL 和模型名。返回格式能力也挂在 `Provider.supportsJSONSchema` 上，把厂商差异伪装成协议属性。
+
+范围与取舍（取舍全文见 [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)）：
+
+- **协议与厂商分离**：`Provider` 收敛为 `openAICompatible`、`claudeCode`、`codexCLI`；新增数据表 `ServicePreset`（`Owlet/Settings/ServicePreset.swift`），一家厂商一行。加厂商不再改枚举、后端或请求构造。
+- **能力跟着预设走**：`ServiceConfig` 新增可空 `supportsJSONSchema`，`ModelClient.format` 读它；`nil` 退回协议默认，所以自定义入口与两个本地 agent 行为不变。只有文档写明兼容 `response_format.json_schema`（`name`／`strict`／`schema`）的厂商标 true：Moonshot／Kimi 与 xAI；DeepSeek（既有的 `json_object`）、智谱 GLM、DashScope、OpenRouter（支持随端点变）、Ollama、LM Studio 一律 `json_object`，形状写在 Prompt 里。本机没有这些服务的 Key，能力只按文档核对，没有端到端调用。
+- **模型记忆按服务分槽**：`service.model.<服务 id>`；HTTP 厂商 id 就是预设 id（`deepSeek`、`openAICompatible` 与旧键同名），本地 agent id 就是 `Provider.rawValue`，所以旧安装原地兼容，同时 Moonshot／GLM／DeepSeek 各自记名而不互相覆盖。
+- **持久化一个 `service.choice`**：旧 `service.provider` 不再写，只作迁移输入——它存过的值都是合法服务 id，读到即得到与升级前相同的服务、钥匙串账户与能力，无需一次性迁移脚本。
+- **保留自定义入口**：`OpenAI Compatible` 是列表第一项、`baseURL == nil`，选择它不覆盖用户已填的地址与模型。
+
+验收：
+
+- [x] `Provider` 只剩三个 case；`ServicePreset.all` 是唯一厂商真源，含自定义入口与 7 家厂商（DeepSeek、Moonshot／Kimi、智谱 GLM、Qwen／DashScope、xAI、OpenRouter、Ollama、LM Studio）。
+- [x] 预设选择写入 Base URL 与默认模型，且两者仍可编辑；自定义入口不覆盖用户输入。
+- [x] `supportsJSONSchema` 经 `ServiceConfig` 决定 `.jsonSchema` 与 `.jsonObject`，自定义入口与两个 agent 的默认行为不变。
+- [x] 模型记忆按服务 id；切回上一个服务恢复原值，Moonshot／GLM／DeepSeek 互不覆盖。
+- [x] 旧 `service.provider`（含 `deepSeek`）读回同一服务、账户与模型槽。
+- [x] 新增 9 条界面串（服务商名），`strings/translations.json` 262 → 271 条并重新生成 catalog。
+- [x] `spec/settings/features/service.feature` 新增 3 条 scenario；新增 [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)；BDR-0013 §4 指向它；`spec/product.md`、`docs/unimplemented-features.md`、`docs/liquid-glass-components.md`、`AGENTS.md` 同步。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；测试 441 → 449（不缩水）。
+- [ ] **需要人跑 `mise run dev` 看设置「模型」页**：服务列表里应能看到 `OpenAI Compatible` 与 8 家服务名，选 Moonshot／Kimi 后 Base URL 变成 `https://api.moonshot.cn/v1`、模型名变成 `kimi-k3`，两者仍可编辑；切回别的服务再切回来应恢复各自填过的模型名与地址。本环境看不到 GUI，无法代验。
+- [ ] **需要人用真实 Key 抽验**：至少一家 schema-capable（Kimi 或 xAI）与一家 `json_object`（GLM／Qwen）跑一次翻译，确认默认模型名仍有效、返回能通过本地契约；若某家拒绝 schema，把该预设的 `supportsJSONSchema` 改为 `false` 即可，无需改请求构造。
+
+结果（2026-10-15）：[ServicePreset.swift](../Owlet/Settings/ServicePreset.swift) 新增 `ServicePreset` 数据表与 `ServiceChoice`；[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `Provider` 收敛为协议 + 两个 agent，新增 `service.choice`、`serviceID`、`selectService`、按服务 id 的模型记忆与按账户的 Keychain 读写，`currentConfig` 带上预设的 `supportsJSONSchema`；[ModelClient.swift](../Owlet/LLM/ModelClient.swift) 的 `format` 改读 `ServiceConfig.supportsJSONSchema`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的服务 `Picker` 分为厂商预设与本地 agent 两节，选中一家即写入地址与模型；[translations.json](../strings/translations.json) 与 `Localizable.xcstrings` 增 9 条（262 → 271）；测试 441 → 449 项 / 49 个 suite（新增预设表、能力开关、地址与模型写入、按服务记忆与旧键迁移）。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：所有真实厂商的 Base URL、默认模型与 `jsonschema` 能力都只按各家公开文档核对，本机没有这些 Key，没有端到端调用；设置页的实际观感与选择行为需人跑 `mise run dev` 代验。

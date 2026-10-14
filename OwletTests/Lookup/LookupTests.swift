@@ -168,7 +168,7 @@ func lookupReply(
         #expect(schema.name == "lookup")
 
         var deepSeek = testConfig
-        deepSeek.provider = .deepSeek
+        deepSeek.supportsJSONSchema = false
         let plain = try ModelClient().lookupRequest(bank, config: deepSeek)
         #expect(plain.format == .jsonObject)
     }

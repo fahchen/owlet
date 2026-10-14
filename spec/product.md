@@ -108,7 +108,7 @@
 
 ## 模型与数据设置
 
-- 用户自行填写 OpenAI 兼容接口的 Base URL、API Key、模型名。
+- 用户自行填写 OpenAI 兼容接口的 Base URL、API Key、模型名；也可以从服务商列表直接选一家（DeepSeek、Moonshot／Kimi、智谱 GLM、通义千问／DashScope、xAI、OpenRouter、Ollama、LM Studio），选中即替用户填好该服务公开的 Base URL 与默认模型，之后仍可修改；「OpenAI Compatible」入口保留，用于任意兼容服务。返回格式能力（JSON Schema 或 json_object）跟着所选服务走。见 [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md)。
 - API Key 存入 macOS 钥匙串。
 - 除 HTTP 服务外，用户可以把本机已登录的 agent CLI（Claude Code、Codex CLI）选为服务商：改为指定该 agent 的可执行文件，不需要 API Key，模型名可留空用 agent 自己的默认；两个 agent 都把模型名做成下拉、第一项就是它自己的默认模型——Codex 跑它自己的列举命令，Claude Code 读它为模型菜单缓存的本地目录，读不到时退回自由填写；两者的强度档位都按模型给。应用只借它取一次回答：工具、技能、MCP、项目上下文与会话落盘全部关闭，工作目录是一次性的空目录，用户原文只走标准输入，返回仍受同一份 JSON 契约与本地校验约束（见 [本机 agent 决策](settings/decisions/BDR-0013-local-agent-provider.md)）。
 - 翻译、润色分别支持自定义 System Prompt，显示完整默认内容，支持编辑、保存与恢复默认；翻译并替换复用翻译配置。

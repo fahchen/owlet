@@ -2,41 +2,23 @@ import Foundation
 import SwiftUI
 import Security
 
+/// How the app reaches a model over the wire: the OpenAI-compatible HTTP protocol, or one of the two
+/// local agent CLIs. Which *vendor* sits behind the HTTP protocol is `ServicePreset`, not this enum
+/// (BDR-0015).
 enum Provider: String, CaseIterable, Sendable {
-    case openAICompatible, deepSeek, claudeCode, codexCLI
+    case openAICompatible, claudeCode, codexCLI
 
     var title: LocalizedStringResource {
         switch self {
         case .openAICompatible: "OpenAI Compatible"
-        case .deepSeek: "DeepSeek"
         case .claudeCode: "Claude Code"
         case .codexCLI: "Codex CLI"
         }
     }
 
-    /// Base URL and default model filled in on selection; nil keeps free-form values.
-    var preset: (baseURL: String, model: String)? {
-        switch self {
-        case .openAICompatible: nil
-        case .deepSeek: ("https://api.deepseek.com", "deepseek-chat")
-        case .claudeCode, .codexCLI: nil
-        }
-    }
-
-    /// What the model name falls back to the first time this provider is chosen: its preset model, or
-    /// empty, which for a local agent is a real choice — the agent's own default. Read off `preset` so
-    /// the fallback and the preset cannot drift apart.
-    var defaultModel: String { preset?.model ?? "" }
-
-    /// Whether the app can hand this provider a response schema. DeepSeek only accepts `json_object`,
-    /// so for it the shape travels in the system prompt instead; the two agents that take a schema get
-    /// it on the command line (`--output-schema`, `--json-schema`).
-    var supportsJSONSchema: Bool {
-        switch self {
-        case .openAICompatible, .claudeCode, .codexCLI: true
-        case .deepSeek: false
-        }
-    }
+    /// The protocol's own default for a response schema: every path this enum names can carry one (the
+    /// agents get it on the command line). A vendor that cannot overrides it on its `ServicePreset`.
+    var supportsJSONSchema: Bool { true }
 
     /// OpenAI compatible keeps the pre-provider "default" account so existing keys still resolve.
     var keychainAccount: String { self == .openAICompatible ? "default" : rawValue }
@@ -44,7 +26,7 @@ enum Provider: String, CaseIterable, Sendable {
     /// The CLI this provider drives, or nil when the provider is an HTTP service.
     var localAgent: LocalAgentKind? {
         switch self {
-        case .openAICompatible, .deepSeek: nil
+        case .openAICompatible: nil
         case .claudeCode: .claudeCode
         case .codexCLI: .codexCLI
         }
@@ -82,6 +64,10 @@ struct ServiceConfig: Sendable, Equatable {
     var apiKey: String
     var provider: Provider = .openAICompatible
     var effort: EffortLevel = .off
+    /// Whether the chosen service can be handed a response schema. A vendor preset carries its own
+    /// answer; nil keeps the wire protocol's default, which is what the custom entry and the two local
+    /// agents use (BDR-0015 §3). `ModelClient` reads this to pick `.jsonSchema` or `.jsonObject`.
+    var supportsJSONSchema: Bool? = nil
     /// What the provider said the chosen model accepts, when it said anything (BDR-0013 §9). The
     /// effort switch takes the nearest lower level here, and sends nothing when the list is empty.
     var supportedEfforts: [EffortLevel]? = nil
@@ -97,6 +83,9 @@ struct ServiceConfig: Sendable, Equatable {
 
 enum SettingsStore {
     static let providerKey = "service.provider"
+    /// The chosen service: a vendor preset id, or a local agent's raw value (BDR-0015 §5). `providerKey`
+    /// is no longer written and is read only as the pre-preset fallback.
+    static let serviceChoiceKey = "service.choice"
     static let baseURLKey = "service.baseURL"
     static let modelKey = "service.model"
     static let targetLanguageKey = "translation.targetLanguage"
@@ -112,7 +101,8 @@ enum SettingsStore {
     /// The same, against a chosen store, so a test never reads the developer's own settings. The API
     /// key still comes from the Keychain: a local agent has none, which is the only case a test needs.
     static func currentConfig(in defaults: UserDefaults) -> ServiceConfig? {
-        let provider = defaults.string(forKey: providerKey).flatMap(Provider.init) ?? .openAICompatible
+        let choice = choice(in: defaults)
+        let provider = choice.provider
         let model = defaults.string(forKey: modelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
         if provider.isLocalAgent {
             guard let path = agentPath(for: provider, in: defaults),
@@ -129,31 +119,71 @@ enum SettingsStore {
             let base = defaults.string(forKey: baseURLKey)?.trimmingCharacters(in: .whitespaces),
             let url = URL(string: base), url.scheme != nil,
             !model.isEmpty,
-            let key = apiKey(for: provider), !key.isEmpty
+            let account = choice.keychainAccount,
+            let key = apiKey(account: account), !key.isEmpty
         else { return nil }
         return ServiceConfig(
-            baseURL: url, model: model, apiKey: key, provider: provider, effort: effort())
+            baseURL: url, model: model, apiKey: key, provider: provider, effort: effort(),
+            supportsJSONSchema: choice.preset?.supportsJSONSchema)
     }
 
-    /// The model name each provider last used, so switching away and back restores what was there
-    /// instead of starting over. Kept per provider for the same reason as the executable path.
-    static func rememberedModelKey(for provider: Provider) -> String {
-        "service.model.\(provider.rawValue)"
+    /// The chosen service's id. A store written before presets existed names the same services under
+    /// `service.provider`, whose values are all valid ids, so that key is the fallback.
+    static func serviceID(in defaults: UserDefaults = .standard) -> String {
+        if let stored = defaults.string(forKey: serviceChoiceKey),
+            ServiceChoice.choice(id: stored) != nil
+        {
+            return stored
+        }
+        if let legacy = defaults.string(forKey: providerKey),
+            ServiceChoice.choice(id: legacy) != nil
+        {
+            return legacy
+        }
+        return ServicePreset.customID
     }
 
-    /// What one provider remembers; nil means it has never been chosen, and `Provider.defaultModel`
+    static func choice(in defaults: UserDefaults = .standard) -> ServiceChoice {
+        ServiceChoice.choice(id: serviceID(in: defaults)) ?? .preset(.custom)
+    }
+
+    /// Chooses a service and returns the model name to show. The outgoing service keeps the text typed
+    /// for it; a vendor preset also writes its published address, and its model comes from this
+    /// service's slot or the preset's default. A local agent has no address, so only the choice and the
+    /// model name are written.
+    @discardableResult
+    static func selectService(
+        _ id: String, currentModel: String, in defaults: UserDefaults = .standard
+    ) -> String {
+        setModel(currentModel, forService: serviceID(in: defaults), in: defaults)
+        guard let choice = ServiceChoice.choice(id: id) else { return currentModel }
+        defaults.set(id, forKey: serviceChoiceKey)
+        if let baseURL = choice.preset?.baseURL { defaults.set(baseURL, forKey: baseURLKey) }
+        let resolved = model(forService: id, in: defaults) ?? choice.defaultModel
+        defaults.set(resolved, forKey: modelKey)
+        return resolved
+    }
+
+    /// The model name each service last used, so switching away and back restores what was there
+    /// instead of starting over. Kept per preset rather than per protocol: Moonshot, GLM and DeepSeek
+    /// are all `openAICompatible`, and one shared slot would carry `glm-5.3` over to Moonshot. The ids
+    /// an older install wrote under `service.model.<provider>` stay valid because a vendor's id equals
+    /// the provider name it used to have.
+    static func rememberedModelKey(forService id: String) -> String { "service.model.\(id)" }
+
+    /// What one service remembers; nil means it has never been chosen, and `ServiceChoice.defaultModel`
     /// then applies. An empty string is a remembered choice: a local agent's own default model.
-    static func model(for provider: Provider, in defaults: UserDefaults = .standard) -> String? {
-        defaults.string(forKey: rememberedModelKey(for: provider))
+    static func model(forService id: String, in defaults: UserDefaults = .standard) -> String? {
+        defaults.string(forKey: rememberedModelKey(forService: id))
     }
 
     static func setModel(
-        _ model: String?, for provider: Provider, in defaults: UserDefaults = .standard
+        _ model: String?, forService id: String, in defaults: UserDefaults = .standard
     ) {
         if let model {
-            defaults.set(model, forKey: rememberedModelKey(for: provider))
+            defaults.set(model, forKey: rememberedModelKey(forService: id))
         } else {
-            defaults.removeObject(forKey: rememberedModelKey(for: provider))
+            defaults.removeObject(forKey: rememberedModelKey(forService: id))
         }
     }
 
@@ -253,8 +283,10 @@ enum SettingsStore {
         defaults.set(table, forKey: agentOverridesKey)
     }
 
-    static func apiKey(for provider: Provider) -> String? {
-        var query = baseQuery(provider)
+    /// One service's key, by the account its preset names. Which account a service uses is a property of
+    /// the preset (BDR-0015 §5), so the caller never has to guess a persistence detail.
+    static func apiKey(account: String) -> String? {
+        var query = baseQuery(account: account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
@@ -265,19 +297,19 @@ enum SettingsStore {
     }
 
     @discardableResult
-    static func setAPIKey(_ key: String, for provider: Provider) -> Bool {
-        SecItemDelete(baseQuery(provider) as CFDictionary)
+    static func setAPIKey(_ key: String, account: String) -> Bool {
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
         guard !key.isEmpty else { return true }
-        var query = baseQuery(provider)
+        var query = baseQuery(account: account)
         query[kSecValueData as String] = Data(key.utf8)
         return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
     }
 
-    private static func baseQuery(_ provider: Provider) -> [String: Any] {
+    private static func baseQuery(account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: provider.keychainAccount,
+            kSecAttrAccount as String: account,
         ]
     }
 }

@@ -8,7 +8,9 @@ struct ModelSettingsPane: View {
     /// One-shot request from the panel's contract-error entry; it belongs to the prompt editors, which
     /// live on this pane.
     @Binding var promptFocus: Operation?
-    @AppStorage(SettingsStore.providerKey) private var provider = Provider.openAICompatible
+    /// The chosen service's id: a vendor preset id or a local agent's raw value. Seeded from the store
+    /// on appear and written back through `select`, because choosing a vendor also writes its address.
+    @State private var serviceID = ServicePreset.customID
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
     @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.off
@@ -40,14 +42,20 @@ struct ModelSettingsPane: View {
         case failed(String)
     }
 
+    /// The chosen service, resolved from what is persisted. An unknown id falls back to 自定义 rather
+    /// than leaving the pane without a selection.
+    private var choice: ServiceChoice { ServiceChoice.choice(id: serviceID) ?? .preset(.custom) }
+    private var provider: Provider { choice.provider }
+    private var preset: ServicePreset? { choice.preset }
+
     var body: some View {
         Form {
             Section {
-                Picker(L10n.shared.string("Provider"), selection: $provider) {
+                Picker(L10n.shared.string("Provider"), selection: serviceSelection) {
                     // Two sections, so the menu separates the remote services from the local agents. An
                     // empty group is left out rather than showing a separator with nothing under it.
                     Section {
-                        ForEach(remoteProviders, id: \.self) { providerRow($0) }
+                        ForEach(ServicePreset.all) { presetRow($0) }
                     }
                     if !agentProviders.isEmpty {
                         Section {
@@ -88,7 +96,10 @@ struct ModelSettingsPane: View {
         }
         .formStyle(.grouped)
         .onAppear {
-            apiKey = SettingsStore.apiKey(for: provider) ?? ""
+            // The store resolves a value written before presets existed into today's service id, so an
+            // older install opens on the same service, key and capability it had.
+            serviceID = SettingsStore.serviceID()
+            apiKey = currentAPIKey
             agentExecutable = SettingsStore.agentPath(for: provider) ?? ""
             loadModels()
         }
@@ -97,23 +108,43 @@ struct ModelSettingsPane: View {
         // Leaving the pane or closing the window also ends the edit, so a key typed and left alone
         // is not lost.
         .onDisappear(perform: commitKey)
-        // A different provider is a different key, its own preset, its own executable and its own
-        // remembered model name.
-        .onChange(of: provider) { old, new in
-            model = Self.switchedModel(from: old, to: new, current: model)
-            if let preset = new.preset { baseURL = preset.baseURL }
-            apiKey = SettingsStore.apiKey(for: new) ?? ""
-            agentExecutable = SettingsStore.agentPath(for: new) ?? ""
-            agent = .idle
-            // Choosing an agent looks for it right away, so the row is filled in without pressing anything.
-            if new.isLocalAgent { Task { await look(adopt: false) } }
-            loadModels()
-        }
+    }
+
+    /// Choosing a service is not one persisted value: a vendor preset also writes its address, and the
+    /// model name is carried over from the service being left. So the picker writes through a setter
+    /// that runs the whole switch rather than binding straight to defaults.
+    private var serviceSelection: Binding<String> {
+        Binding(get: { serviceID }, set: { select($0) })
+    }
+
+    /// One service switch: the outgoing service keeps the model name typed for it, then the new one
+    /// brings its own address, key, executable and remembered model.
+    private func select(_ id: String) {
+        guard id != serviceID, let chosen = ServiceChoice.choice(id: id) else { return }
+        model = SettingsStore.selectService(id, currentModel: model)
+        serviceID = id
+        if let url = chosen.preset?.baseURL { baseURL = url }
+        apiKey = currentAPIKey
+        agentExecutable = chosen.isLocalAgent ? (SettingsStore.agentPath(for: chosen.provider) ?? "") : ""
+        agent = .idle
+        // Choosing an agent looks for it right away, so the row is filled in without pressing anything.
+        if chosen.isLocalAgent { Task { await look(adopt: false) } }
+        loadModels()
+    }
+
+    /// The key for the service now selected; a local agent has none.
+    private var currentAPIKey: String {
+        guard let account = choice.keychainAccount else { return "" }
+        return SettingsStore.apiKey(account: account) ?? ""
+    }
+
+    private func presetRow(_ preset: ServicePreset) -> some View {
+        Text(verbatim: L10n.shared.string(preset.title)).tag(preset.id)
     }
 
     private func providerRow(_ option: Provider) -> some View {
         Text(verbatim: Self.providerTitle(option, installed: installed, scanned: scanned))
-            .tag(option)
+            .tag(option.rawValue)
     }
 
     /// What a provider's row reads. A local agent the scan could not find is marked rather than hidden:
@@ -125,15 +156,10 @@ struct ModelSettingsPane: View {
         return L10n.shared.string("%@ (not detected)", title)
     }
 
-    /// The remote services, always offered.
-    private var remoteProviders: [Provider] { Provider.allCases.filter { !$0.isLocalAgent } }
-
     /// The local agents the list offers: every one of them, always. A machine whose shell configuration
     /// the app cannot guess must still be able to point it at a CLI by hand, so a not-detected agent is
     /// marked and selectable, never hidden (BDR-0013 §10).
-    static func offeredAgents() -> [Provider] {
-        Provider.allCases.filter(\.isLocalAgent)
-    }
+    static func offeredAgents() -> [Provider] { ServiceChoice.agents }
 
     private var agentProviders: [Provider] { Self.offeredAgents() }
 
@@ -259,7 +285,7 @@ struct ModelSettingsPane: View {
     }
 
     @ViewBuilder private var modelField: some View {
-        if provider == .deepSeek {
+        if listsRemoteModels {
             // The row keeps the same control whatever the list is doing, instead of turning the name
             // into a loading field.
             Picker(L10n.shared.string("Model Name"), selection: $model) {
@@ -276,6 +302,9 @@ struct ModelSettingsPane: View {
                 L10n.shared.string("Model Name"), text: $model, prompt: Text(modelPrompt))
         }
     }
+
+    /// Whether the chosen vendor's own `GET /models` turns the model field into a picker.
+    private var listsRemoteModels: Bool { (preset?.listsModels ?? false) && !provider.isLocalAgent }
 
     /// Whether the model name is a picker, from what the agent can offer and what the last read made of
     /// it. A command source always gets one: it answers on demand, so the saved name is a real option
@@ -321,17 +350,6 @@ struct ModelSettingsPane: View {
             ? options : [ModelOption(id: model)] + options
     }
 
-    /// What a provider switch leaves in the shared model field: the name the user had is remembered for
-    /// the provider it was typed for, then the new provider's remembered name takes its place — or its
-    /// default the first time round. It takes `old` explicitly because that is who the text belongs to,
-    /// and the pane's `provider` has already moved on by the time this runs.
-    static func switchedModel(
-        from old: Provider, to new: Provider, current: String, in defaults: UserDefaults = .standard
-    ) -> String {
-        SettingsStore.setModel(current, for: old, in: defaults)
-        return SettingsStore.model(for: new, in: defaults) ?? new.defaultModel
-    }
-
     /// What the selected agent model said it accepts, next to the model it belongs to (E2). The value
     /// sent is the nearest lower level in that list; a model that reasons not at all gets no parameter.
     @ViewBuilder private var effortSupport: some View {
@@ -373,16 +391,17 @@ struct ModelSettingsPane: View {
 
     /// Writes the key on leaving the field, then reads the model list the key unlocks.
     private func commitKey() {
-        SettingsStore.setAPIKey(apiKey, for: provider)
+        guard let account = choice.keychainAccount else { return }
+        SettingsStore.setAPIKey(apiKey, account: account)
         loadModels()
     }
 
-    /// Reads the list a provider can offer: DeepSeek's `GET /models` once a key is stored, or the list
-    /// the agent's own source gives once its executable is known. Providers with neither stay free-form.
+    /// Reads the list a service can offer: a vendor's `GET /models` once a key is stored, or the list
+    /// the agent's own source gives once its executable is known. Services with neither stay free-form.
     private func loadModels() {
-        if provider == .deepSeek {
-            guard let url = URL(string: baseURL), let key = SettingsStore.apiKey(for: provider),
-                !key.isEmpty
+        if listsRemoteModels {
+            guard let url = URL(string: baseURL), let account = choice.keychainAccount,
+                let key = SettingsStore.apiKey(account: account), !key.isEmpty
             else {
                 models = .idle
                 return

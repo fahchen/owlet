@@ -20,6 +20,10 @@
 - 屏幕区域 OCR 输入：见 [屏幕区域 OCR 输入方案](screen-region-input.md)。
 - 连续语音输入：见 [连续语音输入方案](speech-input.md)（本轮不做）。
 
+## 尚未进入产品定义的呈现提案
+
+- **模型返回的流式显示**：见 [流式显示方案](streaming-output.md)。只改「何时看见」，不改请求契约、本地校验与写回规则；设计已就绪并登记为 T74，是否实现取决于人对替换入口 UI 的决定（文档「决策」第 1 条）。
+
 查词第一步已交付浮窗结果的选区路径（选区工具栏、右键「查询所选」、Return、辅助功能动作，卡片、复用、重试与系统发音），见 [正式行为规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [意图记录](intent/word-lookup.md)。保留可编辑原文与学习行点击收藏，查询通过只读正文单击或选区工具栏／右键触发；跨句旧释义标明来源，不自动重查，也不写入生词本。五类区域均已接入；不计入已退役 `design/` 的截图状态、分区或提案数。
 
 其余旧状态：`empty` 已出图（[empty](../design/screenshots/empty.png)，展开面板中原文为空，`canRetry` 为假，头部无重新处理、动作行无按钮）；`direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` 是“翻译并直接替换”的紧凑提示，实现中由 `PanelController.Notice` 的对应分支覆盖，画面与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 逐像素相同，已随本次恢复出图；`success` 是“写回完成确认”，原生应用写回成功直接关闭浮窗，该画面保留旧布局但不再对应实现（原型未加徽标）；`settings-shortcuts` 是快捷键页的旧画面，现已由 `shortcuts-recording` 承载；`stale` 由 `unwritten` 承载。上表的提案画面均标注未实现，不改变实现现状。
@@ -39,6 +43,7 @@
 - **面板在首次成功后展开，之后一直保持展开；复制与写回成功则直接关闭。** `expanded` 在首次 `.success` 时置为 `true`，此后重新处理（`.loading`）、失败、取消都保留展开态，只是结果区按 `hasResultSection`（仅 `.loading`／`.success`）显示或隐藏；复制结果（`copyResult`）与写回成功关闭浮窗，不再停留确认（`empty` 对应展开后原文被清空的界面，[empty](../design/screenshots/empty.png)）。证据：`Owlet/App/Panel/PanelController.swift` 的 `translate()`、`copyResult`、`performReplace`。
 - **写回失败只有两种文案，共用同一个布局。** `inlineNotice` 在 `.success` 且 `writebackRefusal` 非空时返回它：粘贴确实没落到任何地方是 `Notice.unwritten`（"未能写回原应用"），选区可证明不能容纳文字是 `Notice.unwritable`（"原选区不可编辑"）。`ExpandedPanel` 渲染的是 `notice.message`，两个状态下布局相同、动作都是"复制结果"，因此设计图只出一张（`result-unwritten`／`unwritten`），文案变体不单独出图。
 - **本地 agent 作为模型服务已实现，但端到端仍待真实 agent 验收。** 服务商可选 Claude Code／Codex CLI，改看可执行文件而不是 API Key；请求与投递分成 `ModelRequest` 与 `ModelBackend` 两层（T63），请求仍走同一份 JSON 契约与本地校验，能约束形状的 agent 直接拿这份 Schema（Codex `--output-schema`、Claude Code `--json-schema`），失败归连接类并带上该 agent 自己的错误输出。应用侧有测试覆盖（配方、轮次与 Schema 投递、超时／取消／非零退出用 `/bin/sh` 与注入的假 runner，以及两个 agent 各自的模型清单来源与按模型强度），但**未验证**：两个 agent 在真实登录态下的译文质量与延迟、Claude Code 的 `--json-schema`（其周配额用尽）、各 CLI 后续版本对这批参数的兼容性；Claude Code 的模型清单读的是它自己缓存的 `~/.claude/cache/model-catalog/*-cc.json`，这**不是官方接口**（T66），只在写这份文档的机器上看过一份缓存，读不到时退回自由填写。证据：`Owlet/LLM/LocalAgent.swift`、`Owlet/LLM/ModelBackend.swift`、`Owlet/Settings/ModelSettingsPane.swift`、`Owlet/Settings/SettingsStore.swift`、[BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md)。
+- **HTTP 服务商预设已实现，但未在任何真实厂商上验证。** 服务商列表除自定义入口 `OpenAI Compatible` 外还有 DeepSeek、Moonshot／Kimi、智谱 GLM、通义千问／DashScope、xAI、OpenRouter、Ollama、LM Studio：选中即写入各家文档里的 Base URL 与默认模型，之后仍可编辑；返回格式能力改成跟着所选服务走（`ServiceConfig.supportsJSONSchema`），只有文档写明兼容 `response_format.json_schema`（含 `name`／`strict`／`schema`）的厂商才发 schema，其余发 `json_object` 把形状写在提示词里。**未验证**：所有 Base URL、默认模型与能力判断都只按各家公开文档核对，本机没有这些服务的 Key，没有端到端调用；默认模型名会随厂商改版失效，能力标记（Moonshot／Kimi、xAI 为 schema-capable，其余为 `json_object`）也只到「文档同构」这一层。证据：`Owlet/Settings/ServicePreset.swift`、`Owlet/Settings/SettingsStore.swift`、`Owlet/LLM/ModelClient.swift`、[BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)。
 
 ## T33 原生布局升级
 

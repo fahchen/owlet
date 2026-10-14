@@ -9,12 +9,21 @@ Feature: 把本机的 agent CLI 当作模型服务
       Then 设置页不再要求 Base URL 与 API Key
       And 翻译、润色、查词与学习都用它处理
 
-    Scenario: 服务商列表按本机情况给出
+    Scenario: 服务商列表始终列出全部本地 agent
       Given 用户在服务商列表里看到远程服务与本地 agent 两组
       When 本机没有安装某个 agent CLI
-      Then 该 agent 不出现在列表里
-      And 用户手动指定过路径的 agent 仍然出现
-      And 当前选中的 agent 即使已不可执行也保留在列表里
+      Then 该 agent 仍然出现在列表里，并标注未检测到
+      And 用户可以就地手动选择该 agent 的可执行文件
+      And 远程服务一组不受影响
+
+    Scenario: 查找按用户自己的 shell 进行，且不依赖应用启动时的环境
+      Given 应用从 Finder 启动，继承到的 PATH 只有系统最小集
+      When 应用查找某个 agent CLI
+      Then 它按用户登录 shell 的方式查找，并给该 shell 一个含标准安装目录的 PATH
+      And 登录 shell 找不到时，再按交互式登录 shell 查找一次，因为 .zshrc 只被交互式 shell 读取
+      And 两次 shell 都失败时，直接检查 ~/.local/bin、~/.claude/local、/opt/homebrew/bin、/usr/local/bin 等常见位置
+      And 查找结果不依赖应用自身被启动时的 PATH
+      And 直查只枚举已知目录，不遍历整个用户目录
 
     Scenario: 切到本地 agent 时主动扫描
       Given 本机已安装某个 agent CLI 且用户没有为它指定过路径
@@ -30,8 +39,8 @@ Feature: 把本机的 agent CLI 当作模型服务
 
     Scenario: 路径由探测或手选得到
       When 用户点「检测」
-      Then 应用在登录 shell 的 PATH 里查找该 agent 并显示探测到的版本
-      And 探测失败时就地说明原因，不改动已保存的路径
+      Then 应用按用户登录 shell 的方式查找该 agent 并显示探测到的版本
+      And 探测失败时就地说明原因并提示可以手动选择，不改动已保存的路径
       And 用户手选的路径不被扫描结果覆盖，除非它已不可执行
 
     Scenario: 切换服务商时不留上一个服务的模型名

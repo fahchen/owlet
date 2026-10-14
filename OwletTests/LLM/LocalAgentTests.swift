@@ -556,6 +556,182 @@ struct LocalAgentTests {
         #expect(LocalAgent.claudeCatalog(in: directory).isEmpty)
     }
 
+    // MARK: - Looking an agent up
+
+    /// The `PATH` a Finder-launched app has: no package manager, no per-user bin.
+    let minimalPATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+
+    /// The environment a lookup runs with keeps what the app already had and appends the standard
+    /// directories, once each. This is the single list the login shell, the agent process and the
+    /// shell-free fallback all read (BDR-0013 §10).
+    @Test func theLookupEnvironmentAddsTheStandardDirectories() throws {
+        let base = ["PATH": minimalPATH, "HOME": "/Users/test"]
+        let directories = AgentEnvironment.fallbackDirectories(home: "/Users/test")
+        let environment = AgentEnvironment.lookupEnvironment(base: base, directories: directories)
+        let path = try #require(environment["PATH"])
+
+        #expect(path.hasPrefix(minimalPATH + ":"))
+        let entries = path.split(separator: ":").map(String.init)
+        for directory in [
+            "/Users/test/.local/bin", "/Users/test/.claude/local", "/Users/test/.local/share/mise/shims",
+            "/Users/test/.asdf/shims", "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin",
+            "/usr/local/sbin",
+        ] {
+            #expect(entries.contains(directory), "missing \(directory)")
+        }
+        // The app's own entry is kept, even though the standard list names `/usr/bin` and `/bin` too.
+        #expect(entries.first == "/usr/bin")
+        #expect(Set(entries).count == entries.count)
+    }
+
+    /// nvm keeps each Node version under its own directory, so the `bin` of every installed version is
+    /// enumerated from that one root — never the home directory as a whole.
+    @Test func theDirectLookupEnumeratesNvmVersionBins() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appending(path: "owlet-nvm-tests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: home) }
+        let root = home.appending(path: ".nvm/versions/node")
+        for version in ["v22.1.0", "v20.3.0"] {
+            try FileManager.default.createDirectory(
+                at: root.appending(path: version).appending(path: "bin"),
+                withIntermediateDirectories: true)
+        }
+        let directories = AgentEnvironment.directLookupDirectories(home: home.path)
+        #expect(directories.contains(root.appending(path: "v20.3.0").appending(path: "bin").path))
+        #expect(directories.contains(root.appending(path: "v22.1.0").appending(path: "bin").path))
+        // A home with no nvm is just the standard list, not a failure.
+        #expect(
+            AgentEnvironment.directLookupDirectories(home: "/nowhere/owlet-home")
+                == AgentEnvironment.fallbackDirectories(home: "/nowhere/owlet-home"))
+    }
+
+    /// The first well-known location that has the executable wins, whatever later ones hold.
+    @Test func theDirectLookupTakesTheFirstExecutableInOrder() {
+        let directories = ["/a/bin", "/b/bin", "/c/bin"]
+        #expect(
+            LocalAgent.directExecutable(
+                named: "claude", directories: directories,
+                isExecutable: { $0 == "/b/bin/claude" || $0 == "/c/bin/claude" })?
+                .path == "/b/bin/claude")
+        #expect(
+            LocalAgent.directExecutable(
+                named: "claude", directories: directories, isExecutable: { _ in false }) == nil)
+    }
+
+    /// The measured failure: the app's own minimal `PATH` cannot see a per-user install, and the login
+    /// shell run with it answers nothing. Given the lookup environment, the same probe succeeds.
+    @Test func aProbeThatFailsOnTheAppsOwnPathSucceedsWithTheLookupEnvironment() async throws {
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { ["/opt/homebrew/bin", "/Users/test/.local/bin"] },
+            isExecutable: { $0 == "/Users/test/.local/bin/claude" },
+            run: { _, environment in
+                let path = environment["PATH"] ?? ""
+                let entries = path.split(separator: ":").map(String.init)
+                guard entries.contains("/Users/test/.local/bin") else {
+                    return (status: 1, stdout: "", stderr: "")
+                }
+                return (status: 0, stdout: "/Users/test/.local/bin/claude\n", stderr: "")
+            })
+        let found = try #require(await LocalAgent.locate(.claudeCode, lookup: lookup))
+        #expect(found.path == "/Users/test/.local/bin/claude")
+    }
+
+    /// A machine that answers with `zsh -lc` must not pay for the interactive shell, which is slower and
+    /// can print a banner.
+    @Test func theInteractiveShellIsOnlyAskedWhenTheLoginShellFails() async {
+        let seen = Invocations()
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { [] },
+            isExecutable: { $0 == "/pkg/bin/claude" },
+            run: { invocation, _ in
+                seen.add(invocation)
+                return (status: 0, stdout: "/pkg/bin/claude\n", stderr: "")
+            })
+        #expect(await LocalAgent.locate(.claudeCode, lookup: lookup)?.path == "/pkg/bin/claude")
+        #expect(seen.all.map(\.arguments.first) == ["-lc"])
+    }
+
+    /// `~/.local/bin` added only in `~/.zshrc` is invisible to `zsh -lc`, which reads `.zprofile` but
+    /// never `.zshrc`. The interactive login shell is the second ask, and its output is read from the
+    /// last non-empty line because an rc file may print a banner first (BDR-0013 §10).
+    @Test func theInteractiveShellFindsWhatOnlyZshrcAdds() async {
+        let seen = Invocations()
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { [] },
+            isExecutable: { $0 == "/Users/test/.local/bin/claude" },
+            run: { invocation, _ in
+                seen.add(invocation)
+                guard invocation.arguments.first == "-ilc" else {
+                    return (status: 1, stdout: "", stderr: "")
+                }
+                return (status: 0, stdout: "welcome back\n/Users/test/.local/bin/claude\n", stderr: "")
+            })
+        let found = await LocalAgent.locate(.claudeCode, lookup: lookup)
+        #expect(found?.path == "/Users/test/.local/bin/claude")
+        #expect(seen.all.map(\.arguments.first) == ["-lc", "-ilc"])
+        #expect(LocalAgent.lastNonEmptyLine("  \n a \n /b/c \n") == "/b/c")
+        #expect(LocalAgent.lastNonEmptyLine(" \n ") == nil)
+    }
+
+    /// Both shells failing is not the end: the well-known locations are checked directly, so detection
+    /// no longer depends on the user's shell configuration at all.
+    @Test func theDirectLookupFindsWhatBothShellsMiss() async {
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { ["/opt/homebrew/bin", "/Users/test/.local/bin"] },
+            isExecutable: { $0 == "/Users/test/.local/bin/codex" },
+            run: { _, _ in (status: 1, stdout: "", stderr: "") })
+        #expect(
+            await LocalAgent.locate(.codexCLI, lookup: lookup)?.path == "/Users/test/.local/bin/codex")
+    }
+
+    /// The version probe is an agent process too, so it gets the lookup environment: a CLI that is a
+    /// `#!/usr/bin/env node` script cannot start without the directory its interpreter lives in.
+    @Test func theVersionProbeRunsWithTheLookupEnvironment() async {
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { ["/Users/test/.local/bin"] },
+            isExecutable: { $0 == "/Users/test/.local/bin/claude" },
+            run: { invocation, environment in
+                guard invocation.arguments.first != "-lc" else {
+                    return (status: 0, stdout: "/Users/test/.local/bin/claude\n", stderr: "")
+                }
+                let path = environment["PATH"] ?? ""
+                return path.contains("/Users/test/.local/bin")
+                    ? (status: 0, stdout: "2.1.299 (Claude Code)\n", stderr: "")
+                    : (status: 1, stdout: "", stderr: "no node")
+            })
+        let detection = await LocalAgent.detect(.claudeCode, lookup: lookup)
+        #expect(
+            detection
+                == .found(
+                    executable: URL(fileURLWithPath: "/Users/test/.local/bin/claude"),
+                    version: "2.1.299 (Claude Code)"))
+    }
+
+    /// A machine with no trace of the CLI still gets a detection result, and that result tells the user
+    /// the executable can be chosen by hand — the escape hatch the pane offers next to it. The expected
+    /// text is the same lookup the app does, so the assertion does not depend on the run's language.
+    @Test func aMissingAgentSaysItCanBeChosenByHand() async {
+        let lookup = AgentLookup(
+            baseEnvironment: { ["PATH": minimalPATH] },
+            directories: { [] },
+            isExecutable: { _ in false },
+            run: { _, _ in (status: 1, stdout: "", stderr: "") })
+        guard case .failed(let message) = await LocalAgent.detect(.claudeCode, lookup: lookup) else {
+            Issue.record("a machine without the CLI must fail the detection")
+            return
+        }
+        #expect(
+            message
+                == L10n.shared.string(
+                    "%@ was not found. Choose its executable by hand, or install it and press Detect.",
+                    "claude"))
+    }
+
     // MARK: - Effort
 
     /// The names the CLIs use for a level, mapped to the app's own; a name no CLI uses is rejected

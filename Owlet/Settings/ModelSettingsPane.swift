@@ -112,25 +112,30 @@ struct ModelSettingsPane: View {
     }
 
     private func providerRow(_ option: Provider) -> some View {
-        Text(verbatim: L10n.shared.string(option.title.key)).tag(option)
+        Text(verbatim: Self.providerTitle(option, installed: installed, scanned: scanned))
+            .tag(option)
+    }
+
+    /// What a provider's row reads. A local agent the scan could not find is marked rather than hidden:
+    /// the user can only point the app at a CLI by hand if the agent is still in the list
+    /// (BDR-0013 §10).
+    static func providerTitle(_ option: Provider, installed: Set<Provider>, scanned: Bool) -> String {
+        let title = L10n.shared.string(option.title.key)
+        guard option.isLocalAgent, scanned, !installed.contains(option) else { return title }
+        return L10n.shared.string("%@ (not detected)", title)
     }
 
     /// The remote services, always offered.
     private var remoteProviders: [Provider] { Provider.allCases.filter { !$0.isLocalAgent } }
 
-    /// The agents this machine has. Until the first scan answers, all of them are listed so the menu does
-    /// not grow under the pointer; afterwards an agent that is not installed is gone. A path the user
-    /// chose by hand keeps its agent available even when the login shell cannot find it, and the current
-    /// choice stays visible even when its CLI has been removed, so the user sees what is wrong instead of
-    /// a blank row.
-    private var agentProviders: [Provider] {
-        Provider.allCases.filter { candidate in
-            guard candidate.isLocalAgent else { return false }
-            if !scanned || installed.contains(candidate) || candidate == provider { return true }
-            guard let saved = SettingsStore.agentPath(for: candidate) else { return false }
-            return FileManager.default.isExecutableFile(atPath: saved)
-        }
+    /// The local agents the list offers: every one of them, always. A machine whose shell configuration
+    /// the app cannot guess must still be able to point it at a CLI by hand, so a not-detected agent is
+    /// marked and selectable, never hidden (BDR-0013 §10).
+    static func offeredAgents() -> [Provider] {
+        Provider.allCases.filter(\.isLocalAgent)
     }
+
+    private var agentProviders: [Provider] { Self.offeredAgents() }
 
     /// The local agent's own rows: where its executable is, a way to find one, and its version.
     @ViewBuilder private var agentRows: some View {
@@ -202,7 +207,10 @@ struct ModelSettingsPane: View {
         switch await LocalAgent.detect(kind) {
         case .found(let executable, let version):
             let saved = SettingsStore.agentPath(for: provider)
-            if adopt || saved == nil || !FileManager.default.isExecutableFile(atPath: saved ?? "") {
+            if Self.adoptsFoundPath(
+                adopt: adopt, saved: saved,
+                isExecutable: { FileManager.default.isExecutableFile(atPath: $0) })
+            {
                 agentExecutable = executable.path
                 SettingsStore.setAgentPath(executable.path, for: provider)
             }
@@ -214,6 +222,12 @@ struct ModelSettingsPane: View {
         }
         // The model list comes from the executable, so it is read once that is known.
         loadModels()
+    }
+
+    /// Whether a lookup's answer may replace the saved path. A path the user chose by hand is theirs:
+    /// only an absent or no-longer-runnable one is replaced (BDR-0013 §8).
+    static func adoptsFoundPath(adopt: Bool, saved: String?, isExecutable: (String) -> Bool) -> Bool {
+        adopt || saved == nil || !isExecutable(saved ?? "")
     }
 
     /// Caches what this CLI version has and accepts, so a request never sends a `--disable` name it
@@ -239,6 +253,8 @@ struct ModelSettingsPane: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         agentExecutable = url.path
         SettingsStore.setAgentPath(url.path, for: provider)
+        // The user has just said where the CLI is, so the row no longer reads as "not detected".
+        installed.insert(provider)
         agent = .idle
     }
 

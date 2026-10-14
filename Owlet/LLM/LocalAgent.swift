@@ -675,42 +675,106 @@ extension LocalAgent {
     }
 }
 
+/// Everything a lookup touches outside itself, so a detection test never runs a real login shell and
+/// never walks the developer's home directory (BDR-0013 §10).
+struct AgentLookup: Sendable {
+    /// The environment the app was launched with. A Finder launch carries only
+    /// `/usr/bin:/bin:/usr/sbin:/sbin`, so a lookup never passes it to a child unchanged.
+    var baseEnvironment: @Sendable () -> [String: String]
+    /// The directories a lookup adds to `PATH`, in order. The list itself lives in `AgentEnvironment`;
+    /// this seam only lets a test substitute its own.
+    var directories: @Sendable () -> [String]
+    /// Whether a path may be run.
+    var isExecutable: @Sendable (String) -> Bool
+    /// Runs one process and returns what it wrote. The live one is the app's own process runner.
+    var run:
+        @Sendable (LocalAgentInvocation, [String: String]) async throws -> (
+            status: Int32, stdout: String, stderr: String
+        )
+
+    static let live = AgentLookup(
+        baseEnvironment: { ProcessInfo.processInfo.environment },
+        directories: { AgentEnvironment.directLookupDirectories() },
+        isExecutable: { FileManager.default.isExecutableFile(atPath: $0) },
+        run: { try await LocalAgent.runProcess($0, environment: $1) })
+}
+
 extension LocalAgent {
     /// The executable the user's login shell would run for this agent, or nil when this machine has
     /// none. It asks the CLI nothing, because the settings pane scans with it every time it opens.
-    static func locate(_ kind: LocalAgentKind) async -> URL? {
-        let invocation = LocalAgentInvocation(
-            executable: URL(fileURLWithPath: "/bin/zsh"),
-            arguments: ["-lc", "command -v \(kind.executableName)"], stdin: "",
-            directory: temporaryDirectory(), systemPrompt: "",
-            answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
-        let output = try? await withPreparedDirectory(invocation) {
-            try await runProcess($0, environment: ProcessInfo.processInfo.environment)
+    ///
+    /// Three attempts, in order, because a GUI app cannot inherit the `PATH` a person's terminal has:
+    ///
+    /// 1. The login shell, given a `PATH` that already carries the standard install directories. A shell
+    ///    started from the app's minimal environment can fail before it ever adds `~/.local/bin`, so it
+    ///    must not be asked to rebuild one from nothing (BDR-0013 §10).
+    /// 2. The same login shell as an *interactive* one. `~/.zshrc` is read only by interactive shells,
+    ///    and on the machine this fix came from `export PATH="$HOME/.local/bin:$PATH"` lives there — so
+    ///    `zsh -lc` never sees it. This runs only when the first attempt failed, so a machine that
+    ///    already answers does not pay for it.
+    /// 3. The well-known locations, checked directly. This is what makes detection independent of the
+    ///    user's shell configuration altogether.
+    static func locate(_ kind: LocalAgentKind, lookup: AgentLookup = .live) async -> URL? {
+        let directories = lookup.directories()
+        let environment = AgentEnvironment.lookupEnvironment(
+            base: lookup.baseEnvironment(), directories: directories)
+        for flag in ["-lc", "-ilc"] {
+            let invocation = LocalAgentInvocation(
+                executable: URL(fileURLWithPath: "/bin/zsh"),
+                arguments: [flag, "command -v \(kind.executableName)"], stdin: "",
+                directory: temporaryDirectory(), systemPrompt: "",
+                answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
+            if let output = try? await lookup.run(invocation, environment), output.status == 0,
+                let path = lastNonEmptyLine(output.stdout), lookup.isExecutable(path)
+            {
+                return URL(fileURLWithPath: path)
+            }
         }
-        guard let output, output.status == 0 else { return nil }
-        let path = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) else { return nil }
-        return URL(fileURLWithPath: path)
+        return directExecutable(
+            named: kind.executableName, directories: directories, isExecutable: lookup.isExecutable)
+    }
+
+    /// The first well-known location that holds this executable, or nil when none does. Pure, so the
+    /// fallback order is assertable without a file system.
+    static func directExecutable(
+        named name: String, directories: [String], isExecutable: (String) -> Bool
+    ) -> URL? {
+        for directory in directories {
+            let path = URL(fileURLWithPath: directory).appending(path: name).path
+            if isExecutable(path) { return URL(fileURLWithPath: path) }
+        }
+        return nil
+    }
+
+    /// The answer at the end of a shell's output. An interactive shell may print a banner, a warning or
+    /// a prompt before what was asked for, so the lookup takes the last non-empty line rather than
+    /// assuming the whole of standard output is the path.
+    static func lastNonEmptyLine(_ text: String) -> String? {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .last { !$0.isEmpty }
     }
 
     /// Looks the agent up the way the user's login shell would, then asks it for its version. A GUI app
     /// cannot find these CLIs by itself, and the version is what tells a later failure apart from a
     /// parameter this release of the CLI no longer accepts.
-    static func detect(_ kind: LocalAgentKind) async -> AgentDetection {
-        let environment = ProcessInfo.processInfo.environment
-        guard let executable = await locate(kind) else {
+    static func detect(_ kind: LocalAgentKind, lookup: AgentLookup = .live) async -> AgentDetection {
+        let environment = AgentEnvironment.lookupEnvironment(
+            base: lookup.baseEnvironment(), directories: lookup.directories())
+        guard let executable = await locate(kind, lookup: lookup) else {
+            // The agent is never hidden: the settings pane lists it anyway and offers the file chooser,
+            // so the message has to point at choosing the executable by hand.
             return .failed(
                 L10n.shared.string(
-                    "%@ was not found on the login shell's PATH.", kind.executableName))
+                    "%@ was not found. Choose its executable by hand, or install it and press Detect.",
+                    kind.executableName))
         }
         let version = LocalAgentInvocation(
             executable: executable, arguments: ["--version"], stdin: "",
             directory: temporaryDirectory(), systemPrompt: "",
             answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(20))
         do {
-            let reported = try await withPreparedDirectory(version) {
-                try await runProcess($0, environment: environment)
-            }
+            let reported = try await lookup.run(version, environment)
             guard reported.status == 0 else { return .failed(tail(reported.stderr)) }
             let line = reported.stdout.split(separator: "\n").first.map(String.init) ?? ""
             return .found(executable: executable, version: line)
@@ -766,10 +830,8 @@ actor AgentEnvironment {
 
     func value(for executable: URL) async -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
-        let directories =
-            [executable.deletingLastPathComponent().path, await loginShellPATH()]
-            + Self.fallbackDirectories
-        environment["PATH"] = directories.filter { !$0.isEmpty }.joined(separator: ":")
+        let directories = [executable.deletingLastPathComponent().path, await loginShellPATH()]
+        environment["PATH"] = Self.mergedPATH(directories + Self.machineFallbackDirectories)
         // A CLI that decides to draw colour codes would write them into the answer it returns.
         environment["NO_COLOR"] = "1"
         environment["TERM"] = "dumb"
@@ -778,26 +840,92 @@ actor AgentEnvironment {
 
     /// What the user's login shell resolves, asked once: the answer cannot change while the app runs,
     /// and asking per request would add a shell spawn to every translation.
+    ///
+    /// The shell is started with the standard directories already on `PATH`. Started from the app's
+    /// minimal environment instead, its own profile can fail before it ever adds `~/.local/bin` — the
+    /// measured failure this lookup exists to avoid (BDR-0013 §10).
     private func loginShellPATH() async -> String {
         if let resolved { return resolved }
         let invocation = LocalAgentInvocation(
             executable: URL(fileURLWithPath: "/bin/zsh"), arguments: ["-lc", "printf %s \"$PATH\""],
             stdin: "", directory: LocalAgent.temporaryDirectory(), systemPrompt: "",
             answersToFile: false, schema: nil, writesSchemaFile: false, timeout: .seconds(10))
+        let environment = Self.lookupEnvironment(
+            base: ProcessInfo.processInfo.environment, directories: Self.machineFallbackDirectories)
         let output = try? await LocalAgent.withPreparedDirectory(invocation) {
-            try await LocalAgent.runProcess($0, environment: ProcessInfo.processInfo.environment)
+            try await LocalAgent.runProcess($0, environment: environment)
         }
         let path = (output?.stdout ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         resolved = path
         return path
     }
 
-    /// Enough for a standard install when the shell lookup fails: the two Homebrew prefixes and the
-    /// per-user bin directory cover the usual ways these CLIs are installed.
-    private static let fallbackDirectories = [
-        "/opt/homebrew/bin", "/usr/local/bin", NSHomeDirectory() + "/.local/bin", "/usr/bin", "/bin",
-        "/usr/sbin", "/sbin",
-    ]
+    /// The `PATH` a lookup runs with: whatever the app already had, then the standard install
+    /// directories. Also the environment an agent process starts from, so a CLI's own
+    /// `#!/usr/bin/env node` resolves even though a Finder launch never saw a package manager.
+    static func lookupEnvironment(base: [String: String], directories: [String]) -> [String: String] {
+        var environment = base
+        environment["PATH"] = mergedPATH([base["PATH"] ?? ""] + directories)
+        environment["NO_COLOR"] = "1"
+        environment["TERM"] = "dumb"
+        return environment
+    }
+
+    /// The entries of `sources` joined with colons, first occurrence wins and empty entries dropped, so
+    /// a directory appears once however many of the lists below name it.
+    static func mergedPATH(_ sources: [String]) -> String {
+        var seen = Set<String>()
+        var entries: [String] = []
+        for source in sources {
+            for entry in source.split(separator: ":") {
+                let path = String(entry)
+                guard !path.isEmpty, seen.insert(path).inserted else { continue }
+                entries.append(path)
+            }
+        }
+        return entries.joined(separator: ":")
+    }
+
+    /// The standard locations these CLIs are installed in, in lookup order. **The single source of
+    /// truth**: the login shell's `PATH`, the agent process's `PATH` and the shell-free fallback all
+    /// read this one list. Per-user directories come first because a user install is what a Finder
+    /// launch is most likely to miss.
+    static func fallbackDirectories(home: String) -> [String] {
+        [
+            "\(home)/.local/bin",
+            "\(home)/.claude/local",
+            "\(home)/.local/share/mise/shims",
+            "\(home)/.asdf/shims",
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin",
+        ]
+    }
+
+    /// `fallbackDirectories` for this machine.
+    static var machineFallbackDirectories: [String] {
+        fallbackDirectories(home: NSHomeDirectory())
+    }
+
+    /// The directories a direct lookup checks, in order: the standard locations plus the `bin` of every
+    /// Node version nvm has installed. Only a known root is enumerated, never the home directory as a
+    /// whole, and an absent root is simply no directory.
+    static func directLookupDirectories(
+        home: String = NSHomeDirectory(), fileManager: FileManager = .default
+    ) -> [String] {
+        fallbackDirectories(home: home) + nodeBinDirectories(home: home, fileManager: fileManager)
+    }
+
+    private static func nodeBinDirectories(home: String, fileManager: FileManager) -> [String] {
+        let root = URL(fileURLWithPath: home).appending(path: ".nvm/versions/node")
+        guard let names = try? fileManager.contentsOfDirectory(atPath: root.path) else { return [] }
+        return names.sorted().map { root.appending(path: $0).appending(path: "bin").path }
+    }
 }
 
 /// One started process, shared by the waiting task, the timeout and the cancellation handler.

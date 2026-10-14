@@ -76,6 +76,44 @@ struct ServiceModelOptionsTests {
     let suite = "ServiceModelOptionsTests.\(UUID().uuidString)"
     var defaults: UserDefaults { UserDefaults(suiteName: suite)! }
 
+    /// A local agent the scan cannot find is marked, never hidden: the file chooser is the only way back
+    /// for a machine whose shell configuration the app cannot guess, and the user can only choose what
+    /// the list still shows (BDR-0013 §10). Expected text is the same lookup the app does, so the
+    /// assertion does not depend on the run's language.
+    @Test func everyLocalAgentIsOfferedEvenWhenItIsNotInstalled() {
+        #expect(ModelSettingsPane.offeredAgents() == [.claudeCode, .codexCLI])
+        let claude = L10n.shared.string(Provider.claudeCode.title.key)
+        #expect(
+            ModelSettingsPane.providerTitle(.claudeCode, installed: [], scanned: true)
+                == L10n.shared.string("%@ (not detected)", claude))
+        // Before the first scan answers, nothing is marked.
+        #expect(ModelSettingsPane.providerTitle(.claudeCode, installed: [], scanned: false) == claude)
+        #expect(
+            ModelSettingsPane.providerTitle(.claudeCode, installed: [.claudeCode], scanned: true)
+                == claude)
+        // A remote service is never marked, whatever the scan found.
+        #expect(
+            ModelSettingsPane.providerTitle(.deepSeek, installed: [], scanned: true)
+                == L10n.shared.string(Provider.deepSeek.title.key))
+    }
+
+    /// A path the user picked by hand survives a later scan; only a missing or no-longer-runnable one is
+    /// replaced by what the lookup found (BDR-0013 §8).
+    @Test func aManuallyChosenPathSurvivesAScan() {
+        let runnable = { (_: String) in true }
+        #expect(
+            !ModelSettingsPane.adoptsFoundPath(
+                adopt: false, saved: "/usr/local/bin/claude", isExecutable: runnable))
+        #expect(
+            ModelSettingsPane.adoptsFoundPath(
+                adopt: true, saved: "/usr/local/bin/claude", isExecutable: runnable))
+        #expect(
+            ModelSettingsPane.adoptsFoundPath(adopt: false, saved: nil, isExecutable: { _ in false }))
+        #expect(
+            ModelSettingsPane.adoptsFoundPath(
+                adopt: false, saved: "/gone/claude", isExecutable: { _ in false }))
+    }
+
     /// What each provider's model name starts as the first time it is chosen: its preset model for an
     /// HTTP service, and empty for anything that picks its own — the picker's first row.
     @Test func everyProviderNamesItsDefaultModel() {

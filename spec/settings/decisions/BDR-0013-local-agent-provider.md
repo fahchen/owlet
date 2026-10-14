@@ -103,9 +103,9 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 
 ### 8. 可执行文件路径
 
-按服务商分别保存绝对路径（GUI 应用从 Finder 启动时 `PATH` 只有 `/usr/bin:/bin:/usr/sbin:/sbin`，而这两个 CLI 通常由包管理器装在别的目录，不补 `PATH` 根本跑不起来）。设置的「检测」走一次登录 shell 的 `command -v`，再用 `--version` 验证并显示版本号——CLI 参数属于版本行为，失败时要能一眼看出装的是哪一版。
+按服务商分别保存绝对路径（GUI 应用从 Finder 启动时 `PATH` 只有 `/usr/bin:/bin:/usr/sbin:/sbin`，而这两个 CLI 通常由包管理器装在别的目录，不补 `PATH` 根本跑不起来）。设置的「检测」按用户自己的 shell 查找（三层退让见 §10），再用 `--version` 验证并显示版本号——CLI 参数属于版本行为，失败时要能一眼看出装的是哪一版。
 
-设置页每次打开都主动扫一遍登录 shell 的 `PATH`：**没装的 agent 不出现在服务商列表里**，远程服务与本地 agent 之间用一条分隔线分成两组。选中某个 agent 时立刻找它——找得到就填好路径并显示版本，不需要先点「检测」；「检测」只是手动重来一次。用户手选的路径不会被扫描覆盖，只有在其不可执行时才改用扫描结果；有手选路径的 agent 即使不在 `PATH` 里也仍然列出，已选但已被删除的 agent 也保留在列表里，让人看到问题而不是一个空行。
+设置页每次打开都主动扫一遍：**本地 agent 始终出现在服务商列表里**，扫不到的标注「未检测到」并保持可选，远程服务与本地 agent 之间用一条分隔线分成两组。选中某个 agent 时立刻找它——找得到就填好路径并显示版本，不需要先点「检测」；「检测」只是手动重来一次。用户手选的路径不会被扫描覆盖，只有在其不可执行时才改用扫描结果。扫不到的 agent 保留在列表里，是因为用户只能选择看得见的东西：手动指定可执行文件是应用猜不到时的唯一出口（见 §10）。
 
 ### 9. 能反查的能力按 provider 各自给出
 
@@ -123,6 +123,25 @@ Claude Code 还拿一句**应用自己的**短指令作为位置参数（`Answer
 应用侧把这份能力吃到请求里（评审 E2）：设置页扫描时记住每个模型声明的值域（`service.agentEfforts`），请求时读回放进 `ModelRequest.supportedEfforts`——强度只在该模型接受的集合里就近取较低档，**模型完全不支持推理时一个参数都不发**。设置页在强度行下就地显示「该模型支持：…」或「该模型不使用思考强度」。实测（2026-10-13）codex 0.160.1 的 7 个可见模型都给出 `low,medium,high,max`；Claude Code 的最新缓存（`86008f99-…-cc.json`，同日）列出 12 个模型，其中 11 个带 `thinking.type: "effort"`（有的到 `xhigh`、有的只到 `high`），`claude-haiku-4-5-20251001` 是 `type: "none"`，所以两个 agent 现在都有按模型的数据。
 
 图片与流式是后续需求（评审 E3），本轮不预建抽象：`ModelTurn` 将来加内容分片（文本今天、图片以后），由各 backend 各自映射；`ModelBackend` 在 `complete` 旁边加一个带默认实现的流式方法。两处都是局部改动。
+
+### 10. 查找环境与三层退让（为什么保留登录 shell、为什么退到交互式 shell、为什么保留未检测到的行）
+
+**实测（2026-10-14，第二台机器，user `philc`，claude 2.1.299 在 `~/.local/bin/claude` → `~/.local/share/claude/versions/2.1.299`）：** Finder 启动的应用继承到的 `PATH` 是最小集 `/usr/bin:/bin:/usr/sbin:/sbin`；`env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -lc 'command -v claude'` **exit 1、stdout 为空、stderr 为空**；同一台机器上 ssh 会话里的同一条命令 exit 0、stdout 30 字节。根因已确认，不是推测：`export PATH="$HOME/.local/bin:$PATH"` 只写在 `~/.zshrc:5`，而 `zsh -lc`（登录 + 非交互）**只读 `.zprofile`／`.zlogin`，不读 `.zshrc`**；ssh 会话能成功只是因为它的 `PATH` 里本就带着 `~/.local/bin`，被 `zsh -l` 原样继承。把 `/opt/homebrew/bin`、`/usr/local/bin` 补进 `PATH` 也**无效**（`minimal+brew` 仍 exit 1），所以这不是「多补几个目录」能完全解决的。
+
+因此查找分三层，逐层退让：
+
+1. **给查找一个可用的环境**：`PATH` 从应用当前的值出发，再追加标准安装目录，然后用它跑登录 shell 的 `command -v`。这一层既让 `zsh` 自己的 profile 能用上 Homebrew 工具，也让 `command -v` 至少能看见这些目录里的 CLI。
+2. **交互式登录 shell**：`zsh -lc` 失败后退到 `zsh -ilc`。`.zshrc` 只被交互式 shell 读取，而这台机器的 `PATH` 恰好只写在那里；`-lc` 成功时不走这条，避免给正常机器多一次更慢、且可能有横幅输出的探测。交互式 rc 可能打印横幅、警告或提示，所以解析取**最后一个非空行**并 trim，**不假设整个 stdout 就是路径**。
+3. **不依赖 shell 的直查**：两次 shell 之后按顺序检查 `~/.local/bin`、`~/.claude/local`、`~/.local/share/mise/shims`、`~/.asdf/shims`、`/opt/homebrew/bin` 与 `sbin`、`/usr/local/bin` 与 `sbin`、`/usr/bin`、`/bin`、`/usr/sbin`、`/sbin`，以及 `~/.nvm/versions/node/*/bin`（只枚举这一个已知根，不遍历整个 home），取第一个可执行的。
+
+**单一真源**：这份目录列表只在 `AgentEnvironment.fallbackDirectories(home:)` 里写一次（nvm 的枚举在它旁边），登录 shell 的 `PATH`、agent 进程的 `PATH` 与直查兜底都读它；查找本身走可注入的 `AgentLookup` 缝，测试不跑真 shell、不遍历开发者的真实目录。
+
+代价与取舍：
+
+- **为什么保留登录 shell 查找**：用户可能把 CLI 装在自定义目录，并且只通过自己的 shell 配置暴露它；只按固定位置猜会漏掉这些安装。前两层正是「按用户自己的 shell 来」。
+- **为什么退到交互式 shell、代价是什么**：它比 `-lc` 慢，还会执行只应在交互场景运行的 rc 代码。所以它**只在第一层失败后**运行，并带 20 秒超时；正常机器完全不受影响。
+- **为什么直查只列已知目录**：递归 home 代价不可控；代价是极冷门的自定义安装仍找不到——这时由下一层兜底。
+- **为什么扫不到的 agent 不再从列表消失**：用户只能选择看得见的东西。扫不到时该行标注「未检测到」，旁边仍是已有的 `选择…` 文件选择器，手动选的路径不会被后续扫描覆盖（§8）。这是应用猜不到时的唯一出口。
 
 ## 备选与不采纳
 - **HTTP shim**：本地起一个常驻小服务，把 CLI 包成 `/v1/chat/completions`，应用零改动。不采纳：多一个要用户自己管的常驻进程，超时、取消与调试页都退化，而且「谁在用」变得不清楚。

@@ -19,6 +19,11 @@
     "zh-Hans": "%@（纠正）",
     "zh-Hant": "%@（糾正）"
   },
+  "%@ (not detected)": {
+    "ja": "%@（未検出）",
+    "zh-Hans": "%@（未检测到）",
+    "zh-Hant": "%@（未偵測到）"
+  },
   "%@ Mode": {
     "ja": "%@モード",
     "zh-Hans": "%@模式",
@@ -39,10 +44,10 @@
     "zh-Hans": "%@并替换",
     "zh-Hant": "%@並取代"
   },
-  "%@ was not found on the login shell's PATH.": {
-    "ja": "ログインシェルの PATH に %@ が見つかりません。",
-    "zh-Hans": "在登录 shell 的 PATH 里没有找到 %@。",
-    "zh-Hant": "在登入 shell 的 PATH 裡找不到 %@。"
+  "%@ was not found. Choose its executable by hand, or install it and press Detect.": {
+    "ja": "%@ が見つかりません。実行ファイルを手動で選択するか、インストールして「検出」を押してください。",
+    "zh-Hans": "没有找到 %@。请手动选择它的可执行文件，或安装后点「检测」。",
+    "zh-Hant": "找不到 %@。請手動選擇它的可執行檔，或安裝後按「偵測」。"
   },
   "%@ · %@": {
     "ja": "%@ · %@",

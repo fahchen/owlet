@@ -1365,3 +1365,35 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-14）：根因是 T69 只改了读、没改写回。[SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift) 的 `Selection` 与 `capture` 增加 `wholeField` 来源标记，`WritebackSeams` 的 `press` 改为 `(WritebackShortcut) -> Void` 并新增 `selectedRange` 缝；[SelectionWriteback.swift](../Owlet/Selection/SelectionWriteback.swift) 在整段路径先 `press(.selectAll)` 并读回选区确认覆盖整段，确认不了就 `.refused` 且不按 ⌘V，写回后还要求 `AXValue` 恰好等于译文；新增 `pressCommandA` / `aKey`（0）与 `selectedRange(of:)`。规格同步：[replacement.feature](../spec/processing/features/replacement.feature) 新增「原文来自焦点输入框全文时替换整个输入框」与「无法确认全选时不得退化为追加」两条 scenario；[translation.feature](../spec/processing/features/translation.feature) 的 T69 scenario 补上替换覆盖整段的两行；[liquid-glass-components.md](../docs/liquid-glass-components.md) 的 `direct-*` 行补一句。测试 425 → 430 项 / 49 个 suite 通过。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：GUI 里的实际快捷键行为（需 `mise run dev` 人工看一眼）。
+
+## T71：Finder 启动时按用户 shell 查找 agent CLI（已实现）
+
+问题：查找只跑一次 `/bin/zsh -lc 'command -v <name>'`，且把 `ProcessInfo.processInfo.environment` 原样交给子进程。Finder 启动的应用继承的 `PATH` 只有 `/usr/bin:/bin:/usr/sbin:/sbin`，而 `zsh -lc` 不读 `.zshrc`——第二台机器（user `philc`，claude 2.1.299 在 `~/.local/bin/claude` → `~/.local/share/claude/versions/2.1.299`）把 `~/.local/bin` 只写进 `~/.zshrc:5`，于是该环境下 `command -v claude` 失败；未检测到的 agent 又被从服务商列表隐藏，用户无法手动指路。
+
+实测证据（第二台机器，经 ssh）：
+
+- 继承环境：`/bin/zsh -lc 'command -v claude'` → exit 0，stdout 30 字节（正好路径，结尾无换行），stderr 空。
+- 最小环境：`env -i HOME="$HOME" PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -lc 'command -v claude'` → exit 1，stdout/stderr 均空。
+- `minimal+brew`（PATH 再加 `/opt/homebrew/bin:/usr/local/bin`）→ 仍 exit 1，所以只扩 PATH 列表不够。
+- `/Users/philc/.zshrc:5: export PATH="$HOME/.local/bin:$PATH"`；最小 PATH 下 mise/fnm/asdf/brew/node/npm 全不可见。
+
+范围与取舍：
+
+- **三层退让**（规格与 BDR-0013 §10 都写明理由：`.zshrc` 只被交互式 shell 读取）：① 给查找环境一份可用 `PATH`；② `-lc` 失败后跑 `-ilc`，解析取最后一个非空行并 trim；③ 两次 shell 都失败就直查已知目录，取第一个可执行的。
+- **单一真源**：目录列表只在 `AgentEnvironment.fallbackDirectories(home:)` 写一次；登录 shell 的 `PATH`、agent 进程的 `PATH` 与直查兜底都读它；nvm 只枚举 `~/.nvm/versions/node` 这一个已知根。
+- **不彻底隐藏**：未检测到的 agent 仍出现在服务商列表并标注「未检测到」，选中后可用既有的 `选择…`（`NSOpenPanel`）手动指定；手选路径不被后续扫描覆盖。
+- 查找走可注入的 `AgentLookup` 缝，测试不跑真 shell、不做真实文件系统发现。
+
+验收：
+
+- [x] `AgentEnvironment.fallbackDirectories(home:)` 是唯一目录真源，含 `~/.local/bin`、`~/.claude/local`、mise/asdf shims、Homebrew 与 `/usr/local` 的 bin/sbin；`lookupEnvironment` 用 `mergedPATH` 保留应用原有条目、去重。
+- [x] `LocalAgent.locate` 三层退让；`-lc` 成功即返回，不再跑 `-ilc`；`-ilc` 解析取最后一个非空行；`detect` 的 `--version` 探测同样使用查找环境。
+- [x] 未检测到的 agent 仍列出（`ModelSettingsPane.offeredAgents()`）并标注（`providerTitle`）；`adoptsFoundPath` 保证手选路径不被扫描覆盖。
+- [x] 新译文进 `strings/translations.json` 并重新生成 catalog（261 → 262 条）。
+- [x] 规格 `spec/settings/features/local-agent.feature` 更新两条 scenario；BDR-0013 §8 改写、新增 §10 记录取舍；`docs/liquid-glass-components.md` 模型页两行同步。
+- [x] `mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0；测试 430 → 441（不缩水）。
+- [ ] **需要人在第二台机器上验证**：`git pull` 后 `mise run dev`（或安装新构建）。预期：服务商列表里 Claude Code 存在（若查找成功则直接填好 `~/.local/bin/claude` 并显示版本）；即便把 `~/.local/bin` 从 PATH 临时移走，也能通过 `选择…` 手动指到 `~/.local/bin/claude`，且后续扫描不覆盖它。
+
+结果（2026-10-14）：根因是查找只跑一次 `zsh -lc` 且不读 `.zshrc`，而 `.zshrc` 是那台机器唯一加 `~/.local/bin` 的地方；同时未检测到即隐藏让用户没有手动出口。[LocalAgent.swift](../Owlet/LLM/LocalAgent.swift) 新增注入缝 `AgentLookup` 与三层查找（`-lc` → `-ilc` → 直查），`detect` 用查找环境跑 `--version`；[AgentEnvironment](../Owlet/LLM/LocalAgent.swift) 的目录列表扩为单一真源，新增 `lookupEnvironment`／`mergedPATH` 与 nvm 枚举。[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 始终列出全部本地 agent，扫不到的标注「未检测到」，`adoptsFoundPath` 收敛「手选不被覆盖」。[local-agent.feature](../spec/settings/features/local-agent.feature) 与 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md) §8／§10 同步；[liquid-glass-components.md](../docs/liquid-glass-components.md) 模型页两行同步；catalog 261 → 262 条。测试 430 → 441 项，全部走注入缝。
+
+验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：第二台机器上的真实 PATH 与手动选择行为（需人跑 `mise run dev` 或安装新构建）。

@@ -265,7 +265,7 @@ T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt
 
 T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。玻璃强度仍不归应用：`SwiftUICore.Glass` 只有 `regular`／`clear`／`identity`，`NSGlassEffectView` 只有 `style` 与圆角／tint，没有连续强度的公开符号，所以该分组在 Picker 下只用次级 `Text` + 系统 `Link` 指向「系统设置 › 外观」（BDR-0014）。这是指向既有系统设置，不是新的 HIG 主张，本表不为它新增引用条目。
 
-预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五个主状态及收藏／取消收藏两态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收。窗口未激活时系统按钮会显示非活跃颜色。
+预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五个主状态及收藏／取消收藏两态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收；`--settings /绝对路径/输出目录` 用同一条 cacheDisplay 路径离屏导出通用设置页（无玻璃表面，故结果可用），不需要屏幕录制授权。窗口未激活时系统按钮会显示非活跃颜色。
 
 T44：结果展开使用 SwiftUI spring 与 NSAnimationContext.animate(.spring)，窗口与内容均从顶部展开；学习行 HStack 居中，结果／学习底部动作距右边及底边24pt。
 

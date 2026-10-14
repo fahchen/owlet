@@ -209,6 +209,85 @@ struct PreviewView: View {
     }
 }
 
+/// `--settings`: renders the General settings pane to PNG offscreen. Drawing a view into a bitmap
+/// needs no Screen Recording grant, unlike the window screenshots `--screenshots` takes, so the pane
+/// can be exported on a machine that has never granted it. The pane is a plain grouped `Form` with
+/// no glass surface, so the offscreen draw is faithful to the window.
+@MainActor enum SettingsPanePreview {
+    /// Wide enough for the longest toggle label, tall enough that every row of the grouped `Form` is
+    /// in frame without scrolling.
+    static let size = NSSize(width: 620, height: 660)
+
+    struct Variant {
+        let name: String
+        let wholeField: Bool
+        let dark: Bool
+    }
+
+    /// The new whole-field toggle, in both states, each in light and dark. Off is the default.
+    static let variants = [
+        Variant(name: "settings-general-off", wholeField: false, dark: false),
+        Variant(name: "settings-general-on", wholeField: true, dark: false),
+        Variant(name: "settings-general-off-dark", wholeField: false, dark: true),
+        Variant(name: "settings-general-on-dark", wholeField: true, dark: true),
+    ]
+
+    static func export(to output: String) -> Bool {
+        let directory = URL(fileURLWithPath: output, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            print("Settings export failed: \(error)")
+            return false
+        }
+        for variant in variants {
+            // The preview's own suite, so the export can neither read nor write the real settings.
+            PreviewFixtures.defaults.set(variant.wholeField, forKey: SettingsStore.wholeFieldTextKey)
+            guard let data = png(variant) else {
+                print("Settings export failed: \(variant.name)")
+                return false
+            }
+            do {
+                try data.write(to: directory.appendingPathComponent("\(variant.name).png"))
+            } catch {
+                print("Settings export failed: \(error)")
+                return false
+            }
+        }
+        PreviewFixtures.defaults.removeObject(forKey: SettingsStore.wholeFieldTextKey)
+        return true
+    }
+
+    private static func content(_ variant: Variant) -> some View {
+        GeneralSettingsPane()
+            .frame(width: size.width, height: size.height)
+            .background(Color(nsColor: .windowBackgroundColor))
+            // The controls should read as in an active window, which is how the pane is seen.
+            .environment(\.controlActiveState, .key)
+            .environment(\.colorScheme, variant.dark ? .dark : .light)
+            .defaultAppStorage(PreviewFixtures.defaults)
+    }
+
+    /// `NSHostingView` + `cacheDisplay` rather than `ImageRenderer`: the latter draws neither the
+    /// grouped `Form`'s rows nor the `Picker`/`Toggle` controls, leaving an empty image.
+    private static func png(_ variant: Variant) -> Data? {
+        let host = NSHostingView(rootView: content(variant))
+        host.frame = NSRect(origin: .zero, size: size)
+        host.appearance = NSAppearance(named: variant.dark ? .darkAqua : .aqua)
+        host.layoutSubtreeIfNeeded()
+        // A 2x rep keeps the export as crisp as the Retina window it stands in for.
+        guard
+            let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
+        else { return nil }
+        rep.size = size
+        host.cacheDisplay(in: host.bounds, to: rep)
+        return rep.representation(using: .png, properties: [:])
+    }
+}
+
 final class PreviewPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
@@ -270,6 +349,17 @@ final class PreviewPanel: NSPanel {
 
     @MainActor static func main() {
         let app = NSApplication.shared
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_SETTINGS"] {
+            // Offscreen only: no window is opened and no permission is requested.
+            app.setActivationPolicy(.prohibited)
+            Task { @MainActor in
+                // One run-loop turn, so the hosting view and its AppKit controls are laid out.
+                try? await Task.sleep(for: .milliseconds(100))
+                exit(SettingsPanePreview.export(to: output) ? 0 : 1)
+            }
+            app.run()
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--main") {
             showMainWindow(app)
             return

@@ -12,7 +12,8 @@
 - `history/features/`：保存、查看、搜索与删除历史；按天分组、关联从该记录收藏的词条。
 - `settings/features/`：自填模型服务配置、[本机 agent CLI 作为模型服务](settings/features/local-agent.feature)、自定义 Prompt、按源语言决定翻译目标，以及按语言配置读音体系。
 - [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
-- [屏幕区域 OCR 与连续语音输入方案](../docs/screen-region-and-speech-input.md)：未实现的输入来源设计提案，不改现有读取路径。
+- [屏幕区域 OCR 输入方案](../docs/screen-region-input.md)：未实现的输入来源设计提案，不改现有读取路径。
+- [连续语音输入方案](../docs/speech-input.md)：未实现的输入来源设计提案，本轮不做。
 - [替换行为决策](processing/decisions/BDR-0001-explicit-replacement-intent.md)。
 - [错误呈现决策](processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)：已展开的工具栏遇错保持展开。
 - [翻译目标映射决策](settings/decisions/BDR-0003-translation-target-mapping.md)：按检测到的源语言查表决定目标，未命中用兜底；润色与快捷键不变。

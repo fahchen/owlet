@@ -17,7 +17,8 @@
 
 以下两项只有设计提案，尚未写入 `spec/product.md`，因此不进上表、没有提案画面，也不占 T 编号：
 
-- 屏幕区域 OCR 输入与连续语音输入：见 [屏幕区域 OCR 与连续语音输入方案](screen-region-and-speech-input.md)。
+- 屏幕区域 OCR 输入：见 [屏幕区域 OCR 输入方案](screen-region-input.md)。
+- 连续语音输入：见 [连续语音输入方案](speech-input.md)（本轮不做）。
 
 查词第一步已交付浮窗结果的选区路径（选区工具栏、右键「查询所选」、Return、辅助功能动作，卡片、复用、重试与系统发音），见 [正式行为规格](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) 与 [意图记录](intent/word-lookup.md)。保留可编辑原文与学习行点击收藏，查询通过只读正文单击或选区工具栏／右键触发；跨句旧释义标明来源，不自动重查，也不写入生词本。五类区域均已接入；不计入已退役 `design/` 的截图状态、分区或提案数。
 

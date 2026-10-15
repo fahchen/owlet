@@ -16,6 +16,8 @@ parser.add_argument('--settings', type=Path,
 parser.add_argument('--active', action='store_true', help='Render native controls in active appearance for comparison')
 parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
+parser.add_argument('--app-shots', type=Path,
+                    help='Capture the notebook and history pages and render the Language pane to PNGs, then exit')
 parser.add_argument('--panel', action='store_true', help='Open the real floating panel through PanelController')
 parser.add_argument('--main', action='store_true', help='Open the main window pages with fixture data')
 parser.add_argument('--no-voice', action='store_true', help='Stand in for a Mac without a system voice')
@@ -33,6 +35,10 @@ contents = build / 'PanelPreview.app/Contents'
     'CFBundleName': 'PanelPreview', 'CFBundleExecutable': 'PanelPreview',
     'CFBundlePackageType': 'APPL',
 }))
+# The model prompts are a resource; without it every prompt key reads empty and the fixture cannot
+# tell a learning request from a translation.
+(contents / 'Resources').mkdir(exist_ok=True)
+(contents / 'Resources/ModelPrompts.json').write_bytes((root / 'Owlet/ModelPrompts.json').read_bytes())
 executable = contents / 'MacOS/PanelPreview'
 sources = sorted(str(p) for p in (root / 'Owlet').rglob('*.swift') if p.name != 'OwletApp.swift')
 subprocess.run([
@@ -50,6 +56,8 @@ if args.settings:
     environment['OWLET_PREVIEW_SETTINGS'] = str(args.settings.resolve())
 if args.transition:
     environment['OWLET_PREVIEW_TRANSITION'] = str(args.transition.resolve())
+if args.app_shots:
+    environment['OWLET_PREVIEW_APP_SHOTS'] = str(args.app_shots.resolve())
 if args.no_voice:
     environment['OWLET_PREVIEW_NO_VOICE'] = '1'
 if args.target:

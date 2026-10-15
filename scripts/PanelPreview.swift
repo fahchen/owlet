@@ -5,13 +5,18 @@ import SwiftUI
 import SwiftData
 
 @MainActor enum PreviewFixtures {
-    nonisolated static let source =
-        "「推敲」不仅是一个古老的文学典故，更是精准翻译的最高境界。我们像古人斟酌字句一样，在每一种语言的转换中反复衡量语境、语义与情感。不盲从表面的词义，而是用心去雕琢最自然、最贴切的表达，让每一次跨语言的沟通都兼具精准之真与文字之美。"
+    nonisolated static let sentences = [
+        "蒹葭蒼蒼，白露為霜。\n",
+        "所謂伊人，在水一方。\n",
+        "溯洄從之，道阻且長。\n",
+        "溯游從之，宛在水中央。",
+    ]
+    nonisolated static let source = sentences.joined()
     static let live = ProcessInfo.processInfo.arguments.contains("--live")
     static let config = ServiceConfig(
         baseURL: URL(string: live ? "https://api.deepseek.com" : "https://preview.invalid")!,
         model: "deepseek-chat", apiKey: ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"] ?? "fixture",
-        provider: .deepSeek)
+        supportsJSONSchema: ServicePreset.deepSeek.supportsJSONSchema)
     static let client = live ? ModelClient(capture: .off) : fixtureClient
     static let defaults = UserDefaults(suiteName: "dev.fahchen.owlet.panel-preview")!
     static let fixtureClient = ModelClient(
@@ -32,30 +37,30 @@ import SwiftData
         if messages[0]["content"]!.contains("Explain the text a reader selected") {
             return try lookupFixture(system: messages[0]["content"]!, data: messages[1]["content"]!, url: request.url!)
         }
+        let targets = translations[target] ?? translations["en"]!
         let content: [String: Any] =
             isLearning
             ? [
                 "items": [
                     [
-                        "text": "deliberate", "language": "en", "kind": "word", "meaning": "仔细斟酌、深思熟虑。",
-                        "context":
-                            "we meticulously deliberate context, nuance, and emotion in every language pairing.",
+                        "text": "lush", "language": "en", "kind": "word",
+                        "meaning": "Growing thickly and richly; full of green.",
+                        "context": "The reeds are lush and gray-green;", "lemma": NSNull(),
                     ],
                     [
-                        "text": "refine", "language": "en", "kind": "word", "meaning": "反复推敲，使表达更精准。",
-                        "context": "we refine each expression for maximum naturalness.",
+                        "text": "long for", "language": "en", "kind": "phrase",
+                        "meaning": "To miss and want someone very much, often someone far away.",
+                        "context": "The one I long for is somewhere across the water.", "lemma": NSNull(),
+                    ],
+                    [
+                        "text": "seek", "language": "en", "kind": "word", "meaning": "To look for; to try to find.",
+                        "context": "Upstream I go to seek her,", "lemma": NSNull(),
                     ],
                 ]
             ]
             : [
-                "source_language": "zh-Hans", "target_language": target,
-                "segments": [
-                    [
-                        "source": source,
-                        "target": translations[target]
-                            ?? "\"Tui Qiao\" (deliberation) is not just an ancient literary allusion, but the ultimate pursuit of precise translation. Much like ancient poets weighing every character, we meticulously deliberate context, nuance, and emotion in every language pairing. Instead of stilted literal conversion, we refine each expression for maximum naturalness, making every cross-language exchange both perfectly accurate and beautifully articulate.",
-                    ]
-                ],
+                "source_language": "zh-Hant", "target_language": target,
+                "segments": sentences.indices.map { ["source": sentences[$0], "target": targets[$0]] },
             ]
         let serialized = String(decoding: try JSONSerialization.data(withJSONObject: content), as: UTF8.self)
         let data = try JSONSerialization.data(withJSONObject: [
@@ -63,7 +68,7 @@ import SwiftData
         ])
         return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
-    /// Lookups answer after a pause so loading is visible. "literary" breaks the lookup contract the
+    /// Lookups answer after a pause so loading is visible. "frost" breaks the lookup contract the
     /// first time only, so the failure and 重试 paths can be driven by hand.
     nonisolated(unsafe) static var failedOnce = false
     nonisolated static func lookupFixture(system: String, data: String, url: URL) throws -> (Data, URLResponse) {
@@ -73,7 +78,7 @@ import SwiftData
         let sentence = text.hasSuffix(".") || text.hasSuffix("。")
         let definition = system.components(separatedBy: "definition_language is ")[1].components(separatedBy: ".")[0]
         let content: String
-        if text == "literary", !failedOnce {
+        if text == "frost", !failedOnce {
             failedOnce = true
             content = "not json"
         } else {
@@ -81,7 +86,7 @@ import SwiftData
                 "text": text, "language": query["language"] ?? NSNull(), "definition_language": definition,
                 "meaning": query["context"] is NSNull
                     ? "（预览）「\(text)」的一般含义。" : "（预览）「\(text)」在这句话中的意思。",
-                "lemma": text == "weighing" ? "weigh" : NSNull(),
+                "lemma": text == "seems" ? "seem" : NSNull(),
                 // Not a real reading: the fixture cannot know one, so it must not look like one.
                 "pronunciation": sentence ? NSNull() : "预览读音",
                 "part_of_speech": sentence ? NSNull() : "词",
@@ -94,9 +99,21 @@ import SwiftData
         return (body, HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
     /// Results in the other preview targets, so Chinese and Japanese word hits can be checked.
-    nonisolated static let translations = [
-        "ja": "「推敲」は古い文学の故事であるだけでなく、正確な翻訳の最高の境地でもある。私たちは言葉を一つずつ吟味し、自然な表現を磨き上げる。",
-        "zh-Hans": "推敲不仅是古老的文学典故，也是精准翻译的最高境界。我们反复斟酌语境、语义与情感，打磨最自然的表达。",
+    nonisolated static let translations: [String: [String]] = [
+        "en": [
+            "The reeds are lush and gray-green; the white dew has turned to frost. ",
+            "The one I long for is somewhere across the water. ",
+            "Upstream I go to seek her, but the way is hard and long. ",
+            "Downstream I go to seek her, and there she seems, in the middle of the water.",
+        ],
+        "ja": [
+            "葦は青々と茂り、白露は霜となる。", "思うあの人は、川の向こう岸にいる。",
+            "流れをさかのぼって追えば、道は険しく遠い。", "流れに沿って追えば、まるで水の真ん中にいるようだ。",
+        ],
+        "zh-Hans": [
+            "芦苇苍苍，白露凝成了霜。", "我思念的那个人，就在河水的另一边。",
+            "逆流而上去追寻她，道路艰险又漫长。", "顺流而下去追寻她，她仿佛就在水中央。",
+        ],
     ]
     static let model = TextProcessingModel(client: client, config: { config })
     static let store = VocabularyStore(
@@ -119,11 +136,11 @@ import SwiftData
         learning.autoRequest = { _ in false }
         return learning
     }()
-    /// The word the card preview looks up: the first word of the fixture source, which is in English.
+    /// The word the card preview looks up: 蒹葭, the first word of the fixture source.
     static let cardQuery: LookupQuery? = {
         guard case .success(let query) = LookupQuery.make(
-            selection: NSRange(location: 0, length: 8), in: source,
-            origin: LookupOrigin(language: "en", definitionLanguage: "zh-Hans"))
+            selection: NSRange(location: 0, length: 2), in: source,
+            origin: LookupOrigin(language: "zh-Hant", definitionLanguage: "en"))
         else { return nil }
         return query
     }()
@@ -132,6 +149,10 @@ import SwiftData
 @Observable @MainActor final class PreviewState: NSObject {
     static let shared = PreviewState()
     var mode = 3
+    /// Where the glass sits in the window, written beside each screenshot so it can be cut out exactly.
+    var panelFrame: CGRect = .zero
+    /// The main window's page, driven from outside by `--app-shots`.
+    var mainPage = 0
     @objc func choose(_ item: NSMenuItem) { mode = item.tag }
 }
 
@@ -186,6 +207,7 @@ struct PreviewView: View {
                     .environment(\.lookups, PreviewFixtures.lookups)
                 }
             }
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { state.panelFrame = $0 }
         }
         .frame(width: 1030, height: 550)
         .defaultAppStorage(PreviewFixtures.defaults)
@@ -312,7 +334,7 @@ final class PreviewPanel: NSPanel {
                 mapping: TargetMapping(targets: [:], fallback: "zh-Hans"))
             guard
                 case .success(let query) = LookupQuery.make(
-                    selection: NSRange(location: 0, length: 8), in: PreviewFixtures.source, origin: origin)
+                    selection: NSRange(location: 0, length: 2), in: PreviewFixtures.source, origin: origin)
             else {
                 print("CARD-CHECK FAIL: no query")
                 NSApp.terminate(nil)
@@ -358,6 +380,10 @@ final class PreviewPanel: NSPanel {
                 exit(SettingsPanePreview.export(to: output) ? 0 : 1)
             }
             app.run()
+            return
+        }
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_APP_SHOTS"] {
+            AppShots.run(app, output: output)
             return
         }
         if ProcessInfo.processInfo.arguments.contains("--main") {
@@ -476,6 +502,11 @@ final class PreviewPanel: NSPanel {
                         guard capture.terminationStatus == 0 else {
                             throw NSError(domain: "PanelPreview.Screenshot", code: Int(capture.terminationStatus))
                         }
+                        let frame = PreviewState.shared.panelFrame
+                        try JSONSerialization.data(withJSONObject: [
+                            "x": frame.minX, "y": frame.minY, "width": frame.width, "height": frame.height,
+                            "window": host.bounds.width,
+                        ]).write(to: directory.appendingPathComponent("\(name).json"))
                     }
                 } catch {
                     print("Screenshot export failed: \(error)")
@@ -521,18 +552,20 @@ final class PreviewPanel: NSPanel {
 /// `--main`: the main window's three reading pages with fixture data in memory, so lookups in them
 /// can be checked by hand without the user's store or a real model.
 struct MainPreview: View {
-    @State private var page = 0
+    @State private var state = PreviewState.shared
     let history = HistoryStore(container: PreviewFixtures.store.container)
 
     var body: some View {
         NavigationSplitView {
-            List(selection: Binding<Int?>(get: { page }, set: { page = $0 ?? page })) {
-                Label("翻译与润色", systemImage: "translate").tag(0)
-                Label("生词本", systemImage: "books.vertical").tag(1)
-                Label("历史记录", systemImage: "clock").tag(2)
+            List(selection: Binding<Int?>(get: { state.mainPage }, set: { state.mainPage = $0 ?? state.mainPage })) {
+                Label(L10n.shared.string("Translate & Polish"), systemImage: "translate").tag(0)
+                Section(L10n.shared.string("My Collection")) {
+                    Label(L10n.shared.string("Notebook"), systemImage: "books.vertical").tag(1)
+                    Label(L10n.shared.string("History"), systemImage: "clock").tag(2)
+                }
             }
         } detail: {
-            switch page {
+            switch state.mainPage {
             case 0:
                 TextProcessingView(model: PreviewFixtures.model, openSettings: {}, collection: PreviewFixtures.collection)
             case 1: VocabularyView(collection: PreviewFixtures.collection, openProcessing: {})
@@ -545,17 +578,119 @@ struct MainPreview: View {
         .task {
             PreviewFixtures.model.input = PreviewFixtures.source
             await PreviewFixtures.model.process(to: "en")?.value
-            _ = PreviewFixtures.collection.setCollected(
-                true,
-                draft: VocabularyDraft(
-                    expression: "deliberate", language: "en",
-                    context: "we meticulously deliberate context, nuance, and emotion in every language pairing."),
-                meaning: "仔细斟酌、深思熟虑。")
+            // A few languages, so the notebook's language filter and rows read as they do in use.
+            for (expression, language, context, meaning) in [
+                ("木漏れ日", "ja", "木漏れ日が揺れる。", "Sunlight filtering through the leaves of trees."),
+                ("flâner", "fr", "J'aime flâner le long de la Seine.", "To stroll without hurry, for the pleasure of it."),
+                ("seek", "en", "Upstream I go to seek her,", "To look for; to try to find."),
+                ("lush", "en", "The reeds are lush and gray-green;", "Growing thickly and richly; full of green."),
+                (
+                    "long for", "en", "The one I long for is somewhere across the water.",
+                    "To miss and want someone very much, often someone far away."
+                ),
+            ] {
+                _ = PreviewFixtures.collection.setCollected(
+                    true, draft: VocabularyDraft(expression: expression, language: language, context: context),
+                    meaning: meaning)
+            }
+            let now = Date()
+            _ = try? history.record(
+                operation: .translate, source: "木漏れ日が揺れる。", result: "Sunlight flickers through the leaves.",
+                language: "en", at: now.addingTimeInterval(-86_400))
+            _ = try? history.record(
+                operation: .polish, source: "The moon is very beautiful tonight, it makes me remember my hometown.",
+                result: "The moon is beautiful tonight. It reminds me of home.", language: "en",
+                at: now.addingTimeInterval(-3_600))
             _ = try? history.record(
                 operation: .translate, source: PreviewFixtures.source,
-                result: "Much like ancient poets weighing every character, we refine each expression.",
-                language: "en")
+                result: PreviewFixtures.translations["en"]!.joined(), language: "en")
         }
+    }
+}
+
+/// `--app-shots`: the notebook and history pages and the Language settings pane, for the website.
+/// A solid window sits right behind the main window, so the sidebar's translucency picks up that
+/// colour instead of the desktop, and only the main window itself is captured.
+@MainActor enum AppShots {
+    static func run(_ app: NSApplication, output: String) {
+        app.setActivationPolicy(.regular)
+        L10n.shared.use(.english)
+        SettingsStore.setPinnedTarget("en", in: PreviewFixtures.defaults)
+        // The Language pane reads the standard defaults; in this process that is the preview's own
+        // domain, never Owlet's, and it is wiped again before exit.
+        SettingsStore.setLanguages(["en", "zh-Hans", "ja", "fr", "ko", "es"])
+        SettingsStore.setTargetMapping(
+            TargetMapping(targets: ["en": "zh-Hans", "ja": "zh-Hans", "fr": "en", "ko": "en", "zh-Hans": "en"], fallback: "en"))
+        SettingsStore.setNativeLanguages(["zh-Hans"])
+
+        let frame = NSRect(x: 160, y: 120, width: 1080, height: 690)
+        let backdrop = NSWindow(
+            contentRect: frame.insetBy(dx: -80, dy: -80), styleMask: .borderless, backing: .buffered, defer: false)
+        backdrop.backgroundColor = NSColor(white: 0.95, alpha: 1)
+        backdrop.orderFront(nil)
+        let window = NSWindow(
+            contentRect: frame, styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
+            backing: .buffered, defer: false)
+        window.contentView = NSHostingView(rootView: MainPreview())
+        window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
+
+        Task { @MainActor in
+            let directory = URL(fileURLWithPath: output, isDirectory: true)
+            var ok = true
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                // The fixture translation and the seeded rows land within this pause.
+                try await Task.sleep(for: .seconds(2))
+                for (page, name) in [(1, "notebook"), (2, "history")] {
+                    PreviewState.shared.mainPage = page
+                    try await Task.sleep(for: .seconds(1))
+                    try capture(window, to: directory.appendingPathComponent("\(name).png"))
+                }
+                try languagePane().write(to: directory.appendingPathComponent("settings-language.png"))
+            } catch {
+                print("App shots failed: \(error)")
+                ok = false
+            }
+            if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+            exit(ok ? 0 : 1)
+        }
+        app.run()
+    }
+
+    static func capture(_ window: NSWindow, to url: URL) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        // -o leaves the window shadow out; -l captures this window and nothing around it.
+        process.arguments = ["-x", "-o", "-l", String(window.windowNumber), url.path]
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: "PanelPreview.AppShots", code: Int(process.terminationStatus))
+        }
+    }
+
+    /// Offscreen, like `--settings`: a grouped `Form` has no glass, so the bitmap matches the window.
+    static func languagePane() throws -> Data {
+        // Tall enough for every section; the website script trims the empty space below.
+        let size = NSSize(width: 620, height: 1300)
+        let host = NSHostingView(
+            rootView: LanguageSettingsPane()
+                .frame(width: size.width, height: size.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.controlActiveState, .key))
+        host.frame = NSRect(origin: .zero, size: size)
+        host.appearance = NSAppearance(named: .aqua)
+        host.layoutSubtreeIfNeeded()
+        guard
+            let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+            case _ = { rep.size = size; host.cacheDisplay(in: host.bounds, to: rep) }(),
+            let data = rep.representation(using: .png, properties: [:])
+        else { throw NSError(domain: "PanelPreview.AppShots", code: -1) }
+        return data
     }
 }
 

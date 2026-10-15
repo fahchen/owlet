@@ -5,5 +5,12 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      # The newest Xcode on the image, so swift-format and the SDK match what developers build with.
+      - name: Select Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcrun swift-format --version
       - uses: jdx/mise-action@v2
       - run: mise run check

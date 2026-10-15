@@ -137,3 +137,7 @@ T54 修掉查词分支首轮审阅的三个缺陷（语境语言归因、「无�
 ## T75 服务商预设（已实现）
 
 把 `Provider` 收敛为「协议 + 两个本地 agent」，厂商改成数据表 `ServicePreset`：设置「模型」页的服务列表除自定义入口外提供 DeepSeek、Moonshot／Kimi、智谱 GLM、Qwen／DashScope、xAI、OpenRouter、Ollama、LM Studio，选中即写入其公开 Base URL 与默认模型，仍可编辑。返回格式能力（`json_schema` 或 `json_object`）跟着预设经 `ServiceConfig` 走到请求，只有文档核对的 Moonshot／Kimi、xAI 标为 schema-capable；模型记忆按服务 id，旧 `service.provider` 只作迁移输入。决策见 [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)，验收与验证见 [todo.md](todo.md)。未验证项：所有真实厂商的端到端调用与设置页观感（需 `mise run dev` 与真实 Key）。
+
+## T76 调试页按设置页的风格重排（已实现）
+
+调试页改为与其他设置页一致的分组 `Form`：行首状态图标、操作名与时间、原文摘要、失败时红字原因；展开后三段原文各自折叠（模型原始返回默认展开），复制改为无边框图标按钮。只改呈现，记录内容与只在内存的约束不变。验收与验证见 [todo.md](todo.md)。

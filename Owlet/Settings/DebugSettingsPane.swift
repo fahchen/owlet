@@ -1,13 +1,18 @@
 import SwiftUI
 
-/// 调试 pane, shown only while the switch in 通用 is on: the captured model exchanges, one list row
-/// each. A collapsed row says what was asked for and shows the text that was sent, truncated; the
-/// row is the system `DisclosureGroup`, so the indicator, the animation and the accessibility state
-/// all come from the system.
+/// 调试 pane, shown only while the switch in 通用 is on: the captured model exchanges in one grouped
+/// `Form` section, like every other settings pane. A collapsed row says what was asked for, whether
+/// it failed and when; it opens with the system `DisclosureGroup`, so the indicator, the animation
+/// and the accessibility state all come from the system.
 struct DebugSettingsPane: View {
     @State private var log = DebugLog.shared
     /// Which rows are open, kept outside the rows so a new capture cannot leave one half expanded.
-    @State private var expanded: Set<UUID> = []
+    @State private var expanded: Set<UUID>
+
+    /// `expanded` lets the preview open a row; the app always starts with every row closed.
+    init(expanded: Set<UUID> = []) {
+        _expanded = State(initialValue: expanded)
+    }
 
     var body: some View {
         Group {
@@ -16,73 +21,106 @@ struct DebugSettingsPane: View {
                     "Nothing recorded yet", systemImage: "ladybug",
                     description: Text(L10n.shared.string("Run a translation or a polish and it appears here.")))
             } else {
-                // `List(_:)` over the identified collection: no explicit `ForEach` needed.
-                List(log.exchanges) { exchange in
-                    DisclosureGroup(isExpanded: isExpanded(exchange)) {
-                        detail(exchange)
-                    } label: {
-                        summary(exchange)
+                Form {
+                    Section {
+                        ForEach(log.exchanges) { exchange in
+                            DisclosureGroup(isExpanded: isExpanded(exchange)) {
+                                detail(exchange)
+                            } label: {
+                                summary(exchange)
+                            }
+                        }
+                    } header: {
+                        Text(L10n.shared.string("Recent Requests"))
+                    } footer: {
+                        Text(
+                            L10n.shared.string(
+                                "Kept in memory only, the latest %lld; turning the Debug page off clears them.",
+                                DebugLog.limit)
+                        )
+                        .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.inset)
+                .formStyle(.grouped)
             }
         }
     }
 
-    /// What was asked for, the text that was sent, and when. The text is cut to one line: the whole
-    /// point of the row is to be scannable, and the disclosure opens the rest.
+    /// Scannable at a glance, like a history row: what was asked for and when, then the text that
+    /// was sent, then the failure in red when there was one. Each line is cut to one line; the
+    /// disclosure opens the rest.
     private func summary(_ exchange: DebugExchange) -> some View {
-        HStack(spacing: 10) {
-            Text(verbatim: exchange.title)
-                .font(.system(size: 12, weight: .medium))
-            Text(exchange.summary)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 0)
-            Text(exchange.date.formatted(date: .omitted, time: .standard))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+        HStack(alignment: .firstTextBaseline, spacing: Self.statusSpacing) {
+            status(exchange)
+                .frame(width: Self.statusWidth)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: exchange.title)
+                        .fontWeight(.medium)
+                    Spacer(minLength: 8)
+                    Text(exchange.date.formatted(date: .omitted, time: .standard))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Text(exchange.summary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                // The failure is said once, here; an open row shows all of it instead of repeating it.
+                if let failure = exchange.failure {
+                    Text(failure)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                        .lineLimit(expanded.contains(exchange.id) ? nil : 1)
+                        .textSelection(.enabled)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The captured content itself. No nested scroll view: the list already scrolls, and nesting a
-    /// second one on the same axis fights it.
+    /// The status column; the detail is indented by it so it starts under the title.
+    private static let statusWidth: CGFloat = 18
+    private static let statusSpacing: CGFloat = 8
+
+    /// Failure in system red, success in the secondary colour, so the eye lands on what went wrong.
+    @ViewBuilder private func status(_ exchange: DebugExchange) -> some View {
+        if exchange.failure != nil {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+                .accessibilityLabel(L10n.shared.string("Failed"))
+        } else {
+            Image(systemName: "checkmark.circle")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(L10n.shared.string("Succeeded"))
+        }
+    }
+
+    /// The captured content itself. The reply is what a diagnosis needs first, so it starts open;
+    /// the submitted text and the request body can be long and start folded. No nested scroll view:
+    /// the form already scrolls, and nesting a second one on the same axis fights it.
     @ViewBuilder private func detail(_ exchange: DebugExchange) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let failure = exchange.failure {
-                Label(failure, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
-                    .textSelection(.enabled)
-            }
             if let divergence = exchange.sourceDivergence {
                 Text(divergence)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.callout.monospaced())
                     .textSelection(.enabled)
             }
-            block("Submitted Text", exchange.submitted)
-            block("Model Raw Reply", exchange.response ?? "—")
-            block("Request Body", exchange.request)
-            Button(L10n.shared.string("Copy This Record")) { Clipboard.copy(exchange.report) }
+            DebugBlock(title: "Model Raw Reply", text: exchange.response ?? "—", isOpen: true)
+            DebugBlock(title: "Submitted Text", text: exchange.submitted, isOpen: false)
+            DebugBlock(title: "Request Body", text: exchange.request, isOpen: false)
+            HStack {
+                Spacer()
+                Button(L10n.shared.string("Copy This Record"), systemImage: "document.on.document") {
+                    Clipboard.copy(exchange.report)
+                }
+                .buttonStyle(.borderless)
+            }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+        .padding(.leading, Self.statusWidth + Self.statusSpacing)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func block(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(text)
-                .font(.system(size: 11, design: .monospaced))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 
     /// Animated: a disclosure change should read as the row growing, not as the list jumping.
@@ -90,7 +128,7 @@ struct DebugSettingsPane: View {
         Binding(
             get: { expanded.contains(exchange.id) },
             set: { open in
-                withAnimation(.smooth(duration: 0.3)) {
+                withAnimation(.spring(duration: 0.36, bounce: 0.12)) {
                     if open {
                         expanded.insert(exchange.id)
                     } else {
@@ -98,5 +136,32 @@ struct DebugSettingsPane: View {
                     }
                 }
             })
+    }
+}
+
+/// One captured text, folded with the system `DisclosureGroup` as the design asks for long text.
+private struct DebugBlock: View {
+    let title: String
+    let text: String
+    @State private var isOpen: Bool
+
+    init(title: String, text: String, isOpen: Bool) {
+        self.title = title
+        self.text = text
+        _isOpen = State(initialValue: isOpen)
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isOpen.animation(.spring(duration: 0.36, bounce: 0.12))) {
+            Text(text)
+                .font(.callout.monospaced())
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 2)
+        } label: {
+            Text(L10n.shared.string(title))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
     }
 }

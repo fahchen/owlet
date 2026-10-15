@@ -379,6 +379,11 @@
     "zh-Hans": "生词本中的表达不受影响。",
     "zh-Hant": "生詞本中的表達不受影響。"
   },
+  "Failed": {
+    "zh-Hans": "失败",
+    "zh-Hant": "失敗",
+    "ja": "失敗"
+  },
   "Failure: %@": {
     "ja": "失敗の理由：%@",
     "zh-Hans": "失败原因：%@",
@@ -503,6 +508,11 @@
     "ja": "かな",
     "zh-Hans": "假名",
     "zh-Hant": "假名"
+  },
+  "Kept in memory only, the latest %lld; turning the Debug page off clears them.": {
+    "zh-Hans": "只保存在内存中，最多 %lld 条；关闭调试页即清空。",
+    "zh-Hant": "只保存在記憶體中，最多 %lld 筆；關閉除錯頁即清空。",
+    "ja": "メモリにのみ保持し、最新 %lld 件まで。デバッグページをオフにすると消去されます。"
   },
   "Korean": {
     "ja": "韓国語",
@@ -854,6 +864,11 @@
     "zh-Hans": "思考强度",
     "zh-Hant": "思考強度"
   },
+  "Recent Requests": {
+    "zh-Hans": "最近的请求",
+    "zh-Hant": "最近的請求",
+    "ja": "最近のリクエスト"
+  },
   "Record": {
     "ja": "記録",
     "zh-Hans": "录制",
@@ -1088,6 +1103,11 @@
     "ja": "送信した原文",
     "zh-Hans": "提交原文",
     "zh-Hant": "提交原文"
+  },
+  "Succeeded": {
+    "zh-Hans": "成功",
+    "zh-Hant": "成功",
+    "ja": "成功"
   },
   "Takes effect the next time Owlet starts.": {
     "ja": "次回 Owlet の起動時から反映されます。",

@@ -277,6 +277,38 @@ struct PreviewView: View {
             }
         }
         PreviewFixtures.defaults.removeObject(forKey: SettingsStore.wholeFieldTextKey)
+        return exportDebug(to: directory)
+    }
+
+    /// The Debug pane with one success and one contract failure, collapsed and with the failure open.
+    private static func exportDebug(to directory: URL) -> Bool {
+        let log = DebugLog.shared
+        log.clear()
+        log.add(
+            DebugExchange(
+                date: Date(timeIntervalSince1970: 1_760_520_000), title: "Translate · en",
+                request: #"{"model": "deepseek-chat", "messages": [ … ]}"#, submitted: PreviewFixtures.source,
+                response: #"{"target_language": "en", "segments": [ … ]}"#))
+        var failed = DebugExchange(
+            date: Date(timeIntervalSince1970: 1_760_520_180), title: "Study Expressions",
+            request: #"{"model": "deepseek-chat", "response_format": {"type": "json_object"}}"#,
+            submitted: PreviewFixtures.source, response: #"{"items": [{"text": "lush"}]}"#)
+        failed.failure = ModelError.format.message
+        failed.failureKind = .contract
+        log.add(failed)
+        for dark in [false, true] {
+            for (suffix, open) in [("", Set<UUID>()), ("-open", [failed.id])] {
+                let name = "settings-debug\(suffix)\(dark ? "-dark" : "")"
+                let view = DebugSettingsPane(expanded: open)
+                    .frame(width: size.width, height: size.height)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .environment(\.controlActiveState, .key)
+                    .environment(\.colorScheme, dark ? .dark : .light)
+                guard let data = render(AnyView(view), dark: dark) else { return false }
+                do { try data.write(to: directory.appendingPathComponent("\(name).png")) } catch { return false }
+            }
+        }
+        log.clear()
         return true
     }
 
@@ -293,9 +325,19 @@ struct PreviewView: View {
     /// `NSHostingView` + `cacheDisplay` rather than `ImageRenderer`: the latter draws neither the
     /// grouped `Form`'s rows nor the `Picker`/`Toggle` controls, leaving an empty image.
     private static func png(_ variant: Variant) -> Data? {
-        let host = NSHostingView(rootView: content(variant))
+        render(AnyView(content(variant)), dark: variant.dark)
+    }
+
+    private static func render(_ view: AnyView, dark: Bool) -> Data? {
+        let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: size)
-        host.appearance = NSAppearance(named: variant.dark ? .darkAqua : .aqua)
+        host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        // A `List` only lays out its rows inside a window; this one is never ordered on screen.
+        let window = NSWindow(
+            contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
         host.layoutSubtreeIfNeeded()
         // A 2x rep keeps the export as crisp as the Retina window it stands in for.
         guard

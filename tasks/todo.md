@@ -1502,3 +1502,23 @@ T47 总验收对照（2026-10-11）：五类区域均可查（浮窗、文本处
 结果（2026-10-15）：[ServicePreset.swift](../Owlet/Settings/ServicePreset.swift) 新增 `ServicePreset` 数据表与 `ServiceChoice`；[SettingsStore.swift](../Owlet/Settings/SettingsStore.swift) 的 `Provider` 收敛为协议 + 两个 agent，新增 `service.choice`、`serviceID`、`selectService`、按服务 id 的模型记忆与按账户的 Keychain 读写，`currentConfig` 带上预设的 `supportsJSONSchema`；[ModelClient.swift](../Owlet/LLM/ModelClient.swift) 的 `format` 改读 `ServiceConfig.supportsJSONSchema`；[ModelSettingsPane.swift](../Owlet/Settings/ModelSettingsPane.swift) 的服务 `Picker` 分为厂商预设与本地 agent 两节，选中一家即写入地址与模型；[translations.json](../strings/translations.json) 与 `Localizable.xcstrings` 增 9 条（262 → 271）；测试 441 → 449 项 / 49 个 suite（新增预设表、能力开关、地址与模型写入、按服务记忆与旧键迁移）。
 
 验证：`mise run format`、`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual mise run check` 退出码 0。未验证：所有真实厂商的 Base URL、默认模型与 `jsonschema` 能力都只按各家公开文档核对，本机没有这些 Key，没有端到端调用；设置页的实际观感与选择行为需人跑 `mise run dev` 代验。
+
+## T76：调试页按设置页的风格重排（已实现）
+
+问题：调试页是唯一不用分组 `Form` 的设置页；行内字号写死 11–12pt；失败要展开才看得见；三段原文全部铺开，真实请求体一展开就占满一屏；「复制这条记录」是灰底方框按钮，违反 DESIGN「行内操作用无边框图标或纯文本按钮」。
+
+范围：只改呈现，不改 `DebugLog` 的内容、上限与只在内存的约束。
+
+- 整页改为 `Form` + `Section`（`.formStyle(.grouped)`），分组标题「最近的请求」，footer 说明只在内存、最多 20 条、关调试页即清空。
+- 行：行首状态图标（失败为系统红 `exclamationmark.triangle.fill`，成功为次要色 `checkmark.circle`，各带无障碍标签）；第一行操作名 + 时间，第二行原文摘要（次要色），失败时第三行红字失败原因；字号用系统文字样式。失败只在行内说一次，展开时取消截断显示全文。
+- 展开：三段原文各是一个系统 `DisclosureGroup`，「模型原始返回」默认展开，「提交的原文」「请求体」默认收起；内容缩进到标题同一列；「复制这条记录」改为无边框按钮，图标 `document.on.document`。动效沿用 `spring(duration: 0.36, bounce: 0.12)`。
+- 预览：`--settings` 另导出 `settings-debug`、`settings-debug-open` 及深色版；`List`／`Form` 只在窗口里排版，离屏渲染改为挂在一个不上屏的窗口里。
+
+验收：
+
+- [x] 新增 4 条界面串（271 → 275），重新生成 catalog。
+- [x] `--settings` 导出的四张调试页图：失败行一眼可见，展开后不重复失败原因，内容与标题对齐，深浅色都可读。
+- [x] `mise run check` 退出码 0。
+- [ ] **需要人跑 `mise run dev`** 打开调试页，做一次失败与一次成功的请求，确认展开动效与复制内容。
+
+验证：`python3 scripts/panel-preview.py --settings /tmp/owlet-settings` 导出的图逐张核对；`mise run check` 退出码 0。未验证：真实窗口里的交互与动效。

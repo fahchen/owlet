@@ -2205,6 +2205,35 @@
         }
       }
     },
+    "Failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失敗"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失败"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失敗"
+          }
+        }
+      }
+    },
     "Failure: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2926,6 +2955,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "假名"
+          }
+        }
+      }
+    },
+    "Kept in memory only, the latest %lld; turning the Debug page off clears them.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept in memory only, the latest %lld; turning the Debug page off clears them."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メモリにのみ保持し、最新 %lld 件まで。デバッグページをオフにすると消去されます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只保存在内存中，最多 %lld 条；关闭调试页即清空。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只保存在記憶體中，最多 %lld 筆；關閉除錯頁即清空。"
           }
         }
       }
@@ -4960,6 +5018,35 @@
         }
       }
     },
+    "Recent Requests": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Requests"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近のリクエスト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近的请求"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近的請求"
+          }
+        }
+      }
+    },
     "Record": {
       "extractionState": "manual",
       "localizations": {
@@ -6319,6 +6406,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "提交原文"
+          }
+        }
+      }
+    },
+    "Succeeded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Succeeded"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成功"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成功"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成功"
           }
         }
       }

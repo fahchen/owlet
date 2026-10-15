@@ -14,7 +14,7 @@ import Testing
     }
 
     /// No windows means nothing to raise, and the app must not invent one.
-    @Test func noSettingsWindowIsReportedWhenThereIsNone() {
+    @Test @MainActor func noSettingsWindowIsReportedWhenThereIsNone() {
         #expect(SettingsWindow.existing(in: []) == nil)
     }
 }

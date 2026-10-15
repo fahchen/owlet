@@ -12,7 +12,7 @@ enum SettingsWindow {
         className.contains("Settings") || identifier.contains("Settings")
     }
 
-    static func existing(in windows: [NSWindow]) -> NSWindow? {
+    @MainActor static func existing(in windows: [NSWindow]) -> NSWindow? {
         windows.first {
             isSettingsWindow(
                 identifier: $0.identifier?.rawValue ?? "", className: String(describing: type(of: $0)))
@@ -21,7 +21,7 @@ enum SettingsWindow {
 
     /// Shows the settings window and brings it to the front, whether it is closed, behind another app
     /// or behind our own floating panel.
-    static func show(_ openSettings: () -> Void) {
+    @MainActor static func show(_ openSettings: () -> Void) {
         NSApp.activate()
         openSettings()
         // The scene may create the window on a later turn of the run loop, so the raise is deferred

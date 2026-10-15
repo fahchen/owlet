@@ -53,3 +53,7 @@ run = [
   "pkill -x Owlet || true",
   "open .build/Build/Products/Debug/Owlet.app",
 ]
+
+[tasks."site:preview"]
+description = "Render the changelog page from CHANGELOG.md and open the website locally"
+run = ["bun scripts/site-changelog.ts", "open site/index.html"]

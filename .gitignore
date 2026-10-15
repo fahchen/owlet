@@ -8,3 +8,6 @@ Owlet.xcodeproj/
 .build/
 dist/
 Signing.local.xcconfig
+
+# Rendered from CHANGELOG.md by scripts/site-changelog.ts at deploy time.
+site/changelog.html

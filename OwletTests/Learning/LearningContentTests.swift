@@ -75,7 +75,7 @@ struct LearningContentTests {
         let user = try #require(request.turns.first?.content)
         #expect(user.contains("Let's take a step back."))
         #expect(user.contains("让我们退一步。"))
-        let schema = try #require(schema(of: request))
+        let schema = try #require(responseSchema(of: request))
         #expect(!String(decoding: schema.data, as: UTF8.self).contains("minLength"))
     }
 

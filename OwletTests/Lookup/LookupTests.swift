@@ -164,7 +164,7 @@ func lookupReply(
             JSONSerialization.jsonObject(with: Data(user.utf8)) as? [String: Any])
         #expect(payload["context"] as? String == "We sat on the bank of the river.")
         #expect(payload["selection_start"] as? Int == 14)
-        let schema = try #require(schema(of: request))
+        let schema = try #require(responseSchema(of: request))
         #expect(schema.name == "lookup")
 
         var deepSeek = testConfig

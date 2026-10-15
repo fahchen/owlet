@@ -63,7 +63,7 @@ func wireBody(_ request: ModelRequest, config: ServiceConfig) throws -> [String:
 }
 
 /// The schema a request asked the provider to enforce, or nil when it asked for `json_object` instead.
-func schema(of request: ModelRequest) -> (name: String, data: Data)? {
+func responseSchema(of request: ModelRequest) -> (name: String, data: Data)? {
     guard case .jsonSchema(let name, let data) = request.format else { return nil }
     return (name, data)
 }
@@ -86,7 +86,7 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
     #expect(request.turns == [.user("Hello")])
     #expect(!request.system.contains("Hello"))
     #expect(request.system.hasPrefix(DefaultPrompts.translate))
-    let schema = try #require(schema(of: request))
+    let schema = try #require(responseSchema(of: request))
     #expect(schema.name == "translation")
     #expect(!String(decoding: schema.data, as: UTF8.self).contains("minLength"))
 
@@ -120,12 +120,12 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
     config.supportsJSONSchema = true
     let full = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
-    #expect(schema(of: full) != nil)
+    #expect(responseSchema(of: full) != nil)
 
     config.supportsJSONSchema = nil
     let fallback = try ModelClient().translationRequest(
         text: "Hello", to: "zh-Hans", config: config)
-    #expect(schema(of: fallback) != nil)
+    #expect(responseSchema(of: fallback) != nil)
 }
 
 @Test func automaticEffortOmitsTheReasoningParameter() throws {

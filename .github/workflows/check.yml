@@ -12,5 +12,9 @@ jobs:
           sudo xcode-select -s "$xcode"
           xcodebuild -version
           xcrun swift-format --version
+      # Keyboard navigation on, as on a developer Mac: with it off, Tab skips buttons, and the panel
+      # traversal test has only buttons to reach.
+      - name: Turn on keyboard navigation
+        run: defaults write -g AppleKeyboardUIMode -int 2
       - uses: jdx/mise-action@v2
       - run: mise run check

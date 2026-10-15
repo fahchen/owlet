@@ -1,91 +1,92 @@
-Feature: 操作历史
-  用户可以找回翻译与润色的原文和结果。
+# English: history.feature · 简体中文: history.zh-CN.feature
+Feature: Operation history
+  The user can find the source text and results of translations and polishes again.
 
-  Rule: 成功生成的结果自动保存
-    Scenario Outline: 保存结果
-      Given 用户执行 "<动作>"
-      When 结果成功生成
-      Then 历史保存原文、结果、语言、时间及类型 "<类型>"
-      And 重启后仍可查看
+  Rule: Successfully generated results are saved automatically
+    Scenario Outline: Save the result
+      Given the user runs "<action>"
+      When the result is generated successfully
+      Then history saves the source text, result, language, time and type "<type>"
+      And it can still be viewed after a restart
       Examples:
-        | 动作 | 类型 |
-        | 翻译 | 翻译 |
-        | 润色 | 润色 |
-        | 翻译并替换 | 翻译 |
+        | action | type |
+        | Translate | Translate |
+        | Polish | Polish |
+        | Translate and Replace | Translate |
 
-    Scenario: 译文成功但替换失败
-      Given 翻译并替换已生成译文
-      When 因未能写回原应用而替换失败
-      Then 翻译历史仍保留原文和译文
+    Scenario: The translation succeeds but replacement fails
+      Given Translate and Replace has generated a translation
+      When replacement fails because writing back to the original app failed
+      Then the translation history still keeps the source text and the translation
 
-    Scenario: 请求失败
-      When 翻译或润色请求失败或取消
-      Then 不保存为成功历史
+    Scenario: The request fails
+      When a translate or polish request fails or is cancelled
+      Then it is not saved as successful history
 
-  Rule: 历史可查找并复用
-    Scenario: 组合筛选与搜索
-      Given 用户有多条翻译与润色记录
-      When 用户按润色筛选并搜索原文中的词语
-      Then 只显示匹配的润色记录
-      And 可打开详情并发起学习请求
+  Rule: History can be searched and reused
+    Scenario: Combine filtering and search
+      Given the user has several translate and polish records
+      When the user filters by Polish and searches for a word in the source text
+      Then only the matching polish records are shown
+      And a record's detail can be opened to start a study request
 
-  Rule: 历史由用户清理且不自动过期
-    Scenario: 删除单条历史
-      Given 用户有两条历史记录
-      When 用户删除其中一条并重启
-      Then 只保留另一条记录
+  Rule: History is cleaned up by the user and never expires automatically
+    Scenario: Delete one history record
+      Given the user has two history records
+      When the user deletes one of them and restarts
+      Then only the other record is kept
 
-    Scenario: 取消清空
-      Given 用户有历史记录
-      When 用户发起清空但取消确认
-      Then 历史记录保持不变
+    Scenario: Cancel clearing
+      Given the user has history records
+      When the user starts clearing but cancels the confirmation
+      Then the history records stay unchanged
 
-    Scenario: 确认清空
-      Given 用户有历史记录
-      When 用户确认清空全部历史
-      Then 历史列表为空
+    Scenario: Confirm clearing
+      Given the user has history records
+      When the user confirms clearing all history
+      Then the history list is empty
 
-    Scenario: 长期保留
-      Given 用户未删除已有历史
-      When 用户在之后重新打开历史
-      Then 不因记录年龄自动删除记录
+    Scenario: Long-term retention
+      Given the user has not deleted existing history
+      When the user reopens history later
+      Then no record is deleted automatically because of its age
 
-  Rule: 历史详情使用学习流程加入生词本
-    Scenario: 学习已有历史
-      Given 用户选中一条历史记录
-      When 用户点击详情右下角的学习按钮
-      Then 原文收起，结果留在上方，学习列表在下方展开并按需请求
-      And 点击词条即时切换收藏
-      And 不直接保存整条原文作为生词
+  Rule: The history detail adds to the notebook through the study flow
+    Scenario: Study an existing history record
+      Given the user selects a history record
+      When the user clicks the Study button at the bottom right of the detail
+      Then the source text collapses, the result stays on top, and the study list expands below and is requested on demand
+      And clicking an entry toggles saving immediately
+      And the whole source text is not saved as a single notebook entry
 
-    Scenario: 分栏与工具栏
-      Given 用户打开历史记录
-      Then 列表和详情分别滚动，工具栏半透明
-      And 筛选在工具栏左侧，搜索位于最右侧，删除在右侧
-      And 详情右下角提供学习与复制结果按钮
-      And 不提供编辑或导出按钮
+    Scenario: Split view and toolbar
+      Given the user opens History
+      Then the list and the detail scroll separately, and the toolbar is translucent
+      And the filter is on the left of the toolbar, search is at the far right, and delete is on the right
+      And the bottom right of the detail offers the Study and Copy Result buttons
+      And no edit or export button is offered
 
-  场景: 数量随列表滚动
-    当 查看历史列表
-    那么 不显示重复的历史记录窗口标题
-    并且 记录数量作为列表首行的灰色非选择标签随内容滚动
+  Scenario: The count scrolls with the list
+    When the history list is viewed
+    Then no duplicate History window title is shown
+    And the record count scrolls with the content as a gray, non-selectable label in the first row of the list
 
-  场景: 浏览相邻条目与空状态
-    当 查看列表
-    那么 数量居中显示在第一项上方的滚动留白，不增加顶部安全留白
-    并且 工具栏上一条和下一条按当前筛选顺序切换，边界禁用
-    并且 空库可前往翻译，无匹配结果可清除筛选
+  Scenario: Browse adjacent records and empty states
+    When the list is viewed
+    Then the count is centered in the scrolling space above the first item, without adding top safe-area padding
+    And the Previous and Next toolbar buttons move in the current filter order and are disabled at the ends
+    And an empty library offers a way to Translate, and no matching results offers Clear Filters
 
-  场景: 多选删除与独立导航组
-    当 使用 Command 或 Shift 在列表中选择多条记录
-    那么 删除前确认所选数量，只删除所选记录
-    并且 多选时学习和上一条下一条不可用
-    并且 上一条下一条在右侧独立工具栏组中
+  Scenario: Multi-select deletion and a separate navigation group
+    When the user selects several records in the list with Command or Shift
+    Then the selected count is confirmed before deletion, and only the selected records are deleted
+    And Study and Previous / Next are unavailable while several records are selected
+    And Previous / Next sit in a separate toolbar group on the right
 
-  场景: 一级筛选
-    当 打开筛选菜单
-    那么 直接显示全部类型、翻译与润色，无二级菜单
+  Scenario: Single-level filter
+    When the filter menu is opened
+    Then All Types, Translate and Polish are shown directly, with no submenu
 
-  场景: Notes 式工具栏搜索
-    当 查看历史记录
-    那么 系统搜索位于工具栏最右侧，与导航及内容动作分组分离
+  Scenario: Notes-style toolbar search
+    When History is viewed
+    Then the system search sits at the far right of the toolbar, separated from the navigation and content action groups

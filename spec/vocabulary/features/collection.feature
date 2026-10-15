@@ -1,75 +1,76 @@
-Feature: 统一收藏
-  用户可以主动保存词汇、短语或整句及其语境。
+# English: collection.feature · 简体中文: collection.zh-CN.feature
+Feature: Unified saving
+  The user can deliberately save a word, phrase or whole sentence together with its context.
 
-  Rule: 收藏不依赖学习推荐
-    Scenario Outline: 手动选择内容入库
-      Given 学习推荐关闭
-      And 用户正在查看 "<来源>"
-      When 用户选择一个 "<内容>" 并收藏
-      Then 条目立即保存且不要求先填写表单
-      And 保留表达、语言与原句语境
+  Rule: Saving does not depend on study suggestions
+    Scenario Outline: Manually pick content to save
+      Given study suggestions are off
+      And the user is viewing "<source>"
+      When the user picks a "<content>" and saves it
+      Then the entry is saved immediately without a form to fill in
+      And the expression, language and source sentence context are kept
       Examples:
-        | 来源 | 内容 |
-        | 原文 | 词汇 |
-        | 翻译结果 | 短语 |
-        | 润色结果 | 整句 |
-        | 历史详情 | 短语 |
+        | source | content |
+        | source text | word |
+        | translation result | phrase |
+        | polish result | whole sentence |
+        | history details | phrase |
 
-    Scenario: 收藏润色表达
-      Given 用户查看润色结果
-      When 用户收藏改进后的表达
-      Then 条目保留修改前后的对照
+    Scenario: Save a polished expression
+      Given the user is viewing a polish result
+      When the user saves the improved expression
+      Then the entry keeps the before and after pair
 
-    Scenario: 已有语境释义
-      Given 被收藏的内容已有语境释义
-      When 用户收藏该内容
-      Then 释义随条目一起保存
+    Scenario: Contextual meaning already available
+      Given the content being saved already has a contextual meaning
+      When the user saves it
+      Then the meaning is saved with the entry
 
-    Scenario: 缺失释义且补充失败
-      Given 用户手选的内容没有语境释义
-      When 用户收藏后补充释义失败
-      Then 已保存的表达及原句仍存在
-      And 用户可以重试补充释义
+    Scenario: Meaning missing and filling it in fails
+      Given the content the user selected by hand has no contextual meaning
+      When filling in the meaning fails after the user saves it
+      Then the saved expression and source sentence still exist
+      And the user can retry filling in the meaning
 
-  Rule: 重复表达可以追加语境
-    Scenario: 同一英语表达出现在新原句中
-      Given 生词本已收录英语表达 "follow up"
-      When 用户从另一个原句收藏 "follow up" 并选择追加语境
-      Then 原条目增加新语境
-      And 旧语境不被覆盖
+  Rule: A repeated expression can append a context
+    Scenario: The same English expression in a new source sentence
+      Given the notebook already contains the English expression "follow up"
+      When the user saves "follow up" from another source sentence and chooses to append the context
+      Then the existing entry gains the new context
+      And the old context is not overwritten
 
-    Scenario: 不同语言的同形表达
-      Given 生词本已收录中文表达 "手紙"
-      When 用户收藏日语表达 "手紙"
-      Then 保存为不同语言的条目
-      And 不自动合并两者的语境
+    Scenario: Identical expressions in different languages
+      Given the notebook already contains the Chinese expression "手紙"
+      When the user saves the Japanese expression "手紙"
+      Then it is saved as an entry in a different language
+      And the contexts of the two are not merged automatically
 
-    Scenario: 重复提交同一语境
-      Given 同一表达的当前语境已经保存
-      When 用户再次提交同一收藏
-      Then 不重复追加相同语境
+    Scenario: Submitting the same context again
+      Given the current context of an expression is already saved
+      When the user submits the same save again
+      Then the same context is not appended twice
 
-  Rule: 收藏记录来源入口与原文所在的 App
-    Scenario Outline: 来源入口
-      When 用户通过 "<入口>" 收藏一个表达
-      Then 该语境的来源入口记为 "<来源>"
+  Rule: Saving records the entry point and the app the source text came from
+    Scenario Outline: Entry point
+      When the user saves an expression through "<entry point>"
+      Then the context's entry point is recorded as "<source>"
       Examples:
-        | 入口 | 来源 |
-        | 手选原文或结果 | 划选 |
-        | 学习区勾选 | 学习推荐 |
-        | 历史详情学习区 | 历史 |
+        | entry point | source |
+        | selecting in the source text or result | selection |
+        | checking it in the study area | study suggestion |
+        | the study area in history details | history |
 
-    Scenario: 来源 App 随链路传递
-      Given 用户在邮件应用中划选文本并触发翻译
-      When 用户从学习区收藏一个表达
-      Then 该语境的来源 App 是邮件应用
+    Scenario: The source app travels with the flow
+      Given the user selects text in the Mail app and triggers a translation
+      When the user saves an expression from the study area
+      Then the context's source app is the Mail app
 
-    Scenario: 从历史收藏沿用历史的来源 App
-      Given 一条原文来自 Slack 的历史记录
-      When 用户从该记录的学习区收藏表达
-      Then 该语境的来源 App 是 Slack
+    Scenario: Saving from history keeps the history's source app
+      Given a history record whose source text came from Slack
+      When the user saves an expression from that record's study area
+      Then the context's source app is Slack
 
-    Scenario: 手动输入没有来源 App
-      Given 用户在主窗口手动输入文本并翻译
-      When 用户收藏一个表达
-      Then 该语境没有来源 App
+    Scenario: Manual input has no source app
+      Given the user types text in the main window and translates it
+      When the user saves an expression
+      Then the context has no source app

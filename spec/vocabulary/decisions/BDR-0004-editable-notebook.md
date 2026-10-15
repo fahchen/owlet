@@ -1,59 +1,61 @@
-# BDR-0004：生词本可编辑
+[English](BDR-0004-editable-notebook.md) · [简体中文](BDR-0004-editable-notebook.zh-CN.md)
 
-状态：已接受（2026-10-04，待实现）。来源：用户需求——要用 Owlet 构建自己的生词本，不可编辑的收藏无法成为学习资料。
+# BDR-0004: The notebook is editable
 
-取代 `spec/product.md` 首版定义中「生词本不提供编辑入口」与「不提供导出、复制或编辑按钮」里的编辑部分；导出、复制仍不提供。收藏时「点击加入生词本即保存，不强制填写表单」不变——编辑是收藏之后的事。
+Status: Accepted (2026-10-04, not yet implemented). Source: user request. The user wants to build their own notebook with Owlet, and saved items that cannot be edited cannot become study material.
 
-## 用户价值与动机
+Supersedes the editing part of two statements in the first version of `spec/product.md`: "the notebook offers no way to edit" and "no export, copy or edit buttons". Export and copy are still not offered. Saving is unchanged: "clicking Add to Notebook saves it, no form is required". Editing happens after saving.
 
-首版把生词本定义为只读列表：收藏即存，之后只能看和删。这对「积累」够用，对「学习」不够：模型给的释义有时偏、有时错，用户纠正不了；自己对一个词的理解没地方写；条目多了以后没法按主题找。首版的理由是保持核心交互简洁，但「简洁」的代价落在了用户最常做的事上——回头看自己的词。
+## User value and motivation
 
-开放编辑之后，生词本从「收藏结果」变成「用户维护的资料」。每一条的最终内容由用户说了算，模型只是起点。
+The first version defined the notebook as a read-only list: saving stores an item, and afterwards it can only be viewed or deleted. That is enough for collecting, not for studying. The model's meaning is sometimes off and sometimes wrong, and the user cannot correct it. There is nowhere to write down one's own understanding of a word. Once the list grows, there is no way to find items by topic. The first version kept the core interaction simple, but the cost of that simplicity landed on what the user does most often: going back to their own words.
 
-## 决定
+With editing, the notebook stops being a record of saved results and becomes material the user maintains. The user decides the final content of every entry; the model only provides a starting point.
 
-### 1. 可编辑字段
+## Decision
 
-释义、表达、语言、笔记、标签、重点。语境（原句、润色对照）不可编辑——它是收藏时的真实记录，改了就不是记录了。
+### 1. Editable fields
 
-### 2. 释义永远可被重新生成覆盖
+Meaning, expression, language, notes, tags and starred. The context (the source sentence and the polish before/after pair) is not editable. It is the actual record of the moment the item was saved; once edited, it is no longer a record.
 
-用户改过的释义，再触发「重新生成释义」时被模型结果无条件覆盖，不确认、不锁定。
+### 2. The meaning can always be overwritten by regeneration
 
-理由：笔记字段已经承担「不会被自动流程触碰」这个角色。如果释义也加保护，就有两个安全区，用户要记住哪个会被覆盖哪个不会。规则简单到可以一句话说清：**释义是模型的地盘，笔记是你的地盘**。要保留自己的措辞，写到笔记里。
+A meaning the user has edited is overwritten unconditionally by the model's result when the user triggers "Regenerate meaning". There is no confirmation and no lock.
 
-备选「覆盖前确认」与「改过即锁定」都不采纳：前者多一步确认换不来什么；后者需要额外状态和解锁入口。
+Reason: the notes field already plays the role of "never touched by automatic flows". If the meaning were protected too, there would be two safe areas, and the user would have to remember which one gets overwritten. The rule fits in one sentence: **the meaning belongs to the model, the notes belong to you**. To keep your own wording, write it in the notes.
 
-### 3. 表达与语言可改，撞同语言已有条目时拒绝
+Rejected alternatives: "confirm before overwriting" and "lock once edited". The first adds a step that buys nothing; the second needs extra state and an unlock control.
 
-改表达或改语言后，若与同语言下已有条目重合，拒绝修改并保留原值；不自动合并语境。
+### 3. Expression and language are editable; a change that collides with an existing entry in the same language is rejected
 
-理由：语言改错是语言检测的常见后果（日语汉字词判成中文），必须能纠正；表达改错多半是收藏时多选了标点。「撞了」更可能是打错字而不是真想合并，而合并不可逆。
+If changing the expression or the language makes the entry identical to an existing entry in the same language, the change is rejected and the old value is kept. Contexts are not merged automatically.
 
-### 4. 编辑即时生效，没有保存按钮
+Reason: a wrong language is a common result of language detection (Japanese kanji words detected as Chinese), so it must be correctable. A wrong expression is usually extra punctuation picked up when saving. A collision is more likely a typo than an intent to merge, and merging cannot be undone.
 
-与设置页 API Key、Prompt 的编辑行为一致：改了就是改了，没有「未保存更改」状态，没有取消。有后果的操作（改表达）靠第 3 条的拒绝规则兜底。
+### 4. Edits take effect immediately; there is no save button
 
-### 5. 标签不做管理
+This matches editing the API Key and the prompts in Settings: a change is a change. There is no "unsaved changes" state and no cancel. The one edit with consequences (changing the expression) is covered by the rejection rule in item 3.
 
-标签自由输入，输入时可见已用过的标签作候选；没有条目引用的标签自然消失。不做改名、合并、删除标签的管理页——标签是条目的属性，不是独立实体。近义分裂（「工作」「工作用语」）由候选缓解，不由管理解决。
+### 5. No tag management
 
-### 6. 并发编辑不保护
+Tags are free text. While typing, previously used tags appear as suggestions. A tag that no entry uses simply disappears. There is no page to rename, merge or delete tags: a tag is an attribute of an entry, not an entity of its own. Near-duplicate tags ("work" vs "work terms") are mitigated by suggestions, not by management.
 
-浮窗为某条目补充释义时，主窗口用户同时在编辑它：后写入者赢。单机单用户，这条路径极罕见；为它加状态机不值。与第 2 条一致。
+### 6. Concurrent edits are not protected
 
-## 影响
+If the floating panel fills in a meaning for an entry while the user is editing the same entry in the main window, the last write wins. On a single machine with a single user this path is extremely rare, and a state machine for it is not worth it. This is consistent with item 2.
 
-- `spec/vocabulary/features/editing.feature`（新增）：以上规则的场景。
-- `spec/vocabulary/features/notebook.feature`：「不提供导出、复制或编辑按钮」改为「不提供导出或复制按钮」；筛选规则加入标签与重点，与语言筛选叠加。
-- `spec/product.md`：「个人生词本」与「学习内容与收藏」两节对应句子更新。
-- 术语：新增「释义」「笔记」「标签」「重点」。
-- 数据：释义、笔记、标签、重点各需持久字段；表达与语言的唯一性约束不变。字段设计见 `docs/vocabulary-schema-v2.html`。
+## Impact
 
-## 明确不做
+- `spec/vocabulary/features/editing.feature` (new): scenarios for the rules above.
+- `spec/vocabulary/features/notebook.feature`: "no export, copy or edit buttons" becomes "no export or copy buttons"; the filter rules add tags and starred, combined with the language filter.
+- `spec/product.md`: the matching sentences in the "Personal notebook" and "Study content and saving" sections are updated.
+- Glossary: adds "meaning", "notes", "tags" and "starred".
+- Data: meaning, notes, tags and starred each need a persistent field; the uniqueness constraint on expression plus language is unchanged. See the SwiftData models in `Owlet/Vocabulary/` for the fields.
 
-- 语境不可编辑。
-- 不提供导出、复制按钮（与首版一致）。
-- 不做标签管理页。
-- 不做编辑历史、撤销。
-- 不做释义锁定或覆盖确认。
+## Explicitly out of scope
+
+- The context is not editable.
+- No export or copy buttons (same as the first version).
+- No tag management page.
+- No edit history or undo.
+- No meaning lock or overwrite confirmation.

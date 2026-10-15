@@ -1,125 +1,126 @@
-Feature: 可选学习内容
-  用户决定是否从翻译与润色中获取学习推荐。
+# English: recommendations.feature · 简体中文: recommendations.zh-CN.feature
+Feature: Optional study content
+  The user decides whether to get study recommendations from translations and polishes.
 
-  Rule: 学习推荐默认关闭且分别控制
-    Scenario: 首次使用
-      Given 用户未修改学习设置
-      When 用户分别执行翻译与润色
-      Then 两种操作都不自动请求或展示学习推荐
+  Rule: Study recommendations are off by default and controlled separately
+    Scenario: First use
+      Given the user has not changed the study settings
+      When the user runs Translate and Polish
+      Then neither operation automatically requests or shows study recommendations
 
-    Scenario: 仅开启翻译学习
-      Given 用户开启翻译学习且关闭润色学习
-      When 用户分别完成翻译与润色
-      Then 翻译结果成功后自动发起独立的学习请求
-      And 润色不生成学习推荐
+    Scenario: Turn on only translation study
+      Given the user turns on translation study and turns off polish study
+      When the user completes a translation and a polish
+      Then a separate study request starts automatically after the translation succeeds
+      And Polish generates no study recommendations
 
-    Scenario: 单次展开
-      Given 翻译学习开关关闭
-      When 用户展开结果下方的“学习”区
-      Then 才发起本次独立的学习内容请求
-      And 长期设置仍为关闭
-      And 下一次翻译不自动生成学习内容
+    Scenario: Expand once
+      Given the translation study toggle is off
+      When the user expands the "Study" area below the result
+      Then only then is a separate study content request made for this run
+      And the long-term setting stays off
+      And the next translation does not generate study content automatically
 
-    Scenario: 再次展开已生成的学习表达
-      Given 本次学习表达已成功生成
-      When 用户收起后再次展开
-      Then 展示已有条目而不重复请求
+    Scenario: Expand already generated study expressions again
+      Given this run's study expressions were generated successfully
+      When the user collapses and expands them again
+      Then the existing items are shown without a repeat request
 
-  Rule: 学习内容不含母语
-    Scenario: 读日语时排除母语
-      Given 用户把母语设为简体中文
-      And 原文为日语、目标为简体中文
-      When 翻译成功并请求学习内容
-      Then 推荐条目不含简体中文表达
-      And 日语表达仍可被推荐
+  Rule: Study content excludes native languages
+    Scenario: Exclude the native language while reading Japanese
+      Given the user has set their native language to Simplified Chinese
+      And the source text is Japanese and the target is Simplified Chinese
+      When the translation succeeds and study content is requested
+      Then the recommended items include no Simplified Chinese expressions
+      And Japanese expressions can still be recommended
 
-    Scenario: 润色母语文本时不产生学习内容
-      Given 用户把母语设为简体中文
-      And 原文为简体中文
-      When 润色成功
-      Then 不发起学习请求，也没有学习入口
-      And 主要结果仍可使用
+    Scenario: Polishing native-language text produces no study content
+      Given the user has set their native language to Simplified Chinese
+      And the source text is Simplified Chinese
+      When polishing succeeds
+      Then no study request is made and there is no study entry
+      And the main result is still usable
 
-    Scenario: 润色非母语文本照常推荐
-      Given 用户把母语设为简体中文
-      And 原文为英语
-      When 润色成功并请求学习内容
-      Then 推荐英语表达
+    Scenario: Polishing non-native text recommends as usual
+      Given the user has set their native language to Simplified Chinese
+      And the source text is English
+      When polishing succeeds and study content is requested
+      Then English expressions are recommended
 
-    Scenario: 未设置母语时行为与之前一致
-      Given 用户未设置母语
-      When 翻译或润色成功并请求学习内容
-      Then 原文与译文两侧的表达都可被推荐
+    Scenario: Behavior is unchanged when no native language is set
+      Given the user has not set a native language
+      When a translation or polish succeeds and study content is requested
+      Then expressions on both the source and translation sides can be recommended
 
-    Scenario: 模型不听话时本地兜底
-      Given 用户把母语设为简体中文
-      When 模型返回了简体中文的推荐条目
-      Then 该条目在展示前被丢弃
+    Scenario: Local fallback when the model does not comply
+      Given the user has set their native language to Simplified Chinese
+      When the model returns a Simplified Chinese recommendation
+      Then that item is dropped before it is shown
 
-  Rule: 推荐服务于理解和表达且不强凑数量
-    Scenario: 润色中的风格建议
-      Given 润色学习开关开启
-      And 原文语法正确但有可改善的风格表达
-      When 用户查看学习内容
-      Then 说明修改前后差异及理由
-      And 不将纯风格偏好标为语法错误
+  Rule: Recommendations serve understanding and expression, without padding the count
+    Scenario: Style suggestions in polishing
+      Given the polish study toggle is on
+      And the source text is grammatically correct but has style that could be improved
+      When the user views the study content
+      Then the difference before and after the change and the reason are explained
+      And a pure style preference is not labeled a grammar error
 
-    Scenario: 没有值得推荐的内容
-      Given 学习开关开启
-      When 本次结果没有值得推荐的词汇、搭配或句式
-      Then 可以没有推荐条目
-      And 主要结果仍可使用
+    Scenario: Nothing worth recommending
+      Given the study toggle is on
+      When this result has no vocabulary, collocations or sentence patterns worth recommending
+      Then there may be no recommended items
+      And the main result is still usable
 
-    Scenario: 推荐词在句中用了活用形
-      Given 一句日语原文里的表达是 "跳ね上がっている"
-      When 模型推荐这一表达并给出字典形 "跳ね上がる"
-      Then 该推荐可用，不因为词形与原形不同被判为格式错误
-      And 条目以 "跳ね上がっている" 收藏，并把 "跳ね上がる" 记为原形
-      And 原形与词形相同时不重复记原形
+    Scenario: A recommended word appears in an inflected form in the sentence
+      Given an expression in a Japanese source sentence is "跳ね上がっている"
+      When the model recommends this expression and gives the dictionary form "跳ね上がる"
+      Then the recommendation is usable and is not judged a format error because the surface form differs from the base form
+      And the entry is saved as "跳ね上がっている", with "跳ね上がる" recorded as the base form
+      And the base form is not recorded again when it equals the surface form
 
-  Rule: 学习内容不阻塞主要动作且不自动收藏
-    Scenario: 浮窗逐条收藏
-      Given 浮窗已展示学习推荐
-      When 用户点击某条推荐
-      Then 仅将该条推荐及其释义加入生词本
-      And 保存成功后显示选中状态
-      And 保存失败时保留重试入口
+  Rule: Study content does not block the main action and is never saved automatically
+    Scenario: Save items one by one in the panel
+      Given the panel shows study recommendations
+      When the user clicks a recommendation
+      Then only that recommendation and its meaning are added to the notebook
+      And it shows a selected state after saving succeeds
+      And a retry entry is kept when saving fails
 
-    Scenario: 直接替换不等待学习内容
-      Given 用户开启翻译学习并执行翻译并替换
-      When 译文已生成且原选区有效
-      And 学习内容仍在生成
-      Then 译文直接写回
-      And 不自动添加收藏
+    Scenario: Direct replacement does not wait for study content
+      Given the user has turned on translation study and runs Translate and Replace
+      When the translation is generated and the original selection is valid
+      And study content is still being generated
+      Then the translation is written back directly
+      And nothing is saved automatically
 
-    Scenario: 学习生成失败
-      Given 用户已有翻译结果
-      When 学习内容生成失败
-      Then 翻译结果仍可复制
-      And 用户可重试学习内容生成
+    Scenario: Study generation fails
+      Given the user has a translation result
+      When study content generation fails
+      Then the translation result can still be copied
+      And the user can retry study content generation
 
-    Scenario: 完整窗口学习与浮窗一致
-      Given 完整窗口主结果已成功生成
-      When 用户点击右下角的学习按钮
-      Then 学习列表与浮窗相同，点击词条即时切换收藏
-      And 学习请求沿用本次翻译或润色的结果与语言信息
-      And 不另设释义语言选择器
+    Scenario: Study in the full window matches the panel
+      Given the main result in the full window was generated successfully
+      When the user clicks the Study button at the bottom right
+      Then the study list is the same as in the panel, and clicking an entry toggles saving immediately
+      And the study request reuses this translation's or polish's result and language information
+      And there is no separate meaning language picker
 
-  Rule: 浮窗学习词条即时切换收藏
-    Scenario: 取消词条选中
-      Given 浮窗词条已经存在于生词本并显示选中
-      When 用户再次点击词条
-      Then 该词条立即从生词本移除并显示未选中
-      And 不需要确认或额外提交
-      And 删除失败时保留选中状态并提示失败
+  Rule: Study entries in the panel toggle saving immediately
+    Scenario: Deselect an entry
+      Given an entry in the panel is already in the notebook and shown as selected
+      When the user clicks the entry again
+      Then the entry is removed from the notebook immediately and shown as not selected
+      And no confirmation or extra submit is needed
+      And if removal fails, the selected state is kept and the failure is reported
 
-    Scenario: 再次打开学习界面
-      Given 词条已经加入生词本
-      When 用户再次打开包含该词条的学习界面
-      Then 该词条仍显示选中
+    Scenario: Open the study view again
+      Given an entry has been added to the notebook
+      When the user opens a study view containing that entry again
+      Then the entry is still shown as selected
 
-    Scenario: 结果切换为学习布局
-      Given 浮窗正在显示翻译结果
-      When 用户展开学习
-      Then 结果平滑重排为左右双栏并带弹簧过渡
-      And 系统启用减少动态效果时直接切换
+    Scenario: The result switches to the study layout
+      Given the panel is showing a translation result
+      When the user expands Study
+      Then the result smoothly reflows into two side-by-side columns with a spring transition
+      And it switches directly when the system's Reduce Motion is on

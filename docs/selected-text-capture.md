@@ -1,104 +1,106 @@
-# macOS 选中文字读取方案
+[English](selected-text-capture.md) · [简体中文](selected-text-capture.zh-CN.md)
 
-状态：AX 主路径已实现（`96f8f2e`、`ef8682e`、`671ebd3`），实机兼容性待验证。适用于 Owlet 的 macOS 26+ 原生应用。
+# macOS Selected Text Capture
 
-## 目标与边界
+Status: the AX main path is implemented (`96f8f2e`, `ef8682e`, `671ebd3`); compatibility on real apps is still to be verified. Applies to Owlet's native app on macOS 26+.
 
-用户通过已录制的快捷键触发翻译、润色或翻译并替换时，在浮窗取得焦点之前读取外部应用的选中文字。没有有效原文时不请求模型，提供权限设置或手动输入入口。
+## Goals and boundaries
 
-本方案聚焦 Accessibility（AX）读取主路径，不新增依赖，不涉及 OCR、持续监控选区或替换算法。快捷键沿用现有录制设置，不指定默认组合。
+When the user triggers translate, polish, or translate and replace with a recorded shortcut, the selected text in the external app is read before the floating panel takes focus. Without valid source text, no model request is sent; instead a permission settings entry or a manual input entry is offered.
 
-读取顺序是先 AX、后模拟复制：聚焦元素、祖先、子树与窗口都找不到选区时，按下面的第 7 步合成 ⌘C 复制选区，取到文本后把剪贴板放回。也就是说读取路径只在 AX 落空时访问剪贴板，写回路径则始终通过剪贴板。
+This design focuses on the Accessibility (AX) main read path. It adds no dependencies and does not cover OCR, continuous selection monitoring or the replacement algorithm. Shortcuts keep using the existing recording setting; no default combination is specified.
 
-## 实现位置
+The read order is AX first, then simulated copy: when no selection is found on the focused element, its ancestors, its subtree or the window, step 7 below synthesizes ⌘C to copy the selection and puts the clipboard back once the text is taken. In other words, the read path touches the clipboard only when AX comes up empty, while the write-back path always goes through the clipboard.
 
-- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift)：`read(completion:)` 按下述流程读取；`LatestPendingSerialQueue` 工作队列；可注入的 AX 属性读取器。写回与剪贴板交互在 [SelectionWriteback.swift](../Owlet/Selection/SelectionWriteback.swift)。
-- [PanelController.swift](../Owlet/App/Panel/PanelController.swift)：`processSelection` 分配操作标识，异步接收读取结果并按工具栏是否展开呈现错误。
-- 测试：[SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift)、[LatestPendingSerialQueueTests.swift](../OwletTests/Selection/LatestPendingSerialQueueTests.swift)、[PanelControllerTests.swift](../OwletTests/App/Panel/PanelControllerTests.swift)。
+## Where it lives
 
-## 读取流程
+- [SelectionBridge.swift](../Owlet/Selection/SelectionBridge.swift): `read(completion:)` reads following the flow below; the `LatestPendingSerialQueue` worker queue; an injectable AX attribute reader. Write-back and clipboard handling live in [SelectionWriteback.swift](../Owlet/Selection/SelectionWriteback.swift).
+- [PanelController.swift](../Owlet/App/Panel/PanelController.swift): `processSelection` assigns the operation ID, receives the read result asynchronously and presents errors depending on whether the toolbar is expanded.
+- Tests: [SelectionBridgeTests.swift](../OwletTests/Selection/SelectionBridgeTests.swift), [LatestPendingSerialQueueTests.swift](../OwletTests/Selection/LatestPendingSerialQueueTests.swift), [PanelControllerTests.swift](../OwletTests/App/Panel/PanelControllerTests.swift).
 
-1. 快捷键触发后立即使旧操作失效，取消旧模型请求，分配本次操作标识。
-2. 在主线程检查 `AXIsProcessTrusted()`，记录 `NSWorkspace.shared.frontmostApplication` 及其 PID。未授权返回 `.permission`；无前台应用或来源为 Owlet 自身，返回 `.unreadable`。
-3. 在专用串行工作队列创建 `AXUIElementCreateApplication(pid)`，后续读取限定于这一应用。设置 AX 消息超时，再读取 `kAXFocusedUIElementAttribute`。
-4. 核验返回对象类型，读取 `kAXSubroleAttribute`。若为 `kAXSecureTextFieldSubrole`，立即返回 `.secure`，不得读取文本或选区内容。无法确认必要属性时按读取失败处理。
-5. 读取选区。先看聚焦元素自己的 `kAXSelectedTextAttribute`；Safari 的网页选区只通过 `kAXSelectedTextMarkerRangeAttribute` 加 `kAXStringForTextMarkerRangeParameterizedAttribute` 暴露，所以在同一元素上再试一次文本标记范围。仅接受字符串，用去首尾空白后的副本判断是否为空，实际保留原文空白与换行。
-6. 聚焦元素没有选区时向外找：先沿 `kAXParentAttribute` 向上最多 8 层（网页选区常落在 `AXWebArea` 上），再从聚焦元素的子树开始、最后到所属窗口做广度优先搜索，最多 400 个节点（PDF 阅读器的文字层在子节点里）。每个元素在发消息前都设置 AX 消息超时，所有读取共用一次触发预算，预算用尽后读取返回 nil，搜索随之结束。
-7. 仍然找不到就复制选区：保存剪贴板，合成 ⌘C，最多轮询 20×20ms 等剪贴板变化，取到非空文本后立即把剪贴板放回；拿不到新内容仍返回 `.unreadable`。密码字段在第 4 步已经返回 `.secure`，不会走到这里。
-8. 选区范围（`SelectedRange`）只在放置浮窗需要跟随选区时读取：解码 `kAXSelectedTextRangeAttribute`，经 CF 类型与 AXValue 类型检查。范围缺失只影响放置位置，不影响翻译。
-9. 回到主线程，确认操作未过期、未取消且前台应用仍为原 PID，才接收结果。成功时先保存 `Selection`、导入输入，再显示浮窗并启动对应模型请求。
+## Read flow
 
-读取文字成功不等于写回成功。写回不比较捕获时的文本与选区范围，而且**只**走粘贴：辅助功能写入会在这类应用上"报告成功但什么也没改"（面板取走焦点后元素常已失效），所以那条路径已经删掉。次序是固定的：
+1. As soon as the shortcut fires, invalidate the old operation, cancel the old model request and assign an ID to this operation.
+2. On the main thread, check `AXIsProcessTrusted()` and record `NSWorkspace.shared.frontmostApplication` and its PID. If not authorized, return `.permission`; if there is no frontmost app or the source is Owlet itself, return `.unreadable`.
+3. On the dedicated serial worker queue, create `AXUIElementCreateApplication(pid)`; all further reads are confined to this app. Set the AX messaging timeout, then read `kAXFocusedUIElementAttribute`.
+4. Check the returned object's type and read `kAXSubroleAttribute`. If it is `kAXSecureTextFieldSubrole`, return `.secure` immediately; text and selection contents must not be read. If a required attribute cannot be confirmed, treat it as a read failure.
+5. Read the selection. First check the focused element's own `kAXSelectedTextAttribute`; Safari exposes web page selections only through `kAXSelectedTextMarkerRangeAttribute` plus `kAXStringForTextMarkerRangeParameterizedAttribute`, so the text marker range is tried on the same element as well. Only strings are accepted; emptiness is judged on a trimmed copy, while the original whitespace and line breaks are kept.
+6. When the focused element has no selection, search outward: first walk up `kAXParentAttribute` at most 8 levels (web selections often sit on `AXWebArea`), then run a breadth-first search starting from the focused element's subtree and ending at its window, visiting at most 400 nodes (a PDF reader's text layer lives in child nodes). Every element gets the AX messaging timeout set before it is messaged, and all reads share one per-trigger budget; once the budget is spent, reads return nil and the search ends.
+7. If nothing is found, copy the selection: save the clipboard, synthesize ⌘C, poll at most 20×20ms for a clipboard change, and put the clipboard back as soon as non-empty text is taken; if nothing new arrives, still return `.unreadable`. Password fields already returned `.secure` at step 4 and never reach this step.
+8. The selection range (`SelectedRange`) is read only when panel placement needs to follow the selection: decode `kAXSelectedTextRangeAttribute` after CF type and AXValue type checks. A missing range only affects placement, not translation.
+9. Back on the main thread, accept the result only if the operation has not expired, has not been cancelled and the frontmost app still has the original PID. On success, first store the `Selection` and import the input, then show the panel and start the corresponding model request.
 
-1. 用元素的 `AXRole` 判断选区是否落在可编辑文本上（`AXTextField`／`AXTextArea`／`AXComboBox`）。明确不是这几种时返回 `.unwritable`，一个键都不发——把译文敲进终端提示符或只读网页都不是用户要的结果；应用不上报 role 时按可编辑处理，因为"问不出来"不等于"不能编辑"。
-2. 面板先 `orderOut` 让出键盘。面板在显示时持有键盘，而合成按键跟随键盘，所以它必须先退场；写回失败时再回到屏幕上，因为那时用户正需要复制结果。
-3. 把结果放进剪贴板，前置所属应用，停留 150ms 让键盘交出去。
-4. 在 HID 层合成一次完整的 ⌘ 按下、V 按下、V 抬起、⌘ 抬起。
-5. 停留 300ms 让目标应用读完剪贴板（之后才放回用户原来的内容），再在 600ms 内轮询该元素的 `AXValue`：与粘贴前不同就算 `.pasted`；元素不上报文本时同样算 `.pasted`（粘贴发送到了应用真正的焦点处，读不到不是失败的证据）；文本确实没变才算 `.refused`。结果与原文相同时直接算 `.pasted`——把一段文字替换成它自己无从观察，也不需要改动。
+A successful text read does not mean a successful write-back. Write-back does not compare the text and selection range captured earlier, and it goes **only** through paste: Accessibility writes "report success but change nothing" in these apps (the element has often gone stale once the panel takes focus), so that path was removed. The order is fixed:
 
-只有在无辅助功能权限、所属应用已退出、无法前置、选区明确不可编辑或文本确实没变时才算未写回，此时面板留在屏幕上并给出“复制结果”；复制或写回成功一样会关闭面板。
+1. Use the element's `AXRole` to decide whether the selection sits on editable text (`AXTextField` / `AXTextArea` / `AXComboBox`). When it is clearly none of these, return `.unwritable` without sending a single key: typing the translation into a terminal prompt or a read-only web page is not what the user wants. When the app does not report a role, treat it as editable, because "cannot ask" does not mean "cannot edit".
+2. The panel first calls `orderOut` to give up the keyboard. The panel holds the keyboard while shown, and synthesized keys follow the keyboard, so it must step aside first; if write-back fails it comes back on screen, because that is when the user needs to copy the result.
+3. Put the result on the clipboard, bring the owning app to the front, and wait 150ms for the keyboard to move over.
+4. Synthesize one complete sequence at the HID level: ⌘ down, V down, V up, ⌘ up.
+5. Wait 300ms for the target app to read the clipboard (only then is the user's original content put back), then keep polling the element's `AXValue` until 600ms in total have passed: if it differs from before the paste, the result is `.pasted`; if the element does not report its text, it is also `.pasted` (the paste went to wherever the app really has focus, and being unable to read it is no evidence of failure); only text that really did not change is `.refused`. When the result equals the source text it counts as `.pasted` directly: replacing a passage with itself cannot be observed and needs no change.
 
-## 响应时间与并发
+Only a missing Accessibility permission, an app that has quit, an app that cannot be brought forward, a selection that is clearly not editable, or text that really did not change count as not written back; the panel then stays on screen and offers "Copy Result". A successful copy or write-back closes the panel either way.
 
-- 当前参数：单次 AX 消息超时 **150 ms**（`messagingTimeout`），从触发起的总预算 **900 ms**（`budget`）。预算是为了让浏览器按需构建辅助功能树的那一次读取能落地，属于工程值，不是系统保证。
-- 总预算覆盖排队与全部 AX 读取；每步开始前检查是否已过期，避免多次调用逐项累积等待。
-- 到达总预算即按 `.unreadable` 呈现恢复入口；已经执行的同步 AX 调用可能稍后才返回。总超时只停止接收结果，不宣称已终止系统调用。
-- 串行队列最多保留一个执行中的读取和一个最新待处理操作；新的触发取代旧待处理操作，避免连续快捷键造成无界排队。
-- 使用 `PanelController` 的操作标识机制统一约束读取与模型请求。新触发、Esc 关闭或取消均使旧标识失效；迟到结果不得改输入、弹出浮窗、请求模型或恢复替换意图。浮窗不因失去键盘焦点关闭，失焦不使本次操作失效；只有 Esc、显式关闭（完成）或点击浮窗外部才关闭。
-- UI 状态只在主线程更新。工作队列内部持有 AX 对象；实现时遵守 Swift 并发隔离规则，不为跨执行器传递对象而随意添加 `@unchecked Sendable`。
+## Response time and concurrency
 
-## Electron 兼容
+- Current parameters: a per-call AX messaging timeout of **150 ms** (`messagingTimeout`) and a total budget of **900 ms** from the trigger (`budget`). The budget exists so that the one read during which a browser builds its accessibility tree on demand can complete; it is an engineering value, not a system guarantee.
+- The total budget covers queueing and all AX reads; each step checks whether it has expired before starting, so waits from several calls do not add up one by one.
+- When the total budget is reached, the recovery entry is shown as `.unreadable`; a synchronous AX call already in flight may still return later. The total timeout only stops accepting results; it does not claim to have terminated the system call.
+- The serial queue holds at most one running read and one latest pending operation; a new trigger replaces the old pending one, so repeated shortcuts do not build an unbounded queue.
+- `PanelController`'s operation ID mechanism governs both reads and model requests. A new trigger, closing with Esc, or cancelling all invalidate the old ID; late results must not change the input, pop up the panel, request the model or restore the replace intent. The panel does not close when it loses keyboard focus, and losing focus does not invalidate the current operation; only Esc, an explicit close (done) or a click outside the panel closes it.
+- UI state is updated only on the main thread. The worker queue owns the AX objects internally; the implementation follows Swift concurrency isolation rules and does not casually add `@unchecked Sendable` to pass objects across executors.
 
-部分 Electron 应用未主动建立辅助功能树，可在应用 AX 对象上尝试设置 `AXManualAccessibility = true`，再读取焦点控件。
+## Electron compatibility
 
-此属性属于应用兼容约定，不是所有应用都支持的公共 AX 属性。设置失败不能单独判定读取失败，仍尝试标准读取；首次设置后辅助功能树也可能尚未就绪。本次按超时策略退出，由用户重新触发，不增加固定睡眠或后台轮询。
+Some Electron apps do not build their accessibility tree proactively; the app's AX object can be given `AXManualAccessibility = true` before reading the focused control.
 
-兼容边界：当前实现对所有前台应用无条件尝试设置该属性（非 Electron 应用返回错误并被忽略），随后走标准读取。尚未在真实 Electron 应用上实测，支持范围待实机验证后记录。
+This attribute is an app compatibility convention, not a public AX attribute every app supports. Failure to set it does not on its own mean the read failed; the standard read is still attempted. The accessibility tree may also not be ready right after the first set. In that case the read exits under the timeout policy and the user triggers it again; no fixed sleep or background polling is added.
 
-## 权限、错误与隐私
+Compatibility boundary: the current implementation unconditionally tries to set this attribute on every frontmost app (non-Electron apps return an error, which is ignored), then follows the standard read. It has not been tested on a real Electron app; the supported range will be recorded after testing on real hardware.
 
-| 结果 | 处理 |
+## Permissions, errors and privacy
+
+| Result | Handling |
 |---|---|
-| `.permission` | 显示辅助功能权限提示及系统设置入口；不在每次读取时弹授权对话框 |
-| `.secure` | 不访问文本内容；界面按无法读取呈现 |
-| `.unreadable` | 无选区、应用不支持、属性异常、来源变化或超时；不发起无原文请求 |
-| 成功 | 仅当前有效操作导入文字并执行对应处理 |
+| `.permission` | Show the Accessibility permission prompt with a System Settings entry; do not pop the authorization dialog on every read |
+| `.secure` | Do not access text content; the UI presents it as unreadable |
+| `.unreadable` | No selection, unsupported app, attribute error, source changed or timeout; no request without source text is sent |
+| Success | Only the currently valid operation imports the text and runs the corresponding processing |
 
-工具栏尚未展开时显示紧凑提示；已展开时保留内容区并显示错误。用户主动选择手动输入后进入完整窗口，该输入不继承外部选区的写回权限。具体交互遵循[产品定义](../spec/product.md)与[错误呈现决策](../spec/processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)。
+While the toolbar is not yet expanded, a compact prompt is shown; once expanded, the content area is kept and the error is shown. When the user chooses manual input, the full window opens, and that input does not inherit the external selection's write-back permission. The exact interaction follows the [product definition](../spec/product.md) and the [error presentation decision](../spec/processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md).
 
-仅在用户触发时读取，不记录选中文字、文档路径或 AX 属性内容到诊断日志。`AXUIElement` 和来源上下文只保留于当前操作，不持久化为可恢复的写回权限。复制回退与写回粘贴都会临时改写剪贴板，并在各自完成后放回用户原来的内容。
+Reads happen only when the user triggers them; the selected text, document paths and AX attribute contents are not recorded in diagnostic logs. The `AXUIElement` and source context are kept only for the current operation and are not persisted as a recoverable write-back permission. Both the copy fallback and paste write-back temporarily overwrite the clipboard, and each puts the user's original content back when done.
 
-## 实施顺序（已完成）
+## Implementation order (done)
 
-1. **修正捕获顺序与来源一致性**：沿用 `SelectionBridge`，先判密码字段再取文字，通过固定 PID 查找焦点控件，补齐返回类型检查，复用一次读取的原文。
-2. **使读取有界且不阻塞 UI**：将 `PanelController.read` 接口改为可异步完成，接入工作队列、总预算及操作标识；保留现有失败呈现。
-3. **验证应用兼容性**：加入 Electron 的按需兼容处理，实测后记录支持范围；不提前建立应用适配器框架。
+1. **Fix the capture order and source consistency**: keep `SelectionBridge`; check for password fields before reading text; find the focused control through a fixed PID; add return type checks; reuse the source text from one read.
+2. **Make the read bounded and non-blocking for the UI**: change the `PanelController.read` interface to complete asynchronously; wire in the worker queue, the total budget and operation IDs; keep the existing failure presentation.
+3. **Verify app compatibility**: add Electron's on-demand compatibility handling and record the supported range after testing; do not build an app adapter framework in advance.
 
-每一步仅改动对应读取链路并补充必要测试，不在本方案中扩展写回、历史或快捷键配置。
+Each step changes only the relevant part of the read chain and adds the necessary tests; this design does not extend write-back, history or shortcut configuration.
 
-## 验收
+## Acceptance
 
-自动化检查（已覆盖）：
+Automated checks (covered):
 
-- [x] 密码字段：记录属性调用，断言从未请求文本和选区（`secureFieldNeverReadsTextOrRange`）。
-- [x] 文本只读取一次，选区范围经类型检查后解码（`textIsReadOnceAndTheRangeIsDecoded`）。
-- [x] 选区在聚焦元素、祖先、子树与网页文本标记范围里都能找到，空白选区不当作选区（`searchFindsSelectionOnAnAncestor`、`searchFindsSelectionInADescendant`、`searchReadsSelectionThroughAWebKitMarkerRange`、`searchSkipsBlankSelections`、`searchWithoutAnySelectionIsNil`）。
-- [x] 复制回退只在搜索落空时运行，密码字段永不触发，剪贴板被放回（`copyFallbackReadsWhenTheSearchFindsNothing`、`copyFallbackIsSkippedForASecureField`、`copyFallbackIsSkippedWhenTheSearchSucceeds`、`copyFallbackRestoresThePreviousPasteboard`、`copyFallbackWithoutANewCopyIsNil`）。
-- [x] 写回只走粘贴，只读选区一个键都不发，无权限或无法前置时拒绝（`pasteReplacesTheSelectionAndRestoresTheClipboard`、`readOnlySelectionIsNeverTypedInto`、`onlyEditableTextRolesTakeAPaste`、`unknownRoleStillPastes`、`pasteRefusesWithoutFrontingTheApp`、`replaceRefusesWithoutAccessibilityPermission`）。
-- [x] 文本确实没变时如实返回失败，读不到文本与替换成同一段文字都不误判为失败（`pasteThatTheAppIgnoresIsRefused`、`unreadableElementIsNotEvidenceOfFailure`、`replacingWithTheSameTextCountsAsPasted`）。
-- [x] 按键在所属应用前置之后才发出，且即使应用已经是前台也仍然请求前置（`theAppComesForwardBeforeTheKeyIsPressed`、`comingForwardIsAlwaysAskedFor`）。
-- [x] 写回先把键盘让出去，失败时把结果留在屏幕内（`writeBackReleasesTheKeyboardThenCloses`、`refusedWriteBackKeepsTheResult`、`readOnlySelectionIsReportedAsUnwritable`）。
-- [x] 写回成功后直接关闭浮窗，不再停留确认（`successfulWriteBackClosesThePanel`、`pastedWriteConsumesTheSelection`）。
-- [x] 失焦不关闭且不取消写回，点击浮窗外部关闭、点击内部不关闭，外部点击监听随可见性安装与移除（`losingKeyNeitherClosesNorCancelsTheWrite`、`mouseDownOutsideDismissesButInsideDoesNot`、`mouseMonitorFollowsVisibility`）。
-- [x] 合成按键是完整的 ⌘ 包夹序列，而不是只带 flags 的一个按键（`commandPressBracketsTheKey`）。
-- [x] 超时只先给出提示：迟到但有效的读取仍会生效，关闭后到达的读取被丢弃（`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`、`lateReadAfterCloseIsIgnored`）。
-- [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。
-- [x] 缺失、错误类型、空白选区安全失败，保留空白与 Unicode（`wrongTypesFailSafely`、`blankOrMissingIsUnreadable`、`missingFocusedElementIsUnreadable`）。
+- [x] Password field: attribute calls are recorded, and the test asserts text and selection were never requested (`secureFieldNeverReadsTextOrRange`).
+- [x] Text is read only once, and the selection range is decoded after type checks (`textIsReadOnceAndTheRangeIsDecoded`).
+- [x] The selection is found on the focused element, an ancestor, the subtree and a web text marker range; a blank selection is not treated as a selection (`searchFindsSelectionOnAnAncestor`, `searchFindsSelectionInADescendant`, `searchReadsSelectionThroughAWebKitMarkerRange`, `searchSkipsBlankSelections`, `searchWithoutAnySelectionIsNil`).
+- [x] The copy fallback runs only when the search comes up empty, is never triggered for password fields, and the clipboard is put back (`copyFallbackReadsWhenTheSearchFindsNothing`, `copyFallbackIsSkippedForASecureField`, `copyFallbackIsSkippedWhenTheSearchSucceeds`, `copyFallbackRestoresThePreviousPasteboard`, `copyFallbackWithoutANewCopyIsNil`).
+- [x] Write-back only pastes, sends not a single key to a read-only selection, and refuses without permission or when the app cannot be brought forward (`pasteReplacesTheSelectionAndRestoresTheClipboard`, `readOnlySelectionIsNeverTypedInto`, `onlyEditableTextRolesTakeAPaste`, `unknownRoleStillPastes`, `pasteRefusesWithoutFrontingTheApp`, `replaceRefusesWithoutAccessibilityPermission`).
+- [x] Text that really did not change is reported as a failure, while unreadable text and replacing with identical text are not mistaken for failures (`pasteThatTheAppIgnoresIsRefused`, `unreadableElementIsNotEvidenceOfFailure`, `replacingWithTheSameTextCountsAsPasted`).
+- [x] The key is sent only after the owning app is in front, and bringing it forward is requested even if it is already frontmost (`theAppComesForwardBeforeTheKeyIsPressed`, `comingForwardIsAlwaysAskedFor`).
+- [x] Write-back first gives up the keyboard, and on failure the result stays on screen (`writeBackReleasesTheKeyboardThenCloses`, `refusedWriteBackKeepsTheResult`, `readOnlySelectionIsReportedAsUnwritable`).
+- [x] After a successful write-back the panel closes directly, without lingering for confirmation (`successfulWriteBackClosesThePanel`, `pastedWriteConsumesTheSelection`).
+- [x] Losing focus neither closes the panel nor cancels the write; a click outside the panel closes it while a click inside does not; the outside-click monitor is installed and removed with visibility (`losingKeyNeitherClosesNorCancelsTheWrite`, `mouseDownOutsideDismissesButInsideDoesNot`, `mouseMonitorFollowsVisibility`).
+- [x] The synthesized key is a complete ⌘-bracketed sequence, not a single key carrying only flags (`commandPressBracketsTheKey`).
+- [x] A timeout only shows a prompt first: a late but valid read still takes effect, while a read arriving after close is discarded (`readPastBudgetShowsUnreadableThenAcceptsTheLateAnswer`, `lateReadAfterCloseIsIgnored`).
+- [x] Repeated triggers accept only the latest operation, and pending reads do not accumulate (`rapidTriggersAcceptOnlyLatestRead`, `keepsOneRunningAndLatestPending`).
+- [x] Missing values, wrong types and blank selections fail safely, and whitespace and Unicode are preserved (`wrongTypesFailSafely`, `blankOrMissingIsUnreadable`, `missingFocusedElementIsUnreadable`).
 
-待补：
+To do:
 
-- [ ] 捕获期间切换前台应用被拒绝：代码已在主线程比对 PID，尚无自动化测试。
-- [ ] AX 落空时的 ⌘C 回退前后剪贴板内容与 `changeCount` 不变：`copyFallbackRestoresThePreviousPasteboard` 已覆盖拍平后的逻辑，端到端的真实剪贴板检查仍待补。
-- [ ] 实机：TextEdit、Safari、Chrome 与至少一个 Electron 编辑器，逐项记录读取成功、手动输入降级、首次授权后重试和焦点切换；另验证密码框、未授权、无选区及目标应用无响应。已手测：Safari 输入框内读取与替换均成功（2026-09-27）。150／900 ms 参数随实测调整。
+- [ ] Switching the frontmost app during capture is rejected: the code already compares the PID on the main thread, but there is no automated test yet.
+- [ ] Clipboard contents and `changeCount` are unchanged before and after the ⌘C fallback when AX comes up empty: `copyFallbackRestoresThePreviousPasteboard` covers the flattened logic, but an end-to-end check against the real clipboard is still missing.
+- [ ] Real hardware: TextEdit, Safari, Chrome and at least one Electron editor; record for each whether the read succeeds, the fallback to manual input, retry after first authorization, and focus switching; also verify password fields, no authorization, no selection and an unresponsive target app. Tested by hand: reading and replacing inside a Safari input field both succeed (2026-09-27). The 150 / 900 ms parameters are adjusted with testing.
 
-单元测试通过不能替代跨应用实测；应用支持清单以实测为准。
+Passing unit tests do not replace cross-app testing; the list of supported apps is based on real testing.

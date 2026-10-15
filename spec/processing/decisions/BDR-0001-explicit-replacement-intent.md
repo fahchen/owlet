@@ -1,13 +1,15 @@
-# BDR-0001：区分展示结果与直接替换
+[English](BDR-0001-explicit-replacement-intent.md) · [简体中文](BDR-0001-explicit-replacement-intent.zh-CN.md)
 
-状态：已确认。来源：用户新增“可以翻译后直接替换”的需求及已更新产品定义。
+# BDR-0001: Separate showing a result from replacing directly
 
-## 决定
+Status: Accepted. Source: the user's new request "translate and then replace directly" and the updated product definition.
 
-普通翻译、润色先展示结果，点击替换才写回。独立的“翻译并替换”入口授权本次生成成功后直接写回，不需要再次确认。
+## Decision
 
-两种写回共用相同的写回条件：仅在无所属应用、无辅助功能权限或无法前置所属应用时拒绝，不再比较选区内容。取消或已被新操作取代的请求不得晚到写回。历史不保留写回权限。
+Plain translate and polish show the result first; text is written back only when the user clicks Replace. The separate "Translate and Replace" entry authorizes this run to write back directly once generation succeeds, with no further confirmation.
 
-## 影响
+Both kinds of write-back share the same write-back conditions: write-back is refused only when there is no owning app, no Accessibility permission, or the owning app cannot be brought to the front. The selection content is no longer compared. A request that was cancelled or superseded by a newer operation must not write back late. History does not keep write-back permission.
 
-直接替换不会把所有翻译变成自动写回。学习推荐不阻塞写回，生成成功但替换失败的译文仍进入历史。
+## Consequences
+
+Direct replacement does not turn every translation into an automatic write-back. Study recommendations do not block write-back, and a translation that was generated successfully but failed to replace still goes into history.

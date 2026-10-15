@@ -1,26 +1,28 @@
-# System Prompt 与 LLM 返回契约
+[English](contract.md) · [简体中文](contract.zh-CN.md)
 
-状态：JSON 字段、校验规则与自定义 Prompt 要求已确认（2026-09-27）。
+# System Prompt and LLM Response Contract
 
-## 用户设置
+Status: JSON fields, validation rules and custom prompt requirements confirmed (2026-09-27).
 
-翻译、润色各自拥有 System Prompt，翻译并替换复用翻译 Prompt。编辑器里始终是当前生效的 Prompt（未自定义时就是内置默认）。标题行行尾是一个「恢复默认」图标按钮，位置固定；编辑器内容等于对应 operation 的内置默认时该按钮禁用，否则点击把编辑器填回内置默认。恢复默认仅作用于对应操作。空白内容不能生效。默认文本与各任务的提示词、示例同放在 `Owlet/ModelPrompts.json`（随包发布，代码按名字读取）；中文等译文见 `strings/translations.json`。
+## User Settings
 
-设置窗口里没有整页的保存按钮：每个编辑框在失去焦点时提交（设置项一律即时生效）。提交只影响之后的新请求，不改变已发送的请求、现有结果或历史。恢复默认先填回编辑器，提交后生效。
+Translate and Polish each have their own System Prompt; Translate and Replace reuses the translation prompt. The editor always shows the prompt currently in effect (the built-in default when not customized). At the end of the title row is a "Restore Default" icon button in a fixed position; it is disabled when the editor content equals the built-in default of that operation, and otherwise clicking it fills the editor back with the built-in default. Restore Default applies only to its own operation. Blank content cannot take effect. The default texts live together with each task's instructions and examples in `Owlet/ModelPrompts.json` (shipped in the bundle, read by name in code); translations into Chinese and other languages are in `strings/translations.json`.
 
-## 请求组成与固定格式
+The settings window has no page-level Save button: each editor commits when it loses focus (every setting applies immediately). A commit affects only later requests, never requests already sent, existing results or history. Restore Default first fills the editor, and takes effect once committed.
 
-应用以用户选择的 Prompt 作为行为指导，并附加固定的响应契约、当前操作、目标语言及语境。原文放在独立的数据消息中，不拼接进 System Prompt。用户 Prompt 不得解除 JSON 结构、源文匹配、目标语言和安全写回约束。
+## Request Composition and Fixed Format
 
-只接受一个完整 JSON 对象，不含额外字段。整条消息恰好被一个 Markdown 代码围栏（可带 `json` 标注）包裹时，去掉围栏后再解析；围栏外有任何说明文字、多个 JSON 或需要抽取片段时均视为格式错误。解析模型消息内容中的 JSON，而不是把供应商的 HTTP 响应外壳当作本契约。
+The app uses the user's chosen prompt as behavioural guidance and appends the fixed response contract, the current operation, the target language and the context. The source text goes in a separate data message and is never concatenated into the System Prompt. The user prompt cannot lift the JSON structure, source matching, target language or safe write-back constraints.
 
-支持结构化输出的服务可使用响应 Schema 约束；发送给供应商的 Schema 删去其不支持的关键字（如 OpenAI strict 模式不支持的 `minLength`），被删的约束仍在本地校验；其他兼容服务（如 DeepSeek，仅支持 `json_object`）通过明确 Prompt 要求 JSON，但仍执行完全相同的本地校验。不得在校验失败后退回原始文本写回。具体供应商的格式参数在原生接入阶段依据其文档确定。
+Only one complete JSON object is accepted, with no extra fields. When the whole message is wrapped in exactly one Markdown code fence (optionally tagged `json`), the fence is removed before parsing; any explanatory text outside the fence, multiple JSON objects, or the need to extract a fragment all count as a format error. The JSON is parsed from the content of the model message; the vendor's HTTP response envelope is not this contract.
 
-思考强度是用户控制的请求参数，不属于本契约。应用提供统一档位（自动／关闭／低／中／高／最高），按当前模型映射为该模型接受的 `reasoning_effort`：档位表来自服务商文档，模型不支持的档位取最近的较低档，不使用推理参数的模型（如 gpt-4o）不发送该字段，未知模型原样发送。默认（自动）不发送，由服务商与模型决定；无论取何值都不得放松上面的 JSON 结构与本地校验。DeepSeek 取 `none`／`low`／`high`／`max` 并把 `medium` 折叠为 `high`。
+Services that support structured output may be constrained with a response schema. The schema sent to the vendor drops keywords it does not support (such as `minLength`, which OpenAI strict mode does not support), and the dropped constraints are still validated locally. Other compatible services (such as DeepSeek, which supports only `json_object`) are asked for JSON through an explicit prompt, and the exact same local validation still applies. After a validation failure the raw text must never be written back as a fallback. Vendor-specific format parameters are decided from each vendor's documentation during native integration.
 
-## 翻译与润色结果
+Reasoning effort is a user-controlled request parameter and not part of this contract. The app offers unified levels (automatic / off / low / medium / high / max), mapped per model to the `reasoning_effort` that model accepts: the level table comes from the vendor documentation, a level the model does not support falls to the nearest lower level, models that take no reasoning parameter (such as gpt-4o) do not get the field, and unknown models get the value as is. The default (automatic) sends nothing and leaves it to the vendor and model; whatever the value, it must not relax the JSON structure or the local validation above. DeepSeek takes `none` / `low` / `high` / `max` and folds `medium` into `high`.
 
-按 [responses.schema.json](responses.schema.json) 中 `$defs.result` 校验：
+## Translate and Polish Results
+
+Validated against `$defs.result` in [responses.schema.json](responses.schema.json):
 
 ```json
 {
@@ -33,17 +35,17 @@
 }
 ```
 
-- 语言使用 BCP 47 标签，如 en、ja、zh-Hans，不限定具体语言清单。
-- 每个 segment 是同一语义句组的原文与结果，必要时允许一组多句，不假设两种语言具有相同的句号数量。
-- 按顺序拼接全部 `source`，与本次提交的原文比较：双方先做 Unicode NFC 规范化，再把连续空白（空格、制表符、换行）折叠为单个空格并去首尾空白，结果必须一致。分隔符附在对应片段中，不凭显示行数重新对齐。比较宽松只影响校验；复制、替换和历史均使用拼接后的 `target`。
-- 拼接全部 `target` 得到复制、替换及历史的完整结果。模型应在片段末尾保留适当空格／换行，应用不额外插入空格；该要求写入默认 Prompt，本地无法可靠校验，由多句固定响应测试覆盖。
-- 翻译返回的目标语言须与请求一致；润色的目标语言须与原文语言一致。语言标签只比较主语言子标签；中文另比较书写系统（`zh-Hans`／`zh-Hant`，`zh-CN`、`zh-SG` 视为 Hans，`zh-TW`、`zh-HK` 视为 Hant，缺省视为 Hans）。`en` 与 `en-US` 视为一致。不能据此保证模型的语义质量。
-- 单段 `source`、`target` 均不能空白。润色无修改时允许两者相同。
-- 主响应只包含结果与配对，不包含学习推荐。原文和润色结果分别以普通文本展示，不使用差异标记；学习开启时，再解释有学习价值的修改。
+- Languages use BCP 47 tags, such as en, ja, zh-Hans; there is no fixed list of languages.
+- Each segment is the source and result of one semantic sentence group; a group may hold several sentences when needed, and the two languages are not assumed to have the same number of full stops.
+- Concatenate all `source` values in order and compare with the submitted source: both sides are first normalized to Unicode NFC, then runs of whitespace (spaces, tabs, newlines) are collapsed to a single space and leading and trailing whitespace is trimmed; the results must be equal. Separators belong to their segment; nothing is realigned by the number of displayed lines. The relaxed comparison affects validation only; copy, replace and history all use the concatenated `target`.
+- Concatenating all `target` values gives the full result for copy, replace and history. The model should keep appropriate spaces / newlines at the end of segments; the app inserts no extra spaces. This requirement is written into the default prompt; it cannot be validated reliably on device and is covered by multi-sentence fixed-response tests.
+- A translation must return the requested target language; a polish must return the source language as its target. Language tags compare only the primary language subtag; Chinese also compares the script (`zh-Hans` / `zh-Hant`; `zh-CN` and `zh-SG` count as Hans, `zh-TW` and `zh-HK` as Hant, and no script counts as Hans). `en` and `en-US` are treated as equal. None of this guarantees the semantic quality of the model output.
+- A single segment's `source` and `target` must not be blank. A polish with no changes may have both equal.
+- The main response contains only the result and the pairs, no study suggestions. Source and polished result are each shown as plain text without diff markup; when study is on, changes worth learning are explained there.
 
-## 学习内容
+## Study Content
 
-学习请求使用对应翻译／润色 Prompt 的行为上下文，附加学习任务及 `$defs.learning` 契约。仅在开启学习或本次明确展开时发起，主结果先显示／写回；不等待学习完成。
+A study request uses the behavioural context of the matching translate / polish prompt, plus the study task and the `$defs.learning` contract. It is made only when study is on or explicitly expanded this time; the main result is shown / written back first and never waits for study to finish.
 
 ```json
 {
@@ -60,17 +62,17 @@
 }
 ```
 
-`text` 是本次原文或结果里的实际词形：用到哪句就抄哪句，活用形、变位形都算，且必须逐字出现在 `context` 中。`lemma` 只在字典形与 `text` 不同且能确定时给（如日语 `text` 为 `跳ね上がっている`、`lemma` 为 `跳ね上がる`），两者相同、不适用或缺省时写 `null`；不要求为整句给原形，也不允许为凑字段重复 `text`（见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md)）。`meaning` 使用请求指定的释义语言：翻译为本次目标语言；润色按目标映射查原文语言，未命中用兜底目标；手动收藏后的补充与重新生成按当下的映射表现算释义语言（见 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。 读音与词性由独立的按需请求补充：请求携带表达、语言与读音体系，返回 `pronunciation` 与 `part_of_speech`；「补充缺失」只请求空字段，单项「重新生成」只请求该项；整句不发起该请求（见 [BDR-0006](../vocabulary/decisions/BDR-0006-on-demand-enrichment.md)）。润色场景在此解释改善原因并区分语法错误与风格偏好。`context` 必须来自本次原文或结果。不强凑条目，允许 `items: []`。同一契约用于手动收藏后补充释义，不因学习关闭而禁止用户主动收藏。
+`text` is the actual form in this source or result: copy it from whichever sentence uses it, including inflected and conjugated forms, and it must appear verbatim in `context`. `lemma` is given only when the dictionary form differs from `text` and is certain (for example Japanese `text` `跳ね上がっている` with `lemma` `跳ね上がる`); when they are equal, not applicable or unknown it is `null`. A dictionary form is not required for whole sentences, and `text` must not be repeated just to fill the field (see [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md)). `meaning` uses the definition language the request specifies: for translation, this operation's target language; for polish, the source language looked up in the target mapping, with the fallback target when there is no row; enrichment and regeneration after manual collection compute the definition language from the mapping as it is now (see [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)). Reading and part of speech are filled by a separate on-demand request: it carries the expression, language and reading notation and returns `pronunciation` and `part_of_speech`; "Fill in missing" requests only the empty fields, and a single "Regenerate" requests only that field; whole sentences never trigger this request (see [BDR-0006](../vocabulary/decisions/BDR-0006-on-demand-enrichment.md)). For polish, this is where the reasons for improvements are explained, distinguishing grammar errors from style preferences. `context` must come from this source or result. Items are not padded; `items: []` is allowed. The same contract is used to fill in meanings after manual collection, and turning study off never prevents the user from collecting on their own.
 
-## 阅读查词
+## Reading Lookup
 
-查词使用独立的 `$defs.lookup`，复用现有模型客户端、供应商能力、本地校验与隐藏调试页，不扩展学习推荐响应。行为依据见 [BDR-0008](../vocabulary/decisions/BDR-0008-reading-word-lookup.md)。
+Lookup uses its own `$defs.lookup` and reuses the existing model client, vendor capabilities, local validation and hidden debug page; it does not extend the study suggestion response. The behaviour is based on [BDR-0008](../vocabulary/decisions/BDR-0008-reading-word-lookup.md).
 
-请求携带实际查询文本、应用截取的局部语境及相对选区范围、已知文本语言线索、明确的释义语言与读音体系。语境覆盖完整选区；无原句时明确传递缺失，不伪造句子。查询文本与语境放在数据消息中：`{"text", "context", "selection_start", "language"}`，`context`／`selection_start`／`language` 可为 `null`；释义语言与读音体系写在系统消息。原形不是必填输入，不为查缓存另发模型请求。
+The request carries the actual looked-up text, the local context captured by the app with the relative selection range, any known text language hint, and an explicit definition language and reading notation. The context covers the whole selection; when there is no source sentence, the absence is stated explicitly and no sentence is invented. The looked-up text and the context go in the data message as `{"text", "context", "selection_start", "language"}`, where `context` / `selection_start` / `language` may be `null`; the definition language and reading notation are written in the system message. The dictionary form is not a required input, and no extra model request is made to look up the cache.
 
-长度上限（T48 确定）：查询文本最多 300 字（Swift `Character` 计），超出时「查询」不可用并说明「所选超过 300 字，请缩短后查询」，不截断选区；局部语境取选区触及的整句，超过 1200 字时改为以选区为中心、完整包含选区的 1200 字片段。只含空白或标点的选区不能查询。
+Length limits (set in T48): the looked-up text is at most 300 characters (counted as Swift `Character`s). Beyond that, "Look Up" is unavailable and explains "The selection is longer than 300 characters; shorten it to look it up"; the selection is never truncated. The local context is the whole sentences the selection touches; beyond 1200 characters it becomes a 1200-character excerpt centred on the selection that fully contains it. A selection of only whitespace or punctuation cannot be looked up.
 
-按 [responses.schema.json](responses.schema.json) 中 `$defs.lookup` 校验：
+Validated against `$defs.lookup` in [responses.schema.json](responses.schema.json):
 
 ```json
 {
@@ -84,35 +86,35 @@
 }
 ```
 
-- 所有字段必须存在；文本语言未知时 `language` 为 `null`，不适用或不确定的原形、读音、词性为 `null`。非空字符串不得仅含空白，不接受额外字段。
-- `text` 必须对应本次查询文本，沿用上文 NFC 与空白折叠比较。相对范围必须对应本地快照中的实际查询文本；范围与来源由应用保存，不采信模型生成的来源。
-- `definition_language` 必须符合本次请求，沿用上文语言标签比较规则；释义语言按 BDR-0005，文本语言另行识别，不能合并两者。已知文本语言时，返回的非空语言也须匹配；矛盾或遗漏已知语言视为格式错误。
-- 有原句时 `meaning` 只解释文中义，可附必要用法；无原句时给一般含义，卡片显示「无原句语境」。不要求多义项列表。
-- 原形只在适用且确定时提供。读音体系按 BDR-0006 的语言规则；是否整句由模型判断，整句的 `pronunciation` 与 `part_of_speech` 应为 `null`，本地不另做整句判定、也不据此校验（2026-10-11 审阅确认）。系统 TTS 朗读实际查询文本，不读取音标字段；JSON 校验不能保证义项、原形或读音正确。
-- 结构错误归为 `format`，释义语言不符归为 `targetMismatch`，查询文本或本地选区不符归为 `sourceMismatch`。`format`、`targetMismatch` 与 `sourceMismatch` 都会先按上文纠正一次（漏写可空键、以及释义写成文本自己的语言，是最常见的两种成因）。沿用现有请求／响应诊断，不记录 API Key。
-- 精确复用依赖查询文本、局部语境、相对范围、释义语言、读音体系、影响结果的模型／请求配置版本及已知文本语言；保留大小写，不含密钥。跨句候选必须有真实来源语境、同已知文本语言、同词形、同解释设置；展示旧来源并等待用户明确重查，不冒充当前句结果。无原句的一般解释仅按无语境条件精确复用。
-- 只保留有容量上限的内存记录。相同进行中请求合并；失败保留为可明确重试的状态，不缓存为成功。迟到响应不能覆盖新查询或重新打开已关闭卡片；重查失败仍保留可用旧释义与来源。查词本身不写入生词本：失败只影响卡片，不改正文或处理结果；用户在卡片里显式「加入生词本」时，才按本次结果写一条条目（见 [BDR-0010](../vocabulary/decisions/BDR-0010-collect-from-lookup.md)）。
+- Every field must be present. When the text language is unknown, `language` is `null`; a dictionary form, reading or part of speech that does not apply or is uncertain is `null`. Non-null strings must not be whitespace only, and extra fields are not accepted.
+- `text` must match this lookup's text, using the NFC and whitespace-collapsing comparison above. The relative range must match the actual looked-up text in the local snapshot; the range and source are kept by the app, and a source generated by the model is never trusted.
+- `definition_language` must match this request, using the language tag comparison above. The definition language follows BDR-0005, while the text language is identified separately; the two must not be merged. When the text language is known, a non-null returned language must match it too; a contradiction or a missing known language is a format error.
+- With a source sentence, `meaning` explains only the in-context meaning, with any necessary usage; without one it gives the general meaning and the card shows "No source sentence". A list of senses is not required.
+- A dictionary form is provided only when applicable and certain. The reading notation follows the per-language rules of BDR-0006. Whether the text is a whole sentence is judged by the model; for a whole sentence `pronunciation` and `part_of_speech` should be `null`, and the app makes no whole-sentence judgment of its own and does not validate on that basis (confirmed in review 2026-10-11). System TTS reads the actual looked-up text and never reads the phonetic field; JSON validation cannot guarantee that the sense, dictionary form or reading is correct.
+- Structural errors are `format`, a wrong definition language is `targetMismatch`, and a mismatch with the looked-up text or the local selection is `sourceMismatch`. `format`, `targetMismatch` and `sourceMismatch` all get one correction first, as described above (a missing nullable key, and a meaning written in the text's own language, are the two most common causes). The existing request / response diagnostics are reused, and the API Key is never recorded.
+- Exact reuse depends on the looked-up text, the local context, the relative range, the definition language, the reading notation, the version of the model / request configuration that affects the result, and the known text language; case is preserved and no secrets are included. A cross-sentence candidate must have a real source context, the same known text language, the same form and the same explanation settings; the old source is shown and the app waits for the user to explicitly look up again, never passing it off as the current sentence's result. A general explanation without a source sentence is reused only exactly, under the no-context condition.
+- Only a capacity-bounded in-memory record is kept. Identical in-flight requests are merged; a failure is kept as an explicitly retryable state and never cached as a success. A late response cannot overwrite a newer lookup or reopen a closed card; a failed re-query still keeps the usable old meaning and its source. Lookup itself never writes to the notebook: a failure affects only the card and never changes the text or the processing result. Only when the user explicitly chooses "Add to Notebook" in the card is an entry written from this result (see [BDR-0010](../vocabulary/decisions/BDR-0010-collect-from-lookup.md)).
 
-## 本地 agent 作为服务
+## Local Agent as a Service
 
-本机 agent（Claude Code、Codex CLI）只是「模型服务的另一种到达方式」：应用每次请求起一个进程、要一次回答，然后结束它。它不承担编码 agent 的角色——工具、技能、MCP、项目上下文与会话落盘一律关闭，工作目录是一次性的空目录（Codex 不读用户配置，因此它的 MCP 服务器不被连接、用户 hooks 不执行），见 [BDR-0013](../settings/decisions/BDR-0013-local-agent-provider.md)。
+A local agent (Claude Code, Codex CLI) is just "another way to reach a model service": for each request the app starts a process, asks for one answer, and ends it. It does not act as a coding agent: tools, skills, MCP, project context and session persistence are all off, and the working directory is a throwaway empty directory (Codex does not read the user's configuration, so its MCP servers are not connected and user hooks do not run). See [BDR-0013](../settings/decisions/BDR-0013-local-agent-provider.md).
 
-请求与投递分成两层：`ModelRequest`（模型名、系统提示词、若干轮 user／assistant、响应格式、思考强度）是应用唯一的请求值，`ModelBackend` 是投递方式——HTTP 服务把它组建成 OpenAI 风格 body 再 POST，本地 agent 把它翻译成参数与标准输入。行为提示词与固定契约按各 agent 的通道交付（系统提示词参数，或与原文合成后走标准输入），**用户原文一律走标准输入，不进命令行参数**（`ps` 对同机进程可见）。
+Request and delivery are two layers. `ModelRequest` (model name, system prompt, a number of user / assistant turns, response format, reasoning effort) is the app's single request value; `ModelBackend` is the delivery: an HTTP service builds an OpenAI-style body from it and POSTs it, and a local agent translates it into arguments and standard input. The behavioural prompt and the fixed contract are delivered through each agent's channel (a system prompt argument, or combined with the source text over standard input). **The user's source text always goes through standard input, never through command-line arguments** (`ps` shows them to other processes on the same machine).
 
-能约束形状的 agent 拿到的就是上文那份 Schema：Codex 用 `--output-schema`、Claude Code 用 `--json-schema`；只支持 `json_object` 的服务（如 DeepSeek）没有这类开关，形状由提示词承载。本地校验、纠正重试与「不得在校验失败后退回原始文本」在任何 provider 上都相同。
+An agent that can constrain the shape gets the same schema as above: Codex through `--output-schema`, Claude Code through `--json-schema`. Services that only support `json_object` (such as DeepSeek) have no such switch, and the shape is carried by the prompt. Local validation, the corrective retry and "never fall back to writing the raw text after a validation failure" are the same for every provider.
 
-本地 agent 的答案就是进程输出的文本，不再套一层响应外壳：截断与拒绝只存在于 HTTP 服务的外壳里，空输出直接按空内容处理。失败归为连接类：不可执行、非零退出与超过超时上限都提示本地 agent 运行失败，并带上该 agent 自己的错误输出（先取标准错误，为空时退回标准输出）；取消要结束子进程，迟到输出不得写回。调试页记下实际命令行与提示词（命令行本来就不含原文）以及模型的原始返回，记录里不含任何密钥。
+A local agent's answer is the text the process prints, with no response envelope around it: truncation and refusal exist only in the HTTP service envelope, and empty output is treated as empty content. Failures count as connection failures: not executable, a non-zero exit and exceeding the timeout all report that the local agent failed to run, along with that agent's own error output (standard error first, falling back to standard output when it is empty). Cancelling must end the child process, and late output must never be written back. The debug page records the actual command line and prompt (the command line never contains the source text anyway) and the model's raw reply; records never contain any secret.
 
-## 失败处理
+## Failure Handling
 
-供应商因长度上限截断（如 `finish_reason: "length"`）时提示“结果过长被截断”，因内容策略拒绝（如 `refusal` 字段或 `finish_reason: "content_filter"`）时提示“服务拒绝处理”；两者均不按格式错误处理，也不写回或存成成功历史。
+When the vendor truncates for a length limit (such as `finish_reason: "length"`) the app shows "The result was cut off for being too long."; when it refuses on content policy (such as a `refusal` field or `finish_reason: "content_filter"`) it shows "The service refused to process this text.". Neither is treated as a format error, and neither is written back or saved as successful history.
 
-JSON 解析失败、字段缺失／类型不符、空结果、源文拼接不一致或目标语言不匹配时：显示“返回格式不符合要求”，保留原文、允许重试；不复制模型原始返回作为译文、不执行替换、不写成成功历史。不要用正则抽取第一个花括号片段后冒充有效响应。
+When JSON parsing fails, fields are missing or of the wrong type, the result is empty, the source concatenation does not match, or the target language does not match, the app shows that the reply does not match the required format, keeps the source and allows a retry. It never copies the model's raw reply as the translation, never replaces, and never writes successful history. Do not extract the first curly-brace fragment with a regex and pass it off as a valid response.
 
-学习与查词响应不合格时，应用会再问一次：第二次请求带上模型自己被拒的那条回复，以及它打破的具体规则，让模型只改该改的地方。可纠正的是结构不符、源文拼接不一致与目标语言不一致——三者都能用一句话说清模型哪里错了；截断、拒绝、空响应与传输错误不是契约失败，不触发这次纠正；连一个 JSON 对象都不是的回复也得不到这轮纠正，因为它没有被指出来的规则可改。只纠正一次，纠正后仍不合格照样按原错误处理。两次往返都记在调试页，标题以「纠正」区分。
+When a study or lookup response does not qualify, the app asks once more: the second request includes the model's own rejected reply and the specific rule it broke, so the model fixes only what needs fixing. Correctable failures are structure mismatch, source concatenation mismatch and target language mismatch: each can be explained in one sentence. Truncation, refusal, empty responses and transport errors are not contract failures and do not trigger the correction; a reply that is not even a JSON object gets no correction either, since there is no rule to point at. The correction happens once only; if the corrected reply still does not qualify, the original error is handled as usual. Both round trips are recorded on the debug page, with the title marked "(corrected)".
 
-学习 JSON 失败只影响学习区，可单独重试，已经得到的主结果仍可使用。用户自定义 Prompt 即使要求非 JSON，也不改变这些边界。
+A study JSON failure affects only the study area and can be retried on its own; the main result already received stays usable. Even if a custom user prompt asks for non-JSON, these boundaries do not change.
 
-## 当前实现范围
+## Current Implementation Scope
 
-翻译／润色与学习已有 Swift 模型客户端及本地校验；具体差距见 [未实现功能清单](../../docs/unimplemented-features.md)。查词请求、解码与本地校验已实现（`ModelClient.lookup`、`LookupResult`），首个消费者为浮窗结果（T48）。读音体系在发请求时读取设置「语言」分组的按语言配置（`SettingsStore.pronunciationSystem`），文本语言未知时让模型按各语言默认值给出。学习契约的 `lemma` 已实现；释义语言按当下映射计算、条目上记录已存释义的语言（T53，见 [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md) 与 [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)）。
+Translate / polish and study have a Swift model client with local validation; remaining work is listed in the [roadmap](../../docs/roadmap.md). The lookup request, decoding and local validation are implemented (`ModelClient.lookup`, `LookupResult`), with the panel result as the first consumer (T48). The reading notation is read at request time from the per-language configuration in the "Languages" settings group (`SettingsStore.pronunciationSystem`); when the text language is unknown, the model uses each language's default. The study contract's `lemma` is implemented; the definition language is computed from the current mapping, and the entry records the language of the stored meaning (T53, see [BDR-0009](../learning/decisions/BDR-0009-learning-lemma.md) and [BDR-0005](../learning/decisions/BDR-0005-definition-language.md)).

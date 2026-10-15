@@ -1,148 +1,150 @@
-# macOS 翻译与润色工具：首版产品定义
+[English](product.md) · [简体中文](product.zh-CN.md)
 
-## 产品定位
+# macOS Translation and Polishing Tool: First-Version Product Definition
 
-一款采用类 Raycast 浮窗交互的 macOS 工具：选中文本后，通过快捷键翻译或润色，并将需要学习的词汇、短语、整句手动收进个人生词本。
+## Positioning
 
-首先服务个人使用。用户母语为中文，主要使用英语、日语，但产品不绑定特定语言或内容领域，覆盖日常阅读、写作及工作沟通。
+A macOS tool with a Raycast-style floating panel: select text, press a shortcut to translate or polish it, and manually collect words, phrases and whole sentences worth learning into a personal notebook.
 
-## 系统支持
+It serves personal use first. The user's native language is Chinese and they mainly use English and Japanese, but the product is not tied to any particular language or content domain; it covers everyday reading, writing and work communication.
 
-最低支持 macOS Tahoe 26.0（引入 Liquid Glass 的版本），不兼容更早系统。
+## System Support
 
-## 核心流程
+Minimum macOS Tahoe 26.0 (the release that introduced Liquid Glass); earlier systems are not supported.
 
-### 翻译
+## Core Flows
 
-选中文本 → 翻译快捷键 → 浮窗展示译文 → 复制结果或主动替换原选区 → 按需收藏。
+### Translate
 
-- 发请求前在本地检测原文语言，再按用户配置的「源语言 → 目标语言」映射决定目标；映射中没有该源语言或无法可靠检测时，使用兜底目标语言（默认简体中文）。详见 [目标映射决策](settings/decisions/BDR-0003-translation-target-mapping.md)。
-- 设置里的「语言」分组维护一个语言子集（默认简体中文、英语、日语）：目标语言、兜底目标与映射表只提供子集内的语言，不在几百种语言里挑；子集外的源语言仍按兜底目标处理。每种语言另配一个读音体系（默认英语 IPA、日语假名、中文拼音、其他 IPA；日语可改罗马字，中文可改注音），用于生词本的读音补充与阅读查词。
-- 翻译显示方式可在设置的「通用」页切换为“原文／译文分区”（默认）或“逐句对照”，切换后持久化，完整窗口与浮层共用。分区方式分别显示完整原文和译文；对照方式按句成组，上方原文、下方对应译文，换行不改变对应关系。两种方式复制和替换均只输出译文，切换显示不重新请求模型。
-- 目标语言默认为“自动”，按映射决定；用户也可以显式指定一个语言，该选择持久覆盖映射，重启后保留，直到切回“自动”。
-- 读取选区失败时显示紧凑提示与手动输入入口；选择该入口后，在完整窗口输入或粘贴文本。
+Select text → translate shortcut → the panel shows the translation → copy the result or explicitly replace the original selection → collect if wanted.
 
-### 翻译并直接替换
+- Before sending the request, the app detects the source language locally, then picks the target from the user's "source language → target language" mapping. When the mapping has no row for that source language, or the language cannot be detected reliably, the fallback target language is used (Simplified Chinese by default). See the [target mapping decision](settings/decisions/BDR-0003-translation-target-mapping.md).
+- The "Languages" group in settings maintains a language subset (Simplified Chinese, English and Japanese by default). The target language, the fallback target and the mapping table only offer languages from that subset, instead of picking among hundreds; source languages outside the subset still use the fallback target. Each language also has a reading notation (by default IPA for English, kana for Japanese, pinyin for Chinese, IPA for others; Japanese can switch to romaji, Chinese to zhuyin), used when filling in readings in the notebook and when looking words up while reading.
+- The translation display can be switched on the "General" settings page between "Source / Result Sections" (default) and "Sentence by Sentence". The choice is persisted and shared by the full window and the panel. Sections show the full source and the full translation separately; sentence-by-sentence groups each sentence with its source above and its translation below, and line breaks do not change the pairing. In both modes copy and replace output only the translation, and switching the display does not call the model again.
+- The target language defaults to "Automatic", decided by the mapping. The user can also pick a language explicitly; that choice overrides the mapping persistently, survives a restart, and stays until switched back to "Automatic".
+- When reading the selection fails, a compact notice appears with a manual input entry ("Enter Text"); choosing it opens the full window, where the text can be typed or pasted.
 
-选中文本 → “翻译并替换”快捷键 → 按当前目标语言翻译 → 定位原选区 → 直接写回，无需再点击替换。
+### Translate and Replace
 
-- 使用独立、可配置的全局快捷键；沿用翻译的目标映射，用户显式指定过目标语言时沿用该选择。
-- 仅对已读取到并可靠定位的原选区写回。没有有效选区时显示紧凑提示与行内手动输入入口，不自动展开输入界面；用户主动进入完整窗口后可以输入，但不会自动替换其他位置。Esc 关闭并取消。
-- 翻译失败、请求取消或被新操作取代时，不写回；无法写回时保留译文供复制。
-- 写回成功后浮窗直接关闭，不停留确认；未能写回时保留浮窗、提示原因并保留译文供复制。
-- 复制结果与写回一样算一次完成的交互，复制后浮窗直接关闭。
-- 与普通翻译一样保存历史；译文生成成功但替换失败时仍保留翻译记录。
-- 沿用翻译学习开关；学习内容的生成不阻塞替换，也不触发自动收藏。
+Select text → "Translate and Replace" shortcut → translate into the current target language → locate the original selection → write back directly, with no extra click on Replace.
 
-### 润色
+- Uses its own configurable global shortcut. It follows the translation target mapping; if the user explicitly chose a target language, that choice is used.
+- Writes back only to an original selection that was read and can be located reliably. Without a valid selection it shows a compact notice with an inline manual input entry and does not expand the input UI automatically; the user can enter text after opening the full window, but nothing is replaced elsewhere automatically. Esc closes and cancels.
+- Nothing is written back when translation fails, the request is cancelled, or a newer operation supersedes it; when write-back is impossible the translation is kept for copying.
+- After a successful write-back the panel closes immediately without a confirmation step; if write-back fails the panel stays, shows the reason and keeps the translation for copying.
+- Copying the result counts as a completed interaction just like write-back, so the panel closes after copying.
+- History is saved as for a normal translation; if the translation succeeds but replacement fails, the translation record is still kept.
+- Uses the translation study setting; generating study content does not block replacement and never triggers automatic collection.
 
-选中文本 → 润色快捷键 → 浮窗分别展示原文与润色结果 → 复制结果或主动替换原选区 → 按需收藏。
+### Polish
 
-- 保持原文语言与原意，修正语法、改善自然度。
-- 默认给出一个结果，不提供多版本或语气预设。原文与结果各显示一次，均使用普通文本，不使用差异背景色、删除线或修改对照开关。
-- 区分语法修正与风格优化，不将风格偏好描述为错误。
+Select text → polish shortcut → the panel shows the source and the polished result separately → copy the result or explicitly replace the original selection → collect if wanted.
 
-### 两种界面形态
+- Keeps the source language and meaning; fixes grammar and improves naturalness.
+- Gives one result by default, with no multiple versions or tone presets. Source and result are each shown once as plain text, with no diff background colours, strikethrough or change-comparison toggle.
+- Distinguishes grammar fixes from style improvements and does not describe style preferences as errors.
 
-- 应用形态：菜单栏图标常驻，应用同时拥有 Dock 图标；主窗口关闭或隐藏后点击 Dock 图标会重新出现。
-- 翻译、润色、翻译并替换、润色并替换四个快捷键均唤起同一个采用 macOS Spotlight 视觉风格的紧凑浮动工具栏，并进入对应模式：无侧栏、无完整应用框架，按需展开结果与学习内容，Esc 收起。
-- 首次快捷处理显示原文摘要条与下方独立状态条，两者之间透明留空；原文条提供关闭，状态条提供取消。失败保留原文并提供重试与恢复入口；成功展开原文／结果，学习展开后改为结果／学习双栏。关闭或 Esc 取消未完成操作。全部使用系统 Liquid Glass，不绘制呼吸边框。
-- 工具栏左侧为 Owlet logo 与操作选择，右侧仅保留刷新、设置。主界面通过菜单栏图标或 Dock 图标打开，生词本与历史在主界面访问。
-- 完整窗口提供统一的“翻译与润色”页面，按 Figma Translate／Polish 画板：工具栏左侧为仅图标的翻译／润色分段控件与模式标题，右侧为语言选择（润色只有源语言）；原文与结果在同一张玻璃卡片中左右并排，窄窗口上下排列；学习、复制按钮浮在卡片右下角，学习的展开方式与浮窗一致。页面无执行按钮，用 ⌘↩ 处理。左侧不提供“翻译并替换”，该动作保留独立选区快捷键。
-- 生词本与历史是主窗口的侧栏页面；设置是独立的设置窗口（App 菜单「设置…」或 ⌘, 打开），内部按标签页分组，侧栏不再提供设置入口。首版仍不实现复习。
-- 界面语言支持简体中文、繁體中文、English、日本語，默认跟随系统；可在设置的「通用」页指定，改动在下次启动生效。**唯一例外是语言选择器本身**：它把每种语言写成自己的名字（简体中文／繁體中文／English／日本語），便于切换前辨认；语言名在其它位置跟随界面语言。发给模型的提示词、任务描述与示例保持简体中文，不随界面语言变化（见 [界面语言决策](settings/decisions/BDR-0011-interface-language.md)）。
-- 翻译并替换、润色并替换保持独立快捷键，不依赖先打开完整管理窗口。
+### Two Interface Forms
 
-### 浮窗与替换
+- App form: a menu bar icon is always present and the app also has a Dock icon; after the main window is closed or hidden, clicking the Dock icon brings it back.
+- The four shortcuts (Translate, Polish, Translate and Replace, Polish and Replace) all summon the same compact floating toolbar in the visual style of macOS Spotlight and enter the matching mode: no sidebar, no full app chrome; results and study content expand on demand, and Esc dismisses it.
+- The first quick operation shows a source summary bar with a separate status bar below it, with a transparent gap between them; the source bar offers Close and the status bar offers Cancel. On failure the source is kept and Retry and recovery entries are offered; on success the panel expands to source / result, and once Study is expanded it becomes a result / study two-column layout. Closing or Esc cancels any unfinished operation. Everything uses the system Liquid Glass; no breathing border is drawn.
+- The toolbar shows the Owlet logo and the operation picker on the left, and only Refresh and Settings on the right. The main interface is opened from the menu bar icon or the Dock icon; the notebook and history are reached from the main interface.
+- The full window provides a single "Translate & Polish" page, following the Figma Translate / Polish boards: the toolbar has an icon-only Translate / Polish segmented control and the mode title on the left, and language pickers on the right (Polish has only the source language). Source and result sit side by side in one glass card, stacked vertically in narrow windows. The Study and Copy buttons float at the bottom-right of the card, and Study expands the same way as in the panel. The page has no run button; ⌘↩ processes. The left side does not offer "Translate and Replace"; that action keeps its own selection shortcut.
+- The notebook and history are sidebar pages of the main window. Settings is a separate settings window (opened from "Settings…" in the app menu or ⌘,), grouped into tabs internally; the sidebar no longer has a settings entry. Review is still not implemented in the first version.
+- The interface language supports Simplified Chinese, Traditional Chinese, English and Japanese, following the system by default; it can be set on the "General" settings page, and the change takes effect on the next launch. **The only exception is the language picker itself**: it writes each language in its own name (简体中文 / 繁體中文 / English / 日本語) so it can be recognized before switching; elsewhere language names follow the interface language. Prompts, task descriptions and examples sent to the model stay in Simplified Chinese and do not change with the interface language (see the [interface language decision](settings/decisions/BDR-0011-interface-language.md)).
+- Translate and Replace and Polish and Replace keep their own shortcuts and do not depend on opening the full management window first.
 
-- 翻译、润色、翻译并替换、润色并替换分别使用可配置的全局快捷键。浮窗与主窗口的按钮都有固定快捷键（复制为 ⌘C，未选中文字时复制结果），按钮提示显示按键，快捷键页列出全部固定按键。快捷键页点击当前组合即可重新录制，支持取消、清除和冲突提示，保存后生效；无默认组合，未录制时不触发。
-- 支持键盘操作；查词卡打开时 Esc 先关闭卡片并恢复正文焦点，否则关闭浮窗。浮窗只在 Esc、显式关闭（“完成”）或鼠标点击浮窗外部时关闭；失去键盘焦点不会关闭浮窗。
-- 普通翻译／润色由用户点击替换后写回；“翻译并替换”“润色并替换”快捷键明确授权本次结果生成后直接写回。
-- 获取不到选中文字时不发起模型请求。工具栏未展开时显示紧凑提示及手动输入入口；工具栏已经展开时保留界面，在内容区提示问题。手动输入在完整窗口进行，不自动写回原选区。
-- 无法写回原选区时，提示未能写回，保留结果供复制。
-- 历史详情不提供复制按钮，也不沿用历史操作的原选区执行替换。
+### Panel and Replacement
 
-## 学习内容与收藏
+- Translate, Polish, Translate and Replace, and Polish and Replace each use a configurable global shortcut. Buttons in the panel and the main window all have fixed shortcuts (Copy is ⌘C, which copies the result when no text is selected); button tooltips show the key, and the Shortcuts page lists every fixed key. On the Shortcuts page, clicking the current combination records it again, with cancel, clear and conflict warnings; it takes effect once saved. There are no default combinations; an unrecorded shortcut never fires.
+- Keyboard operation is supported. When a lookup card is open, Esc first closes the card and returns focus to the text; otherwise it closes the panel. The panel closes only on Esc, an explicit close ("Done"), or a mouse click outside the panel; losing keyboard focus does not close it.
+- For normal Translate / Polish, the user clicks Replace to write back; the "Translate and Replace" and "Polish and Replace" shortcuts explicitly authorize writing back this result as soon as it is generated.
+- If no selected text can be obtained, no model request is made. When the toolbar is not expanded, a compact notice with a manual input entry is shown; when the toolbar is already expanded, the UI stays and the problem is shown in the content area. Manual input happens in the full window and is never written back to the original selection automatically.
+- When the original selection cannot be written back, the app says so and keeps the result for copying.
+- History details have no Copy button and never use the original selection of a past operation to replace text.
 
-- 翻译、润色分别设置学习内容开关，默认关闭。
-- 默认手动：主结果返回后不请求学习表达；展开“学习”即发起独立请求，不改变长期设置。已返回的内容收起后再次展开不重复请求。
-- 开启“自动请求学习表达”后，每次主结果成功返回即发起独立学习请求，不阻塞复制或替换；翻译、润色分别控制。推荐词汇、搭配或句式，释义语言跟随本次翻译目标（润色按目标映射查原文语言），不强行凑数量。学习内容**不含母语**（母语在设置的「语言」页选，**可多选**，只影响推荐哪些条目，不影响释义语言），详见 [释义语言决策](learning/decisions/BDR-0005-definition-language.md) 与 [母语决策](learning/decisions/BDR-0012-native-language.md)。
-- 润色学习内容说明修改前后的差异及原因。
-- 无论学习开关是否开启，都可手选原文或结果中的片段收藏。
-- 不自动收藏。推荐内容可勾选入库，手选内容可直接收藏。
-- 点击“加入生词本”即保存，不强制填写表单；收藏后可在生词本详情中编辑。
-- 词汇、短语、完整句子统一收藏，用户无需先分类。
-- 条目保留表达、语言、原句与语境释义；润色条目同时保留修改前后对照。每条语境记录来源入口（划选／学习推荐／历史）与原文所在的 App；手动输入的文本没有来源 App。
-- 条目另记词典原形与释义语言：表达是收藏时的实际词形，原形由学习推荐给出（见 [BDR-0009](learning/decisions/BDR-0009-learning-lemma.md)），生词本详情把不同的原形显示为次级信息；释义语言在生成与重新生成时按当下的目标映射计算，**不随条目冻结**；条目上记的是已存释义实际的语言，映射改动后旧条目不自动重算，可在详情里按当前设置重新生成（见 [BDR-0005](learning/decisions/BDR-0005-definition-language.md)）。
-- 同一表达再次收藏时，可向已有条目追加新语境；不同语言的同形表达不自动合并。
+## Study Content and Collection
 
-## 个人生词本
+- Translate and Polish each have their own study content switch, off by default.
+- Manual by default: no study expressions are requested after the main result returns; expanding "Study" makes a separate request without changing the long-term setting. Content that has already returned is not requested again when collapsed and expanded.
+- With "Request study expressions after translating" (or after polishing) turned on, every successful main result triggers a separate study request that does not block copy or replace; Translate and Polish are controlled separately. It suggests words, collocations or sentence patterns; the definition language follows this translation's target (Polish looks up the source language in the target mapping), and it does not pad the count. Study content **excludes native languages** (chosen on the "Languages" settings page, **multiple selection allowed**; this only affects which items are suggested, not the definition language). See the [definition language decision](learning/decisions/BDR-0005-definition-language.md) and the [native language decision](learning/decisions/BDR-0012-native-language.md).
+- Polish study content explains the differences before and after the edit and why.
+- Whether or not study is on, the user can select a fragment of the source or the result and collect it.
+- No automatic collection. Suggested items can be checked to add them; hand-selected content can be collected directly.
+- Clicking "Add to Notebook" saves immediately, with no required form; after saving, the entry can be edited in the notebook detail.
+- Words, phrases and full sentences are collected the same way; the user does not need to classify them first.
+- An entry keeps the expression, language, source sentence and in-context meaning; polish entries also keep the before / after comparison. Each context records its source entry point (selection / study suggestion / history) and the app the text came from; manually entered text has no source app.
+- An entry also records the dictionary form and the definition language. The expression is the actual form at collection time; the dictionary form comes from the study suggestion (see [BDR-0009](learning/decisions/BDR-0009-learning-lemma.md)), and the notebook detail shows a differing dictionary form as secondary information. The definition language is computed from the current target mapping at generation and regeneration time and is **not frozen on the entry**; the entry records the language the stored meaning is actually written in. When the mapping changes, old entries are not recomputed automatically; they can be regenerated in the detail view using the current settings (see [BDR-0005](learning/decisions/BDR-0005-definition-language.md)).
+- When the same expression is collected again, a new context can be appended to the existing entry; identical expressions in different languages are not merged automatically.
 
-- 本地保存用户主动收藏的内容。
-- 支持原生列表／详情分栏、搜索、按语言／标签／重点／来源 App 筛选与删除，各栏独立滚动。筛选位于工具栏左侧，上下条独立分组，删除与搜索位于右侧；不提供导出或复制按钮。
-- 详情中可编辑释义、表达、语言、笔记、标签与重点；语境不可编辑。编辑即时生效；释义可被重新生成覆盖，笔记不受自动流程影响。详见 [生词本可编辑决策](vocabulary/decisions/BDR-0004-editable-notebook.md)。
-- 读音与词性不随收藏请求，在详情中按需补充：「补充缺失」只填空字段、不覆盖，释义／读音／词性各有独立「重新生成」只覆盖该项；整句条目不标读音与词性。读音体系按语言在设置「语言」分组中配置，随条目保存。详见 [按需补充决策](vocabulary/decisions/BDR-0006-on-demand-enrichment.md)。
-- 首版仅管理与展示收藏，不包含复习流程或掌握度判断。
+## Personal Notebook
 
-## 阅读中查词（第一步，已实现，待最终验收）
+- Stores what the user chose to collect, locally.
+- Supports a native list / detail split, search, filtering by language / tag / starred / source app, and deletion, with each column scrolling independently. Filters sit on the left of the toolbar with previous / next as a separate group; Delete and Search are on the right. There are no export or copy buttons.
+- In the detail view the meaning, expression, language, notes, tags and starred flag are editable; contexts are not. Edits apply immediately. The meaning can be overwritten by regeneration; notes are never touched by automatic flows. See the [editable notebook decision](vocabulary/decisions/BDR-0004-editable-notebook.md).
+- Reading and part of speech are not requested at collection time; they are filled in on demand in the detail view. "Fill in missing" only fills empty fields and never overwrites; meaning / reading / part of speech each have their own "Regenerate", which overwrites only that field. Whole-sentence entries get no reading or part of speech. The reading notation is configured per language in the "Languages" settings group and saved with the entry. See the [on-demand enrichment decision](vocabulary/decisions/BDR-0006-on-demand-enrichment.md).
+- The first version only manages and shows collected items; there is no review flow or mastery tracking.
 
-- 覆盖浮窗、文本处理页、生词本详情、历史详情与学习表达行的阅读内容。只读正文支持按住 ⌘ 单击单词查询（按住 ⌘ 时悬停词提示、光标变手形）；中文、日文等按系统分词，切分不合意时可手动选中。原文输入框与生词本编辑字段保留编辑行为。
-- 选中单词、短语或整句后，工具栏显示「查询」，右键保留「查询所选」；选中本身不发请求，查询不扩大选区。学习行保留既有点击收藏行为，通过选区工具栏／右键查词；拖拽选中不误触收藏。
-- 卡片以查询词形作标题，原形不同时作次级信息；解释文中义，必要时附词性与用法。缺少原句时标明「无原句语境」，只解释一般含义。整句不展示读音与词性。
-- 释义语言沿用 [BDR-0005](learning/decisions/BDR-0005-definition-language.md)：翻译跟随此次目标，润色按原文语言查目标映射；历史／学习承接来源规则，生词本按当下映射重新生成，不另设查词语言选择器。
-- 读音体系沿用 [BDR-0006](vocabulary/decisions/BDR-0006-on-demand-enrichment.md)，不确定时允许缺失。系统语音朗读查询文本，仅手动播放；下一次播放中断旧音，关闭／切换卡片停止。没有可用语音时禁用发音按钮并说明「暂无系统语音」，不阻塞释义。
-- 相同查询条件复用已有结果；跨句复用时明确标示旧释义来自另一句并展示来源语境，提供「按当前语境重查」，不自动重查。重查失败保留可用旧结果及来源标识。仅在本次应用运行期间保留有限查询结果，退出清空，不保存查询历史。
-- 一次显示一张卡片；切换查询、关闭卡片或离开页面后，旧响应不得覆盖新卡片或重新弹卡。支持键盘与 VoiceOver 查询；Esc 先关闭卡片并恢复正文焦点。
-- 卡片可把当前词显式加入生词本：一个 `加入生词本`／`已收藏` 的书签动作，保存查询词形、本次语境、本次释义、释义语言与已知原形，不另发请求；卡片保持打开，再点一次即移除。复用生词本既有的同语言同表达规则，查词本身仍不自动入库（见 [BDR-0010](vocabulary/decisions/BDR-0010-collect-from-lookup.md)）。
-- 仍然不做：查询输入框、从卡片写回生词本已有释义、查询历史与外部词典服务，留待第二步。
+## Looking Up Words While Reading (Step One, Implemented, Awaiting Final Acceptance)
 
-行为详见 [查词规格](vocabulary/features/word-lookup.feature) 与 [查词决策 BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.md)。五类区域的查词已实现并原生验收（T48–T51）；系统语音发声、真实 VoiceOver 与真实安装版待最终验收。
+- Covers the reading content of the panel, the text processing page, the notebook detail, the history detail and study expression rows. In read-only text, holding ⌘ and clicking a word looks it up (while ⌘ is held, the word under the pointer is highlighted and the cursor becomes a hand). Chinese, Japanese and similar languages use system word segmentation; when the split is not what the user wants, they can select text by hand. The source input field and notebook edit fields keep their editing behaviour.
+- After selecting a word, phrase or whole sentence, the toolbar shows "Look Up" and the context menu keeps "Look Up Selection". Selecting does not send a request, and looking up does not widen the selection. Study rows keep their existing click-to-collect behaviour and are looked up through the selection toolbar or the context menu; a drag selection does not accidentally collect.
+- The card uses the looked-up form as its title, with the dictionary form as secondary information when it differs; it explains the in-context meaning, with part of speech and usage when needed. When there is no source sentence it shows "No source sentence" and explains only the general meaning. Whole sentences show no reading or part of speech.
+- The definition language follows [BDR-0005](learning/decisions/BDR-0005-definition-language.md): translation follows this operation's target, polish looks up the source language in the target mapping; history and study inherit the rule of their source, and the notebook regenerates with the current mapping. There is no separate lookup language picker.
+- The reading notation follows [BDR-0006](vocabulary/decisions/BDR-0006-on-demand-enrichment.md) and may be missing when uncertain. The system voice reads the looked-up text, only when played manually; the next playback interrupts the previous one, and closing or switching the card stops it. When no voice is available, the Speak button is disabled with "No system voice available", and the meaning is not blocked.
+- Identical lookup conditions reuse the existing result. When reusing across sentences, the card clearly marks that the old meaning came from another sentence, shows that source context, and offers "Look Up in This Sentence" without re-querying automatically. If the re-query fails, the usable old result and its source label are kept. A limited number of lookup results are kept only for the current app run and cleared on quit; no lookup history is saved.
+- One card is shown at a time. After switching lookups, closing the card or leaving the page, an old response must not overwrite the new card or reopen a card. Lookup works with the keyboard and VoiceOver; Esc first closes the card and returns focus to the text.
+- The card can explicitly add the current word to the notebook: a bookmark action labelled `Add to Notebook` / `Saved` saves the looked-up form, this context, this meaning, the definition language and any known dictionary form, without sending another request. The card stays open; clicking again removes it. It reuses the notebook's existing same-language same-expression rule, and looking up alone still never adds to the notebook (see [BDR-0010](vocabulary/decisions/BDR-0010-collect-from-lookup.md)).
+- Still not done: a lookup input field, writing the card back into an existing notebook meaning, lookup history and external dictionary services; these are left for step two.
 
-## 历史记录
+Behaviour is detailed in the [lookup spec](vocabulary/features/word-lookup.feature) and the [lookup decision BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.md). Lookup in all five areas is implemented and natively accepted (T48–T51); the spoken system voice, real VoiceOver and a real installed build still await final acceptance.
 
-- 自动保存翻译、润色操作的原文与结果，并记录操作类型、语言、时间及原文所在的 App。
-- 提供历史列表与详情，列表按天分组、最新在前；支持搜索，按翻译／润色、有收藏、来源 App 筛选且可叠加。详情列出从该记录收藏的词条并可跳转到生词本。详见 [历史作为学习本决策](history/decisions/BDR-0007-history-as-learning-log.md)。
-- 列表与详情分栏（无玻璃卡片），按可用宽度分配，窗口缩小时不溢出；工具栏半透明，内容可在其下滚动；标题下以副标题显示条数。工具栏左侧为筛选，上下条独立分组，右侧为删除和搜索。详情右下角浮动学习与复制按钮：学习时原文收起、结果留在上方，学习列表在下方展开，点击词条即时收藏（与浮窗一致），不直接收藏整条原文。
-- 支持删除单条或多选历史，选择全部后可批量删除；不自动过期。
-- 历史与生词本独立：删除历史不删除已经收藏的条目及其原句语境，条目上的来源信息仍保留；删除条目后历史详情的收藏列表相应减少。
+## History
 
-## 模型与数据设置
+- Automatically saves the source and result of translate and polish operations, with the operation type, language, time and the app the text came from.
+- Provides a history list and detail. The list is grouped by day, newest first; it supports search and filtering by Translate / Polish, has collected items, and source app, and the filters combine. The detail lists entries collected from that record and can jump to the notebook. See the [history as a learning log decision](history/decisions/BDR-0007-history-as-learning-log.md).
+- List and detail are split columns (no glass card), sized to the available width, and do not overflow when the window shrinks. The toolbar is translucent and content scrolls underneath it; a subtitle below the title shows the record count. Filters are on the left of the toolbar with previous / next as a separate group; Delete and Search are on the right. Study and Copy buttons float at the bottom-right of the detail: in study mode the source collapses, the result stays on top, the study list expands below, and clicking an item collects it immediately (as in the panel); the whole source text is never collected directly.
+- Single records or multiple selected records can be deleted; after selecting all, they can be deleted in bulk. Records never expire automatically.
+- History and the notebook are independent: deleting history does not delete collected entries or their source sentence contexts, and the source information on the entry is kept. After an entry is deleted, the collected list in the history detail shrinks accordingly.
 
-- 用户自行填写 OpenAI 兼容接口的 Base URL、API Key、模型名；也可以从服务商列表直接选一家（DeepSeek、Moonshot／Kimi、智谱 GLM、通义千问／DashScope、xAI、OpenRouter、Ollama、LM Studio），选中即替用户填好该服务公开的 Base URL 与默认模型，之后仍可修改；「OpenAI Compatible」入口保留，用于任意兼容服务。返回格式能力（JSON Schema 或 json_object）跟着所选服务走。见 [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md)。
-- API Key 存入 macOS 钥匙串。
-- 除 HTTP 服务外，用户可以把本机已登录的 agent CLI（Claude Code、Codex CLI）选为服务商：改为指定该 agent 的可执行文件，不需要 API Key，模型名可留空用 agent 自己的默认；两个 agent 都把模型名做成下拉、第一项就是它自己的默认模型——Codex 跑它自己的列举命令，Claude Code 读它为模型菜单缓存的本地目录，读不到时退回自由填写；两者的强度档位都按模型给。应用只借它取一次回答：工具、技能、MCP、项目上下文与会话落盘全部关闭，工作目录是一次性的空目录，用户原文只走标准输入，返回仍受同一份 JSON 契约与本地校验约束（见 [本机 agent 决策](settings/decisions/BDR-0013-local-agent-provider.md)）。
-- 翻译、润色分别支持自定义 System Prompt，显示完整默认内容，支持编辑、保存与恢复默认；翻译并替换复用翻译配置。
-- LLM 必须返回符合应用契约的 JSON。主结果包含逐句原文／译文配对，学习内容另行请求；JSON 校验失败不得替换原文。详见 `spec/llm/contract.md`。
-- 历史、生词本及应用设置保存在本机。
-- 翻译、润色、学习内容生成及阅读查词使用用户配置的模型服务，相关文本会发送至该服务；查词只发送查询文本及覆盖选区的局部语境，不默认发送整篇正文。本地存储不等于离线推理。选择本地 agent 时，文本交给该 agent 自己的服务，并受该 agent 自身的登录态与额度约束。
+## Model and Data Settings
 
-## 首版不做
+- The user fills in the Base URL, API Key and model name of an OpenAI-compatible endpoint, or picks a provider from the list (DeepSeek, Moonshot / Kimi, Zhipu GLM, Qwen / DashScope, xAI, OpenRouter, Ollama, LM Studio). Picking one fills in that service's public Base URL and default model, which can still be edited afterwards. The "OpenAI Compatible" entry remains for any compatible service. The response format capability (JSON Schema or json_object) follows the chosen service. See the [provider presets decision](settings/decisions/BDR-0015-provider-presets.md).
+- The API Key is stored in the macOS Keychain.
+- Besides HTTP services, the user can choose a signed-in local agent CLI (Claude Code, Codex CLI) as the provider. Instead of an API Key, the user points to that agent's executable; the model name can be left empty to use the agent's own default. Both agents offer the model name as a dropdown whose first item is the agent's own default model: Codex runs its own listing command, and Claude Code reads the local catalogue it caches for its model menu, falling back to free text when that cannot be read. Both offer effort levels per model. The app only borrows it to get one answer: tools, skills, MCP, project context and session persistence are all off, the working directory is a throwaway empty directory, the user's text goes only through standard input, and the reply is still bound by the same JSON contract and local validation (see the [local agent decision](settings/decisions/BDR-0013-local-agent-provider.md)).
+- Translate and Polish each support a custom System Prompt, showing the full default content, with edit, save and restore default; Translate and Replace reuses the translation configuration.
+- The LLM must return JSON that matches the app contract. The main result contains sentence-by-sentence source / translation pairs, and study content is requested separately; a failed JSON validation must not replace the source text. See `spec/llm/contract.md`.
+- History, the notebook and app settings are stored on this Mac.
+- Translation, polishing, study content generation and reading lookup use the model service the user configured, and the relevant text is sent to that service. Lookup sends only the looked-up text and the local context covering the selection, not the whole text by default. Local storage does not mean offline inference. With a local agent, the text goes to that agent's own service and is subject to its sign-in state and quota.
 
-- 复习、间隔重复、学习提醒、学习计划：首版只负责处理文本与积累内容。
-- 自动收藏、复杂语言水平评估、掌握度推断：由用户决定保存什么。
-- 多端同步、账号体系、社交功能：先提供完整的单机使用体验。
-- 独立课程、多版本润色、语气模板：保持核心交互简洁。
+## Not in the First Version
 
-## 定义边界
+- Review, spaced repetition, study reminders, study plans: the first version only processes text and accumulates content.
+- Automatic collection, complex proficiency assessment, mastery inference: the user decides what to save.
+- Multi-device sync, accounts, social features: a complete single-machine experience comes first.
+- Standalone courses, multiple polish variants, tone templates: keep the core interaction simple.
 
-本文定义产品行为与首版范围，不包含验证实验或成功指标。项目名为 Owlet；技术实现不扩展上述范围。
+## Scope Boundary
 
-- 菜单栏常驻 Owlet 图标，点击打开主界面的文本处理页；应用同时拥有 Dock 图标，点击可把关闭或隐藏的主窗口带回。浮动工具栏不显示 Esc 按钮；键盘 Esc 仅关闭并取消未完成操作，不进入任何“打开 Owlet”占位界面。
+This document defines product behaviour and the first-version scope; it does not include validation experiments or success metrics. The project is named Owlet; the technical implementation does not extend the scope above.
 
-- 主界面不提供“返回浮动工具栏”操作；浮动工具栏由全局快捷键触发，主界面保持独立。
+- The Owlet icon stays in the menu bar; clicking it opens the text processing page of the main interface. The app also has a Dock icon, which brings back a closed or hidden main window. The floating toolbar shows no Esc button; the Esc key only closes and cancels unfinished operations, and never enters any "Open Owlet" placeholder UI.
 
-- 翻译、润色、翻译并替换在工具栏尚未展开时遇到读取失败、权限或配置缺失、连接或认证失败、返回格式错误、写回失败或取消，只显示紧凑提示及对应的行内设置／恢复入口。权限问题进入权限设置，服务问题进入服务配置，格式问题进入对应操作的提示词设置；写回失败时可复制已有结果，取消后可重新处理。Esc 关闭并取消本次操作，写回失败后不重复写回。
+- The main interface offers no "back to floating toolbar" action; the floating toolbar is triggered by global shortcuts and the main interface stays independent.
 
-- 已展开的浮动工具栏重新处理时保持展开，在结果区域显示处理中；后续失败、权限或配置问题、写回失败及取消均在内容区提示，并给出对应的行内设置／恢复入口，不收起为紧凑条。保留原文及仍可用的结果；请求失败不呈现为成功。首次快捷操作仍使用紧凑处理态。
+- When Translate, Polish or Translate and Replace hits a read failure, missing permission or configuration, a connection or authentication failure, a malformed reply, a write-back failure or a cancellation while the toolbar is not yet expanded, only a compact notice with the matching inline settings / recovery entry is shown. Permission problems lead to permission settings, service problems to service settings, and format problems to the prompt settings of that operation; after a write-back failure the existing result can be copied, and after cancelling the text can be processed again. Esc closes and cancels this operation, and a failed write-back is not retried.
 
-- 完整 app 左侧新增独立“快捷键”导航页，列出常用操作、当前绑定和作用范围；全局绑定显示用户保存的组合，在本页直接录制、清除并保存，不再跳转设置。不与翻译／润色做 tab 切换。未实现或未确认的快捷键不伪装为已生效。
+- When an already expanded floating toolbar processes again, it stays expanded and shows progress in the result area. Later failures, permission or configuration problems, write-back failures and cancellations are all shown in the content area with the matching inline settings / recovery entry, without collapsing back to the compact bar. The source and any still-usable result are kept; a failed request is never presented as a success. The first quick operation still uses the compact processing state.
 
-历史与生词本支持系统多选删除，上一条/下一条独立工具栏分组。
+- The full app adds a separate "Shortcuts" page in the left navigation, listing common actions, their current bindings and scope. Global bindings show the combination the user saved and can be recorded, cleared and saved directly on this page, without jumping to settings. It is not a tab alongside Translate / Polish. Shortcuts that are not implemented or not confirmed are never presented as active.
 
-浮窗学习使用逐条收藏按钮，保存成功后显示已收藏；主窗口仍使用原有学习选择与批量入库流程。浮窗右下角提供关闭与复制，其他模式、语言与替换操作置于右键操作菜单。
+History and the notebook support system multi-selection deletion, with previous / next as a separate toolbar group.
 
-通用设置中的“玻璃效果”仅影响浮窗：更透明／更高对比度（默认），即时生效并持久保留；液态玻璃及其强度由“系统设置 › 外观”统一调整，该分组给出一句说明与打开面板的入口，应用不提供自己的强度控件。
+Study in the panel uses a per-item collect button that shows Saved after a successful save; the main window keeps the existing study selection and bulk-add flow. The bottom-right of the panel offers Close and Copy; other modes, languages and replace actions are in the context menu.
 
-浮窗从处理状态以弹簧动效展开为结果面板；遵循系统减少动态效果设置。
+"Glass Effect" in the General settings affects only the panel: More Transparent / Higher Contrast (default), applied immediately and persisted. Liquid Glass and its intensity are adjusted in "System Settings › Appearance"; this group gives a one-line explanation and an entry that opens that pane, and the app provides no intensity control of its own.
 
-浮窗学习界面以弹簧动效展开；点击词条整行立即切换词库收藏状态，取消立即移除，不需确认或提交；完整窗口学习流程保持不变。
+The panel expands from the processing state into the result panel with a spring animation, respecting the system Reduce Motion setting.
+
+The panel's study view expands with a spring animation. Clicking anywhere on an item row toggles its notebook membership immediately; removing takes effect immediately, with no confirmation or submit step. The full-window study flow is unchanged.

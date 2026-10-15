@@ -1,47 +1,48 @@
-Feature: 历史作为学习本
-  用户回看历史时能看到那天翻了什么、在哪里遇到的、从中收藏了哪些词。
+# English: learning-log.feature · 简体中文: learning-log.zh-CN.feature
+Feature: History as the learning log
+  Reviewing history, the user can see what was translated that day, where it was met, and which words were saved from it.
 
-  Rule: 历史记录原文所在的 App
-    Scenario: 划选触发的翻译
-      Given 用户在邮件应用中划选文本并触发翻译
-      When 结果成功生成
-      Then 历史记录的来源 App 是邮件应用
+  Rule: History records the app the source text came from
+    Scenario: A translation triggered by selecting text
+      Given the user selects text in a mail app and triggers a translation
+      When the result is generated successfully
+      Then the history record's source app is the mail app
 
-    Scenario: 手动输入的翻译
-      Given 用户在主窗口手动输入文本并翻译
-      When 结果成功生成
-      Then 历史记录没有来源 App
+    Scenario: A translation of manually entered text
+      Given the user types text in the main window and translates it
+      When the result is generated successfully
+      Then the history record has no source app
 
-  Rule: 历史列表按天分组，最新在前
-    Scenario: 跨天的记录
-      Given 用户今天有 3 条记录、昨天有 5 条
-      When 用户打开历史
-      Then 记录分为两组，今天的一组在前
+  Rule: The history list is grouped by day, newest first
+    Scenario: Records across days
+      Given the user has 3 records today and 5 yesterday
+      When the user opens history
+      Then the records are split into two groups, with today's group first
 
-  Rule: 历史可按有收藏与来源 App 筛选，与翻译／润色筛选叠加
-    Scenario: 只看有学习产出的润色
-      Given 用户有多条翻译与润色记录，其中部分收藏过表达
-      When 用户选择润色并勾选「有收藏」
-      Then 只显示收藏过表达的润色记录
+  Rule: History can be filtered by "has saved entries" and by source app, combined with the Translate / Polish filter
+    Scenario: Show only polishes that produced saved entries
+      Given the user has several translate and polish records, some of which had expressions saved
+      When the user chooses Polish and checks "Has saved entries"
+      Then only polish records with saved expressions are shown
 
-    Scenario: 只看来自某个 App 的记录
-      Given 用户有来自邮件应用与 Slack 的记录
-      When 用户选择来源 App 为 Slack
-      Then 只显示原文来自 Slack 的记录
+    Scenario: Show only records from one app
+      Given the user has records from a mail app and from Slack
+      When the user sets the source app to Slack
+      Then only records whose source text came from Slack are shown
 
-  Rule: 历史详情关联从该记录收藏的词条
-    Scenario: 查看收藏了哪些词
-      Given 用户从一条记录收藏了 "follow up" 与 "bandwidth"
-      When 用户打开该记录的详情
-      Then 详情列出这两个词条
-      And 选择任一词条可打开生词本中的对应条目
+  Rule: The history detail links to the entries saved from that record
+    Scenario: See which words were saved
+      Given the user saved "follow up" and "bandwidth" from one record
+      When the user opens that record's detail
+      Then the detail lists these two entries
+      And choosing either entry opens it in the notebook
 
-    Scenario: 词条删除后关联减少
-      Given 用户从一条记录收藏了 "follow up" 与 "bandwidth"
-      When 用户在生词本中删除 "bandwidth"
-      Then 该记录的详情只列出 "follow up"
+    Scenario: The links shrink after an entry is deleted
+      Given the user saved "follow up" and "bandwidth" from one record
+      When the user deletes "bandwidth" in the notebook
+      Then the record's detail lists only "follow up"
 
-    Scenario: 历史删除不影响词条
-      Given 用户从一条记录收藏了 "follow up"
-      When 用户删除该记录
-      Then 生词本中的 "follow up" 及其语境仍在
+    Scenario: Deleting history does not affect entries
+      Given the user saved "follow up" from one record
+      When the user deletes that record
+      Then "follow up" and its context are still in the notebook

@@ -1,157 +1,159 @@
-> 2026-09-29 用户确认：正文也允许使用系统 Liquid Glass 容器；工作台原文、译文、学习区使用原生 `glassEffect`，不手绘材质。此约定覆盖下文“内容层不用玻璃”的旧限制。
+[English](DESIGN.md) · [简体中文](DESIGN.zh-CN.md)
 
-# Owlet · 视觉与交互规则
+> Confirmed by the user on 2026-09-29: body content may also use system Liquid Glass containers; the source, translation and study areas of the workspace use native `glassEffect`, with no hand-drawn material. This overrides the older rule below that "the content layer does not use glass".
 
-## 2026-10-11 确认的设计与交互风格（优先于下文）
+# Owlet · Visual and Interaction Rules
 
-本节汇总浮窗、翻译与润色页、生词本、历史记录与设置在本轮迭代中逐条确认的风格；与下文旧规则冲突时以本节为准。
+## Design and Interaction Style Confirmed on 2026-10-11 (Takes Precedence over What Follows)
 
-### 表面与材质
+This section collects the style confirmed item by item during this iteration for the panel, the Translate & Polish page, the notebook, history and settings; where it conflicts with older rules below, this section wins.
 
-- 浮窗与翻译与润色页的正文放在一张玻璃表面上：系统 `glassEffect`，固定 34pt 圆角（`PanelMetrics.cornerRadius`），圆角不随尺寸变化。浮窗玻璃效果可选更透明／更高对比度（默认），处理中与结果页的不透明度一致。
-- 生词本与历史记录是资料页，不包玻璃卡片：列表与详情直接分栏，按可用宽度分配（列表 38%，220–340pt），窗口缩小时不溢出、不挤掉侧栏。
-- 主窗口工具栏半透明，内容可在其下滚动并透出；静止时内容仍从工具栏下方开始。
-- 正文上下边缘的 24pt 留白是渐隐带：文字滚动时从留白下穿过并淡出，不加背景色或材质，不压暗玻璃；浮窗顶部的留白可拖动窗口。
-- 浮窗四周留 24pt 透明边距，阴影完整淡出，不被窗口边缘截断。
+### Surfaces and Materials
 
-### 排版
+- The body of the panel and of the Translate & Polish page sits on one glass surface: system `glassEffect` with a fixed 34pt corner radius (`PanelMetrics.cornerRadius`) that does not change with size. The panel glass effect can be More Transparent / Higher Contrast (default); the processing and result states use the same opacity.
+- The notebook and history are reference pages and are not wrapped in glass cards: list and detail are split columns sized to the available width (list 38%, 220–340pt), and they do not overflow or push out the sidebar when the window shrinks.
+- The main window toolbar is translucent; content can scroll underneath it and show through. At rest, content still starts below the toolbar.
+- The 24pt margins at the top and bottom edges of the body are fade bands: scrolling text passes under the margin and fades out, with no background colour or material and no darkening of the glass. The top margin of the panel can drag the window.
+- The panel has a 24pt transparent margin on all sides so its shadow fades out completely and is not clipped by the window edge.
 
-- 结果比原文更重：原文 Regular，译文／润色结果 Medium；浮窗原文 15pt、结果 16pt，主窗口两栏 16pt。结果用两端对齐的原生只读文本（`LookupText`，可选区与查词），文字颜色用 `textColor`，避免玻璃上的 vibrancy 把结果画淡。
-- 区域高度贴合文字，不留空白；浮窗原文用纵向 `TextField`，按内容长高。
-- 选区首尾空白在处理前去掉，写回时原样补回。
-- 语言名以该语言自己的写法显示：简体中文、繁體中文、English、日本語，全应用一致（`LanguageCatalog.name(for:)`）。
-- 资料页详情为 640pt 阅读栏，左对齐，长行不横跨宽窗口；列表行先给结果或表达（15pt Medium），再给原文或释义（次要色）。
+### Typography
 
-### 颜色
+- The result weighs more than the source: source Regular, translation / polish result Medium; panel source 15pt and result 16pt, main window columns 16pt. The result uses justified native read-only text (`LookupText`, selectable and supporting lookup) with `textColor`, so glass vibrancy does not wash it out.
+- Areas fit their text height with no empty space; the panel source uses a vertical `TextField` that grows with its content.
+- Leading and trailing whitespace of the selection is removed before processing and restored as is on write-back.
+- Language names are shown in their own script: 简体中文, 繁體中文, English, 日本語, consistently across the app (`LanguageCatalog.name(for:)`).
+- The detail of reference pages is a 640pt reading column, left aligned, so long lines do not span a wide window. List rows show the result or expression first (15pt Medium), then the source or meaning (secondary colour).
 
-- 只用系统语义色与系统强调色：正文 `.primary`，元信息与提示 `.secondary`，收藏书签与选中用 `accentColor`，错误一律 `.red`。
-- 操作自带颜色：翻译蓝（`systemBlue`）、润色绿（`systemGreen`），用于工具栏分段控件的选中图标与历史记录行的操作图标（`Operation.tint`）。
-- 紧凑提示与分段文字用正常前景色，错误时改红色，不加背景色。
-- 生词本语境用 3pt 强调色竖线作引用；润色前文字置灰，润色后保持正常色。
+### Colour
 
-### 布局与按钮
+- Only system semantic colours and the system accent colour: body `.primary`, metadata and hints `.secondary`, collection bookmark and selection `accentColor`, errors always `.red`.
+- Operations carry their own colour: Translate blue (`systemBlue`), Polish green (`systemGreen`), used for the selected icon in the toolbar segmented control and the operation icon in history rows (`Operation.tint`).
+- Compact notices and segment text use the normal foreground colour and turn red on error, with no background colour.
+- Notebook contexts use a 3pt accent-coloured vertical bar as a quote mark; text before polish is greyed out, text after polish stays in the normal colour.
 
-- 浮动按钮：36pt 圆形玻璃按钮（`CardButton`），浮在正文右下角，距边 24pt；按钮行只包住按钮本身，旁边的文字仍可点击；内容底部预留滚动余量，文字可从按钮下滚出，静止时不为按钮留白。
-- 翻译与润色页工具栏：左侧仅图标的翻译／润色分段控件，其后为模式标题；右侧为源语言、蓝色 `»`、目标语言（润色只有源语言）。语言按钮宽度随当前选项。页面没有执行按钮，用 ⌘↩ 或右下角重新处理。
-- 切换源语言时，目标语言跟随设置里的映射，之后仍可手动修改。
-- 组合操作用 Segmented Control；独立动作用圆形玻璃按钮。资料页与设置里的行内操作（删除、清除、恢复默认、添加映射）用无边框图标或纯文本按钮，不用灰色方框。
-- 一个动作在全应用只有一个图标：取消／关闭 `xmark`，重新处理 `arrow.clockwise`，学习 `lamp.desk`，返回 `chevron.left`，复制 `document.on.document`，删除 `trash`；操作图标沿用 `Operation.symbol`（翻译 `translate`，润色 `wand.and.sparkles`）。
-- 设置是独立窗口，分组 Form；快捷键录制是数值样式（已设置为次要色组合，未设置为蓝色“录制”，录制中加浅色胶囊），清除用组合后的 ×。
+### Layout and Buttons
 
-### 状态
+- Floating buttons: 36pt round glass buttons (`CardButton`) floating at the bottom-right of the body, 24pt from the edges. The button row wraps only the buttons themselves, so text beside them stays clickable; the bottom of the content reserves scroll room so text can scroll out from under the buttons, and no space is reserved for the buttons at rest.
+- Translate & Polish page toolbar: an icon-only Translate / Polish segmented control on the left followed by the mode title; on the right the source language, a blue `»`, and the target language (Polish has only the source language). Language button width follows the current option. The page has no run button; ⌘↩ or the bottom-right button processes again.
+- When the source language changes, the target language follows the mapping in settings and can still be changed by hand afterwards.
+- Combined operations use a Segmented Control; standalone actions use round glass buttons. Inline actions on reference pages and in settings (delete, clear, restore default, add mapping) use borderless icon or plain text buttons, not grey boxes.
+- Each action has exactly one icon across the app: cancel / close `xmark`, process again `arrow.clockwise`, study `lamp.desk`, back `chevron.left`, copy `document.on.document`, delete `trash`; operation icons use `Operation.symbol` (Translate `translate`, Polish `wand.and.sparkles`).
+- Settings is a separate window with grouped Forms. Shortcut recording uses a value style (a set combination in secondary colour, an unset one as blue "Record", a light capsule while recording); clearing uses the × after the combination.
 
-- 加载中文字（翻译中…／润色中…／正在整理值得学习的表达…）在所属区域上下左右居中，次要色。
-- 错误与加载同位居中：红色信息加纯文本重试或设置按钮；读取失败时清掉上一次的文字，不显示旧结果。
-- 没有内容时，整个页面区域只显示一个居中的空状态，不留空的列表栏。
+### States
 
-### 动效
+- Loading text (Translating… / Polishing… / Finding useful expressions…) is centred horizontally and vertically in its area, in secondary colour.
+- Errors sit in the same centred spot as loading: a red message plus a plain text Retry or Settings button. When reading fails, the previous text is cleared and no old result is shown.
+- When there is no content, the whole page area shows a single centred empty state, with no empty list column.
 
-- 统一使用 `spring(duration: 0.36, bounce: 0.12)`，遵循减少动态效果。
-- 浮窗从原文条到结果是同一块玻璃原地向下生长，不换新面板、不闪现、不抖动；顶边固定，展开后可拖动，位置被记住。
-- 学习切换保持阅读连续：
-  - 并排时，原文栏挤压文字并收窄到零，结果移到原文位置，学习栏从右侧长出。
-  - 上下排列与历史详情中，原文与第一条分隔线一起收起，结果上移，第二条分隔线与学习列表从下方展开。
-  - 返回时完全倒放。尺寸动画用实测高度，不从 nil 跳变。
-- 浮窗从结果切到学习时尽量保持高度：学习列表高 3–5 个词条，只在词条更少时缩短。
+### Motion
 
-### 交互与快捷键
+- Always `spring(duration: 0.36, bounce: 0.12)`, respecting Reduce Motion.
+- The panel goes from source bar to result as the same piece of glass growing downward in place: no new panel, no flash, no jitter. The top edge stays fixed; once expanded it can be dragged, and its position is remembered.
+- Switching to study keeps reading continuous:
+  - Side by side, the source column squeezes its text and narrows to zero, the result moves into the source position, and the study column grows in from the right.
+  - Stacked vertically and in the history detail, the source collapses together with the first divider, the result moves up, and the second divider and the study list expand from below.
+  - Going back plays exactly in reverse. Size animations use measured heights and never jump from nil.
+- When the panel switches from result to study it keeps its height where possible: the study list is 3–5 items tall and shrinks only when there are fewer items.
 
-- 浮窗只在明确意图时关闭：Esc、点击外部；失去焦点不关闭。
-- 学习词条点击即时收藏／取消，无确认；行有悬停背景，按下不闪。表达文字可拖拽或双击选中后查词（T51）：点在表达文字上时等过系统双击间隔才切换收藏，免得双击选词误收藏；点书签、释义或行内空白仍即时切换（待确认）。
-- 全局快捷键四个，均可录制：翻译、润色、翻译并替换、润色并替换；“并替换”授权本次结果直接写回。
-- 浮窗与主窗口的按钮都有固定快捷键，统一定义在 `KeyHint`，按钮绑定、悬停提示与快捷键页同源：
-  - 浮窗：⌘↩ 替换、⌘C 复制结果、⌘R 重新处理、⌘L 学习／返回、Esc 停止／关闭。
-  - 主窗口：⌘↩ 处理、⌘1／⌘2 切换翻译／润色、⌘. 取消、⌘L 学习／返回、⌘C 复制、⌘↑／⌘↓ 上一条／下一条、⌘⌫ 删除。
-- ⌘C 先尊重选区：选中文字时复制所选，未选中时复制当前结果、记录结果或表达。
-- 带文字的按钮不加悬停提示，文字已说明动作（2026-10-11 确认）。
-- 每个图标按钮都有悬停提示，内容为“动作 + 按键”，用自绘玻璃胶囊（`HoverTip`）显示，不激活应用的浮窗里也能出现；设置窗口没有快捷操作，不显示提示。
-- 快捷键页把固定按键按作用范围分组，以三列表格列出；菜单栏菜单把已录制的全局快捷键作为按键等价项，右侧对齐。
+### Interaction and Shortcuts
 
-### 验证方式
+- The panel closes only on clear intent: Esc or a click outside; losing focus does not close it.
+- Clicking a study item collects / uncollects it immediately, with no confirmation; rows have a hover background and do not flash when pressed. Expression text can be dragged or double-clicked to select and look up (T51): a click on the expression text waits for the system double-click interval before toggling collection, so double-clicking to select a word does not collect by mistake; clicks on the bookmark, the meaning or empty row space still toggle immediately (to be confirmed).
+- Four global shortcuts, all recordable: Translate, Polish, Translate and Replace, Polish and Replace; "and Replace" authorizes writing this result back directly.
+- Buttons in the panel and the main window all have fixed shortcuts, defined in one place in `KeyHint`, so button bindings, hover tips and the Shortcuts page share one source:
+  - Panel: ⌘↩ replace, ⌘C copy result, ⌘R process again, ⌘L study / back, Esc stop / close.
+  - Main window: ⌘↩ process, ⌘1 / ⌘2 switch Translate / Polish, ⌘. cancel, ⌘L study / back, ⌘C copy, ⌘↑ / ⌘↓ previous / next, ⌘⌫ delete.
+- ⌘C respects the selection first: with text selected it copies the selection; otherwise it copies the current result, record or expression.
+- Buttons with text get no hover tip, since the text already states the action (confirmed 2026-10-11).
+- Every icon button has a hover tip reading "action + key", shown in a custom glass capsule (`HoverTip`) so it also appears in a panel that does not activate the app; the settings window has no shortcut actions and shows no tips.
+- The Shortcuts page groups fixed keys by scope in a three-column table; the menu bar menu shows recorded global shortcuts as key equivalents, right aligned.
 
-- 先读 Figma 实例的组件、字号与间距，再实现；用伪造数据在预览里渲染真实视图，不必请求模型。
-- 截图核对各状态；动效用逐帧截图或录屏核对；只截预览窗口本身，避免把屏幕上的其他窗口录进来。
+### How to Verify
 
-## 设计规则（优先于下文）
+- Read the components, font sizes and spacing of the Figma instance before implementing; render the real views in previews with fake data, without calling a model.
+- Check each state with screenshots; check motion with frame-by-frame screenshots or screen recordings; capture only the preview window itself so other windows on screen are not recorded.
 
-- 全部组件使用 macOS 26 原生 SwiftUI / AppKit，不手写控件：不用自定义颜色、tint、accent token，不加自定义填充、边框、渐变、光晕、阴影、圆角样式、下划线链接或自定义 ButtonStyle。
-- 组件对照见 [docs/liquid-glass-components.md](../docs/liquid-glass-components.md)。`design/screenshots/` 中的每个组件都已对应到原生组件；实现按该文执行。
-- 两条判据：
-  1. **Liquid Glass 只属于功能层**——工具栏、侧边栏、浮动面板、弹出视图。内容层（正文、结果、卡片、列表行、分组容器）用系统材质，绝不叠玻璃。
-  2. **能用系统组件就不用自定义**——系统组件自动获得 Liquid Glass 外观、Vibrancy、焦点环、键盘与 VoiceOver 支持，以及 Reduce Transparency / Increase Contrast / Reduce Motion 适配。
-- 窗口骨架用系统组件：`Window` scene + `NavigationSplitView`（侧栏可收起，`⌃⌘S`）、`.toolbar`、`List`、`MenuBarExtra` 与独立的 `Settings` scene；生词本与历史用 `.searchable` 与 `ContentUnavailableView`。
-- 按钮按层选样式：工具栏项用系统工具栏按钮；动作行统一用 `.glass` / `.glassProminent`——浮动面板的底部动作行包在 `GlassEffectContainer` 中（相邻玻璃需要融合），翻译与润色页右下角浮起的两颗图标按钮**不**包（两颗要各自独立），设置窗口的页脚已取消。
-- 每屏只有一个主要动作，放在 trailing 端；翻译与润色页把它放在工具栏动作组的末端。
-- 使用系统强调色、系统语义色、系统字体与 SF Symbols。品牌玫瑰色只作为应用 `AccentColor` 资源，出现在强调色、prominent 动作、选中态与状态指示，不散布到各视图的 tint。
-- 浅色与深色都走系统语义色。用户可单独选择浮窗玻璃效果：更透明或更高对比度；使用系统 clear／regular 玻璃，不自绘材质。
-- `design/screenshots/` 只约束布局（元素顺序、位置、尺寸、间距）与状态，不约束组件样式。组件样式以本文与组件对照文为准。
+## Design Rules (Take Precedence over What Follows)
 
-### 查词悬停的封闭例外（2026-10-07 已确认，2026-10-11 改为按住 ⌘ 时显示）
+- Every component uses native macOS 26 SwiftUI / AppKit, with no hand-made controls: no custom colours, tint or accent tokens, and no custom fills, borders, gradients, glows, shadows, corner styles, underlined links or custom ButtonStyle.
+- The component mapping is in [docs/liquid-glass-components.md](../docs/liquid-glass-components.md). The `design/screenshots/` folder of the old browser prototype was retired along with it; every component in it had been mapped to a native component. Implementation follows that document.
+- Two criteria:
+  1. **Liquid Glass belongs only to the functional layer**: toolbars, sidebars, floating panels, popovers. The content layer (body, results, cards, list rows, group containers) uses system materials and never stacks glass.
+  2. **Use a system component whenever one exists**: system components automatically get the Liquid Glass look, vibrancy, focus rings, keyboard and VoiceOver support, and Reduce Transparency / Increase Contrast / Reduce Motion adaptation.
+- The window skeleton uses system components: a `Window` scene + `NavigationSplitView` (collapsible sidebar, `⌃⌘S`), `.toolbar`, `List`, `MenuBarExtra` and a separate `Settings` scene; the notebook and history use `.searchable` and `ContentUnavailableView`.
+- Button styles by layer: toolbar items use system toolbar buttons; action rows always use `.glass` / `.glassProminent`. The bottom action row of a floating panel is wrapped in a `GlassEffectContainer` (adjacent glass needs to merge); the two icon buttons floating at the bottom-right of the Translate & Polish page are **not** wrapped (they must stay separate); the settings window footer has been removed.
+- Each screen has only one primary action, at the trailing end; the Translate & Polish page puts it at the end of the toolbar action group.
+- Use the system accent colour, system semantic colours, the system font and SF Symbols. The brand rose colour exists only as the app `AccentColor` resource and appears in the accent colour, prominent actions, selection states and status indicators; it is not scattered into per-view tints.
+- Light and dark modes both use system semantic colours. The user can choose the panel glass effect separately: More Transparent or Higher Contrast, using the system clear / regular glass, with no hand-drawn material.
+- Layout (element order, position, size, spacing) and states were constrained by `design/screenshots/` (now retired), never component styles. Component styles follow this document and the component mapping.
 
-按住 ⌘ 时，只读正文中鼠标下未选中的单词允许用系统 `NSColor.selectedTextBackgroundColor` 淡化作为悬停提示，候选不透明度为 25–35%，最终值须经原生可读性验证；此时光标为系统手形（`NSCursor.pointingHand`），表示 ⌘ 单击即查询。不按 ⌘ 时没有悬停提示，光标保持 I-beam。提示只覆盖实际命中的词，不叠在已有选区上，不改变文本布局，学习行同样只在按住 ⌘ 时显示。
+### Closed Exception for Lookup Hover (Confirmed 2026-10-07; Since 2026-10-11 Shown Only While ⌘ Is Held)
 
-此例外仅允许上述系统语义色提示，不允许自定义 RGB、圆角背景、边框、阴影、额外 padding 或下划线；手形光标只在按住 ⌘ 悬停可查询的词时出现（2026-10-11 用户确认）。查词卡、选区工具栏与按钮仍用系统组件；键盘与 VoiceOver 查询不依赖悬停。验证浅深色、提高对比度与实际选区区别后再验收。T49 取 30%（`LookupTextView.hoverOpacity`，审阅确认先用此值），以临时属性绘制不改布局；已在浅色、深色、高对比浅／深色下截图核对可见且与选区可区分；不激活的浮窗里光标矩形不生效，I-beam 由文本视图在鼠标移动时显式设置。行为见 [查词规格](vocabulary/features/word-lookup.feature)。
+While ⌘ is held, an unselected word under the pointer in read-only text may be tinted with the system `NSColor.selectedTextBackgroundColor` as a hover hint, with a candidate opacity of 25–35%; the final value must pass a native readability check. Meanwhile the cursor is the system hand (`NSCursor.pointingHand`), signalling that ⌘-click looks the word up. Without ⌘ there is no hover hint and the cursor stays an I-beam. The hint covers only the word actually hit, never sits on top of an existing selection and never changes text layout; study rows likewise show it only while ⌘ is held.
 
-### 2026-10-07 用户确认的设计倾向
+This exception allows only the system semantic colour hint above: no custom RGB, rounded backgrounds, borders, shadows, extra padding or underlines. The hand cursor appears only while ⌘ is held over a word that can be looked up (confirmed by the user 2026-10-11). The lookup card, the selection toolbar and buttons still use system components; keyboard and VoiceOver lookup do not depend on hover. Accept only after verifying light and dark, Increase Contrast and the distinction from a real selection. T49 uses 30% (`LookupTextView.hoverOpacity`, accepted for now in review), drawn as a temporary attribute without changing layout; screenshots in light, dark, and high-contrast light / dark confirmed it is visible and distinguishable from the selection. In a panel that does not activate the app, cursor rects do not apply, so the text view sets the I-beam explicitly on mouse moves. Behaviour is in the [lookup spec](vocabulary/features/word-lookup.feature).
 
-本节记录本轮明确要求；panel 细节优先于下文旧原型的尺寸、字号与动作行描述。仅适用于浮窗的要求，不自动推广到主 app。
+### Design Preferences Confirmed by the User on 2026-10-07
 
-**通用原则：**
+This section records what was explicitly asked for in this round; panel details take precedence over the sizes, font sizes and action row descriptions of the old prototype below. Requirements that apply only to the panel do not automatically extend to the main app.
 
-- 原生感优先：使用系统 SwiftUI／AppKit 组件与 Liquid Glass，不手写控件或仿制材质。
-- 忠实于指定设计：查看 Figma 实例详情、组件名、变体与 master 后再实现；不能只凭截图猜测，也不能拿其他页面替代指定画板。
-- 视觉还原包含组件语义、字号字重、图标尺寸、颜色、间距与状态差异，不只看轮廓相似。
-- 玻璃必须兼顾可读性：背景不要过度透明，操作图标应有足够对比度；优先使用系统语义色及原生材质选项。
-- 结果要用真实原生截图对照；不同状态分别检查，hover、按下与选中态要区分，不能互相代替。
+**General principles:**
 
-**本轮 panel 的具体要求：**
+- Native feel first: use system SwiftUI / AppKit components and Liquid Glass; do not hand-make controls or imitate materials.
+- Stay faithful to the specified design: inspect the Figma instance details, component names, variants and master before implementing; do not guess from screenshots or substitute another page for the specified board.
+- Visual fidelity covers component semantics, font size and weight, icon size, colour, spacing and state differences, not just a similar outline.
+- Glass must stay readable: the background must not be too transparent and operation icons need enough contrast; prefer system semantic colours and native material options.
+- Compare results against real native screenshots; check each state separately, and keep hover, pressed and selected states distinct rather than letting one stand in for another.
 
-- 组合操作使用 Segmented Control，不拆成多个独立按钮；翻译中只有一层背景。
-- 翻译状态与右侧图标是独立动作，要有分隔；原文条右侧独立图标按钮为圆形。
-- 请求结束展开结果、结果切换学习都要连续动画过渡，并遵循系统减少动态效果设置。
-- 学习收藏图标相对整行垂直居中；中间竖分隔线上下留白，不贯穿面板。
-- 底部动作与面板圆角保留距离，右边界对齐正文右边界；当前共同 inset 为24pt。
-- 学习左侧文本尽量撑满行宽，采用原生两端对齐，末行自然对齐。
-- 点击词条立即切换收藏与取消收藏，无确认步骤；选中态来自真实词库成员状态。
-- 提供“更透明／更高对比度”的浮窗玻璃设置，采用系统 clear／regular；默认更高对比度。
-- 操作图标采用系统主前景色以提高对比度，玻璃按钮仍用原生样式。
+**Specific requirements for the panel in this round:**
 
-这些要求已落入实现或任务记录，不代表全部视觉验收完成。未解决的圆角、错误文字颜色、活跃材质及交互验收见 [调试与测试记录](../docs/panel-debugging-and-testing.md#尚待验收)。
+- Combined operations use a Segmented Control rather than several separate buttons; while translating there is only one background layer.
+- The translation status and the icons on the right are separate actions with a divider between them; the standalone icon button on the right of the source bar is round.
+- Expanding the result when a request finishes, and switching from result to study, both animate continuously and respect the system Reduce Motion setting.
+- The study collect icon is vertically centred on its row; the vertical divider in the middle leaves space above and below and does not run through the panel.
+- Bottom actions keep a distance from the panel corner radius, with their right edge aligned to the body's right edge; the shared inset is currently 24pt.
+- Study text on the left fills the row width as much as possible, using native justification with a naturally aligned last line.
+- Clicking an item toggles collect / uncollect immediately with no confirmation step; the selected state comes from real notebook membership.
+- Provide a "More Transparent / Higher Contrast" panel glass setting using the system clear / regular; Higher Contrast by default.
+- Operation icons use the system primary foreground colour for contrast; glass buttons keep the native style.
 
-### 文案规则（提案，尚未应用）
+These requirements have gone into the implementation or the task records; that does not mean all visual acceptance is done. The open corner radius, error text colour, active material and interaction acceptance items are in the [debugging and testing notes](../docs/panel-debugging-and-testing.md#still-awaiting-acceptance).
 
-1. **动作区只放动作。** 工具栏与动作行里不放解释性文字；状态由内容区、悬停提示或菜单栏承担。
-2. **界面不展示快捷键。** 快捷键的唯一出处是菜单栏（`.keyboardShortcut`）与悬停提示（`.help()`）；不把 `⌘↩` 画进按钮，也不写“快捷键未设置”。快捷键页面本身例外，绑定就是它的内容。
-3. **按钮用动词，宾语交给上下文。** 同一屏的控件已经说清宾语时，按钮不重复它：`翻译`、`润色`、`复制`、`保存`、`收藏`、`导出…`。宾语会歧义时才保留，如 `恢复默认`、`清除筛选`。
+### Copy Rules (Proposal, Not Yet Applied)
 
-同一动作在同一产品里只用一个叫法。
+1. **Action areas hold only actions.** No explanatory text in toolbars or action rows; state is carried by the content area, hover tips or the menu bar.
+2. **The interface does not show shortcuts.** Shortcuts appear only in the menu bar (`.keyboardShortcut`) and hover tips (`.help()`); do not draw `⌘↩` into buttons or write "Shortcut not set". The Shortcuts page itself is the exception, since bindings are its content.
+3. **Buttons use verbs and leave the object to context.** When the controls on the same screen already make the object clear, the button does not repeat it: `Translate`, `Polish`, `Copy`, `Save`, `Collect`, `Export…`. Keep the object only when it would be ambiguous, as in `Restore Default` or `Clear Filters`.
 
-第 2 条已采用：按钮上不写按键，按键只出现在悬停提示、菜单与快捷键页；悬停提示用自绘 `HoverTip` 而非 `.help()`，因为浮窗不激活应用时系统提示不显示。
+One action has only one name within the product.
 
-## 布局约束（沿用）
+Rule 2 has been adopted: buttons show no keys; keys appear only in hover tips, menus and the Shortcuts page. Hover tips use the custom `HoverTip` rather than `.help()`, because system tips do not appear when the panel does not activate the app.
 
-中性浅色界面，玫瑰粉作为品牌强调色，用于白天阅读与工作沟通中短暂唤起的语言工具。保留系统字体、紧凑布局与 Liquid Glass 材质。
+## Layout Constraints (Carried Over)
 
-- 文本处理页：原文与结果在一张玻璃卡片中左右并排，内容区窄于 600pt 时上下排列。
-- 字号与字重见上方“排版”：结果比原文重一档，浮窗原文 15pt、结果 16pt。
-- 浮窗宽 773pt，原文条高 62pt；应用窗口默认 1080 × 690，最小 760 × 500。
-- 复制与替换只输出译文；逐句对照由通用设置的“翻译显示方式”切换。
+A neutral light interface with rose pink as the brand accent, for a language tool summoned briefly during daytime reading and work communication. Keep the system font, a compact layout and Liquid Glass materials.
 
-## 已退役的配色令牌
+- Text processing page: source and result sit side by side in one glass card, stacked vertically when the content area is narrower than 600pt.
+- Font sizes and weights are in "Typography" above: the result is one step heavier than the source, panel source 15pt and result 16pt.
+- The panel is 773pt wide with a 62pt source bar; the app window defaults to 1080 × 690, minimum 760 × 500.
+- Copy and replace output only the translation; sentence-by-sentence display is switched by "Translation Display" in the General settings.
 
-下表是早期浏览器原型（`design/index.html` 的 `:root`）的取值，仅作历史记录。原生实现不定义任何自定义颜色令牌；玫瑰色的唯一出口本应是应用的 `AccentColor` 资源，**当前工程还没有该资源，也没有任何 `.tint()`**，所以 prominent 按钮与选中态实际跟随系统强调色。这条差异记在 [未实现功能清单](../docs/unimplemented-features.md)。
+## Retired Colour Tokens
 
-| 角色 | OKLCH | 原生替代 |
+The table below holds the values from the early browser prototype (`:root` of `design/index.html`, now retired) as a historical record only. The native implementation defines no custom colour tokens. The only outlet for the rose colour was meant to be the app `AccentColor` resource; **the resource now exists but defines no colour, and no view uses `.tint()`**, so prominent buttons and selection states actually follow the system accent colour.
+
+| Role | OKLCH | Native replacement |
 |---|---|---|
-| 玫瑰强调 | 47% .17 350 | 应用 `AccentColor` 资源（尚未添加）；添加后系统在"多颜色"设置下采用，其它设置下被用户选择覆盖。当前无 tint，按钮用系统强调色 |
-| 花瓣浅粉 | 95% .025 350 | 系统 source list 选中外观 |
-| 深色正文 | 27% .008 265 | `.primary` / `NSColor.labelColor` |
-| 中性次要文字 | 45% .008 265 | `.secondary` / `NSColor.secondaryLabelColor` |
-| 近白底色 | 99% .003 265 | 系统窗口背景与纸张材质 |
-| 分隔线 | 60% .012 350 / .17 | `Divider()` / `NSColor.separatorColor` |
-| 错误填充与文字 | 96% .025 45 / 43% .1 40 | `.red` 与系统材质底 |
-| 成功 | 43% .09 158 | `.green` |
+| Rose accent | 47% .17 350 | App `AccentColor` resource (defines no colour yet); once set, the system uses it under the "Multicolour" setting and the user's choice overrides it otherwise. No tint today; buttons use the system accent colour |
+| Petal light pink | 95% .025 350 | System source list selection appearance |
+| Dark body text | 27% .008 265 | `.primary` / `NSColor.labelColor` |
+| Neutral secondary text | 45% .008 265 | `.secondary` / `NSColor.secondaryLabelColor` |
+| Near-white background | 99% .003 265 | System window background and paper material |
+| Divider | 60% .012 350 / .17 | `Divider()` / `NSColor.separatorColor` |
+| Error fill and text | 96% .025 45 / 43% .1 40 | `.red` on a system material |
+| Success | 43% .09 158 | `.green` |
 
-粉色只负责品牌与交互强调。成功保留绿色，错误保留系统红，避免与品牌粉混淆。背景、玻璃面板与正文保持中性灰白；玫瑰色集中在强调色、prominent 动作、选中态与处理中指示。处理中的整圈边框呼吸灯仍是待做设计，尚未采纳：面板不新增自绘边框与阴影，保留系统玻璃的默认外观；呼吸不使用粉色渐变描边，也不新增额外图层。应用当前只用 `ProgressView`，见 [docs/unimplemented-features.md](../docs/unimplemented-features.md)。
+Pink is only for brand and interaction emphasis. Success stays green and errors stay system red, so neither is confused with the brand pink. Backgrounds, glass panels and body text stay neutral grey-white; the rose colour is concentrated in the accent colour, prominent actions, selection states and the processing indicator. The full-ring breathing border while processing is still an open design and has not been adopted: the panel adds no hand-drawn border or shadow and keeps the default system glass look; breathing uses no pink gradient stroke and adds no extra layer. The app currently uses only `ProgressView`.
 
-2026-09-29 用户追加确认：撤销粉色品牌强调色，使用系统默认强调色；侧栏保持系统默认字号。
+Added and confirmed by the user on 2026-09-29: the pink brand accent is withdrawn in favour of the system default accent colour; the sidebar keeps the system default font size.

@@ -1,17 +1,18 @@
-功能: 原生窗口输入焦点
+# English: focus.feature · 简体中文: focus.zh-CN.feature
+Feature: Native window input focus
 
-  场景: 点击输入区域以外结束编辑
-    假如 主窗口或设置窗口的文本输入正在编辑
-    当 点击输入区域以外的空白或其他控件
-    那么 当前输入结束编辑且原点击继续正常响应
-    并且 输入区域内选字与滚动不受影响
-    并且 不影响其他窗口与浮动面板
+  Scenario: Clicking outside the input area ends editing
+    Given a text input in the main window or the settings window is being edited
+    When I click empty space or another control outside the input area
+    Then the current input ends editing and the original click still responds normally
+    And text selection and scrolling inside the input area are unaffected
+    And other windows and the floating panel are unaffected
 
-Rule: 从菜单打开设置
+Rule: Opening settings from the menu
 
-  Scenario: 设置窗口已在后面时回到最前
-    Given 设置窗口已经打开
-    And 它被别的窗口压住
-    When 我从菜单栏菜单再次点「设置…」
-    Then 设置窗口回到最前并获得焦点
-    And 菜单栏菜单、浮窗的设置按钮与提示词设置三个入口行为一致
+  Scenario: A settings window behind other windows comes to the front
+    Given the settings window is already open
+    And it is covered by another window
+    When I click "Settings…" again in the menu bar menu
+    Then the settings window comes to the front and receives focus
+    And the menu bar menu, the panel's settings button, and the prompt settings entry behave the same

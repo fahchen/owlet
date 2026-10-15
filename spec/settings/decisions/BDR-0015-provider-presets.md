@@ -1,54 +1,56 @@
-# BDR-0015：服务商预设与「协议／厂商」分离
+[English](BDR-0015-provider-presets.md) · [简体中文](BDR-0015-provider-presets.zh-CN.md)
 
-状态：已实现（T75，2026-10-15）。来源：用户要求「增加服务商预设，选完只差一把 API Key」。
+# BDR-0015: Provider presets, and separating "protocol" from "vendor"
 
-## 背景与问题
+Status: Implemented (T75, 2026-10-15). Origin: user request to "add provider presets, so after choosing one only an API Key is missing".
 
-`Provider` 起初同时承担两件事：**怎么说话**（`.openAICompatible` 的协议）与**说的是谁**（`.deepSeek` 带着一份 `("https://api.deepseek.com", "deepseek-chat")` 的预设）。结果是每加一家 OpenAI 兼容厂商就要加一个枚举 case，而用户想用 Moonshot／Kimi、智谱 GLM、通义千问／DashScope、xAI、OpenRouter、Ollama、LM Studio 时，只能自己查 Base URL 和模型名。返回格式能力也挂在 `Provider.supportsJSONSchema` 上，等于把「厂商行为」伪装成「协议属性」。
+## Background and problem
 
-## 决定
+`Provider` originally did two jobs: **how to talk** (the `.openAICompatible` protocol) and **who to talk to** (`.deepSeek` carried a preset of `("https://api.deepseek.com", "deepseek-chat")`). As a result, every new OpenAI-compatible vendor needed a new enum case, and users who wanted Moonshot / Kimi, Zhipu GLM, Qwen / DashScope, xAI, OpenRouter, Ollama, or LM Studio had to look up the Base URL and model name themselves. The response format capability also hung off `Provider.supportsJSONSchema`, disguising "vendor behavior" as a "protocol property".
 
-### 1. `Provider` 只表示协议与两个本地 agent
+## Decision
 
-`Provider` 收敛为 `openAICompatible`、`claudeCode`、`codexCLI` 三个 case：前一个是「OpenAI 风格 HTTP 服务」这条投递路径，后两个是各自要跑的本机 CLI。`.deepSeek` 被移除，因为它描述的是厂商而不是协议——这正是本次要修的混淆。
+### 1. `Provider` only represents the protocol and the two local agents
 
-### 2. 厂商列表是数据：`ServicePreset`
+`Provider` is reduced to three cases: `openAICompatible`, `claudeCode`, `codexCLI`. The first is the delivery path "OpenAI-style HTTP service"; the other two are the local CLIs to run. `.deepSeek` is removed, because it describes a vendor rather than a protocol, which is exactly the confusion being fixed.
 
-新增 `ServicePreset` 值类型（`Owlet/Settings/ServicePreset.swift`），字段为展示名、Base URL、默认模型、返回格式能力、是否读 `GET /models`、钥匙串账户。`ServicePreset.all` 是唯一真源，追加一家厂商只加一行数据，不动任何枚举、后端或请求构造。
+### 2. The vendor list is data: `ServicePreset`
 
-自定义入口是其中一个预设（`id == openAICompatible`，`baseURL == nil`），也是整份列表的地基：所有厂商最终都走同一条 `openAICompatible` 投递路径，预设只是替用户填地址与模型名的便利层。
+Add a `ServicePreset` value type (`Owlet/Settings/ServicePreset.swift`) with fields for display name, Base URL, default model, response format capability, whether to read `GET /models`, and Keychain account. `ServicePreset.all` is the single source of truth: adding a vendor is one row of data and touches no enum, backend, or request construction.
 
-### 3. 返回格式能力跟着预设走
+The custom entry is one of the presets (`id == openAICompatible`, `baseURL == nil`) and the foundation of the whole list: every vendor ultimately uses the same `openAICompatible` delivery path, and a preset is only a convenience layer that fills in the address and model name for the user.
 
-`ServiceConfig` 新增可空 `supportsJSONSchema`：预设给出厂商答案，`nil` 则退回协议自己的默认（`Provider.supportsJSONSchema`）。`ModelClient.format` 读它决定 `.jsonSchema` 还是 `.jsonObject`。这样：
+### 3. The response format capability follows the preset
 
-- 自定义 `openAICompatible` 与两个本地 agent 的现有行为一字不变（协议默认仍是「可以用 schema」）；
-- DeepSeek 仍只发 `{"type": "json_object"}`，形状继续写在 System Prompt 里；
-- 只有**文档明确写出**兼容 `response_format` 的 `json_schema`（含 `name`／`strict`／`schema`）的厂商才标为 true。
+`ServiceConfig` gains an optional `supportsJSONSchema`: a preset provides the vendor's answer, and `nil` falls back to the protocol's own default (`Provider.supportsJSONSchema`). `ModelClient.format` reads it to choose `.jsonSchema` or `.jsonObject`. As a result:
 
-**能力只按文档核对，没有在真实账号上各发一次请求**：本机没有这些厂商的 Key。可核对到文档、标为 schema-capable 的是 **Moonshot／Kimi**（其 response_format 文档给出与 OpenAI 相同的结构）与 **xAI**（其 structured outputs 文档同构）；其余厂商或只文档 `json_object`（智谱 GLM）、或支持随模型／端点而变（OpenRouter、DashScope 的 `json_schema` 只覆盖部分模型系列）、或没有可核对的文档（Ollama、LM Studio），一律取更安全的 `json_object`。宁可形状靠 Prompt，也不要一次 400。
+- Existing behavior of custom `openAICompatible` and the two local agents is unchanged (the protocol default is still "schema allowed");
+- DeepSeek still sends only `{"type": "json_object"}`, and the shape stays in the System Prompt;
+- Only vendors whose **documentation explicitly states** support for `response_format` with `json_schema` (including `name` / `strict` / `schema`) are marked true.
 
-### 4. 模型记忆按「服务」分槽，而不是按协议
+**Capabilities were checked against documentation only, without sending a request on a real account for each**: there are no keys for these vendors on this machine. The ones verifiable in documentation and marked schema-capable are **Moonshot / Kimi** (its response_format documentation gives the same structure as OpenAI) and **xAI** (its structured outputs documentation is isomorphic). The rest either document only `json_object` (Zhipu GLM), vary by model or endpoint (OpenRouter; DashScope's `json_schema` only covers some model families), or have no verifiable documentation (Ollama, LM Studio); all of these use the safer `json_object`. Better to carry the shape in the prompt than to get a 400.
 
-沿用 T67「切回上一个服务商恢复它原来的模型名」，槽位改为 `service.model.<服务 id>`：
+### 4. Model memory is slotted by "service", not by protocol
 
-- HTTP 厂商的 id 就是预设 id，所以 `service.model.deepSeek`、`service.model.openAICompatible` 与旧值同名同义，旧安装的记忆**原地兼容**；
-- 本地 agent 的 id 就是 `Provider.rawValue`，`service.model.claudeCode` 等同样不变；
-- 必须以厂商（而非协议）为单位：Moonshot、GLM、DeepSeek 都是 `openAICompatible`，共用一个槽会让 `glm-5.3` 跟着用户切到 Moonshot。
+Following T67, "switching back to a previous provider restores its model name", the slot becomes `service.model.<service id>`:
 
-### 5. 持久化一个「服务选择」，旧键只作迁移输入
+- For HTTP vendors the id is the preset id, so `service.model.deepSeek` and `service.model.openAICompatible` keep the same names and meanings as before, and old installs' memory is **compatible in place**;
+- For local agents the id is `Provider.rawValue`, so `service.model.claudeCode` and the like are also unchanged;
+- The unit must be the vendor (not the protocol): Moonshot, GLM, and DeepSeek are all `openAICompatible`, and a shared slot would let `glm-5.3` follow the user to Moonshot.
 
-新键 `service.choice` 存当前选择：HTTP 厂商存预设 id，本地 agent 存 `Provider.rawValue`。旧键 `service.provider` 不再写，只在读取时兜底——它存的值（`deepSeek`、`claudeCode`、`codexCLI`、`openAICompatible`）恰好都是合法的服务 id，所以老安装无需一次性迁移脚本，第一次读到就得到与升级前相同的服务、钥匙串账户与能力。钥匙串账户：自定义仍是 `default`，其余厂商等于预设 id，因此 DeepSeek 老 Key 继续生效。
+### 5. Persist one "service choice"; the old key is only migration input
 
-## 备选与不采纳
+The new key `service.choice` stores the current choice: the preset id for HTTP vendors, `Provider.rawValue` for local agents. The old key `service.provider` is no longer written and is only a fallback on read. Its stored values (`deepSeek`, `claudeCode`, `codexCLI`, `openAICompatible`) all happen to be valid service ids, so old installs need no one-off migration script: the first read yields the same service, Keychain account, and capabilities as before the upgrade. Keychain account: the custom entry is still `default`, other vendors equal their preset id, so an existing DeepSeek key keeps working.
 
-- **每家厂商一个 `Provider` case**：类型上最直白，但每加一家都要改枚举、能力表、模型清单分支与测试，而且把「协议」和「厂商」永久绑死，正是本次要拆开的耦合。
-- **把本地 agent 也做成 `ServicePreset`**：列表与持久化会更统一，但 agent 没有 Base URL、默认模型、钥匙串账户，硬塞进去只会让预设的一半字段对它们无意义；`Provider` 继续当「协议 + 两个 agent」更诚实。
-- **新增厂商时顺手把 `GET /models` 也打开**：除 DeepSeek 外没有在本机核对过各家的 `/models` 行为与鉴权差异，先只保留既有的 DeepSeek 模型下拉，避免把「填默认模型」变成「读不出来的空下拉」。
-- **给未核对的厂商标 schema-capable**：一次 400 比形状写在 Prompt 里糟得多；本地校验对两者同样严格，所以取安全值没有正确性代价。
+## Alternatives rejected
 
-## 后果与已知风险
+- **One `Provider` case per vendor**: the most direct in types, but every new vendor changes the enum, capability table, model list branch, and tests, and it permanently couples "protocol" and "vendor", which is exactly the coupling being split here.
+- **Making the local agents `ServicePreset`s too**: the list and persistence would be more uniform, but agents have no Base URL, default model, or Keychain account; forcing them in would make half the preset's fields meaningless for them. Keeping `Provider` as "protocol + two agents" is more honest.
+- **Turning on `GET /models` for new vendors at the same time**: apart from DeepSeek, no vendor's `/models` behavior or auth differences were checked on this machine. Only the existing DeepSeek model dropdown is kept, to avoid turning "fill in the default model" into "an empty dropdown that cannot load".
+- **Marking unverified vendors schema-capable**: a 400 is far worse than carrying the shape in the prompt; local validation is equally strict for both, so the safe value costs nothing in correctness.
 
-- 默认模型只是「第一次选中时填进去的名字」，用户可以改，也不会因为厂商改版而失效——它只是初值。
-- 各厂商文档里的模型名会变；这份表需要随文档更新（与 `Provider` 的 CLI 参数同属「外部行为」）。
-- **未验证**：任何真实厂商的端到端调用（没有 Key），因此 `supportsJSONSchema` 的 true 只到「文档同构」这一层，真实返回质量、模型名是否仍可用、Base URL 的地区差异（如 DashScope 新业务空间域名）都留给人工验收。
+## Consequences and known risks
+
+- The default model is only "the name filled in the first time it is selected". The user can change it, and it does not break when the vendor changes things; it is only an initial value.
+- Model names in vendor documentation will change; this table needs updating with the documentation (like `Provider`'s CLI flags, it is "external behavior").
+- **Unverified**: any end-to-end call to a real vendor (no keys). So the true values of `supportsJSONSchema` only reach the "documentation is isomorphic" level; real response quality, whether model names are still available, and regional differences in Base URLs (such as DashScope's new workspace domain) are left to manual acceptance.

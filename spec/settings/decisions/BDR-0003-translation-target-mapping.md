@@ -1,78 +1,80 @@
-# BDR-0003：按源语言决定翻译目标
+[English](BDR-0003-translation-target-mapping.md) · [简体中文](BDR-0003-translation-target-mapping.zh-CN.md)
 
-状态：已实现（T26，2026-10-04）。来源：用户需求——支持 source→target 映射，如英语默认目标为中文、中文默认目标为英语。
+# BDR-0003: Choose the translation target from the source language
 
-范围只涉及「翻译的目标语言怎么决定」。润色与快捷键都不改：润色保持原文语言，快捷键仍是翻译／翻译并替换／润色三条固定绑定。
+Status: Implemented (T26, 2026-10-04). Origin: user request to support source→target mapping, for example English defaults to Chinese and Chinese defaults to English.
 
-## 用户价值与动机
+The scope is only "how the translation target language is decided". Polish and shortcuts are unchanged: polish keeps the source language, and shortcuts are still the fixed bindings for Translate, Translate and Replace, and Polish.
 
-用户同时做两个方向：读英文／日文时要中文，写英文时要英文。今天目标语言是一个全局会话状态，由用户自己维护，于是每次反向翻译都多一次「先发现方向不对、再切目标、再重新触发」的操作，而这恰好发生在注意力已经投入写作的时候。忘记切换时结果是错方向的（中文草稿被译成中文），用户看到文本没变化，容易误以为模型没有工作。
+## User value and motivation
 
-这个功能把目标语言从「用户维护的会话状态」变成「一次设定的规则」，方向跟着文本走，用户不必再记得当前目标是什么。价值只在双向用户身上成立：只做单向翻译的人零收益，还多出「检测判错」这个新的失败模式。本项目的实际使用频率高，价值成立。
+The user works in both directions: Chinese when reading English or Japanese, English when writing English. Today the target language is a global session state that the user maintains by hand, so every reverse translation adds a round of "notice the direction is wrong, switch the target, trigger again", and this happens exactly when attention is already on writing. When the user forgets to switch, the result goes the wrong way (a Chinese draft translated into Chinese). The text looks unchanged, and the user can easily think the model did nothing.
 
-这也是唯一无法被更轻方案替代的部分——一个「互换方向」按钮能解决「我发现方向错了，想翻过来」，但解决不了「我根本不会发现方向错过」。
+This feature turns the target language from "session state the user maintains" into "a rule set once". The direction follows the text, and the user no longer has to remember the current target. The value only holds for bidirectional users: someone who only translates one way gains nothing and gets a new failure mode, "detection guessed wrong". This project's actual usage is frequent, so the value holds.
 
-## 决定
+This is also the one part that a lighter solution cannot replace. A "swap direction" button solves "I noticed the direction is wrong and want to flip it", but not "I never notice the direction was wrong".
 
-### 1. 目标 = 映射表 + 兜底目标
+## Decision
 
-- **映射表**：`源语言 → 目标语言`，一个源语言只对应一个目标，没有顺序概念；重复添加同一源语言即替换旧目标。**初始为空**，由用户逐条添加。
-- **兜底目标**：独立设置项，**默认 `zh-Hans`**。源语言未识别、或映射表里没有该源语言时用它。
-- 映射表为空时，全部走兜底，行为与今天一致（一律译成简体中文）。
+### 1. Target = mapping table + fallback target
 
-### 2. 源语言在发请求前本地检测
+- **Mapping table**: `source language → target language`. One source language maps to exactly one target, with no ordering; adding the same source language again replaces the old target. **Empty initially**; the user adds rows one by one.
+- **Fallback target**: a separate setting, **default `zh-Hans`**. Used when the source language is not recognized or has no row in the mapping table.
+- With an empty mapping table everything uses the fallback, and behavior matches today (always translate into Simplified Chinese).
 
-现在流程是「先发请求、模型回报 `source_language`」，但映射必须在发送前定下目标，所以增加一步本地检测：
+### 2. The source language is detected locally before the request is sent
 
-- 用 NaturalLanguage 的 `NLLanguageRecognizer`，按 [LLM 契约](../../llm/contract.md) 的规则归一化：比较主语言子标签，中文再分 `zh-Hans`／`zh-Hant`。
-- 原文一侧可以显式指定源语言（默认「自动」跟随检测）：显式选择只用于**查映射表**，请求仍然让模型自己读语言。
-- 失败路径：无法识别、置信度过低、或结果不在映射表 → 兜底目标。
-- 混写文本取占比最大的语言（如中文夹英文术语判为中文）。
-- 检测**只用于选择目标**：请求里仍发送解析出的具体目标语言；模型返回的 `source_language` 仍以模型为准，不要求与本地检测一致；返回的 `target_language` 必须等于请求（现有校验不变）。
-- 置信度阈值、最短文本长度、混写判定是实现参数，实现时用固定样本标定并写测试；设计只要求「低置信度走兜底」。
+The current flow is "send the request, the model reports `source_language`", but the mapping must fix the target before sending, so a local detection step is added:
 
-备选「向模型发送自动目标、由模型决定」需要修改请求契约、并放开 target 校验，不采纳。
+- Use NaturalLanguage's `NLLanguageRecognizer` and normalize by the rules of the [LLM contract](../../llm/contract.md): compare the primary language subtag, and split Chinese further into `zh-Hans` / `zh-Hant`.
+- The source side can specify the source language explicitly (default "Automatic" follows detection). An explicit choice is only used to **look up the mapping table**; the request still lets the model read the language itself.
+- Failure path: not recognized, confidence too low, or result not in the mapping table → fallback target.
+- Mixed text takes the language with the largest share (for example, Chinese with English terms counts as Chinese).
+- Detection is **only used to choose the target**: the request still sends the resolved concrete target language; the model's returned `source_language` remains authoritative and need not match local detection; the returned `target_language` must equal the request (existing validation unchanged).
+- The confidence threshold, minimum text length, and mixed-text rule are implementation parameters, calibrated on fixed samples with tests during implementation. The design only requires "low confidence goes to fallback".
 
-### 3. 语言选项来自系统，但只展示用户选定的子集
+Rejected alternative: "send an automatic target to the model and let it decide". It would require changing the request contract and relaxing target validation.
 
-- 设置页的「语言」分组维护一个子集（默认 `zh-Hans`、`en`、`ja`）；目标语言控件、兜底目标、映射表的源／目标列都只提供子集内的语言。
-- 子集来自系统清单（`Locale` 的 ISO 语言代码 + 本地化名称）；只有「添加语言」时才会看到完整清单。NaturalLanguage 不公开它支持检测的清单，所以源语言与目标语言共用同一份。
-- 语言名跟随**界面语言**（2026-10-11 随 i18n 调整）；设置里的「界面语言」选择器是例外，仍把每种语言写成它自己的名字，便于切换前辨认。
-- 中文是唯一补充：系统清单只有 `zh`，而契约把 简体 与 繁体 当作不同目标，因此显式提供 `zh-Hans`／`zh-Hant`。
-- 移除一种语言时，引用它的映射行一并删除，兜底目标与已钉住的目标若指向它则改到子集内的第一个／回到「自动」。子集至少保留一种。
+### 3. Language options come from the system, but only a user-chosen subset is shown
 
-### 4. 工具栏目标语言控件
+- The settings "Languages" group maintains a subset (default `zh-Hans`, `en`, `ja`). The target language control, the fallback target, and the source/target columns of the mapping table only offer languages in the subset.
+- The subset comes from the system list (`Locale` ISO language codes plus localized names); the full list only appears under "Add Language". NaturalLanguage does not publish the list it can detect, so source and target languages share the same list.
+- Language names follow the **interface language** (changed with i18n on 2026-10-11). The "Interface Language" picker in settings is the exception: it still writes each language in its own name, so it can be recognized before switching.
+- Chinese is the only addition: the system list only has `zh`, while the contract treats Simplified and Traditional as different targets, so `zh-Hans` / `zh-Hant` are provided explicitly.
+- When a language is removed, mapping rows that reference it are deleted with it; if the fallback target or a pinned target points to it, they move to the first language in the subset / back to "Automatic". The subset keeps at least one language.
 
-- **默认「自动」**：按映射 + 兜底解析；控件在自动态显示解析结果（如 `自动（中文）`）。
-- **显式选择语言**：持久覆盖映射，重启后保留，直到用户切回「自动」。
-- 翻译并替换复用翻译的解析结果；润色不显示该控件（现状）。
+### 4. Toolbar target language control
 
-### 5. 润色不变，只补一条混写规则
+- **Default "Automatic"**: resolves by mapping + fallback; in automatic mode the control shows the resolved result (for example `Automatic (Chinese)`).
+- **Explicit language choice**: persistently overrides the mapping, survives restarts, until the user switches back to "Automatic".
+- Translate and Replace reuses the translation's resolved result; Polish does not show this control (current behavior).
 
-- 润色不参与映射，也不做本地检测；目标恒等于源语言（契约的 `target == source` 不变）。
-- 默认 Prompt 补一句：原文中的混写（如中文夹英文术语）保持不变，不翻译、不转写、不归一化任何片段。要改 `Owlet/ModelPrompts.json` 的 `polish`。
-- 不把本地检测结果作为「原文语言」传给润色：混写时检测本就不准，传进去反而可能诱导模型把全部片段统一成一种语言。
+### 5. Polish is unchanged, with one added rule for mixed text
 
-### 6. 数据与迁移
+- Polish does not use the mapping and does no local detection; its target always equals the source language (the contract's `target == source` is unchanged).
+- The default prompt gains one sentence: mixed text in the original (such as Chinese with English terms) stays as is; no fragment is translated, transliterated, or normalized. This changes `polish` in `Owlet/ModelPrompts.json`.
+- The local detection result is not passed to Polish as the "source language": detection is unreliable on mixed text anyway, and passing it could push the model to unify all fragments into one language.
 
-- 新增 `translation.targetMapping`（源→目标的映射）与 `translation.fallbackTarget`。
-- 现有 `translation.targetLanguage` 读入为兜底目标，映射表为空，用户不会丢失当前设置。
+### 6. Data and migration
 
-## 影响
+- Add `translation.targetMapping` (the source→target mapping) and `translation.fallbackTarget`.
+- The existing `translation.targetLanguage` is read in as the fallback target, with an empty mapping table, so users do not lose their current setting.
 
-- **LLM 契约不变**：请求仍带具体 `target_language`，Schema、校验、润色的 `target == source` 都不动，只改变目标的选取时机。
-- **历史与结果缓存**：缓存键已含 `language`，无需改动。
-- **浮窗与主窗口共用同一解析**：`PanelController.translate()` 与 `TranslationView.translate(to:)` 都走映射，不再直接读 `translation.targetLanguage`。
-- **设置页**新增「目标语言」分组：兜底目标 + 可增删的映射表。
+## Impact
 
-## 明确不做
+- **LLM contract unchanged**: requests still carry a concrete `target_language`; the schema, validation, and Polish's `target == source` are untouched. Only the moment the target is chosen changes.
+- **History and result cache**: the cache key already includes `language`; no change needed.
+- **Panel and main window share one resolution**: both `PanelController.translate()` and `TranslationView.translate(to:)` go through the mapping and no longer read `translation.targetLanguage` directly.
+- **Settings** gains a "Target Language" group: fallback target plus an editable mapping table.
 
-- 不做按对快捷键；快捷键保持固定绑定（2026-10-11 起新增润色并替换，共四条）。
-- 润色不做映射、不跨语言输出。
-- 不做 leader 式快捷键。
-- 不预置任何映射行。
+## Explicitly out of scope
 
-## 实现时确定的值
+- No per-pair shortcuts; shortcuts stay as fixed bindings (since 2026-10-11 Polish and Replace was added, four in total).
+- Polish does no mapping and never outputs another language.
+- No leader-style shortcuts.
+- No preset mapping rows.
 
-- 检测阈值：领先语言置信度 ≥ 0.5，且领先幅度 ≥ 0.2；只取前 400 个字符做样本。不确定时返回“未识别”，走兜底。（`LanguageDetector`，有 `LanguageDetectorTests` 固定样本覆盖。）
-- 「目标语言」分组放在设置页『模型服务』之后：兜底目标 + 一行一源语言的映射表，改动即时保存；源语言候选隐去其它行已用的语言，因此不会出现重复源语言。
+## Values fixed during implementation
+
+- Detection thresholds: the leading language's confidence ≥ 0.5 and its lead ≥ 0.2; only the first 400 characters are sampled. When unsure it returns "not recognized" and uses the fallback. (`LanguageDetector`, covered by fixed samples in `LanguageDetectorTests`.)
+- The "Translation Target" group sits on the settings "Languages" tab, after the language subset: fallback target plus a mapping table with one row per source language, saved on change. Source language candidates hide languages already used by other rows, so duplicate source languages cannot occur.

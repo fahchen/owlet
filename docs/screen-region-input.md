@@ -1,134 +1,136 @@
-# 屏幕区域 OCR 输入方案
+[English](screen-region-input.md) · [简体中文](screen-region-input.zh-CN.md)
 
-状态：设计提案，未实现。本文件只讨论「屏幕上的文字怎么变成输入」，不改变 `SelectionBridge` 的读取路径、浮窗、翻译契约与学习契约；没有用户可见字符串进入 `strings/translations.json`。连续语音已拆到 [连续语音输入方案](speech-input.md)，本轮不做。
+# Screen Region OCR Input Proposal
 
-## 为什么先看 SDK
+Status: design proposal, not implemented. This document only covers "how text on screen becomes input". It does not change the `SelectionBridge` read path, the floating panel, the translation contract or the learning contract; no user-visible strings enter `strings/translations.json`. Continuous speech has been split out into the [continuous speech input proposal](speech-input.md) and is out of scope for this round.
 
-这个来源由系统能力决定边界，所以下面的 API 事实都读自本机 Xcode 27.0／macOS 27.0.1 的 SDK，不凭记忆。SDK 根记作 `$SDK`：
+## Why read the SDK first
+
+The system's capabilities set the boundaries of this source, so every API fact below was read from the local Xcode 27.0 / macOS 27.0.1 SDK, not from memory. The SDK root is written as `$SDK`:
 
 `/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk`
 
-- `$SDK/System/Library/Frameworks/Vision.framework/Modules/Vision.swiftmodule/arm64e-apple-macos.swiftinterface`（下称 `Vision.swiftinterface`）
-- `$SDK/System/Library/Frameworks/ScreenCaptureKit.framework/Headers/`、`$SDK/System/Library/Frameworks/CoreGraphics.framework/Headers/`
+- `$SDK/System/Library/Frameworks/Vision.framework/Modules/Vision.swiftmodule/arm64e-apple-macos.swiftinterface` (hereafter `Vision.swiftinterface`)
+- `$SDK/System/Library/Frameworks/ScreenCaptureKit.framework/Headers/`, `$SDK/System/Library/Frameworks/CoreGraphics.framework/Headers/`
 
-应用最低 macOS 26（`spec/README.md` 范围边界）。用到的接口落在 15.2—26：`SCScreenshotManager.captureImage(in:)` 是 15.2+，`RecognizeTextRequest` 是 15+，`RecognizedTextObservation.transcript` 到 26 才有。
+The app's minimum is macOS 26 (scope boundary in `spec/README.md`). The APIs used fall within 15.2 to 26: `SCScreenshotManager.captureImage(in:)` is 15.2+, `RecognizeTextRequest` is 15+, and `RecognizedTextObservation.transcript` only arrives in 26.
 
-## 两条前置结论
+## Two preconditions
 
-1. **没有可写回的选区。** `Selection` 的写回依赖 `kAXSelectedTextRangeAttribute` 与可编辑 role；OCR 拿到的是图片、没有 AX 来源，因此 `PanelController.selection` 必须保持 `nil`。结果是：面板只提供「复制结果」，不提供「替换」，这是对的而不是缺口——把译文粘回用户刚才框选的网页图片没有意义。
-2. **失败按现有规则可见。** 读不到（无权限、无文字、无模型）必须落到与 `.permission`／`.unreadable` 同形的提示，并给手动输入入口；不得静默结束、不得让空输入进模型（`PanelController.accept` 现有的三条分支就是这条规则的实现）。
+1. **There is no selection to write back to.** Write-back of a `Selection` depends on `kAXSelectedTextRangeAttribute` and an editable role; OCR yields an image with no AX source, so `PanelController.selection` must stay `nil`. As a result the panel offers only "Copy Result", not "Replace". This is correct, not a gap: pasting a translation back into the web-page image the user just boxed makes no sense.
+2. **Failures are visible under the existing rules.** A failed read (no permission, no text, no model) must land on a prompt of the same shape as `.permission` / `.unreadable`, with a manual input entry; it must not end silently and must not send empty input to the model (the three existing branches of `PanelController.accept` implement exactly this rule).
 
-## SDK 事实
+## SDK facts
 
-**一次性的区域截图有直接接口，不需要建流。** `SCScreenshotManager`（`Headers/SCScreenshotManager.h:134`）提供：
+**One-off region capture has a direct API; no stream is needed.** `SCScreenshotManager` (`Headers/SCScreenshotManager.h:134`) provides:
 
-- `+captureImageInRect:completionHandler:` → Swift `SCScreenshotManager.captureImage(in:)`，macOS 15.2+（`SCScreenshotManager.h:161`）。注释写明 rect 是「屏幕空间、以点为单位、与显示器无关、支持多显示器」，正好是「拖一个矩形、抓一次」。
-- macOS 26 起另有 `+captureScreenshotWithRect:configuration:completionHandler:` → `captureScreenshot(rect:configuration:)`（`SCScreenshotManager.h:179`），配 `SCScreenshotConfiguration`（`width`／`height`／`sourceRect`／`destinationRect`／`showsCursor`／`ignoreShadows`／`dynamicRange`，`SCScreenshotManager.h:46`）与 `SCScreenshotOutput`（`sdrImage`／`hdrImage`，`SCScreenshotManager.h:118`）。区域截图用前一个就够，`SCScreenshotConfiguration` 只在需要显式尺寸或 HDR 时才有意义。
+- `+captureImageInRect:completionHandler:` → Swift `SCScreenshotManager.captureImage(in:)`, macOS 15.2+ (`SCScreenshotManager.h:161`). Its comment says the rect is "in screen space, in points, display-independent, multi-display aware", which is exactly "drag a rectangle, capture once".
+- From macOS 26 there is also `+captureScreenshotWithRect:configuration:completionHandler:` → `captureScreenshot(rect:configuration:)` (`SCScreenshotManager.h:179`), paired with `SCScreenshotConfiguration` (`width` / `height` / `sourceRect` / `destinationRect` / `showsCursor` / `ignoreShadows` / `dynamicRange`, `SCScreenshotManager.h:46`) and `SCScreenshotOutput` (`sdrImage` / `hdrImage`, `SCScreenshotManager.h:118`). The former is enough for region capture; `SCScreenshotConfiguration` only matters when explicit dimensions or HDR are needed.
 
-**不需要 `SCShareableContent`／`SCStream`。** 那一套（`SCShareableContent.getShareableContent...`、`SCContentFilter`、`SCStream`＋`SCStreamOutput`、`SCStreamConfiguration.sourceRect`）是为「先选一个窗口／显示器，再持续出帧」准备的；`SCShareableContent.h:152`、`SCStream.h:507`、`SCStream.h:289`。矩形区域截图走 `captureImage(in:)` 时没有 filter、没有 stream、没有 `SCStreamOutput` 回调，少一层生命周期与错误面。
+**`SCShareableContent` / `SCStream` are not needed.** That stack (`SCShareableContent.getShareableContent...`, `SCContentFilter`, `SCStream` + `SCStreamOutput`, `SCStreamConfiguration.sourceRect`) is designed for "pick a window / display first, then keep producing frames"; see `SCShareableContent.h:152`, `SCStream.h:507`, `SCStream.h:289`. Capturing a rectangle with `captureImage(in:)` involves no filter, no stream and no `SCStreamOutput` callback, which removes one layer of lifecycle and error surface.
 
-**选窗器里没有区域模式。** `SCContentSharingPickerMode` 只有 `SingleWindow`／`MultipleWindows`／`SingleApplication`／`MultipleApplications`／`SingleDisplay`（`Headers/SCContentSharingPicker.h:19`）。所以矩形框必须由应用自己画；不能指望系统给一个「框选区域」的 picker。
+**The picker has no region mode.** `SCContentSharingPickerMode` has only `SingleWindow` / `MultipleWindows` / `SingleApplication` / `MultipleApplications` / `SingleDisplay` (`Headers/SCContentSharingPicker.h:19`). So the rectangle must be drawn by the app itself; there is no system "select a region" picker to rely on.
 
-**旧路径已经作废。** `CGWindowListCreateImage` 与 `CGWindowListCreateImageFromArray` 带 `SCREEN_CAPTURE_OBSOLETE(10.5,14.0,15.0)`（`CGWindow.h:271`、`CGWindow.h:280`），宏展开是 `availability(macos, introduced, deprecated, obsoleted, message="Please use ScreenCaptureKit instead.")`（`CGWindow.h:223`）：macOS 14 起废弃、macOS 15 起 obsoleted。不要用。
+**The old path is obsolete.** `CGWindowListCreateImage` and `CGWindowListCreateImageFromArray` carry `SCREEN_CAPTURE_OBSOLETE(10.5,14.0,15.0)` (`CGWindow.h:271`, `CGWindow.h:280`), and the macro expands to `availability(macos, introduced, deprecated, obsoleted, message="Please use ScreenCaptureKit instead.")` (`CGWindow.h:223`): deprecated from macOS 14 and obsoleted from macOS 15. Do not use them.
 
-**OCR 是新版 Swift Vision，不是 `VNRecognizeTextRequest`。** `Vision.swiftinterface`：
+**OCR uses the new Swift Vision API, not `VNRecognizeTextRequest`.** From `Vision.swiftinterface`:
 
-- `RecognizeTextRequest`（macOS 15+，`:2591`），`Result = [RecognizedTextObservation]`；`init(_ revision: RecognizeTextRequest.Revision? = nil)`（`:2604`）。
-- `RecognizeTextRequest.Revision` 在本 SDK 的公开枚举里只有 `case revision3`（`:2593`），`supportedRevisions` 是静态属性（`:2635`）。
-- `RecognitionLevel`：`case accurate`／`case fast`（`:2605`）；可设 `recognitionLanguages: [Locale.Language]`、`automaticallyDetectsLanguage: Bool`、`usesLanguageCorrection: Bool`、`customWords: [String]`、`minimumTextHeightFraction: Float`、`regionOfInterest: NormalizedRect`（`:2621`—`:2633`）；`supportedRecognitionLanguages: [Locale.Language] { get }`（`:2627`）是实例属性，运行时才知道这台机器有哪些语言。
-- `ImageRequestHandler`（`:2179`）接受 `URL`／`CGImage`／`CIImage`／`CVPixelBuffer`／`CMSampleBuffer`／`Data`（`:2180`—`:2185`）；`perform(_:) async throws -> T.Result`（`:2186`）。截图给的是 `CGImage`，所以 `ImageRequestHandler(image)` 直接可用，中间不需要落盘。
-- `RecognizedTextObservation` 有 `transcript: String`（macOS 26+，`:1450`）、`topCandidates(_:) -> [RecognizedText]`（`:1476`）、`boundingRegion`／四角点／`confidence`（`:1462`—`:1470`）；`RecognizedText.string`／`confidence`（`:1862`、`:1865`）。拼阅读顺序时用 observation 的坐标，不要假设数组已经是行序。
+- `RecognizeTextRequest` (macOS 15+, `:2591`), `Result = [RecognizedTextObservation]`; `init(_ revision: RecognizeTextRequest.Revision? = nil)` (`:2604`).
+- In this SDK's public enum, `RecognizeTextRequest.Revision` has only `case revision3` (`:2593`); `supportedRevisions` is a static property (`:2635`).
+- `RecognitionLevel`: `case accurate` / `case fast` (`:2605`). Settable: `recognitionLanguages: [Locale.Language]`, `automaticallyDetectsLanguage: Bool`, `usesLanguageCorrection: Bool`, `customWords: [String]`, `minimumTextHeightFraction: Float`, `regionOfInterest: NormalizedRect` (`:2621` to `:2633`). `supportedRecognitionLanguages: [Locale.Language] { get }` (`:2627`) is an instance property, so which languages this machine supports is only known at runtime.
+- `ImageRequestHandler` (`:2179`) accepts `URL` / `CGImage` / `CIImage` / `CVPixelBuffer` / `CMSampleBuffer` / `Data` (`:2180` to `:2185`); `perform(_:) async throws -> T.Result` (`:2186`). The capture yields a `CGImage`, so `ImageRequestHandler(image)` works directly with nothing written to disk.
+- `RecognizedTextObservation` has `transcript: String` (macOS 26+, `:1450`), `topCandidates(_:) -> [RecognizedText]` (`:1476`), and `boundingRegion` / the four corner points / `confidence` (`:1462` to `:1470`); `RecognizedText.string` / `confidence` (`:1862`, `:1865`). Use the observations' coordinates to build reading order; do not assume the array is already in line order.
 
-**Vision 在本机算。** 请求暴露 `supportedComputeStageDevices` 与 `setComputeDevice(_:for:)`（`:2630`、`:2639`），即推理落在本地 CoreML 设备上；接口里没有任何网络或服务器参数。这不等于「识别一定准」，准确率见末节。
+**Vision runs on device.** The request exposes `supportedComputeStageDevices` and `setComputeDevice(_:for:)` (`:2630`, `:2639`), meaning inference runs on local CoreML devices; the API has no network or server parameter. That does not mean recognition is always accurate; see the last section for accuracy.
 
-## 用户流程
+## User flow
 
-1. 用户按快捷键（第二个快捷键，或在设置里给现有快捷键选「来源：选中文字／屏幕区域」）。
-2. 先 `CGPreflightScreenCaptureAccess()`（`CGWindow.h:300`）。为假时只调一次 `CGRequestScreenCaptureAccess()`（`:308`）触发系统授权；仍为假就显示提示，动作按钮打开「系统设置 › 隐私与安全性 › 屏幕录制」，并提供手动输入。不读屏、不发模型请求。
-3. 全屏覆盖窗口画选框：拖拽出矩形、可再调整、Esc 取消、松开即确认。覆盖窗口不复用浮窗（`FloatingPanel` 是面板语义，不是全屏遮罩）。
-4. 用屏幕点坐标调 `captureImage(in:)`，得到 `CGImage`。
-5. `RecognizeTextRequest` 走 `ImageRequestHandler`，把 `[RecognizedTextObservation]` 按坐标拼成一段文本。
-6. 文本进入现有路径：设 `model.input`，再 `PanelController.processCurrentText()`；`selection` 保持 `nil`。
+1. The user presses a shortcut (a second shortcut, or a "source: selected text / screen region" option on the existing shortcut in settings).
+2. First call `CGPreflightScreenCaptureAccess()` (`CGWindow.h:300`). If false, call `CGRequestScreenCaptureAccess()` (`:308`) once to trigger the system prompt; if still false, show a prompt whose action button opens "System Settings › Privacy & Security › Screen Recording", and offer manual input. Do not read the screen or send a model request.
+3. A full-screen overlay window draws the selection box: drag out a rectangle, adjust it, Esc cancels, releasing confirms. The overlay does not reuse the floating panel (`FloatingPanel` has panel semantics, not a full-screen mask).
+4. Call `captureImage(in:)` with screen-point coordinates to get a `CGImage`.
+5. Run `RecognizeTextRequest` through `ImageRequestHandler` and join `[RecognizedTextObservation]` into one text by coordinates.
+6. The text enters the existing path: set `model.input`, then `PanelController.processCurrentText()`; `selection` stays `nil`.
 
-## 已在评审确定
+## Settled in review
 
-### 区域选择：只由应用自己画
+### Region selection: drawn only by the app
 
-**不接入 `SCContentSharingPicker`。** 它没有区域模式（`SCContentSharingPickerMode` 只有窗口／应用／显示器，`SCContentSharingPicker.h:19`），保留它只会多出「先选窗口、再框区域」的两步交互。用户自己拖一个矩形就够了：一次交互、一次截屏，屏幕上任意矩形都能框。因此唯一的区域来源是应用自己画的覆盖窗口。
+**Do not integrate `SCContentSharingPicker`.** It has no region mode (`SCContentSharingPickerMode` only covers windows / applications / displays, `SCContentSharingPicker.h:19`), and keeping it would only add a two-step "pick a window, then box a region" interaction. Letting the user drag a rectangle is enough: one interaction, one capture, any rectangle on screen. So the only region source is the overlay window the app draws itself.
 
-### OCR 语言：自动检测
+### OCR language: automatic detection
 
-请求打开 `automaticallyDetectsLanguage`（`Vision.swiftinterface:2621`—`:2633`），不预先钉 `recognitionLanguages`：用户框一段日文，就不该先让他去设置里声明语言。
+The request enables `automaticallyDetectsLanguage` (`Vision.swiftinterface:2621` to `:2633`) and does not pin `recognitionLanguages` up front: a user boxing a passage of Japanese should not first have to declare the language in settings.
 
-检测是 SDK 内部行为，接口只给一个 `Bool`，**没有语言置信度可读**，所以检测错时应用无从判断；错误只会以「译文不对」的形式出现。规则沿用现有的诚实失败：用户看到错的结果，改原文或重新框选重试；应用不猜、不静默换语言。
+Detection is internal SDK behaviour and the API exposes only a `Bool`; **there is no language confidence to read**, so the app cannot tell when detection is wrong; errors only show up as "the translation is wrong". The existing honest-failure rule applies: the user sees the wrong result and edits the source or reselects to retry; the app does not guess and does not silently switch languages.
 
-钉死语言（设置里指定 `recognitionLanguages`）保留为**后续可选项**，本轮不做：它的价值只在自动检测失败之后，而「哪种区域会检测错」目前没有数据。是否值得做、放在哪一层，取决于末节的实测。
+Pinning the language (specifying `recognitionLanguages` in settings) is kept as a **later optional feature** and is not part of this round: its value only appears after automatic detection fails, and there is no data yet on which regions get misdetected. Whether it is worth doing, and at which layer, depends on the measurements in the last section.
 
-### 阅读顺序：模型兜底，应用不做分栏几何
+### Reading order: model as fallback, no column geometry in the app
 
-SDK 只给坐标与 `transcript`（`:1450`、`:1462`—`:1470`），不给阅读顺序。应用只按坐标做最基本的拼接（自上而下），**不检测分栏、不猜段落结构**：分栏是屏幕排版、不是语言事实，写死几何规则会在下一次排版变化时错。拼接出的整段文本交给模型，由模型按标点与语义排出顺序。
+The SDK gives only coordinates and `transcript` (`:1450`, `:1462` to `:1470`), not reading order. The app does only the most basic coordinate-based joining (top to bottom) and **does not detect columns or guess paragraph structure**: columns are screen layout, not a fact of the language, and hard-coded geometry rules will break on the next layout change. The joined text goes to the model, which orders it by punctuation and meaning.
 
-代价要写清楚：模型拿到的是文本、没有坐标，所以栏间顺序错了不会当场暴露，而是在译文里以「顺序不对」的形式出现。因此面板必须一直显示并可编辑本次 OCR 的原文（`model.input` 本身就是这个位置），让用户能对着译文核对；应用不替用户判断顺序对不对。
+The cost must be stated: the model receives text without coordinates, so a wrong column order is not exposed on the spot; it shows up in the translation as "the order is wrong". The panel must therefore always show this OCR run's source text and keep it editable (`model.input` is exactly that place), so the user can check it against the translation; the app does not judge whether the order is right on the user's behalf.
 
-### 截图不保留
+### Captures are not kept
 
-截图只存在于内存：`captureImage(in:)` → `CGImage` → `ImageRequestHandler` → 识别完即丢，不落盘、不进历史、不进调试日志。没有文件要清理，也没有像素可泄漏；代价是用户事后无法「查看原图」核对识别结果，所以「重试」是重新框选一次，而不是重跑上一张图。
+The capture exists only in memory: `captureImage(in:)` → `CGImage` → `ImageRequestHandler` → discarded after recognition; it is not written to disk, history or debug logs. There are no files to clean up and no pixels to leak. The cost is that the user cannot "view the original image" afterwards to check recognition, so "retry" means selecting the region again, not re-running the previous image.
 
-### 如果所选模型本身能读图：可选路径
+### If the selected model can read images: an optional path
 
-[`BDR-0013` §9](../spec/settings/decisions/BDR-0013-local-agent-provider.md) 已经把「模型层携带图片」记为一个计划中的扩展点（`ModelTurn` 将来加内容分片，文本今天、图片以后，由各 backend 各自映射）。在这个扩展点落地后，当配置的 provider 声明接受图片时，可以不走本地 OCR：把区域图直接交给模型，由模型同时认字与翻译。这条路要求模型层能携带 image，并且**只在所选 provider 确实接受图片时才出现在界面上**；否则不显示这个选项，也不发图片。
+[`BDR-0013` §9](../spec/settings/decisions/BDR-0013-local-agent-provider.md) already records "carrying images in the model layer" as a planned extension point (`ModelTurn` will later gain content parts: text today, images later, each backend mapping them its own way). Once that extension point lands, when the configured provider declares it accepts images, local OCR can be skipped: the region image goes straight to the model, which both reads and translates the text. This path requires the model layer to carry images, and **only appears in the UI when the selected provider actually accepts images**; otherwise the option is not shown and no image is sent.
 
-两条路的差别要写清楚：本地 OCR 那条路的原文来自 Vision，可在面板里逐字改；模型读图那条路的原文来自模型自己返回的 `source`（现有契约本来就要求返回并做拼接校验，见 [LLM 返回契约](../spec/llm/contract.md)），用户改的是模型认出来的字、不是屏幕上的字。两条路都保留「原文可见可编辑」，也都不保留图片。
+The difference between the two paths must be stated: on the local OCR path the source text comes from Vision and can be edited character by character in the panel; on the model-reads-image path the source text is the `source` the model itself returns (the existing contract already requires it to be returned and checked by concatenation; see the [LLM response contract](../spec/llm/contract.md)), so the user edits what the model recognised, not what was on screen. Both paths keep the source "visible and editable", and neither keeps the image.
 
-未验证，设计不假设：
+Unverified; the design does not assume:
 
-- 本机支持的 provider 里今天到底哪些接受图片输入（OpenAI 兼容端点、DeepSeek、Claude Code、Codex CLI 各自的情况）。
-- 本地 agent CLI 有没有传图通道：`BDR-0013` §9 只说到「以后加」，没说怎么加。
-- 模型读图与本地 OCR 在中文／日文小字上的准确率差多少。
+- Which of the locally supported providers accept image input today (OpenAI-compatible endpoints, DeepSeek, Claude Code, Codex CLI, each separately).
+- Whether the local agent CLIs have a channel for images: `BDR-0013` §9 only says "added later", not how.
+- How much model image reading and local OCR differ in accuracy on small Chinese / Japanese text.
 
-在实测之前，这条路径只作为「provider 声明支持时的可选项」，不写进产品定义，也不作为默认。判断 provider 是否支持沿用现有的 `Provider` 能力开关（DeepSeek 只支持 `json_object` 就是这么表达的），新增一个「接受图片」的能力位；能力位今天只能按 provider 手写，值从实测来。
+Until measured, this path is only "an option when the provider declares support"; it is not written into the product definition and is not the default. Whether a provider supports it follows the existing vendor capability flags (`ServicePreset`, reaching the request via `ServiceConfig`; this is how "DeepSeek only supports `json_object`" is expressed), with a new "accepts images" capability bit; today that bit can only be hand-written per preset, with values from measurement.
 
-## 失败在哪一步可见
+## Where each failure is visible
 
-| 失败 | 呈现 |
+| Failure | Presentation |
 |---|---|
-| 无屏幕录制权限 | 提示 + 「打开屏幕录制设置」+ 手动输入；不启动覆盖窗口 |
-| 用户 Esc 取消 | 直接关闭，不产生提示（与 `stop()` 的取消同形） |
-| 区域过小／全黑／截图报错 | 提示 + 手动输入 |
-| OCR 返回空 | 按 `.unreadable` 同形提示 + 手动输入；不请求模型 |
+| No Screen Recording permission | Prompt + "Open Screen Recording settings" + manual input; the overlay is not started |
+| User presses Esc | Close directly with no prompt (same shape as cancellation in `stop()`) |
+| Region too small / all black / capture error | Prompt + manual input |
+| OCR returns nothing | Prompt shaped like `.unreadable` + manual input; no model request |
 
-截图与 OCR 都可能返回「有图但没文字」，这与「没读到选区」是同一类用户体验，不要新造一种静默状态。
+Both capture and OCR can return "an image but no text". That is the same user experience as "no selection was read"; do not invent a new silent state.
 
-## 接入与新增 seam
+## Integration and new seams
 
-- `RegionCapture`：`(CGRect) async throws -> CGImage`。测试注入固定 `CGImage`，不碰屏幕。
-- `TextRecognizer`：`(CGImage) async throws -> String`。测试注入固定字符串，不碰 Vision；本轮实现只打开 `automaticallyDetectsLanguage`，不读 `recognitionLanguages`，`supportedRecognitionLanguages`（`:2627`）留到钉死语言成为可选项时再用。
-- 覆盖窗口只负责产出 `CGRect`，不读像素；它是唯一必须在真机上人工验证的一层。
-- `PanelController` 增加一个与 `accept(.success)` 同形的入口（导入文本、清 `selection`、`processCurrentText()`），不改现有读取分支。
-- 「模型读图」路径若落地，改动落在模型层的能力开关与 `ModelTurn` 的内容分片上，不新增第二个读取分支。
+- `RegionCapture`: `(CGRect) async throws -> CGImage`. Tests inject a fixed `CGImage` and never touch the screen.
+- `TextRecognizer`: `(CGImage) async throws -> String`. Tests inject a fixed string and never touch Vision. This round's implementation only enables `automaticallyDetectsLanguage` and does not read `recognitionLanguages`; `supportedRecognitionLanguages` (`:2627`) waits until pinning the language becomes an option.
+- The overlay window only produces a `CGRect` and reads no pixels; it is the one layer that must be verified by hand on real hardware.
+- `PanelController` gains an entry point shaped like `accept(.success)` (import the text, clear `selection`, `processCurrentText()`), without changing the existing read branches.
+- If the model-reads-image path lands, its changes sit in the model layer's capability flags and in `ModelTurn` content parts; it adds no second read branch.
 
-## 权限与隐私
+## Permissions and privacy
 
-| 能力 | usage-description | 用户可见授权 | 沙盒 |
+| Capability | usage-description | User-visible authorization | Sandbox |
 |---|---|---|---|
-| ScreenCaptureKit `SCScreenshotManager.captureImage(in:)` | **本机 SDK 中不存在 `NSScreenCaptureUsageDescription`**（已在 `$SDK/System/Library/Frameworks/` 下全文搜索，无匹配） | TCC「屏幕录制」；由 `CGRequestScreenCaptureAccess()` 触发，已被拒绝的进程不会再次弹出，只能去系统设置里打开（`CGWindow.h:303`—`:305`） | 沙盒下需要屏幕录制相关 entitlement，SDK 不含其名称；本应用不沙盒，故直接走 TCC |
+| ScreenCaptureKit `SCScreenshotManager.captureImage(in:)` | **`NSScreenCaptureUsageDescription` does not exist in the local SDK** (full-text search under `$SDK/System/Library/Frameworks/`, no match) | TCC "Screen Recording", triggered by `CGRequestScreenCaptureAccess()`; a process that was already denied is not prompted again and must be enabled in System Settings (`CGWindow.h:303` to `:305`) | Under the sandbox a screen-recording entitlement is needed, and the SDK does not contain its name; this app is not sandboxed, so it goes straight through TCC |
 
-`spec/README.md` 的范围边界写明本应用「本机签名自用，不启用 App Sandbox」，所以授权直接走 TCC。沙盒下不是「做不到」，而是还多一道 entitlement；本机 SDK 不包含 entitlement 名称表，无法在此证实，因此那一列只标出差异、不写具体键名。屏幕像素与识别出的文本都不进诊断日志；这是现有「仅在用户触发时读取」隐私约定的自然延伸。
+The scope boundary in `spec/README.md` states that this app is "locally signed for personal use, without App Sandbox", so authorization goes straight through TCC. Under the sandbox it is not "impossible", just one more entitlement; the local SDK has no table of entitlement names, so this cannot be confirmed here, and that column only marks the difference without naming a key. Neither screen pixels nor recognised text enter diagnostic logs; this is a natural extension of the existing "read only when the user triggers it" privacy rule.
 
-## 仍未定
+## Still open
 
-- 快捷键形态：加第二个快捷键，还是给现有快捷键加「来源：选中文字／屏幕区域」。
-- 「模型读图」选项的粒度（全局开关还是按 provider 记忆），以及它与本地 OCR 是并列还是先后。
-- 钉死语言的落地时机与入口位置（方向已定：后续可选项）。
+- Shortcut shape: a second shortcut, or a "source: selected text / screen region" option on the existing shortcut.
+- Granularity of the "model reads image" option (a global switch or remembered per provider), and whether it sits alongside local OCR or runs before/after it.
+- When and where pinning the language lands (direction settled: a later optional feature).
 
-## 必须实测（SDK 不回答的部分）
+## Must be measured (what the SDK does not answer)
 
-- Vision 在中文、日文、竖排、小字号与截图缩放下的真实准确率与错字形态。
-- 自动语言检测在「中英混排」「只出现几行英文」这类区域上的实际选择——接口只给 `Bool`，没有置信度可读。
-- 多栏排版下「按坐标自上而下拼接 + 模型兜底」的实际效果与顺序错误率。
-- 本机支持的 provider 里今天哪些接受图片输入，以及本地 agent CLI 的传图通道。
-- 模型读图与本地 OCR 在中文／日文小字上的准确率差距。
-- 屏幕录制 TCC 提示在 macOS 27 上的确切文案与系统设置里的分组名称（SDK 只写到旧名称「Screen Recording」）。
-- 沙盒下屏幕录制需要的 entitlement 名称。
+- Vision's real accuracy and error patterns on Chinese, Japanese, vertical text, small font sizes and scaled captures.
+- What automatic language detection actually picks on regions such as "mixed Chinese and English" or "only a few lines of English"; the API gives only a `Bool`, with no confidence to read.
+- The actual effect and ordering error rate of "join top to bottom by coordinates + model fallback" on multi-column layouts.
+- Which locally supported providers accept image input today, and the image channel of the local agent CLIs.
+- The accuracy gap between model image reading and local OCR on small Chinese / Japanese text.
+- The exact wording of the Screen Recording TCC prompt on macOS 27 and the group name in System Settings (the SDK only uses the old name "Screen Recording").
+- The entitlement name needed for screen recording under the sandbox.
 
-以上都是「必须实测」，不是「预期如此」；在实测之前不得写进 `spec/`，也不得在界面上承诺。
+All of the above are "must be measured", not "expected to be so"; until measured they must not be written into `spec/` or promised in the UI.

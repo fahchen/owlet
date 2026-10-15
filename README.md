@@ -1,56 +1,45 @@
+[English](README.md) · [简体中文](README.zh-CN.md)
+
 # Owlet
 
-macOS 26+ 翻译、润色与个人生词本。
+Owlet is a menu bar app for macOS 26 and later. It translates and polishes selected text, keeps a personal notebook of the words and phrases you save, and keeps a history of what you processed. It works with any OpenAI-compatible service, with built-in presets for common vendors, or with a local agent CLI (Claude Code or Codex CLI).
 
-## 产品与计划
+- Website: https://owlet.fahchen.dev
+- Downloads: [Releases](https://github.com/fahchen/owlet/releases)
+- Changes: [CHANGELOG.md](CHANGELOG.md)
+- What is still open: [Roadmap](docs/roadmap.md)
 
-- [产品定义](spec/product.md)
-- [BDD 行为规格](spec/README.md)
-- [视觉与交互规则](spec/DESIGN.md)
-- [Liquid Glass 组件对照](docs/liquid-glass-components.md)
-- [Panel 调试、测试与截图](docs/panel-debugging-and-testing.md)
-- [未实现功能清单](docs/unimplemented-features.md)
-- [阅读查词第一步](spec/vocabulary/features/word-lookup.feature)：五类区域均已实现（T48–T51），待最终验收，决策见 [BDR-0008](spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。
-- [实现计划](tasks/plan.md)
-- [任务清单](tasks/todo.md)
+## Docs
 
-## 设计图
+- [Product definition](spec/product.md)
+- [BDD behaviour specs](spec/README.md)
+- [Visual and interaction rules](spec/DESIGN.md)
+- [Liquid Glass components](docs/liquid-glass-components.md)
+- [Panel debugging, testing and screenshots](docs/panel-debugging-and-testing.md)
+- [Selected text capture](docs/selected-text-capture.md)
 
-浏览器单文件原型（`design/`）已删除，不再维护：设计以 `spec/DESIGN.md`、
-[Liquid Glass 组件对照](docs/liquid-glass-components.md) 与应用本身为准，
-行为规格见 `spec/`，实现进度见 [未实现功能清单](docs/unimplemented-features.md)。
+## Production build
 
-## 生产构建
-
-Release、通用二进制（arm64 + x86_64）、验证后打包到 `dist/`（已在 `.gitignore` 里）：
+A verified Release build, packaged into `dist/` (git-ignored) by [scripts/prod-build.sh](scripts/prod-build.sh):
 
 ```sh
-mise run prod                       # 现在：ad-hoc 签名
-mise run prod -- --arch arm64       # 只要本机架构，快一些
-mise run prod -- --team Z98NKJSF69  # 有证书后：Apple Development 签名
+mise run prod                       # universal and arm64 zips
+mise run prod -- --arch arm64       # this Mac's architecture only
+mise run prod -- --team Z98NKJSF69  # sign with that team explicitly
 ```
 
-脚本是 [scripts/prod-build.sh](scripts/prod-build.sh)，做的事：构建 → 校验（bundle id、最低系统版本、图标、签名可验证、不带 `get-task-allow`）→ 用 `ditto` 打包并打印 SHA-256。
+The script builds, verifies the bundle id, minimum macOS, icon, signature and the absence of `get-task-allow`, then packages with `ditto` and prints the SHA-256. Artifacts are named `Owlet-<version>-<arch>.zip`. The version is `MARKETING_VERSION` in `project.yml` (currently `0.5.1`); see `scripts/prod-build.sh --help` for all options.
 
-两种签名的差别只在权限与提示：ad-hoc 的包拷到另一台 Mac 需要右键打开一次，而且**每次重编都要重新授权辅助功能**；`--team` 指定证书后签名带上 Team ID，授权一次就长期有效，但因为没有公证，首次打开仍会提示一次。用 `scp` 或 `rsync` 传，别用 AirDrop——前者不写 quarantine 标记。
+Builds are not notarised, so another Mac needs a right-click Open on first launch. An ad-hoc build also loses its Accessibility grant on every rebuild; a certificate keeps it. Copy with `scp` or `rsync`, not AirDrop, to avoid the quarantine flag.
 
-版本号在 `project.yml` 的 `MARKETING_VERSION`／`CURRENT_PROJECT_VERSION`（当前 `0.1.0`／`1`），产物名字因此是 `Owlet-0.1.0-universal.zip`；发布前在这两处改一次即可，脚本从产物的 `CFBundleShortVersionString` 读取。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。
-
-## 开发
-
-原生应用已实现原型中已实现的部分：文本处理、快捷键、设置、浮动面板与菜单栏；提案画面与尚未实现的功能见 [未实现功能清单](docs/unimplemented-features.md)。
+## Development
 
 ```sh
-mise run setup    # 安装工具及 pre-commit hook
-mise run check    # lint + 生成工程 + 测试
-mise run format   # 格式化 Swift
-mise tasks        # 全部任务
+mise run setup    # install tools and the pre-commit hook
+mise run dev      # build and relaunch Owlet locally
+mise run check    # lint + generate the project + tests
+mise run format   # format Swift sources
+mise tasks        # list every task
 ```
 
-浮窗布局按 Figma Owlet 设计更新：原文条与独立状态条、结果与学习双栏，使用系统 Liquid Glass。
-
-通用设置中的“玻璃效果”仅影响浮窗：更透明／更高对比度（默认），即时生效并持久保留。
-
-浮窗从处理状态以弹簧动效展开为结果面板；遵循系统减少动态效果设置。
-
-浮窗学习界面以弹簧动效展开；点击词条整行立即切换词库收藏状态，取消立即移除，不需确认或提交；完整窗口学习流程保持不变。
+Repository conventions are in [AGENTS.md](AGENTS.md).

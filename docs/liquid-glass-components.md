@@ -1,294 +1,296 @@
-# Owlet · macOS 26 Liquid Glass 组件对照
+[English](liquid-glass-components.md) · [简体中文](liquid-glass-components.zh-CN.md)
 
-> T33 当前组件对照（取代下文旧截图中的工作台、生词本和历史布局）：设计原型仅表达布局，实际界面全部使用系统组件。`design/` 已退役，下文截图清单保留为历史记录，不代表当前界面。
+# Owlet · macOS 26 Liquid Glass Component Map
 
-| 页面 | 原生组件与当前行为 |
+> T33 current component map (supersedes the workspace, notebook and history layouts in the old screenshots below): the design prototype only expressed layout; the real interface uses system components throughout. `design/` has been retired; the screenshot list below is kept as a historical record and does not represent the current interface.
+
+| Page | Native components and current behavior |
 | --- | --- |
-| 翻译与润色 | 原生 `.toolbar`：中间 `SwiftUI 承载的 NSSegmentedControl（momentary／fit）`，右侧执行 `Button`；系统 SF Symbols 与 `.help`。原文／结果用 `GroupBox`，标题与语言 `Picker(.menu)` 同排，语言靠右。 |
-| 学习（工作台、历史、浮窗共用） | `PanelLearningView`：右下角学习按钮展开并按需请求；每个词条是整行按钮，点击即时切换收藏（书签图标，收藏为强调色），悬停有背景。无独立释义语言设置。 |
-| 生词本 | 原生分栏、`List(selection:)` 与详情滚动区，各自滚动；工具栏搜索／筛选一组，右侧删除。无导出、复制、编辑按钮。 |
-| 历史 | 同构分栏与搜索／筛选；右侧学习、删除。学习打开该条结果的学习区，勾选后加入生词本。无复制、编辑按钮。 |
+| Translate & Polish | Native `.toolbar`: in the middle a `SwiftUI-hosted NSSegmentedControl (momentary / fit)`, on the right the run `Button`; system SF Symbols and `.help`. Source and result use `GroupBox`; the title and the language `Picker(.menu)` share a row, with the language aligned right. |
+| Study (shared by the workspace, history and the panel) | `PanelLearningView`: the study button in the bottom-right corner expands it and requests on demand; each entry is a full-row button, and clicking toggles saving immediately (bookmark icon, accent color when saved), with a hover background. No separate explanation-language setting. |
+| Notebook | Native split view, `List(selection:)` and a detail scroll area, each scrolling independently; the toolbar groups search and filter, with delete on the right. No export, copy or edit buttons. |
+| History | Same split view with search and filter; study and delete on the right. Study opens the study section for that record's result; checked items are added to the notebook. No copy or edit buttons. |
 
-不仿制 HTML 的圆角、chevron 或图标按钮外观，不自定义 `ButtonStyle`；由原生组件决定外观和辅助功能。
+Do not imitate the HTML's rounded corners, chevrons or icon-button look, and do not define a custom `ButtonStyle`; native components decide appearance and accessibility.
 
 
-状态：`design/index.html` 有 66 个状态（对应 `design/screenshots/`），全部对应 `Owlet/` 已实现的功能，设计图与实现一致；唯一的例外是 `success`（写回完成确认）保留旧画面，逐条见 [docs/unimplemented-features.md](unimplemented-features.md)。对照对象是截图中每一个可见组件，目标是把它们逐一换成 macOS 26（Tahoe）原生 SwiftUI / AppKit 组件，不再手写控件，不再自定义颜色、圆角、边框、渐变与阴影。
+Status: the retired `design/index.html` had 66 states (matching `design/screenshots/`), all corresponding to features implemented in `Owlet/`, with design and implementation in agreement; the only exception is `success` (write-back confirmation), which keeps the old screen. Unimplemented items are listed in [docs/roadmap.md](roadmap.md). The comparison covers every visible component in the screenshots; the goal is to replace each with a macOS 26 (Tahoe) native SwiftUI / AppKit component, with no hand-drawn controls and no custom colors, corner radii, borders, gradients or shadows.
 
-## 1. 两条判据
-**判据一：功能层用 Liquid Glass，内容层不用。** Liquid Glass 只属于浮在内容之上的控制与导航层——工具栏、侧边栏、面板、弹窗；内容层用系统材质，绝不叠玻璃。`materials.md › Liquid Glass`：**Don't use Liquid Glass in the content layer.**
+## 1. Two criteria
+**Criterion 1: Liquid Glass belongs to the functional layer, not the content layer.** Liquid Glass only belongs to the control and navigation layer that floats above content (toolbars, sidebars, panels, popovers); the content layer uses system materials and never stacks glass. `materials.md › Liquid Glass`: **Don't use Liquid Glass in the content layer.**
 
-**判据二：能用系统组件就不用自定义。** 系统组件自动获得 Liquid Glass 外观、`Reduce Transparency` / `Increase Contrast` / `Reduce Motion` 适配、Vibrancy、焦点环、键盘与 VoiceOver 支持；手写的等价物不会自动获得任何一项。`liquid-glass.md › Where the material belongs`：**Use Liquid Glass effects sparingly.**
+**Criterion 2: if a system component exists, do not build a custom one.** System components automatically get the Liquid Glass look, `Reduce Transparency` / `Increase Contrast` / `Reduce Motion` adaptation, vibrancy, focus rings, and keyboard and VoiceOver support; a hand-built equivalent gets none of these automatically. `liquid-glass.md › Where the material belongs`: **Use Liquid Glass effects sparingly.**
 
-推论（本项目最容易违反的三条）：
+Corollaries (the three this project is most likely to break):
 
-- 按钮按层选样式。实现中所有动作按钮都用 `.glass` / `.glassProminent`，包括工具栏图标按钮、内容区的状态恢复入口、页脚操作栏与浮动面板。「内容区用 `.bordered` / `.borderedProminent`」是更严格的建议，尚未采纳，见 §2.2。
-- 玻璃不叠玻璃且数量受限，一屏内的玻璃表面保持在"最重要的几个功能元素"以内。
-- 一屏只有一个 prominent 动作，放在 trailing 端（`buttons.md › Style`：**Keep the number of prominent buttons to one or two per view.**；`toolbars.md › Actions`：**Use the `.prominent` style for key actions such as Done or Submit.**）。
+- Pick button styles by layer. In the implementation every action button uses `.glass` / `.glassProminent`, including toolbar icon buttons, status-recovery entry points in the content area, the footer action bar and the floating panel. "Use `.bordered` / `.borderedProminent` in the content area" is a stricter recommendation that has not been adopted; see §2.2.
+- No glass on glass, and a limited amount of it: keep the glass surfaces on one screen within "the few most important functional elements".
+- One prominent action per screen, placed at the trailing end (`buttons.md › Style`: **Keep the number of prominent buttons to one or two per view.**; `toolbars.md › Actions`: **Use the `.prominent` style for key actions such as Done or Submit.**).
 
-## 2. 本次设计更新
+## 2. This design update
 
-更新只做两件事：把窗口骨架换成系统骨架，把控件换成系统控件。设计图里的信息结构、状态与可执行动作一个都没删；删掉的是重复与空心文案。下面按"设计图与实现是否一致"分两部分。
+The update does only two things: replace the window skeleton with the system skeleton, and replace the controls with system controls. None of the information structure, states or available actions in the design was removed; what was removed is duplication and empty copy. The sections below split by "do design and implementation agree".
 
-### 2.1 已落地（设计图与实现一致）
+### 2.1 Landed (design and implementation agree)
 
-| # | 变更 | 之前 | 现在 | 依据 |
+| # | Change | Before | Now | Basis |
 | --- | --- | --- | --- | --- |
-| 1 | 侧边栏是真正的 source list | 178px 固定栏，自己画红绿灯、自己画分组标题、选中态是自定义白胶囊；`设置` 与 `本地` 钉在栏底 | `NavigationSplitView` + `List(selection:)`：工具栏自带的收起／展开按钮来自系统（设计图里的切换按钮就是它）；`Show/Hide Sidebar (⌃⌘S)` 需要显式 `SidebarCommands()`，当前未添加，见 tasks/todo.md T25；选中态是系统外观；`设置` 移入同一分组，取消栏底钉死；`本地` 角标删除；`.badge` 计数未采用 | `sidebars.md › Best practices`；`sidebars.md › Desktop (macOS)`：**Avoid putting critical information or actions at the bottom of a sidebar.** |
-| 2 | 右上角翻译／润色 + 目标语言改为工具栏控件 | 两个手写下拉框塞在 64px 自绘标题栏里 | `NavigationSplitView` 的 toolbar：`简体中文` 弹出式按钮在左、`翻译｜润色` 分段控件在右；`复制` 与提交动作仍在底部 safe-area 操作栏，未上移（§2.2 #6） | `segmented-controls.md › Best practices`；`pop-up-buttons.md › Best practices` |
-| 3 | 面板浮玻璃重做、错误入口改按钮、焦点环交给系统 | 两层渐变 + 四道内阴影 + 双层描边；错误恢复是玫瑰色下划线链接；`2px` 玫瑰色 outline 偏移 4px | 系统 `NSGlassEffectView` 的默认外观（默认圆角、regular 变体），不叠自绘边框与投影；玻璃外面套一层按同一圆角遮罩的容器，`NSPanel.hasShadow = true` 的阴影因此跟着圆角走，而不是照着方形 frame 投出矩形；恢复入口改为 `.glass` 按钮（`StatusNote`、`CompactNoticeView` 与面板动作行）；3px 强调色光晕 + 强调色描边 | `liquid-glass.md › Review checklist` #2：**Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."；`buttons.md › Content`：按钮要能被一眼认出是按钮；`focus-and-selection.md`：**Rely on system-provided focus effects.** |
-| 4 | 设置页改为 inset grouped 表单 | 每行一条贯穿分隔线 | 分组圆角容器 + 行内分隔线，容器随分组结束 | `boxes.md › Best practices`：**Consider using padding and alignment to communicate additional grouping within a box.** |
-| 5 | 状态总览改按窗口／面板分组 | 按流程分 16 条泳道，用箭头连线 | 按 surface 分 9 个横向分区（翻译与润色 12 / 生词本 4 / 历史记录 3 / 设置 14 / 紧凑条 10 / 直接替换紧凑提示 6 / 学习表达区块 5 / 展开 10 / 菜单栏 2），分区竖向堆叠，同一面板内状态横向换行 | 原型工具；分组后一次能看到同一 surface 的全部状态，与本文的对照表一致 |
+| 1 | The sidebar is a real source list | Fixed 178px column that drew its own traffic lights and group headings, with a custom white capsule for selection; `Settings` and `Local` pinned to the bottom | `NavigationSplitView` + `List(selection:)`: the collapse/expand button in the toolbar comes from the system (the toggle in the design is this one); `Show/Hide Sidebar (⌃⌘S)` is provided by an explicitly added `SidebarCommands()` (T25); selection uses the system look; `Settings` moved into the same group, no longer pinned to the bottom; the `Local` badge was removed; `.badge` counts not adopted | `sidebars.md › Best practices`; `sidebars.md › Desktop (macOS)`: **Avoid putting critical information or actions at the bottom of a sidebar.** |
+| 2 | The top-right Translate / Polish and target language become toolbar controls | Two hand-drawn dropdowns squeezed into a 64px self-drawn title bar | Toolbar of the `NavigationSplitView`: the `Simplified Chinese` pop-up button on the left, the `Translate｜Polish` segmented control on the right; `Copy` and the submit action stay in the bottom safe-area action bar and were not moved up (§2.2 #6) | `segmented-controls.md › Best practices`; `pop-up-buttons.md › Best practices` |
+| 3 | Panel floating glass redone, error entry becomes a button, focus ring handed to the system | Two gradient layers + four inner shadows + double stroke; error recovery was a rose underlined link; a `2px` rose outline offset by 4px | Default appearance of the system `NSGlassEffectView` (default corner radius, regular variant), with no self-drawn border or drop shadow on top; the glass is wrapped in a container masked to the same corner radius, so the `NSPanel.hasShadow = true` shadow follows the rounded corners instead of casting a rectangle from the square frame; recovery entry points become `.glass` buttons (`StatusNote`, `CompactNoticeView` and the panel action row); 3px accent glow + accent stroke | `liquid-glass.md › Review checklist` #2: **Restraint.** "Glass stacked on glass blurs the hierarchy the material was meant to create."; `buttons.md › Content`: a button must be recognizable as a button at a glance; `focus-and-selection.md`: **Rely on system-provided focus effects.** |
+| 4 | Settings page becomes an inset grouped form | A full-width divider under every row | Grouped rounded container + in-row dividers; the container ends with its group | `boxes.md › Best practices`: **Consider using padding and alignment to communicate additional grouping within a box.** |
+| 5 | State overview grouped by window / panel | 16 swim lanes by flow, joined by arrows | 9 horizontal sections by surface (Translate & Polish 12 / Notebook 4 / History 3 / Settings 14 / compact bar 10 / direct-replace compact notice 6 / study expressions section 5 / expanded 10 / menu bar 2); sections stack vertically, and states within a panel wrap horizontally | Prototype tooling; grouping shows all states of a surface at once, matching the map in this document |
 
-### 2.2 建议但当前未采纳
+### 2.2 Recommended but not adopted at the time
 
-以下决定 `design/index.html` 与 `Owlet/` 都没有采用，保留为后续任务（编号见 [docs/unimplemented-features.md](unimplemented-features.md)）的设计输入。
+Neither `design/index.html` nor `Owlet/` adopted the following recommendations at the time; they are kept as design input for later work (see [docs/roadmap.md](roadmap.md)). Rows that have since been implemented say so.
 
-| # | 建议 | 依据 | 实现现状 |
+| # | Recommendation | Basis | Implementation status |
 | --- | --- | --- | --- |
-| 6 | 底部动作栏删除，动作上移工具栏 | `windows.md › Desktop (macOS)`：**Avoid putting critical information or actions in a bottom bar…** | 保留 `.safeAreaBar(edge: .bottom)` 底部操作栏（`翻译文本` / `复制` / `保存设置`）。 |
-| 7 | 快捷提示不再画在按钮里 | `toolbars.md › Desktop (macOS)`：**Make every toolbar item available as a command in the menu bar.** | 原文标签仍是 `⌘ V 粘贴`，面板底部仍有 `快捷键未设置` / `Esc 取消` 提示行。 |
-| 8 | 按钮改用纯动词 | `writing.md › Best practices`：**Build language patterns.** | 仍写 `翻译文本`、`保存设置`，宾语留在按钮里。 |
-| 9 | 处理中的整圈边框呼吸 | `motion.md › Providing feedback`：**Aim for brevity and precision in feedback animations.** | 只用 `ProgressView`；玻璃条边缘不做呼吸（T24）。 |
-| 10 | 文本处理页 720pt 响应式双栏 | `layout.md › Adaptability`；`split-views.md › Desktop (macOS)` | 已实现：`ProcessingLayout.choose(width:)` 以 720pt 为阈值，足够宽时并排、否则堆叠；画面为 `workspace-narrow`。 |
-| 11 | 设置改为独立 `Settings` 窗口 | `settings.md › Desktop (macOS)`：**Include a settings item in the App menu.** | `设置` 是主窗口侧栏的一个 `Page`，应用里没有 `Settings` scene（T19）；细节见 §6。 |
-| 12 | 面板动作行删除提示文字，leading 端放 `收藏选中内容` | `layout.md › Visual hierarchy`；`writing.md`：**Be action oriented.** | 提示文字仍在；`收藏选中内容` 已移除，收藏改为在学习区块内勾选入库（画面 `learning`／`saved`）。 |
+| 6 | Remove the bottom action bar and move actions into the toolbar | `windows.md › Desktop (macOS)`: **Avoid putting critical information or actions in a bottom bar…** | The `.safeAreaBar(edge: .bottom)` bottom action bar is kept (`Translate Text` / `Copy` / `Save Settings`). |
+| 7 | Stop drawing shortcut hints inside buttons | `toolbars.md › Desktop (macOS)`: **Make every toolbar item available as a command in the menu bar.** | The source label still reads `⌘ V Paste`, and the bottom of the panel still has a `Shortcut not set` / `Esc Cancel` hint row. |
+| 8 | Buttons use bare verbs | `writing.md › Best practices`: **Build language patterns.** | Still `Translate Text` and `Save Settings`; the object stays in the button. |
+| 9 | Breathing full border while processing | `motion.md › Providing feedback`: **Aim for brevity and precision in feedback animations.** | Only `ProgressView`; the glass bar edge does not breathe (T24). |
+| 10 | Responsive two-column text processing page at 720pt | `layout.md › Adaptability`; `split-views.md › Desktop (macOS)` | Implemented: `ProcessingLayout.choose(width:)` uses 720pt as the threshold, side by side when wide enough, stacked otherwise; screen `workspace-narrow`. |
+| 11 | Settings becomes a separate `Settings` window | `settings.md › Desktop (macOS)`: **Include a settings item in the App menu.** | Implemented: settings is a separate `Settings` scene (opened from the App menu and ⌘,), and the main window sidebar no longer has a settings page (T19); details in §6. |
+| 12 | Remove hint text from the panel action row; put `Save Selection` at the leading end | `layout.md › Visual hierarchy`; `writing.md`: **Be action oriented.** | The hint text is still there; `Save Selection` was removed, and saving now happens by checking items in the study section (screens `learning` / `saved`). |
 
-### 2.3 文案规则（曾拟采用，设计图与实现均未采纳）
-1. **动作区只放动作。** 工具栏、动作行里不放解释性文字；状态由内容区、`.help()` 或菜单栏承担。
-2. **界面不展示快捷键。** 快捷键的唯一出处是菜单栏（`.keyboardShortcut`）与悬停提示（`.help()`）；不把 `⌘↵` 画进按钮，也不写"快捷键未设置"。
-3. **按钮用动词，宾语留给上下文。** 同一屏的控件已把宾语说清楚（分段控件已选"翻译"），按钮就不再重复它；只有宾语会歧义时才保留，例如设置里的 `恢复默认`。同一动作叫法要一致：`复制` 就一直是 `复制`，不在一处叫 `复制译文`。
+### 2.3 Copy rules (once proposed; adopted by neither design nor implementation)
+1. **Action areas hold only actions.** No explanatory text in toolbars or action rows; status is carried by the content area, `.help()` or the menu bar.
+2. **The interface does not show shortcuts.** The only places shortcuts appear are the menu bar (`.keyboardShortcut`) and hover tooltips (`.help()`); do not draw `⌘↵` into buttons, and do not write "Shortcut not set".
+3. **Buttons use verbs; leave the object to context.** When other controls on the screen already state the object (the segmented control already has "Translate" selected), the button does not repeat it; keep the object only when it would be ambiguous, for example `Restore Default` in settings. Use one name per action: `Copy` is always `Copy`, never `Copy Translation` in one place.
 
-## 3. 组件对照总表
+## 3. Component map overview
 
-按 Apple HIG 的组件分类（<https://developer.apple.com/design/human-interface-guidelines/components>）排列；只列 66 个状态中真实出现的东西。
+Ordered by Apple HIG component categories (<https://developer.apple.com/design/human-interface-guidelines/components>); only things that actually appear in the 66 states are listed.
 
-### 3.1 组件 › 布局与组织
-- 主窗口骨架（侧栏 + 内容）→ `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`，桌面端不用 `TabView`，分隔线用系统自带 divider，永不自绘 1px 竖线；侧边栏本体、`Section` 分组与选中态由 `List` 的 sidebar 外观与系统 source list 选中态负责；显示／隐藏用系统侧栏切换工具栏项 + `⌃⌘S`（`sidebars.md`：**Consider letting people hide the sidebar.**）；设置分区用 `Form` + `Section`（`.formStyle(.grouped)`），设置仍是主窗口侧栏页面，见 §6。
+### 3.1 Components › Layout and organization
+- Main window skeleton (sidebar + content) → `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`; no `TabView` on desktop; dividers are the system's own, never a self-drawn 1px vertical line; the sidebar itself, `Section` groups and selection are handled by the `List` sidebar appearance and the system source-list selection; show/hide uses the system sidebar toggle toolbar item + `⌃⌘S` (`sidebars.md`: **Consider letting people hide the sidebar.**); settings sections use `Form` + `Section` (`.formStyle(.grouped)`), and settings is a separate `Settings` window, see §6.
 
-### 3.2 组件 › 菜单与操作
-- 顶部工具栏 → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`，跨整窗、位于侧栏之上；`简体中文` → `Picker(.menu)`，`翻译｜润色` → `SwiftUI 承载的 NSSegmentedControl（momentary／fit）`（段标签用名词）；底部操作栏的 `翻译文本` / `保存设置` / `复制` → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`，宾语保留在按钮里（§2.2 #8）；面板头部（重试 / 设置）与底部动作行（`复制 ⌘⇧C` / `替换 ⌘↩` / `取消`）用 `Button(.glass)` 包在 `GlassEffectContainer` 中，提示文字仍在（§2.2 #7）；菜单栏常驻图标用 `MenuBarExtra` + `Menu`（`the-menu-bar.md`：**Display a menu — not a popover — when people click your menu bar extra.**）。
+### 3.2 Components › Menus and actions
+- Top toolbar → `.toolbar { ToolbarItem(placement:) }` + `.navigationTitle`, spanning the whole window above the sidebar; `Simplified Chinese` → `Picker(.menu)`, `Translate｜Polish` → `SwiftUI-hosted NSSegmentedControl (momentary / fit)` (segment labels are nouns); `Translate Text` / `Save Settings` / `Copy` in the bottom action bar → `.glass` / `.glassProminent` + `.keyboardShortcut(.return, modifiers: .command)`, with the object kept in the button (§2.2 #8); the panel header (Retry / Settings) and bottom action row (`Copy ⌘⇧C` / `Replace ⌘↩` / `Cancel`) use `Button(.glass)` wrapped in a `GlassEffectContainer`, and the hint text is still there (§2.2 #7); the always-present menu bar icon uses `MenuBarExtra` + `Menu` (`the-menu-bar.md`: **Display a menu — not a popover — when people click your menu bar extra.**).
 
-### 3.3 组件 › 导航与搜索
-- 侧栏导航（文本处理／生词本／历史记录／快捷键／设置，调试开关打开时多一项）→ `List(selection:)` 绑定 `enum Page`；快捷键页的“全局／面板内”分组用 `Form` + `Section`；生词本与历史的 `List`、工具栏搜索与筛选、行内删除、列表→详情层级均已落地（见 [docs/unimplemented-features.md](unimplemented-features.md)）。
+### 3.3 Components › Navigation and search
+- Sidebar navigation (Translate & Polish / Notebook / History) → `List(selection:)` bound to `enum Page`; Shortcuts and Debug (when the debug switch is on) are tabs of the settings window, and the "Global / In Panel" groups on the Shortcuts page use `Form` + `Section`; the notebook and history `List`, toolbar search and filter, in-row delete, and the list → detail hierarchy have all landed.
 
-### 3.4 组件 › 呈现
-- 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，保留其默认圆角与样式，不叠自绘边框与内阴影；窗口的 `contentView` 是按玻璃圆角遮罩的容器，`hasShadow = true` 的投影因此跟随玻璃形状——浅色背景上也需要它来分辨浮层边界；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
-- 紧凑提示条（失败／权限／未配置／取消／未能写回）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 1）；展开态内联状态行（`result-notice`）用 `Label(systemImage:)` + 恢复按钮放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
+### 3.4 Components › Presentation
+- Floating toolbar window → `NSPanel` (`.borderless`, `.nonactivatingPanel`, `.floating`) + `NSGlassEffectView`; the glass is drawn by the window server, keeps its default corner radius and style, and gets no self-drawn border or inner shadow; the window's `contentView` is a container masked to the glass corner radius, so the `hasShadow = true` shadow follows the glass shape (it is also needed to tell the overlay's edge on light backgrounds); the compact processing bar (`loading` / `polish-loading` / `direct-loading`) uses the same glass container + `Text` + `ProgressView` + a glass stop button; the breathing full border is a recommendation that was not adopted (§2.2 #9, T24).
+- Compact notice bar (failure / permission / not configured / cancelled / could not write back) → same container + `Label` + one recovery button, with an extra retry icon button for failures (see §7 exception 1); in the expanded state the inline status row (`result-notice`) puts `Label(systemImage:)` + a recovery button into the content flow without collapsing the panel; the permission onboarding uses `AXIsProcessTrustedWithOptions` to open System Settings rather than a self-drawn dialog.
 
-### 3.5 组件 › 选择与输入
-- 原文输入区 → 多行 `TextEditor`、单行 `TextField(axis: .vertical)`，聚焦态交给系统焦点环；服务设置用 `Form` 行内的 `TextField` / `SecureField` / `Picker(.menu)`（`entering-data.md`：永不预填密码；`pickers.md`：短列表用弹出式按钮）；快捷键录制控件**无系统组件**，实现用 `Button` + `.glass`，录制中换 `.glassProminent`，注册走 Carbon / `NSEvent`（§7 例外 2）；`⌘ V 粘贴` / `⌘ ↵` / `Esc` 提示在设计图与实现里都保留（§2.2 #7）。
+### 3.5 Components › Selection and input
+- Source input → multi-line `TextEditor`, single-line `TextField(axis: .vertical)`, with the focus state handed to the system focus ring; service settings use `TextField` / `SecureField` / `Picker(.menu)` inside `Form` rows (`entering-data.md`: never prefill passwords; `pickers.md`: use a pop-up button for short lists); the shortcut recorder has **no system component**, so the implementation uses `Button` + `.glass`, switching to `.glassProminent` while recording, with registration through Carbon / `NSEvent` (§7 exception 2); the `⌘ V Paste` / `⌘ ↵` / `Esc` hints are kept in both design and implementation (§2.2 #7).
 
-### 3.6 组件 › 内容与状态
-- 译文／润色结果 → `Text` + `.textSelection(.enabled)` 与语义字号（`labels.md`：**Make useful label text selectable.**），分区标签行用 `LabeledContent` 或 `Section` 头 + `.secondary`；处理中骨架屏用 `.redacted(reason: .placeholder)` 作用在真实内容上，不手绘灰条。
-- 处理中指示 → `ProgressView().controlSize(.small / .mini)` + 状态文字,状态文字是动效之外的载体(整圈呼吸未采纳,T24)；内联提示用 `StatusNote`（`Label` + 恢复 `Button`）就地反馈；学习区块、生词本与历史（`learning*`、`saved`、`book-*`、`history-*`）复用同一批系统组件。
+### 3.6 Components › Content and status
+- Translation / polish result → `Text` + `.textSelection(.enabled)` with semantic font sizes (`labels.md`: **Make useful label text selectable.**); section label rows use `LabeledContent` or a `Section` header + `.secondary`; the processing skeleton uses `.redacted(reason: .placeholder)` on the real content instead of hand-drawn gray bars.
+- Processing indicator → `ProgressView().controlSize(.small / .mini)` + status text; the status text carries the state apart from the animation (the breathing full border was not adopted, T24); inline notices use `StatusNote` (`Label` + recovery `Button`) for in-place feedback; the study section, notebook and history (`learning*`, `saved`, `book-*`, `history-*`) reuse the same set of system components.
 
-### 3.7 系统体验
-- 菜单栏常驻入口 → `MenuBarExtra` + `Menu`（`the-menu-bar.md › Menu bar extras`）；全局快捷键没有系统 API 提供"用户可录制"的 UI，注册用 Carbon `RegisterEventHotKey`（§7 例外 2）；应用图标由 `project.yml` 的 `ASSETCATALOG_COMPILER_APPICON_NAME` 指定（当前值 `OwletIcon` 与目录里的 `AppIcon.appiconset` 不一致，`AppIcon.appiconset` 也没有 `appearances` 条目，即没有深色／着色变体，见未实现清单），含 light / dark / tinted 变体。
-- 菜单栏的 Owlet 标记 → 单色圆角方底、猫头镂空与五官剪影；`Image("OwletMark")` + `template-rendering-intent: template` / `.renderingMode(.template)`，用 `.primary` 随系统外观着色。
+### 3.7 System experiences
+- Always-present menu bar entry → `MenuBarExtra` + `Menu` (`the-menu-bar.md › Menu bar extras`); no system API offers a "user-recordable" UI for global shortcuts, so registration uses Carbon `RegisterEventHotKey` (§7 exception 2); the app icon is set by `ASSETCATALOG_COMPILER_APPICON_NAME` in `project.yml` (current value `AppIcon`, i.e. `AppIcon.appiconset` in the catalog; it has no `appearances` entries, so the intended light / dark / tinted variants do not exist yet, see [docs/roadmap.md](roadmap.md)).
+- Owlet mark in the menu bar → monochrome rounded square base with a cut-out owl head and facial silhouette; `Image("OwletMark")` + `template-rendering-intent: template` / `.renderingMode(.template)`, tinted with `.primary` to follow the system appearance.
 
-## 4. 逐屏对照
+## 4. Screen-by-screen map
 
-与 `design/index.html` 的“状态总览”同一分组：9 个分区竖向堆叠（应用窗口的翻译与润色、生词本、历史记录、设置，浮动面板的紧凑条、直接替换紧凑提示、学习表达区块、展开，菜单栏）；共 66 个状态。除 `success` 保留旧画面外，每张画面都对应应用里已实现的界面。
+Same grouping as the "state overview" of the retired `design/index.html`: 9 sections stacked vertically (the app window's Translate & Polish, Notebook, History and Settings; the floating panel's compact bar, direct-replace compact notice, study expressions section and expanded state; and the menu bar), 66 states in total. Apart from `success`, which keeps the old screen, every screen corresponds to an implemented interface in the app.
 
-| 截图 | 已落到设计里的系统组件 |
+| Screenshot | System components already in the design |
 | --- | --- |
-| `workspace*.png`（结果、空输入、已输入、处理中、润色结果、请求失败、服务未配置、侧栏收起） | 侧栏切换 · 内容区顶边的 `TabView`（`Tab(标题, systemImage:)`，四周留边距）· 每个 pane 里两个 `GroupBox`（靠背景区隔，不画分割线；标题位放的是控件——原文一侧 `Picker(.menu)` 选源语言、译文一侧是「译文／学习」分段控件；目标语言 `Picker(.menu)` 在译文组内）· 内容右下角浮起的两颗独立玻璃图标按钮（`复制结果`、`翻译`／`润色`，处理中换成 `取消`；`.labelStyle(.iconOnly)` + `.help()`，不套 `GlassEffectContainer`，见 §2.2）· `TextEditor` · 结果区 `.redacted` 占位 · 行内 `StatusNote`；两侧同时可见并各自滚动（宽窗口左右平分宽度、窄窗口上下平分高度），学习表达跟在译文／润色下面；这一页没有底部操作栏 |
-| `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | 设置窗口的快捷键页：`Form` 的两个 `Section`（`全局` 录制器 / `面板内` 固定键）· 录制按钮（例外 2）· `清除` · 每个分组的 footer 承载说明与冲突提示 |
-| `settings-general.png` | 独立设置窗口：`Settings` scene 的标题栏 + `TabView` 标签页切换器（不可自定义、始终可见）· 每页 inset grouped `Form` 的多个 `Section`；通用页含「文本处理」分组（翻译显示方式）与「浮窗」分组（玻璃效果 `Picker`，其下一行次级 `Text` + 系统 `Link` 指向「系统设置 › 外观」，见 BDR-0014；`Toggle`「未选中文字时使用焦点所在输入框的全部文本」，默认关闭，见 T69）；工具栏一页为快捷键页 |
-| `settings-language-empty.png` / `settings-language-rows.png` | 语言页：「语言」分组（已选语言逐行 `LabeledContent` + 删除按钮，`添加语言` 才展示完整系统清单）+「目标语言」分组（兜底目标 `Picker(.menu)`、一行一源语言的映射、`添加映射`） |
-| `settings-model.png` / `settings-model-openai.png` / `settings-model-agent.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` | 模型页：「服务」分组（服务商、Base URL、`SecureField`）、「模型」分组（模型名称、思考强度），以及两组 System Prompt 编辑器；模型列表失败时在名称行下就地提示与 `重试`。编辑器分组标题的行尾是一个原生图标按钮（`arrow.counterclockwise`、`.labelStyle(.iconOnly)` + `.buttonStyle(.borderless)`，无障碍标签沿用 `恢复默认`）：它始终在同一个位置，编辑器内容等于内置默认时 `.disabled`，点击把该编辑器恢复成对应 operation 的默认提示词。编辑器跟随分组 `Form` 的行而不自绘表面：系统的 `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)` 去掉默认白底与内嵌块，行的背景直接透出（T73）。服务商 `Picker(.menu)` 分两节：上一节是远程服务列表，第一项 `OpenAI Compatible`（自定义，地址与模型自己填），其后是 `DeepSeek`、`Moonshot / Kimi`、`Zhipu GLM`、`Qwen (DashScope)`、`xAI`、`OpenRouter`、`Ollama (Local)`、`LM Studio (Local)`（BDR-0015）；选中一家即写入它公开的 Base URL 与默认模型，之后两者仍可就地编辑。远程服务与本地 agent 之间有分隔线；**本地 agent 始终列出**，扫不到的标注「未检测到」，选中后仍可就地 `选择…` 手动指定可执行文件，手选路径不被后续扫描覆盖（T61、T71）。`settings-model-agent` 是本地 agent 的同一页：Base URL 与 `SecureField` 换成 `LabeledContent` 的可执行文件行 + `检测`／`选择…` 两个按钮 + 就地显示的检测结果（版本，或「未找到，请手选或安装后点检测」的失败原因），footer 说明不需要 API Key；Codex 的模型名是 `Picker(.menu)`（第一项「该 agent 自己的默认模型」）；Claude Code 读它自己缓存的模型目录给同一份 `Picker`，缓存缺失或读不出来时该行退回 `TextField`，不弹错误（T62、T66）。每个服务商各自记住模型名，切回上一个服务商时恢复它原来的值（T67） |
-| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | 调试页：分组 `Form` 的一个 `Section`（标题「最近的请求」，footer 说明只在内存、最多 20 条）+ 系统 `DisclosureGroup`，每次交换一行（指示器、动效与无障碍状态都由系统给出）；行首状态图标（失败系统红、成功次要色），行内是操作名与时间、原文摘要 `.lineLimit(1)`、失败时红字原因（展开后显示全文，不再重复）；展开后是原文差异与三段各自折叠的可选中原文（模型原始返回默认展开），无边框 `复制这条记录`（`document.on.document`）；没有记录时用 `ContentUnavailableView`（T76） |
-| `workspace-auto.png` / `workspace-target-pinned.png` | 工具栏的 `Picker(.menu)`：`自动（简体中文）` 与显式语言两态；结果标签沿用解析出的语言名 |
-| `loading.png` / `polish-loading.png` / `direct-loading.png` | 紧凑玻璃条 · `ProgressView` · 状态文字 · 玻璃停止按钮；Esc 取消 |
-| `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | 紧凑玻璃条 · 一行说明 · 一个恢复按钮（服务设置／提示词设置／权限设置／手动输入／配置服务／复制结果／重新处理），失败态另有重试图标按钮；开启「未选中文字时使用焦点所在输入框的全部文本」后，焦点在可编辑输入框且没有选中文字时改取该输入框全文，不再进入 `selection-error` 这一态（见 T69） |
-| `direct-selection-error.png` / `direct-permission.png` / `direct-unconfigured.png` / `direct-error.png` / `direct-format-error.png` / `direct-cancelled.png` | 与上一行逐像素相同：直接替换流程复用同一条紧凑玻璃条与同一套恢复入口，仅快捷键发起的流程不同；开启「未选中文字时使用焦点所在输入框的全部文本」后原文来自焦点输入框全文，直接替换先 ⌘A 全选该输入框再粘贴，字段里只剩译文而不是在插入点追加，无法确认全选则不发送粘贴并按「未能写回」提示（见 T70） |
-| `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` 面板 · 头部 `Picker(.menu)` + 玻璃图标按钮 · 可选中结果文本 · 底部提示行 + `复制 ⌘⇧C` / `替换 ⌘↩` · 内容区 `StatusNote`；复制结果或写回成功后关闭面板；`MenuBarExtra` 菜单（非 popover）；菜单栏标记是模板图（`.renderingMode(.template)`），由系统着色 |
-| `empty.png` | 已展开且原文为空：`canRetry` 为假，`PanelHeader` 不传 `retry`、`PanelFooter` 默认分支没有按钮，只留快捷键提示；原文栏仍可编辑 |
-| `success.png` | 写回成功确认：展开结果内确认替换、动作行以 `完成` 关闭；应用行为为写回成功直接关闭浮窗，此画面仍是原型提案 |
-| `book-list.png` / `book-detail.png` / `book-empty.png` / `no-results.png` | 统一工具栏 · 搜索框 · 弹出式按钮 `全部语言` · `导出…` · `List` 行 · `ContentUnavailableView` 空状态 |
-| `history-list.png` / `history-detail.png` / `history-empty.png` | 同构工具栏 · 类型筛选 · 破坏性 `清空历史` · 详情可复制与收藏 |
-| `learning.png` / `learning-loading.png` / `learning-error.png` / `learning-empty.png` / `saved.png` | 展开结果内的独立区块 · `ProgressView`／`.redacted` 占位 · 就地重试 · 可勾选列表与 `收藏所选` |
-| `aligned.png` | 逐句对照：配对视图内的系统 `Text`，复制与替换仍只输出译文（§7 例外 3） |
-| `workspace-narrow.png` | 窄窗口（内容区 < 720pt）下的单列堆叠分支与宽窗口并排 |
+| `workspace*.png` (result, empty input, with input, processing, polish result, request failure, service not configured, sidebar collapsed) | Sidebar toggle · `TabView` along the top edge of the content area (`Tab(title, systemImage:)`, with margins all round) · two `GroupBox`es in each pane (separated by background, no divider lines; the title slot holds controls: a `Picker(.menu)` for the source language on the source side, and a "Translation / Study" segmented control on the result side; the target language `Picker(.menu)` is inside the result group) · two separate glass icon buttons floating at the bottom-right of the content (`Copy Result`, `Translate` / `Polish`, replaced by `Cancel` while processing; `.labelStyle(.iconOnly)` + `.help()`, not wrapped in a `GlassEffectContainer`, see §2.2) · `TextEditor` · `.redacted` placeholder in the result area · inline `StatusNote`; both sides are visible at once and scroll independently (a wide window splits the width evenly left/right, a narrow window splits the height evenly top/bottom), and study expressions follow below the translation/polish; this page has no bottom action bar |
+| `settings-shortcuts.png` / `settings-shortcuts-recording.png` / `settings-shortcuts-conflict.png` | Shortcuts page of the settings window: two `Section`s of a `Form` (`Global` recorders / `In Panel` fixed keys) · recorder button (exception 2) · `Clear` · each group's footer carries the explanation and conflict notice |
+| `settings-general.png` | Separate settings window: title bar of the `Settings` scene + `TabView` tab switcher (not customizable, always visible) · several `Section`s of an inset grouped `Form` on each page; the General page has a "Text" group (Translation Display) and a "Panel" group (Glass Effect `Picker`, with a secondary `Text` line + system `Link` below it pointing to "System Settings › Appearance", see BDR-0014; `Toggle` "Use the whole text of the focused field when nothing is selected", off by default, see T69); the Shortcuts page is one toolbar tab |
+| `settings-language-empty.png` / `settings-language-rows.png` | Languages page: "Languages" group (one `LabeledContent` row + delete button per selected language; the full system list only appears via `Add Language`) + "Target Language" group (fallback target `Picker(.menu)`, one mapping row per source language, `Add Mapping`) |
+| `settings-model.png` / `settings-model-openai.png` / `settings-model-agent.png` / `settings-model-failed.png` / `settings-model-prompts.png` / `settings-model-prompts-customized.png` | Model page: "Service" group (Provider, Base URL, `SecureField`), "Model" group (Model Name, Reasoning Effort), and two System Prompt editor groups; when the model list fails, a notice and `Retry` appear in place under the name row. The trailing end of each editor group's title is a native icon button (`arrow.counterclockwise`, `.labelStyle(.iconOnly)` + `.buttonStyle(.borderless)`, accessibility label `Restore Default`): it always sits in the same place, is `.disabled` when the editor content equals the built-in default, and clicking it restores that editor to the default prompt for its operation. The editor follows the grouped `Form` row instead of drawing its own surface: the system `.textEditorStyle(.plain)` + `.scrollContentBackground(.hidden)` remove the default white background and inset block, so the row background shows through (T73). The Provider `Picker(.menu)` has two sections: the first is the list of remote services, starting with `OpenAI Compatible` (custom; you fill in the address and model yourself), followed by `DeepSeek`, `Moonshot / Kimi`, `Zhipu GLM`, `Qwen (DashScope)`, `xAI`, `OpenRouter`, `Ollama (Local)`, `LM Studio (Local)` (BDR-0015); choosing one writes its public Base URL and default model, and both stay editable in place afterwards. A separator sits between remote services and local agents; **local agents are always listed**, those not found are marked "not detected", and once selected you can still `Choose…` an executable by hand in place; a hand-picked path is not overwritten by later scans (T61, T71). `settings-model-agent` is the same page for a local agent: Base URL and `SecureField` are replaced by a `LabeledContent` executable row + two buttons `Detect` / `Choose…` + the detection result shown in place (the version, or a failure reason such as "%@ was not found. Choose its executable by hand, or install it and press Detect."), and the footer says no API Key is needed; Codex's model name is a `Picker(.menu)` (first item "The agent's own default"); Claude Code reads its own cached model catalog into the same `Picker`, and when the cache is missing or unreadable that row falls back to a `TextField` without showing an error (T62, T66). Each provider remembers its own model name, and switching back to a previous provider restores its earlier value (T67) |
+| `settings-debug.png` / `settings-debug-open.png` / `settings-debug-empty.png` | Debug page: one `Section` of a grouped `Form` (title "Recent Requests", footer saying it is in memory only, at most 20 entries) + system `DisclosureGroup`, one row per exchange (the indicator, animation and accessibility state all come from the system); a leading status icon (system red for failure, secondary color for success); the row shows the operation name and time, a source summary with `.lineLimit(1)`, and a red failure reason (the full text appears when expanded and is not repeated); expanded, it shows the source diff and three separately collapsible blocks of selectable raw text (the model raw reply is expanded by default), and a borderless `Copy This Record` (`document.on.document`); with no records it shows `ContentUnavailableView` (T76) |
+| `workspace-auto.png` / `workspace-target-pinned.png` | Toolbar `Picker(.menu)`: two states, `Automatic (Simplified Chinese)` and an explicit language; the result label uses the resolved language name |
+| `loading.png` / `polish-loading.png` / `direct-loading.png` | Compact glass bar · `ProgressView` · status text · glass stop button; Esc cancels |
+| `error.png` / `format-error.png` / `cancelled.png` / `permission.png` / `unconfigured.png` / `selection-error.png` / `unwritten.png` | Compact glass bar · one line of explanation · one recovery button (Service Settings / Prompt Settings / Permission Settings / Enter Text / Configure Service / Copy Result / Try Again), with an extra retry icon button for failures; with "Use the whole text of the focused field when nothing is selected" turned on, when focus is in an editable field and nothing is selected the whole field text is used instead, and the `selection-error` state is no longer reached (see T69) |
+| `direct-selection-error.png` / `direct-permission.png` / `direct-unconfigured.png` / `direct-error.png` / `direct-format-error.png` / `direct-cancelled.png` | Pixel-identical to the previous row: the direct-replace flow reuses the same compact glass bar and the same recovery entry points; only the shortcut that starts the flow differs. With "Use the whole text of the focused field when nothing is selected" turned on, the source is the whole text of the focused field; direct replace first selects the field with ⌘A and then pastes, so the field ends up holding only the translation instead of having it appended at the insertion point; if it cannot confirm the select-all it does not send the paste and shows the "could not write back" notice (see T70) |
+| `result.png` / `polish.png` / `long.png` / `result-loading.png` / `result-unwritten.png` / `result-notice.png` / `result-cancelled.png` / `menubar.png` / `menubar-menu.png` | `NSGlassEffectView` panel · header `Picker(.menu)` + glass icon buttons · selectable result text · bottom hint row + `Copy ⌘⇧C` / `Replace ⌘↩` · `StatusNote` in the content area; the panel closes after copying the result or a successful write-back; `MenuBarExtra` menu (not a popover); the menu bar mark is a template image (`.renderingMode(.template)`) tinted by the system |
+| `empty.png` | Expanded with empty source: `canRetry` in `ExpandedPanel` is false and the retry controls are `.disabled`; the source field stays editable |
+| `success.png` | Write-back success confirmation: confirms the replacement inside the expanded result, and the action row closes with `Done`; the app instead closes the panel directly after a successful write-back, so this screen is still a prototype proposal |
+| `book-list.png` / `book-detail.png` / `book-empty.png` / `no-results.png` | Unified toolbar · search field · `All Languages` pop-up button · `Export…` · `List` rows · `ContentUnavailableView` empty state |
+| `history-list.png` / `history-detail.png` / `history-empty.png` | Same toolbar structure · type filter · destructive `Clear History` · detail can be copied and saved |
+| `learning.png` / `learning-loading.png` / `learning-error.png` / `learning-empty.png` / `saved.png` | Separate section inside the expanded result · `ProgressView` / `.redacted` placeholder · in-place retry · checkable list and `Save Selected` |
+| `aligned.png` | Sentence-by-sentence alignment: system `Text` inside the paired view; copy and replace still output only the translation (§7 exception 3) |
+| `workspace-narrow.png` | The single-column stacked branch for a narrow window (content area < 720pt) versus side by side in a wide window |
 
-旧原型的 40 个状态现已全部覆盖：`stale` 由 `unwritten` 承载、`settings-shortcuts` 由 `shortcuts-recording` 承载，其余 38 个各有画面。
+All 40 states of the old prototype are now covered: `stale` is carried by `unwritten`, `settings-shortcuts` by `shortcuts-recording`, and the other 38 each have a screen.
 
-### 4.1 每个状态的实现位置
+### 4.1 Where each state is implemented
 
-67 个状态与 `Owlet/` 的对应关系（按实现文件分组）：
+The 67 states and their counterparts in `Owlet/` (grouped by implementation file):
 
-| 状态 | 实现位置 |
+| State | Implementation |
 | --- | --- |
-| `workspace`、`workspace-empty`、`workspace-input`、`workspace-loading`、`workspace-polish`、`workspace-error`、`workspace-unconfigured` | `Owlet/Processing/TextProcessingView.swift`（工作台工具栏与编辑区）· `Owlet/Processing/TextProcessingModel.swift`（处理状态）· `Owlet/App/OwletApp.swift`（窗口、侧栏与菜单命令） |
-| `workspace-collapsed` | `Owlet/App/OwletApp.swift`（MainView 的 NavigationSplitView 侧栏） |
-| `settings-shortcuts`、`settings-shortcuts-recording`、`settings-shortcuts-conflict`（`ShortcutController.registrationError` 的冲突文案） | `Owlet/Shortcuts/ShortcutSettingsPane.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
-| `settings-general` | `Owlet/Settings/SettingsView.swift`（标签页）· `Owlet/Settings/GeneralSettingsPane.swift` |
-| `settings-language-empty`、`settings-language-rows` | `Owlet/Settings/LanguageSettingsPane.swift` · `Owlet/Settings/LanguageSettingsView.swift` · `Owlet/Settings/TargetMappingSettingsView.swift` · `Owlet/Settings/TargetMapping.swift` |
-| `settings-model`、`settings-model-openai`、`settings-model-agent`、`settings-model-failed` | `Owlet/Settings/ModelSettingsPane.swift` · `Owlet/Settings/SettingsStore.swift`（Keychain 与本地 agent 路径）· `Owlet/LLM/LocalAgent.swift`（查找环境、三层退让、检测与版本） |
-| `workspace-auto`、`workspace-target-pinned` | `Owlet/Settings/TargetLanguagePicker.swift` · `Owlet/Processing/LanguageDetector.swift` · `Owlet/Processing/TextProcessingView.swift` |
-| `settings-debug`、`settings-debug-open`、`settings-debug-empty` | `Owlet/Settings/DebugSettingsPane.swift` · `Owlet/Debug/DebugLog.swift` · `Owlet/LLM/ModelClient.swift`（记录点） |
-| `loading`、`polish-loading`、`direct-loading` | `Owlet/App/Panel/CompactPanelContent.swift`（CompactProcessingView） |
-| `error`、`format-error`、`cancelled`、`permission`、`unconfigured`、`selection-error`、`unwritten` | `Owlet/App/Panel/PanelController.swift`（Notice）· `Owlet/App/Panel/PanelRootView.swift`（recover）· `Owlet/App/Panel/CompactPanelContent.swift`（CompactNoticeView）· `Owlet/Selection/SelectionBridge.swift`（权限与读取失败来源） |
-| `direct-selection-error`、`direct-permission`、`direct-unconfigured`、`direct-error`、`direct-format-error`、`direct-cancelled` | `Owlet/App/Panel/PanelController.swift`：“翻译并替换”复用同一 `Notice`／`CompactNoticeView`，与 `selection-error`／`permission`／`unconfigured`／`error`／`format-error`／`cancelled` 同屏 |
-| `result`、`polish`、`long`、`result-loading` | `Owlet/App/Panel/ExpandedPanel.swift` · `Owlet/App/Panel/PanelHeader.swift` · `Owlet/App/Panel/ExpandedPanelContent.swift` · `Owlet/App/Panel/PanelFooter.swift`· `Owlet/App/Panel/PanelController.swift`（展开时机） |
-| `result-notice`（失败）、`result-cancelled`（取消） | `Owlet/App/Panel/ExpandedPanelContent.swift`（StatusNote）· `Owlet/App/Panel/PanelController.swift`（inlineNotice）；失败与取消时 `hasResultSection` 为假，结果区不渲染 |
-| `result-unwritten` | `Owlet/App/Panel/PanelController.swift`（`writebackRefusal` → `inlineNotice` 返回 `.unwritten`／`.unwritable`）· `Owlet/App/Panel/ExpandedPanel.swift` |
-| `empty` | `Owlet/App/Panel/ExpandedPanel.swift`（`canRetry`）· `Owlet/App/Panel/PanelFooter.swift`（默认分支）· `Owlet/App/Panel/PanelController.swift`（空原文时 `processCurrentText()` 置 `.idle`，展开态保留） |
-| `menubar`、`menubar-menu` | `Owlet/App/OwletApp.swift`（MenuBarExtra、MenuContent、MenuBarLabel） |
-| `book-list`、`book-detail`、`book-empty`、`no-results` | `Owlet/Vocabulary/VocabularyView.swift` · `Owlet/Vocabulary/VocabularyStore.swift` · `Owlet/Vocabulary/CollectionAction.swift` |
-| `history-list`、`history-detail`、`history-empty` | `Owlet/History/HistoryView.swift` · `Owlet/History/HistoryStore.swift` · `Owlet/History/HistoryRecorder.swift` |
-| `learning`、`learning-loading`、`learning-error`、`learning-empty`、`saved` | `Owlet/Learning/LearningView.swift` · `Owlet/Learning/LearningContent.swift` · `Owlet/App/Panel/ExpandedPanel.swift` |
-| `aligned` | `Owlet/Processing/AlignedSegments.swift` · `Owlet/Processing/TextProcessingView.swift`（`TranslationDisplayMode` 的 `.aligned`） |
-| `settings-model-prompts`、`settings-model-prompts-customized` | `Owlet/Settings/PromptSettingsView.swift` · `Owlet/LLM/DefaultPrompts.swift` |
-| `workspace-narrow` | `Owlet/Processing/ProcessingLayout.swift`（720pt 阈值）· `Owlet/Processing/TextProcessingView.swift` |
-| `success` | 提案（未实现）：原型画写回完成确认；应用 `Owlet/App/Panel/PanelController.swift` 的 `performReplace` 在写回成功后直接关闭浮窗 |
+| `workspace`, `workspace-empty`, `workspace-input`, `workspace-loading`, `workspace-polish`, `workspace-error`, `workspace-unconfigured` | `Owlet/Processing/TextProcessingView.swift` (workspace toolbar and editors) · `Owlet/Processing/TextProcessingModel.swift` (processing state) · `Owlet/App/OwletApp.swift` (window, sidebar and menu commands) |
+| `workspace-collapsed` | `Owlet/App/OwletApp.swift` (the NavigationSplitView sidebar in MainView) |
+| `settings-shortcuts`, `settings-shortcuts-recording`, `settings-shortcuts-conflict` (conflict copy from `ShortcutController.registrationError`) | `Owlet/Shortcuts/ShortcutSettingsPane.swift` · `Owlet/Shortcuts/ShortcutController.swift` |
+| `settings-general` | `Owlet/Settings/SettingsView.swift` (tabs) · `Owlet/Settings/GeneralSettingsPane.swift` |
+| `settings-language-empty`, `settings-language-rows` | `Owlet/Settings/LanguageSettingsPane.swift` · `Owlet/Settings/LanguageSettingsView.swift` · `Owlet/Settings/TargetMappingSettingsView.swift` · `Owlet/Settings/TargetMapping.swift` |
+| `settings-model`, `settings-model-openai`, `settings-model-agent`, `settings-model-failed` | `Owlet/Settings/ModelSettingsPane.swift` · `Owlet/Settings/SettingsStore.swift` (Keychain and local agent paths) · `Owlet/LLM/LocalAgent.swift` (lookup environment, three-level fallback, detection and version) |
+| `workspace-auto`, `workspace-target-pinned` | `Owlet/Settings/TargetLanguagePicker.swift` · `Owlet/Processing/LanguageDetector.swift` · `Owlet/Processing/TextProcessingView.swift` |
+| `settings-debug`, `settings-debug-open`, `settings-debug-empty` | `Owlet/Settings/DebugSettingsPane.swift` · `Owlet/Debug/DebugLog.swift` · `Owlet/LLM/ModelClient.swift` (recording points) |
+| `loading`, `polish-loading`, `direct-loading` | `Owlet/App/Panel/CompactPanelContent.swift` (CompactProcessingView) |
+| `error`, `format-error`, `cancelled`, `permission`, `unconfigured`, `selection-error`, `unwritten` | `Owlet/App/Panel/PanelController.swift` (Notice) · `Owlet/App/Panel/PanelRootView.swift` (recover) · `Owlet/App/Panel/CompactPanelContent.swift` (CompactNoticeView) · `Owlet/Selection/SelectionBridge.swift` (sources of permission and read failures) |
+| `direct-selection-error`, `direct-permission`, `direct-unconfigured`, `direct-error`, `direct-format-error`, `direct-cancelled` | `Owlet/App/Panel/PanelController.swift`: "Translate and Replace" reuses the same `Notice` / `CompactNoticeView`, on the same screen as `selection-error` / `permission` / `unconfigured` / `error` / `format-error` / `cancelled` |
+| `result`, `polish`, `long`, `result-loading` | `Owlet/App/Panel/ExpandedPanel.swift` · `Owlet/App/Panel/ExpandedPanelContent.swift` · `Owlet/App/Panel/PanelController.swift` (when to expand) |
+| `result-notice` (failure), `result-cancelled` (cancel) | `Owlet/App/Panel/ExpandedPanelContent.swift` (StatusNote) · `Owlet/App/Panel/PanelController.swift` (inlineNotice); on failure and cancel `hasResultSection` is false and the result area is not rendered |
+| `result-unwritten` | `Owlet/App/Panel/PanelController.swift` (`writebackRefusal` → `inlineNotice` returns `.unwritten` / `.unwritable`) · `Owlet/App/Panel/ExpandedPanel.swift` |
+| `empty` | `Owlet/App/Panel/ExpandedPanel.swift` (`canRetry`) · `Owlet/App/Panel/PanelController.swift` (with empty source, `processCurrentText()` sets `.idle` and the expanded state is kept) |
+| `menubar`, `menubar-menu` | `Owlet/App/OwletApp.swift` (MenuBarExtra, MenuContent, MenuBarLabel) |
+| `book-list`, `book-detail`, `book-empty`, `no-results` | `Owlet/Vocabulary/VocabularyView.swift` · `Owlet/Vocabulary/VocabularyStore.swift` · `Owlet/Vocabulary/CollectionAction.swift` |
+| `history-list`, `history-detail`, `history-empty` | `Owlet/History/HistoryView.swift` · `Owlet/History/HistoryStore.swift` · `Owlet/History/HistoryRecorder.swift` |
+| `learning`, `learning-loading`, `learning-error`, `learning-empty`, `saved` | `Owlet/App/Panel/PanelLearningView.swift` · `Owlet/Learning/LearningContent.swift` · `Owlet/App/Panel/ExpandedPanel.swift` |
+| `aligned` | `Owlet/Processing/AlignedSegments.swift` · `Owlet/Processing/TextProcessingView.swift` (`.aligned` of `TranslationDisplayMode`) |
+| `settings-model-prompts`, `settings-model-prompts-customized` | `Owlet/Settings/PromptSettingsView.swift` · `Owlet/LLM/DefaultPrompts.swift` |
+| `workspace-narrow` | `Owlet/Processing/ProcessingLayout.swift` (720pt threshold) · `Owlet/Processing/TextProcessingView.swift` |
+| `success` | Proposal (not implemented): the prototype draws a write-back confirmation; `performReplace` in the app's `Owlet/App/Panel/PanelController.swift` closes the panel directly after a successful write-back |
 
-## 5. 设计令牌退役表
+## 5. Design token retirement table
 
-`spec/DESIGN.md` 的配色表与 `RoseGlass` 已从 `Owlet/` 删除；下表保留为迁移依据。
+The color table in `spec/DESIGN.md` and `RoseGlass` have been removed from `Owlet/`; the table below is kept as the migration record.
 
-| 现令牌 | 现用途 | 替换为 |
+| Token | Use | Replaced by |
 | --- | --- | --- |
-| `RoseGlass.accent` / `ink` / `muted` / `paper` / `line` / `selectedNav` / `tint` / `keyFill` | 主按钮与焦点、正文与标题、次要文字、内容底、分隔线、侧栏选中、录制底色与键帽 | 应用 `AccentColor` 资源（唯一允许的品牌色出口）；`.primary` / `.secondary` / `.tint(nil)`；系统窗口纸张与列表材质；`Divider()` |
-| `RoseGlass.errorFill` / `errorText` / `green` / `skeleton` / 粉色渐变呼吸描边 | 错误块、成功、骨架屏、处理中装饰 | `StatusNote`（`Label` + `.secondary`）、`.green`、`.redacted(reason: .placeholder)`；呼吸未采纳，实现只用 `ProgressView`（T24） |
-| `RoseGlass.window` / `sidebar` / `footerFill` | 窗口／侧栏／底栏底 | 系统窗口背景、`List` sidebar 外观、底部 safe area bar 材质 |
-| `MainButtonStyle` / `MainLabelStyle` / `FieldBox` / `SelectField` / `KbdChip` / `GroupTitle` / `FormRow` / `PageFooter` / `PageHeader` / `SectionLabel` / `NavRow` / `ProcessingStrip` / `CompactNoticeView` | 自绘按钮、输入框描边与焦点环、自绘下拉、键帽、自绘窗口与紧凑条零件 | `.bordered` / `.borderedProminent` / `.glass` / `.glassProminent`；`Form` 行内系统 `TextField` + 系统焦点环；`Picker(.menu)`；快捷键归菜单栏与 `.help()`（设计图仍画 `⌘ ↩`，§2.2 #7）；`Form` + `Section`、`.toolbar`、`List`；紧凑条保留玻璃容器，内部只用 `ProgressView`、`Text`、`Label`、`Button(.glass)`、`StatusNote` |
+| `RoseGlass.accent` / `ink` / `muted` / `paper` / `line` / `selectedNav` / `tint` / `keyFill` | Primary buttons and focus, body text and headings, secondary text, content background, dividers, sidebar selection, recorder background and key caps | The app's `AccentColor` asset (the only allowed outlet for the brand color); `.primary` / `.secondary` / `.tint(nil)`; system window paper and list materials; `Divider()` |
+| `RoseGlass.errorFill` / `errorText` / `green` / `skeleton` / pink gradient breathing stroke | Error blocks, success, skeleton, processing decoration | `StatusNote` (`Label` + `.secondary`), `.green`, `.redacted(reason: .placeholder)`; breathing not adopted, the implementation uses only `ProgressView` (T24) |
+| `RoseGlass.window` / `sidebar` / `footerFill` | Window / sidebar / bottom bar background | System window background, `List` sidebar appearance, bottom safe area bar material |
+| `MainButtonStyle` / `MainLabelStyle` / `FieldBox` / `SelectField` / `KbdChip` / `GroupTitle` / `FormRow` / `PageFooter` / `PageHeader` / `SectionLabel` / `NavRow` / `ProcessingStrip` / `CompactNoticeView` | Self-drawn buttons, input strokes and focus rings, self-drawn dropdowns, key caps, self-drawn window and compact bar parts | `.bordered` / `.borderedProminent` / `.glass` / `.glassProminent`; system `TextField` in `Form` rows + system focus ring; `Picker(.menu)`; shortcuts belong to the menu bar and `.help()` (the design still draws `⌘ ↩`, §2.2 #7); `Form` + `Section`, `.toolbar`, `List`; the compact bar keeps its glass container and uses only `ProgressView`, `Text`, `Label`, `Button(.glass)` and `StatusNote` inside |
 
-## 6. 关于设置窗口的建议（未改动设计图）
+## 6. About the settings window
 
-设计图把设置画成主窗口的一个页面，实现也保持这样（§2.2 #11）。若将来采纳 `settings.md › Desktop (macOS)` 要求的**独立窗口**：从应用菜单（`⌘,`）打开，工具栏分栏且按钮常驻不可自定义，最小化与缩放按钮置灰，窗口标题跟随分栏。
+The design drew settings as a page of the main window; the implementation has since moved to the **separate window** required by `settings.md › Desktop (macOS)` (§2.2 #11): opened from the App menu (`⌘,`), with a tabbed toolbar whose buttons are always present and not customizable, minimize and zoom buttons disabled, and the window title following the tab.
 
-1. 设置改为 `Settings` scene + 分栏 `TabView`：**通用**（翻译显示方式、浮窗位置）· **显示** · **提示词** · **服务**（Base URL、API Key、模型）。
-2. 侧栏不再出现 `设置` 行；工具栏也不放设置按钮（`settings.md`：**Include a settings item in the App menu.**）。
+1. Settings becomes a `Settings` scene + tabbed `TabView`: **General** (Translation Display, Panel Position) · **Display** · **Prompts** · **Service** (Base URL, API Key, model).
+2. The sidebar no longer has a `Settings` row, and the toolbar has no settings button either (`settings.md`: **Include a settings item in the App menu.**).
 
-设置是独立窗口（`Settings` scene，App 菜单与 ⌘, 打开），主窗口侧栏只有文本处理、生词本、历史记录与快捷键。
+Settings is a separate window (`Settings` scene, opened from the App menu and ⌘,); the main window sidebar only has Translate & Polish, Notebook and History, and Shortcuts is a tab of the settings window.
 
-## 7. 判断与例外
+## 7. Judgments and exceptions
 
-macOS 26 没有提供系统对应物的三处必须自定义；例外 3 对应尚未实现的功能，当前实现还没走到它。
+macOS 26 has no system counterpart in three places, which must be custom; exception 3 belonged to a feature that was not yet implemented when this was written.
 
-| 例外 | 做法 |
+| Exception | Approach |
 | --- | --- |
-| 1 · 内联提示行 | macOS 没有系统 banner，而 `feedback.md` 要求状态反馈就近呈现。做法：`Label(systemImage:)` + 一个恢复 `Button` 放进内容流；失败态另给符号，不靠颜色单独表意。 |
-| 2 · 全局快捷键录制控件 | 没有任何系统 API 提供"点击后录制组合键"的 UI，Carbon 的 `RegisterEventHotKey` 只负责注册。实现中录制按钮用 `.glass`，录制中换成 `.glassProminent`（`Owlet/Shortcuts/ShortcutSettingsView.swift`），并保留 `Esc` 取消、`Delete` 清除、冲突提示与 `accessibilityLabel` / `accessibilityValue`。这是本项目唯一不可避免的自定义控件。 |
-| 3 · 逐句对照布局（已实现，T14） | 没有系统组件表达“原文／译文按语义句子配对”。做法：`LazyVStack` 内的配对视图，子元素全部是系统 `Text`；配对关系由模型返回，不按显示行推断。画面为 `aligned.png`。 |
+| 1 · Inline notice row | macOS has no system banner, and `feedback.md` asks for status feedback close to where it applies. Approach: `Label(systemImage:)` + one recovery `Button` placed in the content flow; failures get a symbol as well, never relying on color alone. |
+| 2 · Global shortcut recorder | No system API offers a "click, then record a key combination" UI; Carbon's `RegisterEventHotKey` only registers. In the implementation the recorder button uses `.glass` and switches to `.glassProminent` while recording (`Owlet/Shortcuts/ShortcutSettingsPane.swift`), and keeps `Esc` to cancel, `Delete` to clear, the conflict notice, and `accessibilityLabel` / `accessibilityValue`. This is the only unavoidable custom control in the project. |
+| 3 · Sentence-by-sentence alignment layout (implemented, T14) | No system component expresses "source / translation paired by semantic sentence". Approach: paired views inside a `LazyVStack`, all children system `Text`; the pairing comes from the model and is not inferred from display lines. Screen `aligned.png`. |
 
-**其余判断（我的判断，不是 Apple 的条文）：**
+**Other judgments (mine, not Apple's rules):**
 
-- 粉色保留为应用强调色。`color.md › App accent colors` 允许应用指定 accent；只要它只出现在强调色、prominent 按钮、选中态与状态指示，就符合 `liquid-glass.md › Color on glass`。**不要**把它散布到每个视图的 tint。
-- `本地` 角标删除（它不承载可操作信息，数据存放位置写在设置的"服务"分栏）；`已复制` toast 建议删除（结果已经在界面上）；面板头部的 Owlet 标记改用可着色符号或 template 图像，避免白色 PNG 在浅色玻璃上不可见。
+- Keep pink as the app accent color. `color.md › App accent colors` lets an app specify an accent; as long as it only appears in the accent color, prominent buttons, selection and status indicators, it complies with `liquid-glass.md › Color on glass`. **Do not** spread it into every view's tint.
+- Remove the `Local` badge (it carries no actionable information; where data is stored is written in the "Service" tab of settings); recommend removing the `Copied` toast (the result is already on screen); switch the Owlet mark in the panel header to a tintable symbol or template image so a white PNG is not invisible on light glass.
 
-## 8. 验收清单
+## 8. Acceptance checklist
 
-1–7、9 已随实现落地；8 未达成（菜单栏只有打开主界面、四个快捷键动作、设置与退出，没有覆盖每个工具栏项）；11–12 与 §2.2 的未采纳建议绑定，需要先决定是否采用。
+1–7 and 9 have landed with the implementation; 8 is not met (the menu bar only has open main window, the four shortcut actions, settings and quit, and does not cover every toolbar item); 11–12 are tied to the unadopted recommendations in §2.2 and need a decision on adoption first.
 
-1. **层纪律。** 玻璃只出现在工具栏、侧边栏、浮动面板、弹出视图；内容区、卡片、列表行、分组容器一律无玻璃。
-2. **玻璃数量。** 一屏内的自定义玻璃表面不超过"最重要的几个功能元素"，面板内不叠玻璃于玻璃之上。
-3. **颜色预算。** 每屏最多一个 tinted prominent 动作；控制标签单色；品牌色只在强调色、prominent 动作与状态指示。
-4. **辅助功能。** `Reduce Transparency` 有实底回退；`Increase Contrast` 有更强描边；`Reduce Motion` 去掉展开动画（`PanelController` 已有 `reduceMotion` 分支）；呼吸动画属未采纳建议（T24）；`workspace-collapsed.png` 与展开态功能完全一致。
-5. **对比度。** 正文 ≤17pt 达 4.5:1，≥18pt 或粗体达 3:1；玫瑰 `oklch(47% .17 350)` 在白底上约 8:1，作为强调色安全；次要文字用 `.secondary` 由系统保证。
-6. **点击区。** 桌面端默认 28×28pt，最小 20×20pt；工具栏图标按钮 28×28；列表行高不低于 28pt。
-7. **字号。** 桌面端默认 13pt，最小 10pt，不出现细体小字。
-8. **键盘。** 每个工具栏项都有对应菜单栏命令与快捷键（`toolbars.md › Desktop (macOS)`）；焦点环可见；`Full Keyboard Access` 下可达每个控件。
-9. **深色外观。** 无硬编码颜色后，浅色与深色都要过一遍；无应用级外观开关。
-10. **菜单栏。** `Settings… (⌘,)` 在应用菜单（已实现）；`Show/Hide Sidebar (⌃⌘S)` 需要 `SidebarCommands()`，未添加；`编辑` 菜单提供 `Undo/Redo/Cut/Copy/Paste/Select All`。
-11. **适应宽度。** 从最小宽度到满宽连续拖动，翻译与润色页在 720pt 处切换并排／堆叠，无跳变、无截断、无重排抖动。
-12. **文案（未采纳，§2.2 #7／#8／#12）。** §2.3 的三条文案规则无例外；界面里找不到快捷键字块与空心提示。
+1. **Layer discipline.** Glass only appears in toolbars, sidebars, floating panels and popovers; content areas, cards, list rows and group containers never have glass.
+2. **Amount of glass.** Custom glass surfaces on one screen do not exceed "the few most important functional elements", and the panel never stacks glass on glass.
+3. **Color budget.** At most one tinted prominent action per screen; control labels are monochrome; the brand color only appears in the accent color, prominent actions and status indicators.
+4. **Accessibility.** `Reduce Transparency` has a solid fallback; `Increase Contrast` has stronger strokes; `Reduce Motion` removes the expand animation (`PanelController` already has a `reduceMotion` branch); the breathing animation is an unadopted recommendation (T24); `workspace-collapsed.png` is functionally identical to the expanded state.
+5. **Contrast.** Body text ≤17pt reaches 4.5:1, ≥18pt or bold reaches 3:1; rose `oklch(47% .17 350)` is about 8:1 on white and safe as an accent; secondary text uses `.secondary`, guaranteed by the system.
+6. **Hit targets.** Desktop default 28×28pt, minimum 20×20pt; toolbar icon buttons 28×28; list rows no shorter than 28pt.
+7. **Font size.** Desktop default 13pt, minimum 10pt, no small light-weight text.
+8. **Keyboard.** Every toolbar item has a matching menu bar command and shortcut (`toolbars.md › Desktop (macOS)`); the focus ring is visible; every control is reachable under `Full Keyboard Access`.
+9. **Dark appearance.** With no hard-coded colors, check both light and dark; no app-level appearance switch.
+10. **Menu bar.** `Settings… (⌘,)` is in the App menu (implemented); `Show/Hide Sidebar (⌃⌘S)` is provided by `SidebarCommands()` (implemented); the `Edit` menu provides `Undo/Redo/Cut/Copy/Paste/Select All`.
+11. **Width adaptation.** Dragging continuously from minimum width to full width, the Translate & Polish page switches between side by side and stacked at 720pt with no jumps, truncation or reflow jitter.
+12. **Copy (not adopted, §2.2 #7 / #8 / #12).** The three copy rules in §2.3 hold without exception; no shortcut glyphs or empty hints anywhere in the interface.
 
-`design/index.html` 控制台里有两个自动检查：
+The retired `design/index.html` console used to have two automatic checks:
 
-- `checkDesignStates()` → 66 个状态逐个渲染过一遍：应用窗口状态必须有工具栏与内容区（翻译与润色页的工具栏必须有动作按钮，设置状态必须有标签页切换器）；浮窗状态必须是浮动面板，紧凑条要有紧凑条元素、展开态要有面板头部与动作行，且动作行不被裁切；`menubar` 只校验状态存在。
-- `checkFlowBoard()` → 66 个状态全部出现在总览上、无重复，分区数与定义一致（10 个窗口／面板）；返回 `{states, frames, panels}`。
+- `checkDesignStates()` → renders each of the 66 states once: app window states must have a toolbar and content area (the Translate & Polish toolbar must have action buttons, settings states must have a tab switcher); panel states must be floating panels, the compact bar must have compact bar elements, the expanded state must have a panel header and action row, and the action row must not be clipped; `menubar` only checks that the state exists.
+- `checkFlowBoard()` → all 66 states appear on the overview without duplicates, and the section count matches the definition (10 windows / panels); returns `{states, frames, panels}`.
 
-## 9. 迁移顺序
+## 9. Migration order
 
-按影响面从小到大，每一步都可独立验证。
+From smallest to largest impact; each step can be verified on its own.
 
-1. 删除 `RoseGlass` 与自绘按钮样式，全部换成系统语义色与系统按钮（已落地）。
-2. 主窗口改 `NavigationSplitView`（侧栏可收起）并把工具栏就位：`navigationTitle` + 弹出式按钮（左）+ 分段控件（右）（已落地）。
-3. 设置改为 `Settings` scene + 分栏，侧栏与工具栏移除入口（未采纳，T19）。
-4. 删除底部动作栏，动作迁入工具栏（已实现，T32）；翻译与润色页在内容区 ≥720pt 时两栏并排（已实现，T22）。
-5. 列表换 `List` + `.searchable` + `ContentUnavailableView` + 上下文菜单（随生词本／历史一并未实现）；浮动面板的呼吸动画与 `收藏选中内容` 动作行未采纳（紧凑条与动作行已落地）。
-6. 菜单栏补全并收口文案（`⌘,` 已接，文案未收口）；辅助功能与外观终检见 §8。
+1. Delete `RoseGlass` and the self-drawn button styles, replacing them all with system semantic colors and system buttons (landed).
+2. Move the main window to `NavigationSplitView` (collapsible sidebar) and put the toolbar in place: `navigationTitle` + pop-up button (left) + segmented control (right) (landed).
+3. Move settings to a `Settings` scene + tabs, and remove its entry from the sidebar and toolbar (implemented, T19).
+4. Remove the bottom action bar and move actions into the toolbar (implemented, T32); the Translate & Polish page shows two columns side by side when the content area is ≥720pt (implemented, T22).
+5. Switch lists to `List` + `.searchable` + `ContentUnavailableView` (implemented with the notebook and history); context menus are not implemented; the floating panel's breathing animation and the `Save Selection` action row were not adopted (the compact bar and action row have landed).
+6. Complete the menu bar and tighten the copy (`⌘,` is wired; the copy has not been tightened); final accessibility and appearance checks in §8.
 
-## 10. 参考
+## 10. References
 
-HIG 参考资料取自 Apple 官方文档 <https://developer.apple.com/design/human-interface-guidelines>：`liquid-glass`（`Where the material belongs` / `Which variant` / `Color on glass` / `Review checklist`）、`materials`、`color`、`layout`、`designing-for-macos`、`sidebars`、`toolbars`、`windows`、`panels`、`split-views`、`settings`、`the-menu-bar`、`buttons`、`segmented-controls`、`pop-up-buttons`、`menus`、`search-fields`、`lists-and-tables`、`boxes`、`labels`、`text-views`、`toggles`、`pickers`、`progress-indicators`、`feedback`、`writing`、`accessibility`、`focus-and-selection`、`dark-mode`、`generative-ai`。组件分类依 Apple 官方目录：<https://developer.apple.com/design/human-interface-guidelines/components>
+HIG references come from Apple's official documentation <https://developer.apple.com/design/human-interface-guidelines>: `liquid-glass` (`Where the material belongs` / `Which variant` / `Color on glass` / `Review checklist`), `materials`, `color`, `layout`, `designing-for-macos`, `sidebars`, `toolbars`, `windows`, `panels`, `split-views`, `settings`, `the-menu-bar`, `buttons`, `segmented-controls`, `pop-up-buttons`, `menus`, `search-fields`, `lists-and-tables`, `boxes`, `labels`, `text-views`, `toggles`, `pickers`, `progress-indicators`, `feedback`, `writing`, `accessibility`, `focus-and-selection`, `dark-mode`, `generative-ai`. The component categories follow Apple's official catalog: <https://developer.apple.com/design/human-interface-guidelines/components>
 
-T33 材质：导航与工具栏采用系统默认 Liquid Glass；内容区不叠玻璃，使用 GroupBox／Form 的系统背景。动作使用系统 `.glass`／`.glassProminent`，图标来自 SF Symbols。窄窗工作台通过原生 ScrollView 保持编辑器和学习区可达。
+T33 materials: navigation and toolbars use the system default Liquid Glass; the content area does not stack glass and uses the system background of GroupBox / Form. Actions use the system `.glass` / `.glassProminent`, and icons come from SF Symbols. In a narrow window the workspace keeps the editors and the study section reachable through a native ScrollView.
 
-2026-09-29 用户确认覆盖前述内容层限制：工作台三个 GroupBox 添加原生 `.glassEffect(.regular, in: ContainerRelativeShape())`，形状跟随容器，未新增颜色、模糊、边框或阴影实现。
+2026-09-29, the user confirmed an override of the content-layer restriction above: the three workspace GroupBoxes get the native `.glassEffect(.regular, in: ContainerRelativeShape())`, whose shape follows the container; no new color, blur, border or shadow implementation was added.
 
-管理页标题：生词本和历史页不重复显示窗口导航标题；数量为 List 第一行 Text（secondary、selectionDisabled），不再使用吸顶 Section 标题。
+Management page titles: the Notebook and History pages do not repeat the window navigation title; the count is the first row of the List as a Text (secondary, selectionDisabled), no longer a sticky Section header.
 
-T35 布局还原：工作台标题移除，语言 Picker 保留布局尺寸，学习 GroupBox 常驻；管理详情采用独立 ScrollView、灰色元信息与原生 GroupBox，列表支持系统多选；ToolbarSpacer 分隔上一条/下一条与内容动作。
+T35 layout restoration: the workspace title was removed; the language Picker keeps its layout size; the study GroupBox is always present; management details use a separate ScrollView, gray metadata and native GroupBox, and the list supports system multiple selection; a ToolbarSpacer separates previous/next from the content actions.
 
-T36：移除品牌强调色配置，使用系统默认强调色；侧栏显式 List.sidebar，不覆盖字号。学习使用 SF Symbols lightbulb.fill，生词本使用 books.vertical；筛选 Menu 内 Picker.inline，选项在一级直接显示。
+T36: removed the brand accent color setting and use the system default accent color; the sidebar explicitly uses List.sidebar without overriding font size. Study uses the SF Symbol lightbulb.fill, the Notebook uses books.vertical; the filter Menu contains a Picker.inline so options show directly at the first level.
 
-T37：搜索使用 AppKit NSSearchField，系统提供放大镜、清除按钮和焦点环；独立 ToolbarItem 隐藏共享背景，避免玻璃胶囊与局部焦点环叠加。
+T37: search uses AppKit NSSearchField, with the system providing the magnifier, clear button and focus ring; a separate ToolbarItem hides the shared background to avoid a glass capsule stacked with a local focus ring.
 
-T38 覆盖 T37：搜索改为 SwiftUI searchable + DefaultToolbarItem(.search)，由系统负责尺寸、焦点和搜索交互；ToolbarSpacer 分隔导航、内容动作和最右侧搜索。
+T38 supersedes T37: search becomes SwiftUI searchable + DefaultToolbarItem(.search), with the system handling size, focus and search interaction; ToolbarSpacers separate navigation, content actions and the rightmost search.
 
-T39：保持 NavigationSplitView；统一工具栏按 navigation/principal/primaryAction 分布筛选、上下条、内容动作与搜索。
+T39: keep NavigationSplitView; the unified toolbar distributes filter, previous/next, content actions and search across navigation/principal/primaryAction.
 
-管理页正文分栏与顶部安全区保留最小间距，系统分隔线不延伸进入统一工具栏；不裁剪原生列表。
+The body split views of management pages keep a minimal gap from the top safe area, and the system divider does not extend into the unified toolbar; native lists are not clipped.
 
-T40：宽屏工作台使用原生 HSplitView，与管理页采用同一分栏方式；原文与结果各自滚动，底部学习仍常驻，窄屏保留上下排列。
+T40: the wide-screen workspace uses the native HSplitView, the same split approach as the management pages; source and result scroll independently, the study section at the bottom stays present, and narrow screens keep the top/bottom arrangement.
 
-T42 浮窗：原文摘要与结果使用系统 glassEffect；状态条和原文组合操作用 SwiftUI 承载的 NSSegmentedControl（momentary／fit），独立动作用 Button.glass，更多操作用 contextMenu，学习用 List 与逐条 borderless 收藏按钮；无外层玻璃覆盖透明间隙。
+T42 panel: the source summary and the result use the system glassEffect; the status bar and the combined source actions use a SwiftUI-hosted NSSegmentedControl (momentary / fit); standalone actions use Button.glass, more actions use contextMenu, and study uses a List with a borderless save button per entry; no outer glass covers the transparent gaps.
 
-### T42 精确画板组件核对
+### T42 exact artboard component check
 
-仅以 [6313:31216](https://www.figma.com/design/PL0seWKhVgNHzaHLFbWLaQ/macOS-27--Community-?node-id=6313-31216) 为布局依据。以下主组件和变体均从实例详情读取，Button 已经通过 From this file 跳转 master 核对；其他画板不作为布局来源。
+Only [6313:31216](https://www.figma.com/design/PL0seWKhVgNHzaHLFbWLaQ/macOS-27--Community-?node-id=6313-31216) is used as the layout source. The main components and variants below were all read from the instance details, and Button was checked against its master via From this file; other artboards are not layout sources.
 
-| 画板内实例 | 主组件／变体 | SwiftUI 对应 |
+| Instance on the artboard | Main component / variant | SwiftUI counterpart |
 | --- | --- | --- |
-| 6313:31543 原文操作；6313:31552 错误状态；6313:31628 处理中 | Segmented Control / Light / XL / Active=True；master 605:3160 | SwiftUI 承载的 NSSegmentedControl（momentary／fit），保留图标与文字，不拼装多个按钮 |
-| 6313:31274、6329:31755 内容材质 | Liquid Glass - Medium / Light；master 483:9257 | 系统 glassEffect |
-| 6313:31301 关闭、6313:31302 复制、6329:31761 学习 | Button / Light / XL / Idle；master 648:4854 | Button(.glass)，SF Symbols xmark、doc.on.doc、lamp.desk |
-| 6313:31478 收藏 | Buttons / Over-Glass / Borderless / Idle；master 502:5872 | Button(.borderless)，bookmark／bookmark.fill |
-| 6329:31758、6313:31277 | Separators | Divider |
+| 6313:31543 source actions; 6313:31552 error state; 6313:31628 processing | Segmented Control / Light / XL / Active=True; master 605:3160 | SwiftUI-hosted NSSegmentedControl (momentary / fit), keeping icons and text, not assembled from several buttons |
+| 6313:31274, 6329:31755 content material | Liquid Glass - Medium / Light; master 483:9257 | System glassEffect |
+| 6313:31301 close, 6313:31302 copy, 6329:31761 study | Button / Light / XL / Idle; master 648:4854 | Button(.glass), SF Symbols xmark, doc.on.doc, lamp.desk |
+| 6313:31478 save | Buttons / Over-Glass / Borderless / Idle; master 502:5872 | Button(.borderless), bookmark / bookmark.fill |
+| 6329:31758, 6313:31277 | Separators | Divider |
 
-外观跟随系统，不固定 Light；无自行绘制颜色、材质、边框、按钮样式。
+Appearance follows the system and is not fixed to Light; no self-drawn colors, materials, borders or button styles.
 
-T42 视觉修正：正文 Title 2 Regular（17/22），图标 SF Pro Medium 13pt，系统圆形按钮 36pt；结果与学习面板分别 257／295pt 高，动作叠在右下角。大表面使用系统 ButtonBorderShape.roundedRectangle，未手填半径。
+T42 visual fixes: body text Title 2 Regular (17/22), icons SF Pro Medium 13pt, system circular buttons 36pt; the result and study panels are 257 / 295pt tall respectively, with actions stacked at the bottom-right. Large surfaces use the system ButtonBorderShape.roundedRectangle; no radius is filled in by hand.
 
-### 原生 panel 隔离预览
+### Isolated native panel preview
 
-完整流程、失败尝试与证据边界见 [Panel 调试、测试与截图](panel-debugging-and-testing.md)。
+The full process, failed attempts and the limits of the evidence are in [Panel debugging, testing and screenshots](panel-debugging-and-testing.md).
 
-`python3 scripts/panel-preview.py` 使用固定选区与模拟模型，绕过系统权限请求，生词本仅在内存；主 app 的配置不变。⌘1–⌘5 切换处理中、缺配置、连接失败、成功、学习五态。
+`python3 scripts/panel-preview.py` uses a fixed selection and a mock model, bypasses system permission requests, and keeps the notebook in memory only; the main app's configuration is unchanged. ⌘1–⌘5 switch between five states: processing, missing configuration, connection failure, success and study.
 
-`python3 scripts/panel-preview.py --live` 从进程环境读取 `DEEPSEEK_API_KEY` 进行真实联调，密钥不落盘、不输出。`--background /绝对路径/背景.png` 可为玻璃截图提供窗口内对照背景；默认不附带或修改系统壁纸。
+`python3 scripts/panel-preview.py --live` reads `DEEPSEEK_API_KEY` from the process environment for a real integration run; the key is never written to disk or printed. `--background /absolute/path/background.png` provides an in-window reference background for glass screenshots; by default the system wallpaper is neither used nor changed.
 
-浮窗组合操作的 NSSegmentedControl 关闭 cell 自带边框（isBordered = false），由单层 `.glassEffect(.regular)` 提供背景；避免叠层，同时保持背景清晰。
+The panel's combined-action NSSegmentedControl turns off the cell's own border (isBordered = false), and a single `.glassEffect(.regular)` layer provides the background; this avoids stacking while keeping the background clear.
 
-T43：通用设置的浮窗区使用原生 Picker 选择玻璃效果；浮窗玻璃表面统一使用系统 Glass.clear／regular，默认 regular，不手写透明度或材质。玻璃强度仍不归应用：`SwiftUICore.Glass` 只有 `regular`／`clear`／`identity`，`NSGlassEffectView` 只有 `style` 与圆角／tint，没有连续强度的公开符号，所以该分组在 Picker 下只用次级 `Text` + 系统 `Link` 指向「系统设置 › 外观」（BDR-0014）。这是指向既有系统设置，不是新的 HIG 主张，本表不为它新增引用条目。
+T43: the Panel section of General settings uses a native Picker to choose the glass effect; panel glass surfaces consistently use the system Glass.clear / regular, defaulting to regular, with no hand-written opacity or material. Glass intensity still does not belong to the app: `SwiftUICore.Glass` only has `regular` / `clear` / `identity`, and `NSGlassEffectView` only has `style` and corner radius / tint, with no public symbol for continuous intensity, so under the Picker that group only uses a secondary `Text` + a system `Link` pointing to "System Settings › Appearance" (BDR-0014). This points to an existing system setting and is not a new HIG claim, so this table adds no reference entry for it.
 
-预览可用 `--screenshots /绝对路径/输出目录` 自动切换并通过系统 screencapture 导出五个主状态及收藏／取消收藏两态窗口截图，无需 computer use。AppKit cacheDisplay 会遗漏玻璃合成，不能用于材质验收；`--settings /绝对路径/输出目录` 用同一条 cacheDisplay 路径离屏导出通用设置页（无玻璃表面，故结果可用），不需要屏幕录制授权。窗口未激活时系统按钮会显示非活跃颜色。
+The preview can use `--screenshots /absolute/path/output-dir` to switch states automatically and export window screenshots of the five main states plus the saved / unsaved states through the system screencapture, without computer use. AppKit cacheDisplay misses the glass compositing and cannot be used for material acceptance; `--settings /absolute/path/output-dir` uses the same cacheDisplay path to export the General settings page off-screen (it has no glass surface, so the result is usable) and does not need screen recording permission. While the window is inactive, system buttons show their inactive colors.
 
-T44：结果展开使用 SwiftUI spring 与 NSAnimationContext.animate(.spring)，窗口与内容均从顶部展开；学习行 HStack 居中，结果／学习底部动作距右边及底边24pt。
+T44: expanding the result uses a SwiftUI spring and NSAnimationContext.animate(.spring), with both the window and the content expanding from the top; study rows are vertically centered HStacks, and the bottom actions of result / study sit 24pt from the right and bottom edges.
 
-T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使用 borderless Button，图标随 SwiftData Query 的实际收藏状态切换，不再禁用已收藏按钮。
+T45: the two study columns use a native spring with move / opacity transitions; each entry row is a borderless Button, and its icon switches with the actual saved state from the SwiftData Query; already-saved buttons are no longer disabled.
 
-学习左侧译文使用原生 NSTextField(wrappingLabelWithString:) 与 justified 段落对齐，17pt、行间距2pt，可选择复制，末行自然对齐。预览 `--active` 只用于对照系统控件活跃颜色，不代表鼠标 hover 或真实窗口活跃状态；底部按钮保留标准 Button.glass。
+The translation on the left side of study uses a native NSTextField(wrappingLabelWithString:) with justified paragraph alignment, 17pt, 2pt line spacing, selectable and copyable, with the last line naturally aligned. The preview's `--active` is only for comparing active colors of system controls; it does not represent mouse hover or a truly active window; the bottom buttons keep the standard Button.glass.
 
-设置「语言」分组新增「读音体系」一节：有分歧的语言（日语、中文）用系统 `Picker`，其余用 `LabeledContent` 显示固定的 IPA。
+The settings "Languages" group gains a "Reading Notation" section: languages with competing systems (Japanese, Chinese) use a system `Picker`, the rest use `LabeledContent` to show fixed IPA.
 
-## T47 查词卡组件对照（浮窗已实现，其余待实现）
+## T47 Lookup card component map (implemented in the panel, the rest pending)
 
-行为见 [查词规格](../spec/vocabulary/features/word-lookup.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。
+Behavior is in the [lookup spec](../spec/vocabulary/features/word-lookup.feature), the decision in [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md). The following are implementation candidates and do not mean controls have been replaced or accepted; they do not add to the retired prototype's screenshot / state counts.
 
-| 阅读区域 | 保留行为与原生承载边界 |
+| Reading area | Behavior kept and native hosting boundary |
 | --- | --- |
-| 浮窗正文 | **T48 已实现**：原文 TextEditor 保留；只读结果改为 TextKit 1 只读 `NSTextView`（`LookupText`，16pt Medium、`NSColor.textColor`，学习双栏时两端对齐），浮窗内取代 `Text.textSelection` 与 `PanelJustifiedText` |
-| 主窗口文本处理结果 | **T50 已实现**：结果与逐句对照两侧均为 `LookupText`（结果两端对齐 16pt Medium，逐句对照原文 Regular、译文 Medium）；原文输入框继续编辑 |
-| 生词本详情 | **T50 已实现**：表达（22pt semibold）、原句语境与润色前／后为 `LookupText`；润色前用次要色；释义保持 `Text` |
-| 历史详情 | **T50 已实现**：原文（Regular）与结果（两端对齐 Medium）为 `LookupText`，取代 `PanelJustifiedText`；学习与收藏动作不变 |
-| 学习表达式 | **T51 已实现**：行不再整行包一个 `Button`：书签为 `.plain` 按钮（辅助功能收藏入口），行用 `onTapGesture` 收藏并保留悬停背景；表达为 `LookupText`：⌘ 单击查词、拖拽／双击选中后工具栏、右键或 Return 查询，语境取该条原句 |
+| Panel body | **T48 implemented**: the source TextEditor stays; the read-only result becomes a TextKit 1 read-only `NSTextView` (`LookupText`, 16pt Medium, `NSColor.textColor`, justified when study shows two columns), replacing `Text.textSelection` and `PanelJustifiedText` in the panel |
+| Main window text processing result | **T50 implemented**: both the result and both sides of the sentence alignment are `LookupText` (result justified 16pt Medium; aligned source Regular, translation Medium); the source input field stays editable |
+| Notebook detail | **T50 implemented**: the expression (22pt semibold), the source sentence context and before/after polish are `LookupText`; before polish uses the secondary color; the meaning stays `Text` |
+| History detail | **T50 implemented**: source (Regular) and result (justified Medium) are `LookupText`, replacing `PanelJustifiedText`; study and save actions unchanged |
+| Study expressions | **T51 implemented**: the row is no longer wrapped in one full-row `Button`: the bookmark is a `.plain` button (the accessibility entry for saving), and the row saves via `onTapGesture` while keeping the hover background; the expression is `LookupText`: ⌘-click looks up a word; dragging / double-clicking selects and shows the toolbar; right-click or Return looks it up; the context is that entry's source sentence |
 
-T48：选区工具栏与查词卡共用一个系统 `NSPopover`（`.transient`）。工具栏只有一个 `.plain` 的「查询」文字按钮，popover 本身即工具栏外框，不再套一层玻璃按钮，也不加悬停提示；超限时直接显示原因；卡片 320pt 宽，标题 16pt semibold 为查询词形，次级 13pt `.secondary` 依次为不同的原形、读音、词性，释义 15pt，来源／无原句用 `Label` + `.secondary`；加载为居中次要色文字，失败为居中红色 `Label` 加纯文本「重试」，「按当前语境重查」为纯文本按钮，发音为 36pt `CardButton`。右键菜单在系统菜单顶部插入「查询所选」。查词卡优先验证系统 popover，内容用系统 Text／Label、ProgressView、Button；选区动作使用原生工具栏／菜单承载，不手画控件。原形次级展示，来源、失败、禁用发音原因在内容中可读并可被辅助功能访问。
+T48: the selection toolbar and the lookup card share one system `NSPopover` (`.transient`). The toolbar has a single `.plain` "Look Up" text button; the popover itself is the toolbar frame, with no extra glass button layer and no hover tooltip; when over the limit it shows the reason directly. The card is 320pt wide; the title is the looked-up word form at 16pt semibold; secondary 13pt `.secondary` lines show, in order, a differing base form, the reading and the part of speech; the meaning is 15pt; source / no source sentence use `Label` + `.secondary`; loading is centered secondary text, failure is a centered red `Label` with a plain-text "Retry", "Look Up in This Sentence" is a plain-text button, and Speak is a 36pt `CardButton`. The context menu inserts "Look Up Selection" at the top of the system menu. The lookup card validates the system popover first, with content built from system Text / Label, ProgressView and Button; selection actions are hosted by native toolbars / menus with no hand-drawn controls. The base form is shown as secondary; the source, failures and the reason Speak is disabled are readable in the content and accessible to assistive technologies.
 
-悬停仅按 [DESIGN 封闭例外](../spec/DESIGN.md#查词悬停的封闭例外2026-10-07-已确认t49-已实现)。原生验证须覆盖真实文字命中（不能仅凭最近字符索引）、中日文分词、双击／拖拽／复制、学习行收藏隔离、popover 焦点、Esc 层级、VoiceOver，以及系统语音可用／缺失。先验证首个阅读区域，再决定其他区域的最小改动，不预定五处统一替换。
+Hover only follows the [closed exception in DESIGN](../spec/DESIGN.md) (the section on the closed exception for hover lookup). Native validation must cover hits on real text (not just the nearest character index), Chinese and Japanese word segmentation, double-click / drag / copy, isolation of saving in study rows, popover focus, Esc levels, VoiceOver, and system voices being available / missing. Validate the first reading area first, then decide the smallest change for the other areas; do not plan a uniform replacement across all five upfront.
 
-T55（[BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)）：卡片标题行右侧、`发音` 左侧是一个 `CardGlassButton`（`.glass`、圆形边框、36pt、13pt 字形），与 `发音` 同一个组件，只是标本为 `bookmark`／`bookmark.fill`、已收藏取强调色；`.hoverTip` 与辅助功能值给出「加入生词本／取消收藏」（系统无可用语音时 `发音` 的原因同样走提示，不再占一行说明）。文本语言未知或未接入生词本时不出现该按钮。不用自绘控件，不加确认弹窗。
+T55 ([BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)): to the right of the card's title row and left of `Speak` sits a `CardGlassButton` (`.glass`, circular border, 36pt, 13pt glyph), the same component as `Speak`, only with the symbol `bookmark` / `bookmark.fill` and the accent color when saved; `.hoverTip` and the accessibility value give "Add to Notebook / Remove from Notebook" (when no system voice is available, the reason for `Speak` also goes through the tooltip instead of taking a line of explanation). The button does not appear when the text language is unknown or the notebook is not connected. No self-drawn controls and no confirmation dialog.

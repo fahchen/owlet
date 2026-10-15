@@ -59,7 +59,7 @@
   .hero img { width: 64px; height: 64px; }
   .hero h1 { font-size: 28px; margin-top: 12px; }
   .hero p { color: var(--dim); font-size: 17px; margin: 12px 0 0; }
-  .hero p.tagline { color: var(--ink); font-size: 19px; margin-top: 8px; }
+  .hero p.tagline { color: var(--ink); font-size: 19px; margin-top: 8px; text-wrap: balance; }
   .hero p.lead { max-width: 30em; margin: 14px auto 44px; font-size: 16px; text-wrap: balance; }
   .links { margin-top: 36px; display: flex; flex-direction: column; gap: 14px; align-items: center; font-size: 15px; }
   .meta { font-size: 13px; color: var(--dim); }
@@ -102,10 +102,10 @@
   .credit { text-align: center; font-size: 13px; color: var(--dim); margin-top: 40px; }
   .progress { display: none; }
 
-  @media (prefers-reduced-motion: no-preference) and (min-width: 821px) {
+  @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .story { height: 340vh; padding: 0; view-timeline: --story block; }
-      .stage { position: sticky; top: 0; height: 100vh; display: grid; grid-template-rows: 1fr auto; padding: 56px 24px 32px; }
+      .stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; grid-template-rows: 1fr auto; padding: 56px 24px 32px; }
       .steps { display: grid; place-items: start center; }
       .step { grid-area: 1 / 1; width: 100%; margin: 0; animation: linear both; animation-timeline: --story; }
       .step:nth-child(1) { animation-name: first; animation-range: contain 0% contain 38%; }
@@ -175,6 +175,8 @@
     --btn-top: oklch(0.99 0 0 / .96); --btn-bot: oklch(0.88 0.004 260 / .96); --btn-ink: oklch(0.2 0.005 260);
   }
   :root[data-theme=dark] .shot img, :root[data-theme=dark] .pane > img { filter: drop-shadow(0 18px 40px oklch(0 0 0 / .55)); }
+  /* Chinese and Japanese break between any two characters; short lines break at punctuation instead. */
+  :is(:lang(zh), :lang(ja)) :is(h1, h2, h3, .tagline, .tabs label, .note) { word-break: keep-all; }
   :lang(ja) body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "SF Pro Text", sans-serif; }
 
   /* Language and appearance, top right, on the same glass as the rest of the page. */
@@ -270,6 +272,13 @@
   /* The step indicator sits on a glass pill. */
   .progress { width: fit-content; margin: 0 auto; padding: 6px 16px; border-radius: 999px; }
 
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .card, .polish { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
+      @keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.98); } }
+    }
+  }
+
   /* Features */
   .features { padding: 120px 0; }
   .features h2 { font-size: 17px; text-align: center; }
@@ -329,11 +338,37 @@
 
   @media (max-width: 820px) {
     .stage { padding-inline: 20px; }
-    .hero .ann::before { left: auto; right: 62%; transform: scaleX(-1); }
-    .hero .ann::after { left: auto; right: calc(62% + 22px); transform: rotate(3deg); }
-    .shot { aspect-ratio: auto; }
-    .shot img { position: static; width: 100%; }
-    .shot svg, .note, .pane svg { display: none; }
+    .ann::before { left: auto; right: 62%; transform: scaleX(-1); }
+    .ann::after { left: auto; right: calc(62% + 22px); transform: rotate(3deg); }
+    /* Notes cannot sit beside a phone-width shot, so they line up under it, pointing up at it;
+       arrows cannot land on a target this small, so only the notes stay. */
+    .shot, .pane { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; aspect-ratio: auto; }
+    .shot { margin-top: 16px; }
+    .shot img, .pane > img { position: static; width: 100%; height: auto; margin-bottom: 8px; }
+    .shot svg, .pane > svg { display: none; }
+    .note { position: static; transform: none; white-space: normal; font-size: 14px; text-align: center; }
+    .note.r { text-align: center; }
+    .note br { display: none; }
+    .note::before { content: "↑ "; }
+    .cap p { font-size: 15px; }
+    .stage .credit { font-size: 12px; }
+    /* Panes stack in one grid cell so the tallest sets the height and they still cross-fade. */
+    .panes { display: grid; aspect-ratio: auto; }
+    .pane { position: relative; inset: auto; grid-area: 1 / 1; }
+    .window { position: relative; left: auto; top: auto; bottom: auto; width: 100%; height: min(78vw, 420px); margin-bottom: 8px; }
+    .tabs { max-width: 100%; }
+    /* Pinned, it would sit on every heading; at the top of the page it stays out of the way. */
+    .prefs { position: absolute; }
+    .stage { padding-top: 12svh; }
+    /* One column of eleven cards: tighter so the list reads as one set rather than a long scroll. */
+    .bento { gap: 12px; }
+    .card { padding: 20px 20px 22px; border-radius: 20px; }
+    .card h3 { font-size: 16px; }
+    .viz { margin-top: 14px; }
+    .chips { gap: 6px; }
+    .chip { font-size: 13px; padding: 5px 10px; }
+    .polish { margin-bottom: 48px; }
+    .polish .after { font-size: 16px; }
   }
 </style>
 </head>

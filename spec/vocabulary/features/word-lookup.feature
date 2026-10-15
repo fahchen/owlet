@@ -1,326 +1,325 @@
-# English: word-lookup.feature · 简体中文: word-lookup.zh-CN.feature
-Feature: Looking up words while reading
-  While reading, the user looks up a word, phrase or whole sentence on the spot, understands it and hears it pronounced, without leaving the text.
-  Step one offers a lookup card and an explicit "Add to Notebook"; there is no query input field or query history, and a lookup by itself is never saved automatically.
+Feature: 阅读中查词
+  用户在阅读当场查询单词、短语或整句，理解意思并听取发音，不必离开正文。
+  第一阶段提供查词卡与显式「加入生词本」，不提供查询输入框或查询历史；查词本身不自动入库。
 
-  Rule: ⌘-click in read-only text looks up a word; selected text needs an explicit lookup (changed from a plain click to ⌘-click on 2026-10-11)
-    Scenario Outline: ⌘-click a word in read-only text
-      Given the user is reading the read-only text of "<area>"
-      When the user holds ⌘ and clicks the word "running"
-      Then a lookup card opens next to the word immediately
-      And the lookup range is that word
-      And the text content and paragraph layout do not change
+  Rule: 只读正文 ⌘ 单击查词，选中文本须明确查询（2026-10-11 由单击改为 ⌘ 单击）
+    Scenario Outline: 在只读正文中 ⌘ 单击单词
+      Given 用户正在阅读 "<区域>" 的只读正文
+      When 用户按住 ⌘ 单击单词 "running"
+      Then 立即在该词附近打开查词卡
+      And 查询范围是该词
+      And 正文内容与段落布局不变
       Examples:
-        | area |
-        | floating panel |
-        | text processing page result |
-        | notebook details |
-        | history details |
-        | study expressions |
+        | 区域 |
+        | 浮窗 |
+        | 文本处理页结果 |
+        | 生词本详情 |
+        | 历史详情 |
+        | 学习表达式 |
 
-    Scenario: A click without ⌘ is a normal text click
-      Given the user is reading read-only text
-      When the user clicks the word "running" without holding ⌘
-      Then no lookup card opens and no lookup request is sent
-      And the caret is placed or the selection is cleared as the system does
+    Scenario: 不按 ⌘ 的单击是普通文本单击
+      Given 用户正在阅读只读正文
+      When 用户不按 ⌘ 单击单词 "running"
+      Then 不打开查词卡或发起查询请求
+      And 按系统行为放置光标或取消选区
 
-    Scenario Outline: Look up explicitly after selecting
-      Given the user has selected a "<content>" in the text or in study expressions
-      Then a selection toolbar containing "Look Up" is shown
-      And no lookup card opens and no lookup request is sent
-      When the user looks up through "<entry point>"
-      Then the same kind of lookup card opens
-      And the lookup range is exactly the selected text
+    Scenario Outline: 选中后明确查询
+      Given 用户在正文或学习表达式中选中了一个 "<内容>"
+      Then 显示包含「查询」的选区工具栏
+      And 不打开查词卡或发起查询请求
+      When 用户通过 "<入口>" 查询
+      Then 打开同一种查词卡
+      And 查询范围严格等于选中的文本
       Examples:
-        | content | entry point |
-        | word | the selection toolbar's "Look Up" |
-        | phrase | the selection toolbar's "Look Up" |
-        | whole sentence | the context menu's "Look Up Selection" |
+        | 内容 | 入口 |
+        | 单词 | 选区工具栏「查询」 |
+        | 短语 | 选区工具栏「查询」 |
+        | 整句 | 右键「查询所选」 |
 
-    Scenario: Double-click word selection and drag selection do not trigger a lookup
-      Given the user is reading read-only text
-      When the user double-clicks a word or drags to select some text
-      Then the corresponding text selection is kept
-      And no lookup card opens and no lookup request is sent
-      And the user can still copy the selected text with the copy action
+    Scenario: 双击选词与拖拽选中不触发查询
+      Given 用户正在阅读只读正文
+      When 用户双击一个单词或拖拽选中一段文字
+      Then 保留相应的文本选区
+      And 不打开查词卡或发起查询请求
+      And 用户仍可用复制动作复制选中文本
 
-    Scenario: No lookup for a stale selection or an invalid hit
-      Given the user has selected "running"
-      When the user clears or changes the selection
-      Then the selection toolbar can no longer look up the old "running" selection
-      And with no selection, or only whitespace or punctuation, no lookup can be started
-      And ⌘-clicking empty space outside a word, trailing whitespace on a line or punctuation does not look up a neighbouring word
+    Scenario: 不查询旧选区或无效命中
+      Given 用户选中了 "running"
+      When 用户取消或更换选区
+      Then 选区工具栏不能继续查询旧的 "running" 选区
+      And 无选中、仅空白或标点时不能发起查询
+      And ⌘ 单击词外空白、行末空白或标点不查询相邻单词
 
-  Rule: Study rows keep click-to-save, and editable areas stay editable
-    Scenario: Clicking a study row and looking up a selection are independent
-      Given the study expression "follow up" is not saved yet
-      When the user clicks the study row
-      Then the expression is saved under the existing saving rules
-      And no lookup card opens
-      When the user clicks the study row again
-      Then it is unsaved under the existing rules
-      When the user drags to select "follow up" in it and clicks the toolbar's "Look Up"
-      Then a lookup card for the selected text opens
-      When the user holds ⌘ and clicks "follow" in it
-      Then a lookup card for that word opens
-      And dragging, ⌘-clicking and looking up never change the saved state
+  Rule: 学习行保留点击收藏，可编辑区域保留编辑
+    Scenario: 学习行点击与选区查询各自独立
+      Given 学习表达式 "follow up" 尚未收藏
+      When 用户点击该学习行
+      Then 按现有收藏规则收藏该表达式
+      And 不打开查词卡
+      When 用户再次点击该学习行
+      Then 按现有规则取消收藏
+      When 用户拖拽选中其中的 "follow up" 并点击工具栏「查询」
+      Then 打开该选中文本的查词卡
+      When 用户按住 ⌘ 单击其中的 "follow"
+      Then 打开该词的查词卡
+      And 拖拽、⌘ 单击与查询均不改变收藏状态
 
-    Scenario: Lookup does not make input fields read-only
-      Given the user is editing the source text on the text processing page or a notebook editable field
-      When the user clicks some text in it and types
-      Then placing the caret and editing text still work
-      And a click does not open a lookup card
+    Scenario: 查词不把输入框改成只读
+      Given 用户正在编辑文本处理页原文或生词本编辑字段
+      When 用户单击其中的文字并输入
+      Then 保留放置光标与编辑文本的行为
+      And 单击不打开查词卡
 
-  Rule: ⌘-click uses system word segmentation; a manual selection takes precedence
-    Scenario: Correct Chinese or Japanese segmentation by selecting by hand
-      Given the user ⌘-clicked a word the system recognised in Chinese or Japanese read-only text
-      And that range is not the whole expression the user wants
-      When the user selects the expression they want by hand and runs "Look Up"
-      Then the lookup card looks up the whole manual selection
-      And does not widen or narrow it by system segmentation
+  Rule: ⌘ 单击采用系统分词，手选范围优先
+    Scenario: 手选修正中文或日文切词
+      Given 用户在中文或日文只读正文中 ⌘ 单击查询了系统识别出的一个词
+      And 该范围不是用户想查的完整表达
+      When 用户手动选中想查的表达并执行「查询」
+      Then 查词卡查询整个手选范围
+      And 不再按系统分词扩大或缩小它
 
-    Scenario: Holding ⌘ while hovering previews a lookup without changing the selection
-      Given read-only text contains a word that can be looked up
-      When the user moves the pointer over the word without holding ⌘
-      Then there is no hover feedback and the pointer is a text cursor
-      When the user holds ⌘
-      Then the unselected word under the pointer shows system hover feedback distinguishable from the selected state
-      And the pointer becomes a hand
-      And the text size, spacing and paragraph layout do not change
-      And no lookup is sent
-      When the user releases ⌘ or moves the pointer away
-      Then the hover feedback disappears and the pointer returns to a text cursor
-      And an existing selection does not also show hover feedback
+    Scenario: 按住 ⌘ 悬停预告可查询，不改变选区
+      Given 只读正文中有可查询的单词
+      When 用户不按 ⌘ 将鼠标移到单词上
+      Then 没有悬停反馈，光标为文本光标
+      When 用户按住 ⌘
+      Then 鼠标下尚未选中的单词有与选中态可区分的系统悬停反馈
+      And 光标变为手形
+      And 不改变文字大小、间距或段落布局
+      And 不发起查询
+      When 用户松开 ⌘ 或鼠标移开
+      Then 悬停反馈消失，光标恢复文本光标
+      And 已有选区不叠加悬停反馈
 
-  Rule: With a source sentence, explain the meaning in context; without one, clearly give the general meaning
-    Scenario: The lookup covers a local context containing the whole selection
-      Given the user has selected "bank" in "We sat on the bank of the river."
-      When the user looks it up and there is no reusable result
-      Then the lookup uses a local context containing the selection
-      And the lookup card explains the meaning in that sentence
-      And may add the part of speech or usage when needed, without listing other senses
-      When the user selects text spanning sentences instead and looks it up
-      Then the query and the context cover the whole selection
-      And the selection is not truncated while still claiming to explain all of it
-      And the full text is not used as the context by default
+  Rule: 有原句时解释文中义，无原句时明确给出一般含义
+    Scenario: 查询覆盖完整选中的局部语境
+      Given 用户在 "We sat on the bank of the river." 中选中了 "bank"
+      When 用户查询且没有可复用结果
+      Then 使用包含该选中的局部语境查询
+      And 查词卡解释该句中的意思
+      And 必要时可附词性或用法，不要求列出其他义项
+      When 用户改为选中跨句文本并查询
+      Then 查询与语境覆盖完整选区
+      And 不截断选区后仍声称解释了全部文本
+      And 不默认把整篇正文作为语境
 
-    Scenario: An overlong selection is refused, not truncated
-      Given the selected text is longer than 300 characters
-      Then the selection toolbar shows a disabled "Look Up" with the reason "The selection is longer than 300 characters; shorten it to look it up"
-      And no lookup is sent with a truncated selection
-      When the selected text is within the limit but its sentence is longer than 1200 characters
-      Then the local context is a 1200-character slice centred on the selection and fully containing it
+    Scenario: 超长选区明确拒绝，不截断
+      Given 用户选中的文本超过 300 字
+      Then 选区工具栏显示不可用的「查询」并说明「所选超过 300 字，请缩短后查询」
+      And 不截断选区后发起查询
+      When 用户选中的文本未超限，但所在句子超过 1200 字
+      Then 局部语境是以选区为中心、完整包含选区的 1200 字片段
 
-    Scenario: The expression has no source sentence
-      Given an expression that can be looked up has no source sentence context
-      When the user looks up the expression
-      Then the lookup card gives the general meaning and marks it "No source sentence"
-      And no source sentence is invented
+    Scenario: 表达没有原句
+      Given 用户可查询的表达缺少原句语境
+      When 用户查询该表达
+      Then 查词卡给出一般含义并标明「无原句语境」
+      And 不编造来源句子
 
-  Rule: The meaning language follows the source rules; no picker is added
-    Scenario Outline: The source decides the meaning language
-      Given the target mappings are "English → Simplified Chinese" and "Simplified Chinese → English"
-      And the fallback target is Simplified Chinese
-      And the user is viewing "<source>"
-      When the user looks up "<expression>" in it
-      Then the meaning is in "<meaning language>"
-      And the lookup card offers no separate meaning language picker
+  Rule: 释义语言沿用来源规则，不新增选择器
+    Scenario Outline: 来源决定释义语言
+      Given 目标映射为「英语 → 简体中文」与「简体中文 → 英语」
+      And 兜底目标为简体中文
+      And 用户正在查看 "<来源>"
+      When 用户查询其中的 "<表达>"
+      Then 释义使用 "<释义语言>"
+      And 查词卡不提供独立的释义语言选择器
       Examples:
-        | source | expression | meaning language |
-        | the English source text of an English to Chinese result | bank | Simplified Chinese |
-        | the English translation of a Chinese to English result | bank | English |
-        | an English polish result | bank | Simplified Chinese |
-        | a Japanese polish result, with no target mapping for Japanese | 銀行 | Simplified Chinese |
-        | a study expression in Chinese to English history details | follow up | English |
-        | Chinese polish history details | 收敛 | English |
-        | a notebook entry whose meaning language was recorded as English, after the target mapping changed | 收敛 | English |
+        | 来源 | 表达 | 释义语言 |
+        | 英译中结果的英文原文 | bank | 简体中文 |
+        | 中译英结果的英文译文 | bank | 英语 |
+        | 英语润色结果 | bank | 简体中文 |
+        | 日语润色结果，日语无目标映射 | 銀行 | 简体中文 |
+        | 中译英历史详情的学习表达式 | follow up | 英语 |
+        | 中文润色历史详情 | 收敛 | 英语 |
+        | 释义语言已记为英语的生词本条目，目标映射后来已改 | 收敛 | 英语 |
 
-  Rule: The title is the queried form; the lemma and reading are shown only when they apply
-    Scenario: The queried form differs from the lemma
-      Given the user looks up "running"
-      When the model gives the lemma "run" and a reading in the current notation
-      Then the lookup card uses "running" as its title
-      And shows "run" and the reading as secondary information
-      And does not replace the queried form with the lemma
+  Rule: 标题对应查询词形，原形与读音只在适用时显示
+    Scenario: 查询词形与原形不同
+      Given 用户查询 "running"
+      When 模型给出原形 "run" 及当前体系的读音
+      Then 查词卡以 "running" 为标题
+      And 以次级信息显示 "run" 与读音
+      And 不用原形替换用户查询的词形
 
-    Scenario: No padded lemma, reading or sentence part of speech
-      Given the queried expression already has a valid meaning
-      When the lemma equals the form, the lemma is unknown or the reading cannot be determined
-      Then an identical lemma is not shown twice and missing fields are not invented
-      And a missing reading does not make a valid meaning fail
-      And when there is a reading, it uses the reading notation set for that text language
-      When the user looks up a whole sentence
-      Then no reading or part of speech is shown
-      And the meaning can still be viewed and the whole sentence can be spoken
+    Scenario: 不凑原形、读音或整句词性
+      Given 用户查询的表达已有有效释义
+      When 原形与词形相同、原形未知或读音无法确定
+      Then 不重复显示相同原形或编造缺失字段
+      And 读音缺失不使有效释义失败
+      And 有读音时沿用设置中该文本语言的读音体系
+      When 用户查询整句
+      Then 不显示读音与词性
+      And 仍可查看释义与播放整句发音
 
-  Rule: Identical lookups are reused; an older cross-sentence explanation must show its source and needs the user to look up again
-    Scenario: The same conditions across reading areas reuse the result or wait for the same lookup
-      Given in this launch the same text, local context and position of the selection in that context have been looked up
-      And the text language, meaning language, reading notation and model settings that affect the explanation have not changed
-      When the user starts the same lookup in another reading area
-      Then if it succeeded, the existing result is shown directly
-      And if it has not finished, the in-progress state of the same lookup is shown
-      And no duplicate lookup request is sent
+  Rule: 相同查询复用，跨句旧解释须标明来源并由用户重查
+    Scenario: 相同条件跨阅读区域复用或等待同一次查询
+      Given 本次启动内已查询过同一文本、局部语境及在语境中的选中位置
+      And 文本语言、释义语言、读音体系及影响解释的模型设置均未改变
+      When 用户在另一阅读区域发起相同查询
+      Then 已成功时直接展示已有结果
+      And 尚未完成时展示同一次查询的进行中状态
+      And 不重复发起查询请求
 
-    Scenario: The same word in a new sentence first shows the older explanation with its source
-      Given in this launch "bank" already has a successful explanation in a riverbank context
-      And the old and current lookups have the same text language, form and explanation settings
-      When the user looks up "bank" in a banking context
-      Then the old explanation is shown, clearly marked "This meaning comes from another sentence"
-      And the riverbank source context is shown
-      And "Look Up in This Sentence" is offered
-      And no request is sent automatically and the old explanation is not presented as the meaning in the banking context
-      When the user runs "Look Up in This Sentence" and the lookup succeeds
-      Then the explanation for the current banking context is shown
-      And the explanation for the riverbank context is not overwritten
+    Scenario: 同词换句先显示带来源的旧解释
+      Given 本次启动内已有 "bank" 在河岸语境中的成功解释
+      And 旧查询与当前查询的文本语言、词形及解释设置相同
+      When 用户在银行语境中查询 "bank"
+      Then 展示旧解释并明确标明「这条释义来自另一句」
+      And 显示河岸来源语境
+      And 提供「按当前语境重查」
+      And 不自动发起请求或把旧解释呈现为银行语境的意思
+      When 用户执行「按当前语境重查」且查询成功
+      Then 展示当前银行语境的解释
+      And 不覆盖河岸语境的解释
 
-    Scenario Outline: Without an exact result, an incompatible cross-sentence explanation is not shown
-      Given in this launch there is a successful older lookup result with a real source context
-      And the current context has no result for the same conditions
-      When the current lookup differs in "<difference>"
-      Then the older result is not reused
-      And this explicit lookup sends a new lookup request
+    Scenario Outline: 没有精确结果时不展示不兼容的跨句旧解释
+      Given 本次启动内有一个成功且有真实来源语境的旧查词结果
+      And 当前语境没有相同条件的结果
+      When 当前查询 "<差异>"
+      Then 不复用该旧结果
+      And 本次明确查询发起新的查询请求
       Examples:
-        | difference |
-        | the text language, or it is not yet known |
-        | the queried form, even with the same lemma |
-        | the meaning language |
-        | the reading notation |
-        | model settings that affect the explanation |
+        | 差异 |
+        | 文本语言不同或尚未知 |
+        | 查询词形不同，即使原形相同 |
+        | 释义语言改变 |
+        | 读音体系改变 |
+        | 影响解释的模型设置改变 |
 
-    Scenario: A general explanation without context does not pose as another sentence's explanation
-      Given in this launch there is a general explanation with the same form, language and settings but no source sentence context
-      When the user looks up that word in text that has a source sentence context
-      Then the general explanation is not shown as "from another sentence"
-      And this explicit lookup sends a new request for the current context
-      When the user looks it up again under the same no-context conditions
-      Then the original general explanation can be reused exactly
-      And it is still marked "No source sentence"
+    Scenario: 无语境的一般解释不冒充另一句的解释
+      Given 本次启动内有同词形、同语言、同设置但无原句语境的一般解释
+      When 用户在有原句语境的正文中查询该词
+      Then 不将该一般解释展示为「来自另一句」
+      And 本次明确查询发起当前语境的新请求
+      When 用户再次在相同的无语境条件下查询
+      Then 可精确复用原来的一般解释
+      And 仍标明「无原句语境」
 
-    Scenario: A failed re-lookup in the current context keeps the older explanation
-      Given the lookup card is showing an explanation from another sentence, with its source marked
-      When the user looks up again in the current context and it fails
-      Then the old explanation and its source context can still be read
-      And the old source marker stays, along with this failure and a retry action
-      And the old explanation is not saved as a successful result for the current context
+    Scenario: 当前语境重查失败保留旧解释
+      Given 查词卡正在显示带来源标识的另一句解释
+      When 用户按当前语境重查但失败
+      Then 旧解释与来源语境仍可阅读
+      And 保留旧来源标识并显示本次失败与重试入口
+      And 不把旧解释保存为当前语境的成功结果
 
-    Scenario: Lookup records are reused only within this launch, with a limit
-      Given the user has looked up many expressions in this launch
-      Then the reusable records have a capacity limit
-      When the user quits, relaunches the app and looks up the same expression again
-      Then results or failures from the previous launch are not reused
-      And the app has no persistent query history
+    Scenario: 查询记录只在本次启动内有限复用
+      Given 用户在本次启动内查询了大量表达
+      Then 可复用记录有容量上限
+      When 用户退出并重新启动应用后再次查询同一表达
+      Then 不复用上次启动的结果或失败状态
+      And 应用不出现持久查询历史
 
-  Rule: A failed lookup can be retried, and an invalid result is never treated as success
-    Scenario Outline: Service or response failure
-      Given the user explicitly looks up an expression
-      When "<failure>"
-      Then the lookup card explains the failure and offers a way to recover or retry
-      And this response is not shown as a successful meaning
-      And the text and existing entries stay as they were
+  Rule: 查询失败可重试，不把无效结果当作成功
+    Scenario Outline: 服务或返回失败
+      Given 用户明确查询一个表达
+      When "<失败>"
+      Then 查词卡说明失败并提供恢复或重试入口
+      And 不展示本次返回为成功释义
+      And 正文及已有条目保持原样
       Examples:
-        | failure |
-        | no model service is configured |
-        | the lookup request fails |
-        | the response structure does not match the lookup contract |
-        | the response does not correspond to this lookup's text |
-        | the returned language tags do not match this lookup's contract |
+        | 失败 |
+        | 模型服务未配置 |
+        | 查询请求失败 |
+        | 返回结构不符合查词约定 |
+        | 返回内容不对应本次查询文本 |
+        | 返回的语言标识不符合本次查词约定 |
 
-    Scenario: Reopening a failed lookup does not resend automatically
-      Given the lookup under the current conditions has failed
-      When the user closes and reopens a lookup card with the same conditions
-      Then the failure state is shown and no request is resent automatically
-      When the user explicitly runs "Retry"
-      Then the lookup is sent again
-      And the failure does not stop the user from looking up in other contexts
+    Scenario: 再开失败查询不自动重发
+      Given 当前条件的查询已失败
+      When 用户关闭后再次打开相同条件的查词卡
+      Then 展示失败状态并且不自动重发请求
+      When 用户明确执行「重试」
+      Then 重新发起该查询
+      And 失败不阻止用户查询其他语境
 
-  Rule: The lookup card is never overwritten by an older response, and does not reopen itself after closing
-    Scenario: Switching lookups quickly
-      Given the user looks up A and then immediately looks up B
-      When the result for A arrives after the result for B
-      Then only the lookup card for B is kept
-      And the result for A neither overwrites B nor opens another card
+  Rule: 查词卡不被旧响应覆盖，关闭后不自行重开
+    Scenario: 快速切换查询
+      Given 用户查询 A 后立即查询 B
+      When A 的结果晚于 B 到达
+      Then 只保留 B 的查词卡
+      And A 的结果不覆盖 B 或重新打开另一张卡片
 
-    Scenario: An older result does not pop back after closing or leaving
-      Given the lookup card is looking something up
-      When the user closes the card or leaves the page
-      And the lookup completes afterwards
-      Then the lookup card does not pop up again
+    Scenario: 关闭或离开后旧结果不弹回
+      Given 查词卡正在查询
+      When 用户关闭卡片或离开该页面
+      And 查询随后完成
+      Then 不重新弹出查词卡
 
-    Scenario: Lookups in the floating panel keep reading focus and close in layers
-      Given the user has selected text in the floating panel and opened a lookup card
-      Then the selected text can still be copied
-      And using the selection toolbar or the lookup card does not close the floating panel
-      When the user presses Esc
-      Then the lookup card closes first and focus returns to the text
-      And the floating panel stays open
-      When the user presses Esc again
-      Then the floating panel closes under its existing rules
+    Scenario: 浮窗内查询保留阅读焦点与分层关闭
+      Given 用户在浮窗正文中选中文本并打开查词卡
+      Then 选中文本仍可复制
+      And 操作选区工具栏或查词卡不关闭浮窗
+      When 用户按 Esc
+      Then 先关闭查词卡并恢复正文焦点
+      And 浮窗保持打开
+      When 用户再次按 Esc
+      Then 按原有规则关闭浮窗
 
-  Rule: Pronunciation is played by the user on demand and never blocks the meaning
-    Scenario: Speak the queried form on demand and stop earlier audio
-      Given the lookup card's title is "running" and its lemma is "run"
-      And a system voice is available for that text language
-      When the user opens the lookup card
-      Then nothing is spoken automatically
-      When the user runs "Speak"
-      Then "running" is spoken with an available system voice for that text language
-      And the displayed reading string is not read out directly
-      When the user plays again, switches cards or closes the card
-      Then the earlier audio stops
-      And new audio starts only when the user plays again
+  Rule: 发音由用户手动播放，不阻塞释义
+    Scenario: 手动播放查询词形并停止旧音
+      Given 查词卡标题为 "running"，原形为 "run"
+      And 该文本语言有可用系统语音
+      When 用户打开查词卡
+      Then 不自动发音
+      When 用户执行「发音」
+      Then 用该文本语言的可用系统语音朗读 "running"
+      And 不直接朗读展示的读音字符串
+      When 用户再次播放、切换或关闭卡片
+      Then 停止先前的发音
+      And 只有再次播放时才开始新的发音
 
-    Scenario: No usable voice, or the text language is unknown
-      Given the expression's text language has no usable system voice or is not yet known
-      When the user views the lookup card
-      Then the pronunciation button stays but is disabled, with the reason "No system voice available"
-      And the pronunciation language is not guessed from the page language
-      And the meaning can still be viewed, without first downloading a voice
+    Scenario: 没有可用语音或文本语言未知
+      Given 表达的文本语言没有可用系统语音或尚未知
+      When 用户查看查词卡
+      Then 发音按钮保留但不可用，并说明「暂无系统语音」
+      And 不根据页面语言猜测发音语言
+      And 仍可查看释义，不要求先下载语音
 
-  Rule: Keyboard and accessibility users can reach the same lookup action
-    Scenario: Look up without relying on hover
-      Given the user is reading text with the keyboard or VoiceOver
-      When the user selects text and finds the lookup action
-      Then they can trigger the same lookup as the toolbar or the context menu
-      And they are told when the lookup is in progress or has failed
-      And they can close the card and keep reading
+  Rule: 键盘与辅助功能可使用同一查询动作
+    Scenario: 不依赖鼠标悬停查询
+      Given 用户使用键盘或 VoiceOver 阅读正文
+      When 用户选中文本并发现查询动作
+      Then 能明确触发与工具栏或右键相同的查询
+      And 能获知查询进行中与失败状态
+      And 能关闭卡片并继续阅读
 
-  Rule: A lookup is not saving or writing back (since 2026-10-11 the card can explicitly add to the notebook)
-    Scenario: Looking up by itself changes no saved content
-      Given the user is reading a notebook entry that already has a meaning, or a text processing result
-      When the user looks up, looks up again or plays the pronunciation
-      Then no notebook entry is added and nothing is saved automatically
-      And saved meanings, readings and user edits are not overwritten
-      And nothing is written back to the text or the source app
+  Rule: 查词不等同收藏或写回（2026-10-11 起卡片可显式加入生词本）
+    Scenario: 查询本身不改变已保存内容
+      Given 用户正在阅读已有释义的生词本条目或文本处理结果
+      When 用户查询、重查或播放发音
+      Then 不新增生词本条目或自动收藏
+      And 不覆盖已存释义、读音或用户编辑的内容
+      And 不写回正文或来源应用
 
-    Scenario: Explicitly add to the notebook from the card
-      Given the lookup card shows this lookup's meaning
-      When the user runs "Add to Notebook"
-      Then an entry with the same language and expression is created or reused, using the queried form, this context and that meaning
-      And the meaning, meaning language and known lemma come from this lookup's result, with no extra model request
-      And the card stays open and the action shows "Saved"
-      And nothing is written back to the text or the source app
+    Scenario: 在卡片里显式加入生词本
+      Given 查词卡已显示本次查询的释义
+      When 用户执行「加入生词本」
+      Then 以查询词形、本次语境与该释义新增或复用同语言同表达的条目
+      And 释义、释义语言与已知原形取自本次查词结果，不为此另发模型请求
+      And 卡片保持打开，该动作显示为「已收藏」
+      And 不写回正文或来源应用
 
-    Scenario: Remove from the notebook in the card
-      Given the word is already in the notebook and the card shows "Saved"
-      When the user runs the action again
-      Then the entry is removed from the notebook immediately and the action returns to not saved
-      And no confirmation or extra submit is needed
+    Scenario: 卡片里取消收藏
+      Given 该词已在生词本中且卡片显示「已收藏」
+      When 用户再次执行该动作
+      Then 该条目立即从生词本移除并回到未收藏状态
+      And 不需要确认或额外提交
 
-    Scenario: Save the same word again from another sentence
-      Given the word has already been saved from one sentence
-      When the user looks up the same word in another sentence and adds it to the notebook again
-      Then the existing entry is reused and this context is appended
-      And the existing meaning and source sentences are not overwritten
+    Scenario: 同一词在另一句再收藏
+      Given 该词已从一句收藏过
+      When 用户在另一句查询同一词并再次加入生词本
+      Then 复用原条目并追加本次语境
+      And 不覆盖原有释义与原句
 
-    Scenario: A failed add does not interrupt reading
-      Given the user runs "Add to Notebook"
-      When saving fails
-      Then the card shows the failure and keeps the meaning readable
-      And the notebook stays as it was
+    Scenario: 加入失败不影响阅读
+      Given 用户执行「加入生词本」
+      When 保存失败
+      Then 卡片显示失败并保持可读的释义
+      And 生词本内容保持原样
 
-    Scenario: A lookup without context can also be added
-      Given the lookup has no source sentence context
-      When the user runs "Add to Notebook"
-      Then the entry stores the queried form and this meaning, without a fake source sentence
-      And the card still marks it "No source sentence"
+    Scenario: 无语境的查询也能加入
+      Given 查询没有原句语境
+      When 用户执行「加入生词本」
+      Then 条目保存查询词形与本次释义，不伪造原句
+      And 卡片仍标明「无原句语境」

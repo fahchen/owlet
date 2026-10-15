@@ -10,9 +10,9 @@
 - [术语](glossary.zh-CN.md)：统一概念。
 - `processing/features/`：翻译、润色、快捷入口、替换与工具栏错误呈现。
 - `learning/features/`：独立开关、临时展开、推荐收藏与释义语言。
-- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.zh-CN.feature) 五类区域均已实现（T48–T51），待最终验收。
+- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.feature) 五类区域均已实现（T48–T51），待最终验收。
 - `history/features/`：保存、查看、搜索与删除历史；按天分组、关联从该记录收藏的词条。
-- `settings/features/`：自填模型服务配置、[本机 agent CLI 作为模型服务](settings/features/local-agent.zh-CN.feature)、自定义 Prompt、按源语言决定翻译目标、按语言配置读音体系、浮窗玻璃效果，以及原生窗口的输入焦点。
+- `settings/features/`：自填模型服务配置、[本机 agent CLI 作为模型服务](settings/features/local-agent.feature)、自定义 Prompt、按源语言决定翻译目标、按语言配置读音体系、浮窗玻璃效果，以及原生窗口的输入焦点。
 - [LLM 返回契约](llm/contract.zh-CN.md)：默认 Prompt、JSON Schema 与失败行为。
 - [屏幕区域 OCR 输入方案](../docs/screen-region-input.zh-CN.md)：未实现的输入来源设计提案，不改现有读取路径。
 - [连续语音输入方案](../docs/speech-input.zh-CN.md)：未实现的输入来源设计提案，本轮不做。
@@ -33,7 +33,7 @@
 - [玻璃强度决策](settings/decisions/BDR-0014-system-liquid-glass-intensity.zh-CN.md)：液态玻璃及其强度由系统设置 › 外观统一调整；应用的「玻璃效果」只区分两种玻璃变体，并给出一句说明与打开该面板的入口，不提供自己的强度控件。
 - [服务商预设决策](settings/decisions/BDR-0015-provider-presets.zh-CN.md)：`Provider` 只表示协议与两个本地 agent；HTTP 厂商是数据表 `ServicePreset`，选中即填好公开的 Base URL 与默认模型，返回格式能力跟着预设走，模型记忆按服务分槽。
 
-Gherkin 使用英文关键字；`.feature` 中的行为描述为英文，`.zh-CN.feature` 副本为中文。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。未完成的工作见 [路线图](../docs/roadmap.zh-CN.md)；技术选型不作为领域场景。
+Gherkin 使用英文关键字、中文行为描述；`.feature` 只有中文一份。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。未完成的工作见 [路线图](../docs/roadmap.zh-CN.md)；技术选型不作为领域场景。
 
 ## 范围边界
 

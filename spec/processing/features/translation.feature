@@ -1,133 +1,132 @@
-# English: translation.feature · 简体中文: translation.zh-CN.feature
-Feature: Translation
-  The user can translate selected or typed text into the target language.
+Feature: 翻译
+  用户可以将选中或输入的文本翻译为目标语言。
 
-  Rule: Detect the source language automatically and remember the target language
-    Scenario: Translate English for the first time
-      Given the user has not set a target language
-      And the source text is "Could you send me the report?"
-      When the user runs Translate
-      Then the result conveys a request to send the report, in Chinese
-      And the source language is detected as English
+  Rule: 自动识别原文语言并记住目标语言
+    Scenario: 首次翻译英文
+      Given 用户未设置目标语言
+      And 原文为 "Could you send me the report?"
+      When 用户执行翻译
+      Then 结果表达请求发送报告的含义且使用中文
+      And 原文语言识别为英语
 
-    Scenario: Remember the switched target language
-      Given the user switches the target language to Japanese
-      When the user restarts the app and translates Chinese text
-      Then the target language is still Japanese
-      And the result is in Japanese and keeps the original meaning
+    Scenario: 记住切换后的目标语言
+      Given 用户将目标语言切换为日语
+      When 用户重启应用并翻译中文文本
+      Then 目标语言仍为日语
+      And 结果使用日语并保留原意
 
-  Rule: After a read failure, the user can still translate by entering text manually
-    Scenario: Enter text manually
-      Given there is no selected text that can be read
-      And the floating toolbar has not expanded yet
-      When the user invokes the Translate shortcut
-      Then a compact read-failure notice with an Enter Text entry is shown
-      And the full floating toolbar does not expand
-      When the user chooses Enter Text
-      Then the full window allows typing or pasting text
-      When the user enters "お疲れさまです" and runs Translate
-      Then the full window shows the translation in the target language
+  Rule: 读取失败后仍可通过手动输入翻译
+    Scenario: 手动输入
+      Given 当前没有可读取的选中文本
+      And 浮动工具栏尚未展开
+      When 用户调用翻译快捷键
+      Then 显示紧凑的读取失败提示和手动输入入口
+      And 不展开完整浮动工具栏
+      When 用户选择手动输入
+      Then 在完整窗口中允许输入或粘贴文本
+      When 用户输入 "お疲れさまです" 并执行翻译
+      Then 完整窗口显示目标语言译文
 
-  Rule: With nothing selected, the focused field's full text can be used (off by default)
-    Scenario: Focus is in an editable field and no text is selected
-      Given the user has turned on "Use the whole text of the focused field when nothing is selected"
-      And keyboard focus is in an editable field with no text selected
-      And the field contains text
-      When the user invokes the Translate or Polish shortcut
-      Then the field's full text is used as the source text
-      And no read-failure notice is shown and no Enter Text entry is offered
-      When the user invokes the Translate and Replace shortcut
-      And the translation is generated successfully
-      Then the field's text is selected in full first, then the whole text is replaced with the translation
-      And the field contains only the translation, with the source text not appended at the insertion point
+  Rule: 未选中文字时可用焦点输入框的全文（默认关闭）
+    Scenario: 焦点在可编辑输入框且没有选中文字
+      Given 用户开启「未选中文字时使用焦点所在输入框的全部文本」
+      And 键盘焦点在一个可编辑输入框内且没有选中任何文字
+      And 该输入框里有文本
+      When 用户调用翻译或润色快捷键
+      Then 使用该输入框的全部文本作为原文
+      And 不显示读取失败提示，也不提供手动输入入口
+      When 用户调用翻译并替换快捷键
+      And 译文生成成功
+      Then 先全选该输入框，再用译文替换整段文本
+      And 输入框内只剩译文，不在插入点追加原文
 
-    Scenario: Behavior is unchanged when the conditions are not met
-      Given the user has turned on "Use the whole text of the focused field when nothing is selected"
-      And the focused element is not editable, or the field has no text
-      When the user invokes the Translate or Polish shortcut
-      Then the behavior is exactly the same as with the setting off
+    Scenario: 不满足条件时行为不变
+      Given 用户开启「未选中文字时使用焦点所在输入框的全部文本」
+      And 焦点所在元素不可编辑，或输入框内没有文本
+      When 用户调用翻译或润色快捷键
+      Then 行为与未开启该设置时完全一致
 
-  Rule: Plain translation does not write back directly
-    Scenario: View and copy the translation
-      Given the user has a translation from the plain Translate entry
-      Then the original selection stays unchanged
-      When the user copies the result
-      Then the clipboard contains the translation
+  Rule: 普通翻译不直接写回
+    Scenario: 查看并复制译文
+      Given 用户通过普通翻译入口获得译文
+      Then 原选区内容保持不变
+      When 用户复制结果
+      Then 剪贴板包含译文
 
-  Rule: Copying the result completes the interaction
-    Scenario: Copy the translation in the panel
-      Given the user has a translation in the panel
-      When the user copies the result
-      Then the clipboard contains the translation
-      And the panel closes
+  Rule: 复制结果即完成一次交互
+    Scenario: 在浮窗复制译文
+      Given 用户已在浮窗获得译文
+      When 用户复制结果
+      Then 剪贴板包含译文
+      And 浮窗关闭
 
-  Rule: A failure must not be presented as success
-    Scenario: The service rejects the request
-      Given the translation service returns an authentication failure
-      When the user runs Translate
-      Then the user sees an understandable error and can retry after fixing the configuration
-      And the source text stays unchanged
+  Rule: 处理失败不得呈现为成功
+    Scenario: 服务拒绝请求
+      Given 翻译服务返回认证失败
+      When 用户执行翻译
+      Then 用户看到可理解的错误并可在修正配置后重试
+      And 原文保持不变
 
-    Scenario: An older request finishes after a newer one
-      Given the user starts a translation of text A
-      And then starts a new translation of text B
-      When the result for text A returns after the result for text B
-      Then the current result still belongs to text B
+    Scenario: 旧请求晚于新请求完成
+      Given 用户对文本 A 发起翻译
+      And 随后对文本 B 发起新翻译
+      When 文本 A 的结果晚于文本 B 返回
+      Then 当前结果仍属于文本 B
 
-  Rule: The translation preview aligns sentence by sentence
-    Scenario: Translate several English sentences into Chinese
-      Given the user chooses the Sentence by Sentence display
-      And the source text contains several English sentences
-      When the Chinese translation finishes
-      Then each English sentence has its Chinese translation shown below it
-      And a long sentence that wraps stays in the same aligned group
-      And copy or replace uses only the Chinese translation
+  Rule: 翻译预览逐句对齐
+    Scenario: 多句英文译为中文
+      Given 用户选择逐句对照显示
+      And 原文包含多个英文句子
+      When 中文译文生成完成
+      Then 每句英文下方显示对应中文译句
+      And 长句自然换行后仍保持在同一对照组
+      And 复制或替换仅使用中文译文
 
-  Rule: The translation display preference is configurable and persistent
-    Scenario: Separate panes by default
-      Given the user has not changed the translation display
-      When translation finishes
-      Then the full source text and the full translation are shown separately
-      And they are not interleaved sentence by sentence
+  Rule: 翻译显示偏好可配置且持久化
+    Scenario: 默认分区显示
+      Given 用户未修改翻译显示方式
+      When 翻译完成
+      Then 完整原文与完整译文分别显示
+      And 不逐句交错排列
 
-    Scenario: Both arrangements show both sides at once
-      Given the source text and the translation have both been generated
-      When the content area is at least 600pt wide
-      Then the source text and the translation sit side by side in the same glass card, separated by a divider and scrolling separately
-      When the content area is narrower than 600pt
-      Then the source text and the translation are stacked vertically and scroll separately
+    Scenario: 两种排列都同时显示两侧
+      Given 原文与译文都已生成
+      When 内容区宽度不小于 600pt
+      Then 原文与译文在同一张玻璃卡片中左右并排，以分隔线隔开并各自滚动
+      When 内容区宽度小于 600pt
+      Then 原文与译文上下排列并各自滚动
 
-    Scenario: Specify the source language on the source side
-      Given the mapping points English to Japanese
-      And the source text is Japanese
-      When the user sets the source language to English on the source side
-      Then the target language is taken from the English row, which is Japanese
-      And the request itself does not send the source language; the model still detects it
+    Scenario: 原文一侧指定源语言
+      Given 映射表把英语指向日语
+      And 原文是日语
+      When 用户在原文一侧把源语言指定为英语
+      Then 目标语言按英语那一行取日语
+      And 请求本身不发送源语言，模型仍自行识别
 
-    Scenario: Switch to sentence by sentence
-      Given the user already has a translation result
-      When the user switches the display to Sentence by Sentence on the General page of settings
-      Then the full window and the panel use the same display preference
-      And the model is not requested again because the display changed
-      And the Sentence by Sentence preference is kept after a restart
+    Scenario: 转为逐句对照
+      Given 用户已经获得翻译结果
+      When 用户在设置的通用页把显示方式切为逐句对照
+      Then 完整窗口和浮层使用同一显示偏好
+      And 不因显示方式改变而重新请求模型
+      And 重启后仍保留逐句对照偏好
 
-  Rule: The full window follows the Figma Translate / Polish artboard layout
-    Scenario: Translate and polish layout
-      Given the user opens the Translate & Polish page
-      Then the left of the toolbar is an icon-only Translate / Polish segmented control, with the selected icon blue for Translate and green for Polish, followed by the current mode's title
-      And when translating, the right side shows the source language, », and the target language; Polish shows only the source language
-      And the language buttons size to the current option
-      And the page has no run button, and the source placeholder hints ⌘↩
-      And the source text and the result are in one glass card with a 34pt corner radius, with the Study and Copy buttons floating at the bottom right
-      And processing text and errors are centered horizontally and vertically in the result column
+  Rule: 完整窗口按 Figma Translate／Polish 画板布局
+    Scenario: 翻译与润色布局
+      Given 用户打开翻译与润色页面
+      Then 工具栏左侧是仅图标的翻译／润色分段控件，选中图标翻译为蓝、润色为绿，其后是当前模式标题
+      And 翻译时右侧为源语言、» 与目标语言；润色只有源语言
+      And 语言按钮宽度随当前选项
+      And 页面没有执行按钮，原文占位提示 ⌘↩
+      And 原文与结果在一张 34pt 圆角的玻璃卡片中，右下角浮着学习与复制按钮
+      And 处理中文字与错误在结果栏上下左右居中
 
-  Scenario: Text containers use the system glass material
-    When the source text, the translation, or the expanded study content is viewed
-    Then the container uses the system Liquid Glass effect
-    And body text keeps the system text style, with no hand-drawn blur, shadow or translucent fill
+  Scenario: 正文容器采用系统玻璃材质
+    When 查看原文、译文或展开学习内容
+    Then 容器使用系统 Liquid Glass 效果
+    And 正文保持系统文字样式，不手绘模糊、阴影或透明填充
 
-  Scenario: Study matches the panel
-    When the user clicks Study after the result is ready
-    Then the left column shows the result and the right column lists the study expressions
-    And the Back button returns to the source text and the result
-    And the source text and the result sit side by side when the content width reaches 600pt
+  Scenario: 学习与浮窗一致
+    When 结果就绪后点击学习
+    Then 左栏显示结果，右栏列出学习表达
+    And 返回按钮回到原文与结果
+    And 内容宽度达到 600pt 时原文与结果并排

@@ -1,75 +1,74 @@
-# English: notebook.feature · 简体中文: notebook.zh-CN.feature
-Feature: Notebook management
-  The user can find, view and delete notebook content.
+Feature: 生词本管理
+  用户可以查找、查看和删除生词本内容。
 
-  Rule: The notebook can be viewed persistently
-    Scenario: View after a restart
-      Given the user has saved a Japanese phrase
-      When the user restarts the app and opens the notebook
-      Then the phrase and its context can still be viewed
+  Rule: 生词本可持久查看
+    Scenario: 重启后查看
+      Given 用户已收藏一个日语短语
+      When 用户重启应用并打开生词本
+      Then 该短语及语境仍可查看
 
-    Scenario: Search and language filter
-      Given the notebook contains English and Japanese entries
-      When the user selects the Japanese filter and types a search term
-      Then only Japanese entries matching the search are shown
+    Scenario: 搜索与语言筛选
+      Given 生词本包含英语和日语条目
+      When 用户选择日语筛选并输入搜索词
+      Then 仅显示符合搜索内容的日语条目
 
-    Scenario: Language, tag and starred filters combine
-      Given the notebook contains several languages, several tags and some starred entries
-      When the user selects English, the tag "work" and checks starred only
-      Then only entries meeting all three are shown
+    Scenario: 语言、标签与重点筛选叠加
+      Given 生词本包含多种语言、多个标签与部分重点条目
+      When 用户选择英语、标签 "工作" 并勾选仅重点
+      Then 只显示同时满足三者的条目
 
-    Scenario: Multiple tags match any of them
-      Given the notebook has entries tagged "work" and entries tagged "email"
-      When the user selects both the "work" and "email" tags
-      Then entries with either tag are shown
+    Scenario: 多个标签取并集
+      Given 生词本中有条目分别带标签 "工作" 与 "邮件"
+      When 用户同时选择标签 "工作" 与 "邮件"
+      Then 显示带任一标签的条目
 
-    Scenario: Filter by source app
-      Given the notebook has English entries met in Slack and in the Mail app
-      When the user selects English and chooses Slack as the source app
-      Then only English entries met in Slack are shown
+    Scenario: 按来源 App 筛选
+      Given 生词本中有在 Slack 与邮件应用遇到的英语条目
+      When 用户选择英语并选择来源 App 为 Slack
+      Then 只显示在 Slack 遇到的英语条目
 
-    Scenario: Delete an entry
-      Given the user has saved an entry
-      When the user deletes the entry and restarts the app
-      Then the notebook no longer contains the entry
+    Scenario: 删除条目
+      Given 用户已收藏一个条目
+      When 用户删除该条目并重启应用
+      Then 生词本不再包含该条目
 
-  Rule: Saved items are not deleted with history
-    Scenario: Clear the source history
-      Given the user saved an expression from a history record
-      When the user clears all history
-      Then the saved item and its source sentence context can still be viewed
-      And the context still shows its entry point and source app
-      But it can no longer jump to that history record
+  Rule: 收藏不随历史删除
+    Scenario: 清空来源历史
+      Given 用户从历史记录收藏了一个表达
+      When 用户清空全部历史
+      Then 收藏及其原句语境仍可查看
+      And 语境仍显示来源入口与来源 App
+      But 不再能跳转到该历史记录
 
-  Rule: The notebook uses native split view management
-    Scenario: The list and the details scroll independently
-      Given the notebook has enough entries and long contexts
-      When the user selects an entry and scrolls the details
-      Then the list keeps its own scroll position
-      And in the toolbar, search and filter form one group and delete is an action on the right
-      And there are no export or copy buttons
+  Rule: 使用原生分栏管理生词本
+    Scenario: 列表与详情独立滚动
+      Given 生词本包含足够多的条目和长语境
+      When 用户选中条目并滚动详情
+      Then 列表保持自身滚动位置
+      And 工具栏中搜索与筛选为一组，删除为右侧操作
+      And 不提供导出或复制按钮
 
-  Scenario: The count scrolls with the expression list
-    When the user views the notebook
-    Then the notebook window title is not repeated
-    And the expression count is a grey, non-selectable label in the list's first row that scrolls with the content
+  Scenario: 数量随生词列表滚动
+    When 查看生词本
+    Then 不显示重复的生词本窗口标题
+    And 表达数量作为列表首行的灰色非选择标签随内容滚动
 
-  Scenario: Browsing adjacent entries and empty states
-    When the user views the list
-    Then the count is centred in the scroll margin above the first item, without adding extra top safe-area margin
-    And the toolbar's previous and next switch entries in the current filter order and are disabled at the ends
-    And an empty notebook offers to go to Translate, and no matches offers to clear the filters
+  Scenario: 浏览相邻条目与空状态
+    When 查看列表
+    Then 数量居中显示在第一项上方的滚动留白，不增加顶部安全留白
+    And 工具栏上一条和下一条按当前筛选顺序切换，边界禁用
+    And 空库可前往翻译，无匹配结果可清除筛选
 
-  Scenario: Multi-select delete and a separate navigation group
-    When the user selects several expressions in the list with Command or Shift
-    Then deleting first confirms the selected count and deletes only the selected expressions and their contexts
-    And previous and next are unavailable during multi-select
-    And previous and next sit in their own toolbar group on the right
+  Scenario: 多选删除与独立导航组
+    When 使用 Command 或 Shift 在列表中选择多个表达
+    Then 删除前确认所选数量，只删除所选表达与其语境
+    And 多选时上一条下一条不可用
+    And 上一条下一条在右侧独立工具栏组中
 
-  Scenario: Single-level language filter
-    When the user opens the filter menu
-    Then all languages and each language are shown directly, with no submenu
+  Scenario: 一级语言筛选
+    When 打开筛选菜单
+    Then 直接显示全部语言及各语言，无二级菜单
 
-  Scenario: Notes-style toolbar search
-    When the user views the notebook
-    Then the system search field sits at the far right of the toolbar, separate from the navigation and content action groups
+  Scenario: Notes 式工具栏搜索
+    When 查看生词本
+    Then 系统搜索位于工具栏最右侧，与导航及内容动作分组分离

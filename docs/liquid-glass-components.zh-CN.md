@@ -279,7 +279,7 @@ T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使�
 
 ## T47 查词卡组件对照（浮窗已实现，其余待实现）
 
-行为见 [查词规格](../spec/vocabulary/features/word-lookup.zh-CN.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。
+行为见 [查词规格](../spec/vocabulary/features/word-lookup.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。
 
 | 阅读区域 | 保留行为与原生承载边界 |
 | --- | --- |

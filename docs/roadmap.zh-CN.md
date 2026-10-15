@@ -11,7 +11,7 @@
 | 事项 | 还剩什么 | 位置 |
 | --- | --- | --- |
 | 按 Figma 画板重做的浮窗 | 对照画板的视觉复核：圆角、错误文字颜色、活跃玻璃、交互状态。 | [Panel 调试与测试](panel-debugging-and-testing.zh-CN.md) |
-| 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.zh-CN.feature](../spec/vocabulary/features/word-lookup.zh-CN.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md) |
+| 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md) |
 | 学习推荐的纠正重试 | 用真实模型复验：一次纠正能修好违约的返回。 | [LLM 契约](../spec/llm/contract.zh-CN.md) |
 | 选中文字读取 | 辅助功能路径、⌘C 兜底与粘贴写回已实现；在各真实应用上的兼容性仍需手测。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
 | 调试页重排 | 跑 `mise run dev`，各做一次失败与成功的请求，看展开动效与复制内容。 | `Owlet/Settings/DebugSettingsPane.swift` |

@@ -33,7 +33,7 @@ This directory is the entry point to the product spec of this project, based on 
 - [Glass intensity decision](settings/decisions/BDR-0014-system-liquid-glass-intensity.md): Liquid Glass and its intensity are adjusted centrally in System Settings › Appearance; the app's "Glass Effect" only chooses between two glass variants, with a one-line explanation and an entry that opens that pane, and offers no intensity control of its own.
 - [Provider presets decision](settings/decisions/BDR-0015-provider-presets.md): `Provider` represents only the protocol and the two local agents; HTTP vendors are a data table, `ServicePreset`, and picking one fills in the public Base URL and default model; the response format capability follows the preset, and remembered models are kept per service.
 
-Gherkin uses English keywords; scenario text is English in the `.feature` files and Simplified Chinese in the `.zh-CN.feature` copies. The examples are concrete illustrations drawn from the confirmed rules; they do not require fixed wording from the model and are not yet bound to step definitions. Unfinished work is in the [roadmap](../docs/roadmap.md); technology choices are not domain scenarios.
+Gherkin uses English keywords with scenario text in Simplified Chinese; the `.feature` files exist in Chinese only. The examples are concrete illustrations drawn from the confirmed rules; they do not require fixed wording from the model and are not yet bound to step definitions. Unfinished work is in the [roadmap](../docs/roadmap.md); technology choices are not domain scenarios.
 
 ## Scope Boundary
 

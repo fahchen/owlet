@@ -1,158 +1,157 @@
-# English: service.feature · 简体中文: service.zh-CN.feature
-Feature: Configure the model service yourself
-  The user uses their own compatible service and API Key; settings live in a separate settings window.
+Feature: 自行配置模型服务
+  用户使用自己的兼容服务与 API Key，设置放在独立的设置窗口里。
 
-  Rule: Settings are a separate window grouped into tabs
-    Scenario: Open from the App menu
-      When the user chooses "Settings…" in the App menu or presses ⌘,
-      Then a separate settings window opens
-      And the main window sidebar offers no settings entry
+  Rule: 设置是独立窗口并按标签页分组
+    Scenario: 从 App 菜单打开
+      When 用户选择 App 菜单的「设置…」或按下 ⌘,
+      Then 打开独立的设置窗口
+      And 主窗口侧栏不提供设置入口
 
-    Scenario: Tab grouping
-      Given the user opens settings
-      Then there are four tabs, General, Languages, Model, and Shortcuts (plus Debug when the debug switch is on), and Prompt belongs to the Model tab
-      And settings within each tab are shown in groups
+    Scenario: 标签页分组
+      Given 用户打开设置
+      Then 分为通用、语言、模型、快捷键四个标签页（打开调试开关时另有调试页），Prompt 归在模型页
+      And 每个标签页内的设置项再按分组显示
 
-    Scenario: Return to the last tab
-      Given the user last stayed on the Languages tab
-      When the user opens settings again
-      Then the Languages tab is shown directly
+    Scenario: 回到上次的标签页
+      Given 用户上次停留在语言标签页
+      When 用户重新打开设置
+      Then 直接显示语言标签页
 
-    Scenario: Changes take effect immediately
-      Given the user opens settings
-      Then there is no page-wide save button
-      When the user changes any setting
-      Then it takes effect immediately and is persisted
+    Scenario: 改动即时生效
+      Given 用户打开设置
+      Then 不存在整页的保存按钮
+      When 用户修改任一项设置
+      Then 该项立即生效并持久化
 
-  Rule: The language subset limits the available languages
-    Scenario: Default subset
-      Given the user has not changed the language subset
-      When the user opens the Languages tab
-      Then it lists Simplified Chinese, English, and Japanese
-      And the target language and the mapping table only offer these three languages
+  Rule: 语言子集限定可选语言
+    Scenario: 默认子集
+      Given 用户未修改语言子集
+      When 用户打开语言标签页
+      Then 列出简体中文、英语、日语
+      And 目标语言与映射表只提供这三种语言
 
-    Scenario: Add a language
-      When the user adds a language on the Languages tab
-      Then the language appears among the candidates for the target language and the mapping table
+    Scenario: 添加语言
+      When 用户在语言标签页添加一种语言
+      Then 该语言出现在目标语言与映射表的候选中
 
-    Scenario: Removing a language cleans up
-      Given a language is used in the mapping table and is the current fallback target
-      When the user removes that language
-      Then mapping rows that reference it are deleted with it
-      And the fallback target moves to the first language in the subset
+    Scenario: 移除语言时收干净
+      Given 某种语言已在映射表中使用且是当前兜底目标
+      When 用户移除该语言
+      Then 引用它的映射行一并删除
+      And 兜底目标改到子集内的第一种语言
 
-  Rule: The user decides where requests are sent
-    Scenario: Save the service configuration
-      When the user sets the compatible endpoint address, API Key, and model name
-      And the user runs a translation
-      Then that service and model process the text
-      And the app explains that processed text is sent to the configured service
+  Rule: 用户决定请求发送到哪里
+    Scenario: 保存服务配置
+      When 用户设置兼容接口地址、API Key 与模型名
+      And 用户执行翻译
+      Then 使用该服务与模型处理文本
+      And 应用说明处理文本会发送到配置的服务
 
-    Scenario: Incomplete configuration
-      Given required model service configuration is missing
-      When the user starts a translation
-      Then the user is prompted to complete the configuration
-      And the request is not sent to any other default service
+    Scenario: 未完成配置
+      Given 必需的模型服务配置缺失
+      When 用户发起翻译
+      Then 提示用户补齐配置
+      And 不将请求发送到其他默认服务
 
-    Scenario: Each provider remembers its own model name
-      Given the user has filled in a model name for the compatible service
-      When the user switches the provider to DeepSeek
-      Then the model name changes to DeepSeek's preset model name
-      And switching back to the compatible service restores the name the user entered
-      And switching to a provider with nothing recorded yet uses that provider's default: an HTTP service uses its preset model, a local agent is left empty to use its own default model
-      And switching and restoring are persisted immediately like other settings
+    Scenario: 每个服务商记住自己的模型名
+      Given 用户已为兼容服务填写模型名
+      When 用户把服务商切换为 DeepSeek
+      Then 模型名换成 DeepSeek 的预设模型名
+      And 再切回兼容服务时恢复用户填过的名字
+      And 换成还没记录过的服务商时用该服务商的默认，即 HTTP 服务用它的预设模型、本机 agent 留空表示用它自己的默认模型
+      And 切换与恢复都与其他设置一样立即持久化
 
-    Scenario: Choose a provider preset
-      Given the user opens the Model tab
-      When the user chooses Moonshot / Kimi from the service list
-      Then the Base URL is filled with that service's public address
-      And the model name is filled with that service's default model
-      And the user can still change the Base URL and model name
-      And the choice is persisted immediately
+    Scenario: 选择服务商预设
+      Given 用户打开模型标签页
+      When 用户从服务列表选择 Moonshot / Kimi
+      Then 基础 URL 填成该服务公开的地址
+      And 模型名填成该服务的默认模型
+      And 用户仍可修改基础 URL 与模型名
+      And 该选择立即持久化
 
-    Scenario: The custom service remains available
-      When the user chooses OpenAI Compatible
-      Then the Base URL, model name, and API Key are all filled in by the user
-      And choosing this entry does not change the address and model name the user already entered
+    Scenario: 自定义服务仍然可用
+      When 用户选择 OpenAI Compatible
+      Then 基础 URL、模型名与 API Key 都由用户自己填写
+      And 选择该入口不修改用户已填的地址与模型名
 
-    Scenario: The response format capability follows the selected service
-      Given the user chooses a provider that only accepts json_object
-      When the app builds a request
-      Then the request's response format is json_object
-      And the response shape is written in the System Prompt
-      When the user chooses a provider that supports JSON Schema
-      Then the request carries the JSON Schema
+    Scenario: 返回格式能力跟着所选服务走
+      Given 用户选择只接受 json_object 的服务商
+      When 应用组装一次请求
+      Then 请求的返回格式为 json_object
+      And 返回形状写在 System Prompt 里
+      When 用户选择支持 JSON Schema 的服务商
+      Then 请求携带 JSON Schema
 
-  Rule: Private credentials and local content are protected
-    Scenario: Credentials are not exported with content
-      Given the user has configured an API Key and saved expressions
-      When the user exports the vocabulary
-      Then the export does not contain the API Key
+  Rule: 私密凭证与本地内容受保护
+    Scenario: 凭证不随内容导出
+      Given 用户已配置 API Key 并收藏表达
+      When 用户导出生词本
+      Then 导出内容不包含 API Key
 
-    Scenario: Content stays local
-      Given the user has generated history and saved items
-      When the user restarts the app
-      Then this content can be read on this machine
-      And no app account login or sync is required
+    Scenario: 内容本地保留
+      Given 用户已生成历史并保存收藏
+      When 用户重启应用
+      Then 可在本机读取这些内容
+      And 不需要登录应用账号或开启同步
 
-  Rule: The user can customize the System Prompt
-    Scenario: View the default and submit custom content
-      Given the user has not changed the translate System Prompt
-      When the user opens settings
-      Then the full default translate Prompt is shown
-      When the user edits the translate Prompt and leaves the editor
-      Then later Translate and Translate and Replace use that configuration
-      And the polish Prompt is unaffected
+  Rule: 用户可以自定义 System Prompt
+    Scenario: 查看默认并提交自定义内容
+      Given 用户未修改翻译 System Prompt
+      When 用户打开设置
+      Then 显示完整默认翻译 Prompt
+      When 用户编辑翻译 Prompt 并离开编辑框
+      Then 后续翻译和翻译并替换使用该配置
+      And 润色 Prompt 不受影响
 
-    Scenario: Restore the default
-      Given the user has a custom polish Prompt
-      When the user restores the default polish Prompt and leaves the editor
-      Then later Polish uses the default content shown
+    Scenario: 恢复默认
+      Given 用户已有自定义润色 Prompt
+      When 用户恢复润色默认 Prompt 并离开编辑框
+      Then 后续润色使用显示的默认内容
 
-    Scenario: Availability of the restore default entry
-      Given the user has not changed the translate System Prompt
-      Then the Restore Default button on the translate Prompt editor row is disabled
-      When the user edits the translate Prompt
-      Then the button is enabled
-      And the Restore Default button on the polish Prompt editor row is unaffected
+    Scenario: 恢复默认入口的可用性
+      Given 用户未修改翻译 System Prompt
+      Then 翻译 Prompt 编辑器行的恢复默认按钮不可用
+      When 用户编辑翻译 Prompt
+      Then 该按钮可用
+      And 润色 Prompt 编辑器行的恢复默认按钮不受影响
 
-    Scenario: Reject a blank Prompt
-      When the user tries to submit a System Prompt containing only whitespace
-      Then the user is told it cannot take effect
-      And the active configuration is unchanged
+    Scenario: 拒绝空白 Prompt
+      When 用户尝试提交仅含空白的 System Prompt
+      Then 提示不能生效
+      And 已生效的配置不变
 
-  Rule: The user can adjust reasoning effort
-    Scenario: Keep the provider default
-      Given the user has not set reasoning effort
-      When the app builds a request
-      Then the request contains no reasoning effort parameter
-      And reasoning behavior is decided by the provider and model
+  Rule: 用户可以调整思考强度
+    Scenario: 沿用服务商默认
+      Given 用户未设置思考强度
+      When 应用组装一次请求
+      Then 请求不包含思考强度参数
+      And 思考行为由服务商与模型决定
 
-    Scenario: Turn off or change reasoning effort
-      Given the user sets reasoning effort to Off or a specific level
-      When the app builds a request
-      Then the request contains the corresponding reasoning effort parameter
-      And the JSON response contract and local validation are unchanged
+    Scenario: 关闭或改变思考强度
+      Given 用户将思考强度设为关闭或某一档
+      When 应用组装一次请求
+      Then 请求包含对应的思考强度参数
+      And JSON 返回契约与本地校验不变
 
-    Scenario: Levels map per model
-      Given the user chooses a reasoning effort level
-      When the current model supports that level
-      Then the request sends the value that model accepts
-      And when the model does not support that level, the nearest lower level is sent
+    Scenario: 档位按模型映射
+      Given 用户选择某个思考强度档位
+      When 当前模型支持该档位
+      Then 请求发送该模型接受的值
+      And 模型不支持该档位时发送最近的较低档
 
-    Scenario: The model does not use reasoning effort
-      Given the current model does not accept a reasoning parameter
-      When the user chooses any level
-      Then the request contains no reasoning effort parameter
+    Scenario: 模型不使用思考强度
+      Given 当前模型不接受推理参数
+      When 用户选择任一档位
+      Then 请求不包含思考强度参数
 
-  Rule: A custom Prompt does not lift the JSON response contract
-    Scenario: Non-JSON text is returned
-      Given the user runs Translate and Replace
-      When the model returns content that fails JSON contract validation
-      Then the user is told the response format does not meet requirements
-      And the source text is not replaced and nothing is saved as successful history
+  Rule: 自定义 Prompt 不解除 JSON 返回契约
+    Scenario: 返回非 JSON 文本
+      Given 用户执行翻译并替换
+      When 模型返回无法通过 JSON 契约校验的内容
+      Then 提示返回格式不符合要求
+      And 不替换原文也不写成成功历史
 
-    Scenario: JSON pairs miss source text
-      Given the source text contains two sentences
-      When the JSON returned by the model only covers the first sentence
-      Then the result is rejected and the source text is kept
+    Scenario: JSON 配对缺失原文
+      Given 原文包含两个句子
+      When 模型返回的 JSON 仅覆盖第一个句子
+      Then 拒绝该结果并保留原文

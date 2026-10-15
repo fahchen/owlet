@@ -22,7 +22,7 @@
 
 ## 影响
 
-- `spec/vocabulary/features/word-lookup.zh-CN.feature`：「查词不等同收藏或写回」规则改写，补加入、取消、追加语境、失败与无语境五组场景。
+- `spec/vocabulary/features/word-lookup.feature`：「查词不等同收藏或写回」规则改写，补加入、取消、追加语境、失败与无语境五组场景。
 - `spec/product.zh-CN.md`：「阅读中查词」的范围句去掉「查询不写回生词本」。
 - `spec/llm/contract.zh-CN.md`：查词段「查词失败只影响卡片」保留，入库改为按用户动作写条目。
 - 实现：`CollectionAction` 增按查词结果的收藏与成员判断，`VocabularyStore` 增按查词快照保存，`LookupPresenter` 携带生词本动作，`LookupCard` 增动作行；`OwletApp` 让浮窗与主窗口的查词共用应用级生词本。

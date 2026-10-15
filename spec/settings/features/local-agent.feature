@@ -1,165 +1,164 @@
-# English: local-agent.feature · 简体中文: local-agent.zh-CN.feature
-Feature: Use a local agent CLI as the model service
-  A Claude Code or Codex CLI already logged in on this machine can be used directly as the model service: the app only asks it for one answer,
-  and does not treat it as a coding agent that reads and writes code (BDR-0013).
+Feature: 把本机的 agent CLI 当作模型服务
+  已在本机登录的 Claude Code 或 Codex CLI 可以直接当模型服务用：应用只向它要一次回答，
+  不把它当成会读写代码的编码 agent（BDR-0013）。
 
-  Rule: Local agents are selectable alongside HTTP services
-    Scenario: Select a local agent
-      Given the user is logged in to an agent CLI on this machine
-      When the user selects it as the provider in settings
-      Then the settings page no longer asks for a Base URL and API Key
-      And translate, polish, lookup, and study all use it
+  Rule: 本地 agent 与 HTTP 服务并列可选
+    Scenario: 选择本地 agent
+      Given 用户在本机已登录某个 agent CLI
+      When 用户在设置里把它选为服务商
+      Then 设置页不再要求 Base URL 与 API Key
+      And 翻译、润色、查词与学习都用它处理
 
-    Scenario: The provider list always shows every local agent
-      Given the user sees two groups in the provider list, remote services and local agents
-      When an agent CLI is not installed on this machine
-      Then that agent still appears in the list, labeled not detected
-      And the user can choose that agent's executable by hand right there
-      And the remote services group is unaffected
+    Scenario: 服务商列表始终列出全部本地 agent
+      Given 用户在服务商列表里看到远程服务与本地 agent 两组
+      When 本机没有安装某个 agent CLI
+      Then 该 agent 仍然出现在列表里，并标注未检测到
+      And 用户可以就地手动选择该 agent 的可执行文件
+      And 远程服务一组不受影响
 
-    Scenario: Lookup follows the user's own shell and does not depend on the app's launch environment
-      Given the app was launched from Finder and inherited only the minimal system PATH
-      When the app looks for an agent CLI
-      Then it searches the way the user's login shell would, giving that shell a PATH that includes the standard install directories
-      And when the login shell cannot find it, it searches once more with an interactive login shell, because .zshrc is read only by interactive shells
-      And when both shells fail, it checks common locations directly, such as ~/.local/bin, ~/.claude/local, /opt/homebrew/bin, and /usr/local/bin
-      And the result does not depend on the PATH the app itself was launched with
-      And the direct check only enumerates known directories and never walks the whole home directory
+    Scenario: 查找按用户自己的 shell 进行，且不依赖应用启动时的环境
+      Given 应用从 Finder 启动，继承到的 PATH 只有系统最小集
+      When 应用查找某个 agent CLI
+      Then 它按用户登录 shell 的方式查找，并给该 shell 一个含标准安装目录的 PATH
+      And 登录 shell 找不到时，再按交互式登录 shell 查找一次，因为 .zshrc 只被交互式 shell 读取
+      And 两次 shell 都失败时，直接检查 ~/.local/bin、~/.claude/local、/opt/homebrew/bin、/usr/local/bin 等常见位置
+      And 查找结果不依赖应用自身被启动时的 PATH
+      And 直查只枚举已知目录，不遍历整个用户目录
 
-    Scenario: Switching to a local agent scans actively
-      Given an agent CLI is installed on this machine and the user has not set a path for it
-      When the user selects it as the provider
-      Then the app finds it automatically, fills in the executable, and shows the version
-      And the user does not need to click "Detect" first
+    Scenario: 切到本地 agent 时主动扫描
+      Given 本机已安装某个 agent CLI 且用户没有为它指定过路径
+      When 用户把它选为服务商
+      Then 应用自动找到它、填好可执行文件并显示版本
+      And 用户不需要先点「检测」
 
-    Scenario: A non-executable path counts as missing configuration
-      Given the user selected a local agent but has no executable path, or the path is no longer executable
-      When the user starts a translation
-      Then the user is prompted to complete the configuration
-      And the request is not sent to any default service
+    Scenario: 路径不可执行时视为配置缺失
+      Given 用户选了本地 agent 但没有可执行文件路径，或该路径已不可执行
+      When 用户发起翻译
+      Then 提示用户补齐配置
+      And 不把请求发到任何默认服务
 
-    Scenario: The path comes from detection or a manual choice
-      When the user clicks "Detect"
-      Then the app looks for the agent the way the user's login shell would and shows the detected version
-      And when detection fails it explains why in place and suggests choosing manually, without changing the saved path
-      And a path the user picked by hand is not overwritten by scan results unless it is no longer executable
+    Scenario: 路径由探测或手选得到
+      When 用户点「检测」
+      Then 应用按用户登录 shell 的方式查找该 agent 并显示探测到的版本
+      And 探测失败时就地说明原因并提示可以手动选择，不改动已保存的路径
+      And 用户手选的路径不被扫描结果覆盖，除非它已不可执行
 
-    Scenario: Switching providers does not keep the previous service's model name
-      Given the user filled in a model name for an HTTP service
-      When the user changes the provider to a local agent
-      Then the model name is left empty and the agent's own default model is used
+    Scenario: 切换服务商时不留上一个服务的模型名
+      Given 用户为 HTTP 服务填写了模型名
+      When 用户把服务商改为本地 agent
+      Then 模型名留空，改用该 agent 自己的默认模型
 
-  Rule: Queryable capabilities are provided per provider
-    Scenario: Choose a model from the agent's own list
-      Given the user selected Codex CLI in settings
-      When the app reads that agent's model list
-      Then the model name is offered as a dropdown whose first item is the agent's own default model
-      And models marked as hidden in the list do not appear
+  Rule: 能反查的能力按 provider 各自给出
+    Scenario: 从 agent 自己的清单里选模型
+      Given 用户在设置里选了 Codex CLI
+      When 应用读取该 agent 的模型清单
+      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      And 清单里标记为不公开的模型不出现
 
-    Scenario: A provider that lists effort levels provides them per model
-      Given the user selected a model on Codex CLI
-      When the app reads the model catalog
-      Then reasoning effort maps to the value range that model declares, and an unsupported level takes the nearest lower level within that model
-      And when the model declares no reasoning support at all, the request sends no effort parameter
-      And Claude Code gets the same per-model data from its own cached model catalog
+    Scenario: 能给出强度清单的 provider 按模型给
+      Given 用户在 Codex CLI 上选了某个模型
+      When 应用读取模型目录
+      Then 思考强度按该模型声明的值域映射，不支持的档位取该模型内最近的较低档
+      And 模型声明完全不支持推理时，请求不发送强度参数
+      And Claude Code 从它自己缓存的模型目录得到同一份按模型数据
 
-    Scenario: Read the list from Claude Code's own cached model catalog
-      Given the user selected Claude Code in settings
-      When the app can read its cached model catalog
-      Then the model name is offered as a dropdown whose first item is the agent's own default model
-      And when a model declares a reasoning effort range, the supported levels are shown right under the effort row
-      And a saved model name that is not in the list remains selectable
+    Scenario: 从 Claude Code 自己缓存的模型目录里读清单
+      Given 用户在设置里选了 Claude Code
+      When 应用能读到它缓存的模型目录
+      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      And 每个模型声明了思考强度值域时，强度行下就地显示它支持的档位
+      And 已保存但清单里没有的模型名仍可选
 
-    Scenario: Claude Code stays free-form when the cache cannot be read
-      Given the user selected Claude Code in settings
-      When its cached model catalog is missing, empty, or has changed shape
-      Then the model name is a free-form text field and no error is shown
-      And leaving it empty means using its own default model
-      And the saved model name is unchanged and requests can still be sent
+    Scenario: 缓存读不出来时 Claude Code 保持自由填写
+      Given 用户在设置里选了 Claude Code
+      When 它缓存的模型目录缺失、为空或形状变了
+      Then 模型名是自由填写的文本框，不弹出错误
+      And 留空表示使用它自己的默认模型
+      And 已保存的模型名不变，请求照旧可以发出
 
-    Scenario: Reading the list fails
-      When reading the model list fails
-      Then the reason is shown in place under the model name row with a retry option
-      And the saved model name is unchanged
+    Scenario: 清单读取失败
+      When 读取模型清单失败
+      Then 在模型名行下就地提示原因并提供重试
+      And 已保存的模型名不变
 
-  Rule: Agents that can constrain the response shape use their flag
-    Scenario: The agent gets the same schema used for local validation
-      Given the selected agent accepts a response schema
-      When the app builds a translation, study, or lookup request
-      Then the request carries the contract's schema (a file for Codex, an argument for Claude Code)
-      And local validation and correction retry are not relaxed at all
+  Rule: 能约束响应形状的 agent 用它的开关
+    Scenario: 交给 agent 的是同一份本地校验的 schema
+      Given 所选 agent 接受响应 Schema
+      When 应用组装一次翻译、学习或查词请求
+      Then 请求带上该契约的 Schema（Codex 用文件，Claude Code 用参数）
+      And 本地校验与纠正重试完全不放松
 
-    Scenario: A provider that does not accept a schema carries the shape in the prompt
-      Given the selected provider is DeepSeek or another service that only supports json_object
-      Then the request only asks for JSON
-      And the shape is still carried by the prompt and enforced by local validation
+    Scenario: 不接受 Schema 的 provider 把形状写在提示词里
+      Given 所选 provider 是 DeepSeek 或其他只支持 json_object 的服务
+      Then 请求只要求 JSON
+      And 形状仍由提示词承载、由本地校验兜住
 
-  Rule: Borrow only the model, not its tools or context
-    Scenario: Both agents run with tools and context off
-      Given the user selected either local agent in settings
-      When the app sends a request
-      Then Claude Code runs with all tools and all customizations disabled
-      And Codex does not read the user config, so its MCP servers are not connected, user hooks do not run, and the shell tool is off
-      And both use a throwaway empty directory as working directory
+  Rule: 只借用模型，不用它的工具与上下文
+    Scenario: 两个 agent 都关掉工具与上下文
+      Given 用户在设置里选了任一本地 agent
+      When 应用发起一次请求
+      Then Claude Code 以禁用全部工具与全部自定义的方式运行
+      And Codex 不读用户配置，因此它的 MCP 服务器不被连接、用户 hooks 不执行，shell 工具关闭
+      And 两者的工作目录都是一次性的空目录
 
-    Scenario: The user's sessions and project files are not read
-      When the app sends a request
-      Then the agent does not load the user's project configuration or session history
-      And the temporary directory is deleted after the request ends
+    Scenario: 不读取用户的会话与项目文件
+      When 应用发起一次请求
+      Then agent 不加载用户的项目配置与会话历史
+      And 请求结束后临时目录被删除
 
-    Scenario: Requests still work after the CLI version changes
-      Given the Codex CLI installed on this machine changed to another version
-      When the settings page scans this agent
-      Then requests only send the feature flags that version itself declares, plus config keys a local probe confirmed it accepts
-      And before any scan only the two long-lived flags are sent, and no unverified config key
-      And a flag missing in that version only means fewer things are turned off this time, never a failed request
+    Scenario: 换了一个 CLI 版本仍然能发出请求
+      Given 本机安装的 Codex CLI 换了一个版本
+      When 设置页扫描这个 agent
+      Then 请求只发送该版本自己声明存在的特性开关，以及本地探测确认它接受的配置项
+      And 还没有扫描过时只发送长期存在的两个开关，不发送任何未经验证的配置项
+      And 某个开关在该版本不存在只是这次少关几个，不会让请求失败
 
-  Rule: Responses still follow the same contract
-    Scenario: Delivering the prompt and the source text
-      Given a translation request
-      When the app calls a local agent
-      Then the behavior prompt and the fixed contract are delivered through that agent's channel
-      And the user's source text never appears in command-line arguments
+  Rule: 返回仍走同一份契约
+    Scenario: 提示词与原文的投递
+      Given 一次翻译请求
+      When 应用调用本地 agent
+      Then 行为提示词与固定契约按该 agent 的通道交付
+      And 用户原文不出现在命令行参数里
 
-    Scenario: Replies are validated on the same path
-      Given a local agent returned content
-      When the app parses the reply
-      Then structure, source concatenation, and target language validation are exactly the same as for HTTP services
-      And on a contract failure it likewise corrects only once
+    Scenario: 回复按同一条路径校验
+      Given 本地 agent 返回了内容
+      When 应用解析该回复
+      Then 结构、原文拼接与目标语言的校验与 HTTP 服务完全相同
+      And 契约失败时同样只纠正一次
 
-    Scenario: Structured output on the json_object route
-      Given the selected agent does not accept this app's response schema
-      When the app builds the request
-      Then the shape is written in the prompt and JSON is required
-      And local validation is not relaxed because of it
+    Scenario: 结构化输出按 json_object 路线
+      Given 所选 agent 不接受本应用的响应 Schema
+      When 应用组装请求
+      Then 形状写在提示词里并要求 JSON
+      And 本地校验不因此放松
 
-  Rule: Failures are diagnosable
-    Scenario: The agent exits non-zero
-      When the agent exits with a non-zero status
-      Then the message says the local agent failed and includes its error output
-      And nothing is written back or saved as successful history
+  Rule: 失败可诊断
+    Scenario: agent 非零退出
+      When agent 以非零状态退出
+      Then 提示本地 agent 运行失败并带上它的错误输出
+      And 不写回、不存成成功历史
 
-    Scenario: Timeout
-      Given a request exceeded the configured timeout
-      Then the app terminates the process and reports a connection failure
+    Scenario: 超时
+      Given 一次请求超过了设定的超时上限
+      Then 应用结束该进程并按连接类失败提示
 
-    Scenario: User cancels
-      Given a local agent request is in progress
-      When the user cancels
-      Then the process is terminated
-      And late output does not change the interface and is not written back
+    Scenario: 用户取消
+      Given 一次本地 agent 请求正在进行
+      When 用户取消
+      Then 该进程被结束
+      And 迟到的输出不改变界面，也不写回
 
-    Scenario: Debug page
-      Given the user turned on the debug switch
-      When a local agent request finishes
-      Then the debug page records the command line and prompt actually executed, and the model's raw reply
-      And the record contains no keys
+    Scenario: 调试页
+      Given 用户打开了调试开关
+      When 一次本地 agent 请求结束
+      Then 调试页记下实际执行的命令行与提示词，以及模型的原始返回
+      And 记录里不含任何密钥
 
-  Rule: Resources are bounded
-    Scenario: The number of concurrent processes is capped
-      Given several requests start at once
-      Then no more agent processes run at once than the configured limit, and the rest queue
+  Rule: 资源有界
+    Scenario: 同时在跑的进程数有上限
+      Given 多个请求同时发起
+      Then 同时在跑的 agent 进程不超过设定上限，其余排队
 
-    Scenario: No session files are left behind
-      When the app calls a local agent
-      Then each agent runs without persisting sessions
+    Scenario: 不留下会话文件
+      When 应用调用本地 agent
+      Then 各 agent 以不落盘会话的方式运行

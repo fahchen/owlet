@@ -46,8 +46,8 @@
 
 ## 影响
 
-- `spec/vocabulary/features/editing.zh-CN.feature`（新增）：以上规则的场景。
-- `spec/vocabulary/features/notebook.zh-CN.feature`：「不提供导出、复制或编辑按钮」改为「不提供导出或复制按钮」；筛选规则加入标签与重点，与语言筛选叠加。
+- `spec/vocabulary/features/editing.feature`（新增）：以上规则的场景。
+- `spec/vocabulary/features/notebook.feature`：「不提供导出、复制或编辑按钮」改为「不提供导出或复制按钮」；筛选规则加入标签与重点，与语言筛选叠加。
 - `spec/product.zh-CN.md`：「个人生词本」与「学习内容与收藏」两节对应句子更新。
 - 术语：新增「释义」「笔记」「标签」「重点」。
 - 数据：释义、笔记、标签、重点各需持久字段；表达与语言的唯一性约束不变。字段设计见 `Owlet/Vocabulary/` 中的 SwiftData 模型。

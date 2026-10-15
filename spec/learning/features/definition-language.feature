@@ -1,81 +1,80 @@
-# English: definition-language.feature · 简体中文: definition-language.zh-CN.feature
-Feature: Meaning language
-  The meanings the user gets are in the language they are practicing, not a fixed native language.
+Feature: 释义语言
+  用户得到的释义使用自己正在练习的语言，而不是固定的母语。
 
   Background:
-    Given the target mapping is "English → Simplified Chinese" and "Simplified Chinese → English"
-    And the fallback target is Simplified Chinese
+    Given 目标映射为「英语 → 简体中文」与「简体中文 → 英语」
+    And 兜底目标为简体中文
 
-  Rule: In translation, the meaning strictly uses this run's target language
-    Scenario: Save an English expression while reading English
-      Given the user translates a piece of English into Chinese
-      When the user saves "follow up" from the source text
-      Then the meaning is in Chinese
+  Rule: 翻译场景下释义严格使用本次目标语言
+    Scenario: 读英文时收藏英文表达
+      Given 用户把一段英文翻译成中文
+      When 用户从原文收藏 "follow up"
+      Then 释义是中文
 
-    Scenario: Save a Chinese expression while writing Chinese
-      Given the user translates a piece of Chinese into English
-      When the user saves "把问题收敛一下" from the source text
-      Then the meaning is in English
+    Scenario: 写中文时收藏中文表达
+      Given 用户把一段中文翻译成英文
+      When 用户从原文收藏 "把问题收敛一下"
+      Then 释义是英文
 
-    Scenario: Saving from the translation side still uses the target language
-      Given the user translates a piece of Chinese into English
-      When the user saves "follow up" from the translation
-      Then the meaning is in English, not Chinese
+    Scenario: 从译文一侧收藏仍用目标语言
+      Given 用户把一段中文翻译成英文
+      When 用户从译文收藏 "follow up"
+      Then 释义是英文，而不是中文
 
-  Rule: In polishing, the meaning language is the source language looked up in the target mapping
-    Scenario: Polish English
-      Given the user polishes a piece of English
-      When the user expands the study area
-      Then the recommendations and meanings are in Chinese
+  Rule: 润色场景下释义语言按目标映射查原文语言
+    Scenario: 润色英文
+      Given 用户润色一段英文
+      When 用户展开学习区
+      Then 推荐与释义是中文
 
-    Scenario: Polish Chinese
-      Given the user polishes a piece of Chinese
-      When the user expands the study area
-      Then the recommendations and meanings are in English
+    Scenario: 润色中文
+      Given 用户润色一段中文
+      When 用户展开学习区
+      Then 推荐与释义是英文
 
-    Scenario: The source language is not in the mapping
-      Given the user polishes a piece of Japanese
-      When the user expands the study area
-      Then the recommendations and meanings use the fallback target language
+    Scenario: 原文语言不在映射表中
+      Given 用户润色一段日语
+      When 用户展开学习区
+      Then 推荐与释义使用兜底目标语言
 
-  Rule: Generation and regeneration both use the current mapping, and stored meanings are not recomputed automatically
-    Scenario: Regenerate with the current mapping
-      Given the user saved a Chinese expression while translating "Chinese → English"
-      And later changed the mapping to "Chinese → Japanese"
-      When the user regenerates the entry's meaning in the notebook
-      Then the meaning becomes Japanese
+  Rule: 生成与重新生成都按当下的映射，已存的释义不自动重算
+    Scenario: 按当下映射重新生成
+      Given 用户在「中文 → 英语」翻译时收藏了一条中文表达
+      And 之后把映射改为「中文 → 日语」
+      When 用户在生词本中重新生成该条目的释义
+      Then 释义变为日语
 
-    Scenario: A stored meaning is not recomputed when settings change
-      Given the user saved an entry with an English meaning
-      And later changed the mapping to "Chinese → Japanese"
-      When the user opens the notebook detail
-      Then the entry still shows the original English meaning
-      And the detail offers "regenerate with the current settings"
-      And no request is made until it is clicked
+    Scenario: 已存释义不因设置改变而自动重算
+      Given 用户收藏了一条带英文释义的条目
+      And 之后把映射改为「中文 → 日语」
+      When 用户打开生词本详情
+      Then 该条目仍显示原来的英文释义
+      And 详情里提供「按当前设置重新生成」
+      And 未点击前不发起任何请求
 
-    Scenario: Filling in a missing meaning uses the current mapping
-      Given the user saved a Chinese expression while translating "Chinese → English", but its meaning has not been generated
-      And later changed the mapping to "Chinese → Japanese"
-      When the user clicks Fill In Meaning
-      Then the meaning request uses Japanese
+    Scenario: 补充未生成的释义按当下映射
+      Given 用户在「中文 → 英语」翻译时收藏了一条中文表达，但释义尚未生成
+      And 之后把映射改为「中文 → 日语」
+      When 用户点击补充释义
+      Then 释义请求使用日语
 
-    Scenario: The entry records the actual language of the stored meaning
-      Given an entry already has a meaning
-      Then the meaning language recorded on the entry matches the actual language of that meaning
+    Scenario: 条目记录的是已存释义实际的语言
+      Given 一条条目已有释义
+      Then 条目记录的释义语言与该释义实际的语言一致
 
-    Scenario: Save from a translation record in the history detail
-      Given a history record translating English into Chinese
-      When the user saves an expression from that record's study area
-      Then the meaning is in Chinese
+    Scenario: 从历史详情收藏翻译记录
+      Given 一条把英文翻译成中文的历史记录
+      When 用户从该记录的学习区收藏表达
+      Then 释义是中文
 
-    Scenario: Save from a polish record in the history detail
-      Given a history record polishing Chinese
-      When the user saves an expression from that record's study area
-      Then the meaning is in English
+    Scenario: 从历史详情收藏润色记录
+      Given 一条润色中文的历史记录
+      When 用户从该记录的学习区收藏表达
+      Then 释义是英文
 
-  Rule: Entries from before the upgrade are not backfilled
-    Scenario: Old entries keep their meanings
-      Given an entry saved before the upgrade has a Chinese meaning
-      When the user opens the notebook after upgrading
-      Then the entry's meaning is unchanged
-      And its meaning language is recorded as Simplified Chinese
+  Rule: 升级前的条目不回填
+    Scenario: 旧条目保持原有释义
+      Given 升级前收藏的条目带有中文释义
+      When 用户升级后打开生词本
+      Then 该条目释义内容不变
+      And 其释义语言记为简体中文

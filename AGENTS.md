@@ -50,7 +50,7 @@ A release changes only `MARKETING_VERSION` (the version users see) and `CURRENT_
 
 ## Documentation language
 
-- Documentation is in English by default: `foo.md` is English and `foo.zh-CN.md` is its Simplified Chinese copy, and the first line of each links to the other. `.feature` files in `spec/` are split the same way into `x.feature` and `x.zh-CN.feature`. Change both together; their content must match.
+- Documentation is in English by default: `foo.md` is English and `foo.zh-CN.md` is its Simplified Chinese copy, and the first line of each links to the other. The exception is the Gherkin `.feature` files in `spec/`: they are written in Simplified Chinese only (English keywords, Chinese scenario text) and must parse with the official Gherkin parser. Change both together; their content must match.
 - Links in an English document point to English files; links in a Chinese copy point to `.zh-CN` files.
 - Code comments (including documentation comments) are always in English; interface text still goes through `L10n` as described under *Interface language*.
 

@@ -49,7 +49,7 @@
 
 ## 影响
 
-- `spec/vocabulary/features/enrichment.zh-CN.feature`（新增）：以上规则的场景。
+- `spec/vocabulary/features/enrichment.feature`（新增）：以上规则的场景。
 - `spec/product.zh-CN.md`：「个人生词本」加按需补充一条；「语言」分组加读音体系。
 - `spec/llm/contract.zh-CN.md`：按需补充的独立请求与返回字段。
 - `spec/README.zh-CN.md`：settings 域说明加读音体系。

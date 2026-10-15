@@ -98,7 +98,7 @@
 - 卡片可把当前词显式加入生词本：一个 `加入生词本`／`已收藏` 的书签动作，保存查询词形、本次语境、本次释义、释义语言与已知原形，不另发请求；卡片保持打开，再点一次即移除。复用生词本既有的同语言同表达规则，查词本身仍不自动入库（见 [BDR-0010](vocabulary/decisions/BDR-0010-collect-from-lookup.zh-CN.md)）。
 - 仍然不做：查询输入框、从卡片写回生词本已有释义、查询历史与外部词典服务，留待第二步。
 
-行为详见 [查词规格](vocabulary/features/word-lookup.zh-CN.feature) 与 [查词决策 BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md)。五类区域的查词已实现并原生验收（T48–T51）；系统语音发声、真实 VoiceOver 与真实安装版待最终验收。
+行为详见 [查词规格](vocabulary/features/word-lookup.feature) 与 [查词决策 BDR-0008](vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md)。五类区域的查词已实现并原生验收（T48–T51）；系统语音发声、真实 VoiceOver 与真实安装版待最终验收。
 
 ## 历史记录
 

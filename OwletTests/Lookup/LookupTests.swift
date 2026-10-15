@@ -648,7 +648,7 @@ final class LookupTransport: Sendable {
         }
     }
 
-    /// 重试 must re-stamp: the request and the key it is cached under have to agree, or switching
+    /// Retry must re-stamp: the request and the key it is cached under have to agree, or switching
     /// models would let one model's answer come back as another's.
     @Test func retryingReStampsTheQuery() throws {
         var config = testConfig
@@ -808,7 +808,7 @@ final class LookupTransport: Sendable {
     }
 }
 
-/// 加入生词本 on the lookup card: the answer the query already produced becomes a notebook entry,
+/// Add to Notebook on the lookup card: the answer the query already produced becomes a notebook entry,
 /// with no second request, and the same card can undo it.
 @MainActor @Suite struct LookupCollectionTests {
     let river = try! query("bank", in: "We sat on the bank of the river.")
@@ -1012,7 +1012,7 @@ final class LookupTransport: Sendable {
     #expect(!entry.meaningLanguageIsStale(mapping: japanese))
 }
 
-/// An entry with no meaning yet has its own 补充释义 entry, so it is never called stale.
+/// An entry with no meaning yet has its own Fill In Meaning action, so it is never called stale.
 @MainActor @Test func anEntryWithoutAMeaningIsNotCalledStale() throws {
     let store = try makeVocabularyStore()
     let entry = try store.collect(

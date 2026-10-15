@@ -53,7 +53,7 @@ final class LookupStore {
         return nil
     }
 
-    /// Sends the query unless the same one is already running; 重试 and 按当前语境重查 land here.
+    /// Sends the query unless the same one is already running; Retry and Look Up in This Sentence land here.
     func request(_ query: LookupQuery) {
         guard entries[query] != .loading else { return }
         guard let config = config() else {

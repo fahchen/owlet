@@ -21,7 +21,7 @@ import SwiftData
     static let defaults = UserDefaults(suiteName: "dev.fahchen.owlet.panel-preview")!
     static let fixtureClient = ModelClient(
         transport: fixtureTransport, promptForOperation: { _ in "Preview" }, capture: .off)
-    /// The fixture answer after a pause, so the transition recording sees 翻译中 before the result.
+    /// The fixture answer after a pause, so the transition recording sees Translating… before the result.
     static let slowClient = ModelClient(
         transport: { request in
             try await Task.sleep(for: .seconds(1.5))
@@ -69,7 +69,7 @@ import SwiftData
         return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
     /// Lookups answer after a pause so loading is visible. "frost" breaks the lookup contract the
-    /// first time only, so the failure and 重试 paths can be driven by hand.
+    /// first time only, so the failure and Retry paths can be driven by hand.
     nonisolated(unsafe) static var failedOnce = false
     nonisolated static func lookupFixture(system: String, data: String, url: URL) throws -> (Data, URLResponse) {
         Thread.sleep(forTimeInterval: 1.2)
@@ -127,7 +127,7 @@ import SwiftData
             store: LookupStore(client: client, config: { config }, defaults: defaults),
             speech: ProcessInfo.processInfo.environment["OWLET_PREVIEW_NO_VOICE"] == "1"
                 ? LookupSpeech(canSpeak: { _ in false }, speak: { _, _ in }, stop: {}) : .live)
-        // As in the app: the card's 加入生词本 writes through the same notebook the pages use.
+        // As in the app: the card's Add to Notebook writes through the same notebook the pages use.
         lookups.collection = collection
         return lookups
     }()
@@ -179,7 +179,7 @@ struct PreviewView: View {
                         actionTitle: "重试",
                         actionSymbol: "arrow.clockwise", recover: {})
                 case 6:
-                    // The card itself, so its layout (bookmark beside 发音) can be read off a window
+                    // The card itself, so its layout (bookmark beside Speak) can be read off a window
                     // screenshot without hunting for the transient popover.
                     VStack {
                         if let query = PreviewFixtures.cardQuery, case .card(let shown, let other)? = PreviewFixtures.lookups.mode {
@@ -360,7 +360,7 @@ final class PreviewPanel: NSPanel {
     /// Keeps the real panel controller alive for `--panel`.
     @MainActor static var panel: PanelController?
 
-    /// OWLET_PREVIEW_CARD_CHECK=1: drives the card's 加入生词本 through the real presenter and
+    /// OWLET_PREVIEW_CARD_CHECK=1: drives the card's Add to Notebook through the real presenter and
     /// notebook, prints one line, and exits — the same evidence `--panel` gives by hand, without
     /// needing synthetic clicks. No model is called for the collect action itself.
     @MainActor static func runCardCheck(_ controller: PanelController) {
@@ -560,7 +560,7 @@ final class PreviewPanel: NSPanel {
         app.run()
     }
 
-    /// Runs the production path, PanelController and FloatingPanel, from 翻译中 to the result, and
+    /// Runs the production path, PanelController and FloatingPanel, from Translating… to the result, and
     /// records the panel's screen region as a movie. The recorder exits on its own; nothing on the
     /// main thread waits for it, so the panel keeps animating while it records.
     @MainActor static func recordTransition(to output: String) {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Maps the app's 思考强度 choice to the `reasoning_effort` value one model actually accepts.
+/// Maps the app's Reasoning Effort choice to the `reasoning_effort` value one model actually accepts.
 ///
 /// Providers disagree on the vocabulary: DeepSeek folds `medium` into `high`, o-series tops out at
 /// `high` and has no non-thinking mode, GPT-6 Astra rejects `none` with HTTP 400, and plain
@@ -8,7 +8,7 @@ import Foundation
 /// providers' docs. A level a model does not offer is sent as the nearest lower supported one
 /// instead of failing the request; an unknown model keeps the value as-is.
 enum ModelEffort {
-    /// The value to send for this model, or nil to omit the field (自动, a non-reasoning model, or a
+    /// The value to send for this model, or nil to omit the field (Automatic, a non-reasoning model, or a
     /// model with no usable level).
     static func reasoningEffort(for level: EffortLevel, model: String) -> String? {
         guard level != .automatic else { return nil }
@@ -33,7 +33,7 @@ enum ModelEffort {
         return identity
     }
 
-    /// DeepSeek documents none／low／high／max and folds medium→high, so 中 is sent as high.
+    /// DeepSeek documents none／low／high／max and folds medium→high, so Medium is sent as high.
     private static let deepSeek: [EffortLevel: String] = [
         .off: "none", .low: "low", .medium: "high", .high: "high", .max: "max",
     ]
@@ -43,7 +43,7 @@ enum ModelEffort {
         .off: "low", .low: "low", .medium: "medium", .high: "high", .max: "high",
     ]
 
-    /// GPT-6 Astra returns HTTP 400 for none, so 关闭 becomes the lowest reasoning instead.
+    /// GPT-6 Astra returns HTTP 400 for none, so Off becomes the lowest reasoning instead.
     private static let openAIAstra: [EffortLevel: String] = [
         .off: "minimal", .low: "low", .medium: "medium", .high: "high", .max: "max",
     ]
@@ -61,6 +61,6 @@ enum ModelEffort {
 }
 
 extension EffortLevel {
-    /// Lowest to highest, without 自动; the order the mapping walks down when a level is unsupported.
+    /// Lowest to highest, without Automatic; the order the mapping walks down when a level is unsupported.
     static let ordered: [EffortLevel] = [.off, .low, .medium, .high, .max]
 }

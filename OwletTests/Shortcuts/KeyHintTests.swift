@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// The fixed keys the 快捷键 page lists and the buttons bind; the page renders exactly this data.
+/// The fixed keys the Shortcuts page lists and the buttons bind; the page renders exactly this data.
 struct KeyHintTests {
     @Test func printsCombinationsTheWayMenusDo() {
         #expect(KeyHint.panelReplace.keys == "⌘↩")

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The 翻译 and 润色 pages: one glass card with the source on the left and the result on the right,
-/// switched by the toolbar's operation control. 学习 shows the result beside its learning items.
+/// The Translate and Polish pages: one glass card with the source on the left and the result on the right,
+/// switched by the toolbar's operation control. Study shows the result beside its learning items.
 struct TextProcessingView: View {
     @Bindable var model: TextProcessingModel
     let openSettings: () -> Void
@@ -9,7 +9,7 @@ struct TextProcessingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Injectable, so a preview can show fixture items instead of requesting a model.
     @State var learning = LearningModel()
-    /// Set by 返回: keeps an auto-requested result from reopening the learning column.
+    /// Set by Back: keeps an auto-requested result from reopening the learning column.
     @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""

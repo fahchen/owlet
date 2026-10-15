@@ -8,7 +8,7 @@ private let learningPayload = learningJSON(
     #"{"items":[{"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。","context":"Let's take a step back."}]}"#
 )
 
-/// The automatic 学习表达 request: off by default, on after a success when its switch is on, never
+/// The automatic Study Expressions request: off by default, on after a success when its switch is on, never
 /// for a failure, and never retroactively for a result the user already saw.
 @MainActor
 struct LearningAutoRequestTests {
@@ -40,7 +40,7 @@ struct LearningAutoRequestTests {
         let suite = "LearningAutoRequestTests.native.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let main = await completedPolish()
-        // 未指定母语：照常
+        // No native language set: learning proceeds as usual.
         #expect(LearningRequest.from(main, defaults: defaults) != nil)
         SettingsStore.setNativeLanguages(["en"], in: defaults)
         #expect(LearningRequest.from(main, defaults: defaults) == nil)
@@ -174,7 +174,7 @@ struct LearningAutoRequestTests {
             config: { testConfig })
         learning.autoRequest = { (_: Owlet.Operation) in false }
 
-        // The disclosure's own 生成 path ignores the switch but still spends one request.
+        // The disclosure's own generate path ignores the switch but still spends one request.
         learning.generate(for: request)
         await learning.task?.value
         #expect(calls.withLock { $0 } == 1)

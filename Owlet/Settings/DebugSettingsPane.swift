@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 调试 pane, shown only while the switch in 通用 is on: the captured model exchanges in one grouped
+/// Debug pane, shown only while the switch in General is on: the captured model exchanges in one grouped
 /// `Form` section, like every other settings pane. A collapsed row says what was asked for, whether
 /// it failed and when; it opens with the system `DisclosureGroup`, so the indicator, the animation
 /// and the accessibility state all come from the system.

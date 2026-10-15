@@ -179,7 +179,7 @@ struct TargetMappingTests {
             TargetMapping(targets: ["en": "ja", "ja": "zh-Hans"], fallback: "ja"), in: defaults)
         SettingsStore.setPinnedTarget("ja", in: defaults)
         SettingsStore.setLanguages(["zh-Hans", "en"], in: defaults)
-        // Both rows touched the removed 日本語, so both go; the fallback moves to the first kept one.
+        // Both rows touched the removed Japanese (`ja`), so both go; the fallback moves to the first kept one.
         #expect(SettingsStore.targetMapping(in: defaults).targets.isEmpty)
         #expect(SettingsStore.targetMapping(in: defaults).fallback == "zh-Hans")
         #expect(SettingsStore.pinnedTarget(in: defaults) == nil)

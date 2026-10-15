@@ -29,7 +29,7 @@ struct PromptSettingsTests {
         #expect(SettingsStore.prompt(for: .translate, in: defaults) == "保留")
     }
 
-    /// Saving the built-in text is the restore path, so the state must read 默认 again.
+    /// Saving the built-in text is the restore path, so the state must read Default again.
     @Test func savingTheDefaultClearsTheCustomMark() {
         #expect(SettingsStore.setPrompt("自定义", for: .translate, in: defaults))
         #expect(SettingsStore.isCustomized(.translate, in: defaults))

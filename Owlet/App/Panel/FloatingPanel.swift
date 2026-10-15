@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Transparent host for the panel’s separate native glass surfaces.
-/// Dismisses on intent only — Esc, 完成, or a click outside — never on
+/// Dismisses on intent only (Esc, Done, or a click outside), never on
 /// losing key, because an inactive app can take and drop key with no user action at all.
 /// Not final: tests that only assert controller state substitute a panel that stays off screen.
 class FloatingPanel: NSPanel, NSWindowDelegate {

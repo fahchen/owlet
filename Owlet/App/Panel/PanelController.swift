@@ -212,7 +212,7 @@ final class PanelController {
     }
 
     /// The operation whose prompt editor a contract failure opens; nil for every other notice, so
-    /// the panel view can route 提示词设置 to the editor that actually failed.
+    /// the panel view can route Prompt Settings to the editor that actually failed.
     func promptSettingsOperation(for notice: Notice) -> Operation? {
         guard case .failure(_, let kind) = notice, kind == .contract else {
             return nil

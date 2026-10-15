@@ -136,7 +136,7 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
     #expect(try wireBody(request, config: config)["reasoning_effort"] == nil)
 }
 
-/// 关闭 is the default, so an untouched config must ask for no thinking rather than leaving it to the
+/// Off is the default, so an untouched config must ask for no thinking rather than leaving it to the
 /// provider.
 @Test func theDefaultConfigAsksForNoThinking() throws {
     let request = try ModelClient().translationRequest(
@@ -166,7 +166,7 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
     #expect(try wireBody(request, config: config)["reasoning_effort"] as? String == "none")
 }
 
-/// The per-model table decides the wire value, so DeepSeek's missing 中 becomes high.
+/// The per-model table decides the wire value, so DeepSeek's missing Medium becomes high.
 @Test func theModelMappingDecidesTheSentValue() throws {
     let config = ServiceConfig(
         baseURL: URL(string: "https://api.deepseek.com")!, model: "deepseek-flash", apiKey: "k",
@@ -277,7 +277,7 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
 
 /// BDR-0005: a translation's explanations use its own target; a polish's use the mapped target of the
 /// text it polished. A polish keeps the text's language, so reading the request's language verbatim
-/// would explain 润色英文 in English instead of the mapped 中文.
+/// would explain an English polish in English instead of the mapped Chinese.
 @Test func aRecommendationIsExplainedInTheMappedLanguage() throws {
     var client = ModelClient()
     client.targetMapping = { TargetMapping(targets: ["en": "zh-Hans"], fallback: "zh-Hans") }
@@ -296,10 +296,10 @@ final class Captured: @unchecked Sendable { var request: URLRequest? }
     let english = LanguageCatalog.name(for: "en")
     #expect(chinese != english)
 
-    // 润色英文: the mapped target of the text's language, not the language itself.
+    // Polishing English: the mapped target of the text's language, not the language itself.
     #expect(try prompt(.polish, text: "en").contains(chinese))
     #expect(!(try prompt(.polish, text: "en").contains("meaning is \(english)")))
-    // 翻译成英文: its own target, and the mapping must not override it.
+    // Translating into English: its own target, and the mapping must not override it.
     #expect(try prompt(.translate, text: "en").contains("meaning is \(english)"))
 }
 

@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// 思考强度 defaults to 关闭: the app should not pay for reasoning nobody asked for. `.automatic`
+/// Reasoning Effort defaults to Off: the app should not pay for reasoning nobody asked for. `.automatic`
 /// keeps the provider's own default and is only used once the user picks it.
 struct EffortTests {
     let suite = "EffortTests.\(UUID().uuidString)"

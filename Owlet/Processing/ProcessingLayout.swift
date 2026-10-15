@@ -1,6 +1,6 @@
 import Foundation
 
-/// The 文本处理 arrangement: side by side only once the content area is wide enough to keep both
+/// The Text page's arrangement: side by side only once the content area is wide enough to keep both
 /// the source and the result readable, stacked below that.
 enum ProcessingLayout: Equatable {
     case sideBySide

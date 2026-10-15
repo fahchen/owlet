@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 逐句对照 body: one pair per response segment, source above its target, so a wrapped line never
+/// Sentence by Sentence body: one pair per response segment, source above its target, so a wrapped line never
 /// splits a pair and the correspondence comes from the model rather than from punctuation.
 ///
 /// Pairs are separated by `pairSpacing` alone; the rule that used to sit between them is gone, and

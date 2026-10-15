@@ -37,8 +37,8 @@ struct LanguageDetectorTests {
     }
 }
 
-/// The comparison key: the primary subtag decides, and Chinese keeps its script because 简体 and
-/// 繁體 are different targets in the contract.
+/// The comparison key: the primary subtag decides, and Chinese keeps its script because Simplified and
+/// Traditional Chinese are different targets in the contract.
 struct LanguageTagTests {
     @Test func chineseKeepsItsScript() {
         #expect(LanguageTag.key("zh") == "zh-Hans")

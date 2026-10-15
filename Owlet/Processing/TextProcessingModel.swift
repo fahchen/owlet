@@ -28,7 +28,7 @@ final class TextProcessingModel {
     private(set) var state: State = .idle
     /// Languages of the latest successful result, so a collected expression keeps its own language.
     private(set) var languages: (source: String, target: String)?
-    /// Source/target pairs of the latest successful result, so 逐句对照 groups by the response's own
+    /// Source/target pairs of the latest successful result, so Sentence by Sentence groups by the response's own
     /// pairing instead of guessing from punctuation or display lines.
     private(set) var segments: [TranslationResult.Segment] = []
     /// Results already computed for the current text, so switching the operation back and forth does

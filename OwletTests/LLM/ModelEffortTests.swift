@@ -18,13 +18,13 @@ struct ModelEffortTests {
         #expect(ModelEffort.reasoningEffort(for: .max, model: "deepseek-v4-pro") == "max")
     }
 
-    /// o-series has no non-thinking mode and tops out at high, so 关闭 and 最高 are clamped.
+    /// o-series has no non-thinking mode and tops out at high, so Off and Highest are clamped.
     @Test func oSeriesClampsToItsRange() {
         #expect(ModelEffort.reasoningEffort(for: .off, model: "o3") == "low")
         #expect(ModelEffort.reasoningEffort(for: .max, model: "o4-mini") == "high")
     }
 
-    /// GPT-6 Astra rejects none with HTTP 400, so 关闭 becomes the lowest reasoning.
+    /// GPT-6 Astra rejects none with HTTP 400, so Off becomes the lowest reasoning.
     @Test func astraTurnsOffIntoMinimal() {
         #expect(ModelEffort.reasoningEffort(for: .off, model: "gpt-6-astra") == "minimal")
         #expect(ModelEffort.reasoningEffort(for: .high, model: "gpt-6-astra") == "high")

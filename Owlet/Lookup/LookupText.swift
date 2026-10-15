@@ -3,7 +3,7 @@ import NaturalLanguage
 import SwiftUI
 
 /// Read-only reading text that can be looked up. A native text view keeps drag and double-click
-/// selection, ⌘C and the system menu; a settled selection offers 查询 and nothing is requested
+/// selection, ⌘C and the system menu; a settled selection offers Look Up and nothing is requested
 /// until the user picks it from the toolbar, the menu, Return or the accessibility action. ⌘-click
 /// looks up the word under the pointer, and holding ⌘ previews which word that is.
 struct LookupText: NSViewRepresentable {
@@ -12,7 +12,7 @@ struct LookupText: NSViewRepresentable {
     var weight: NSFont.Weight = .regular
     var lineSpacing: CGFloat = 2
     var justified = false
-    /// Secondary text, such as a polish's 润色前, which reads quieter than what replaced it.
+    /// Secondary text, such as a polish's Before Polish text, which reads quieter than what replaced it.
     var secondary = false
     /// What the text is, for VoiceOver.
     var label = L10n.shared.string("Result")
@@ -22,7 +22,7 @@ struct LookupText: NSViewRepresentable {
     var sentence: String? = nil
     /// Whether this text has a source sentence at all. A standalone expression — a notebook entry's
     /// own form — has none, so looking it up asks for the general meaning and the card says
-    /// 无原句语境 instead of passing the expression off as its own context.
+    /// "No source sentence" instead of passing the expression off as its own context.
     var hasSentence = true
     /// Set on a learning row: a plain click is the row's own action (collect); ⌘-click and a
     /// selection still look up.
@@ -99,7 +99,7 @@ final class LookupTextView: NSTextView {
     private var modifierMonitor: Any?
     private let words = NLTokenizer(unit: .word)
 
-    /// The ⌘ hover tints the word with the selection color at reduced strength (DESIGN 封闭例外):
+    /// The ⌘ hover tints the word with the selection color at reduced strength (a closed exception in DESIGN):
     /// the same color as a selection, so it reads as "this can be picked", but clearly weaker.
     static let hoverOpacity: CGFloat = 0.3
 
@@ -320,7 +320,7 @@ final class LookupTextView: NSTextView {
         return super.validateMenuItem(item)
     }
 
-    /// Return on a selection is the keyboard's 查询; the text is read-only, so Return had no use.
+    /// Return on a selection is the keyboard's Look Up; the text is read-only, so Return had no use.
     override func keyDown(with event: NSEvent) {
         let plain = event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty
         if plain, [36, 76].contains(event.keyCode), case .success? = selectedQuery {

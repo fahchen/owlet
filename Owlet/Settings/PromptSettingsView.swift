@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The two prompt editors, as sections of the 模型 pane: they are about how the model is asked, which
+/// The two prompt editors, as sections of the Model pane: they are about how the model is asked, which
 /// is the same concern as which model is asked. There is no save button: an editor commits when it
 /// gives up focus, so the settings window behaves like a settings window.
 struct PromptSettingsView: View {

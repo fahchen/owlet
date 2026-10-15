@@ -10,7 +10,7 @@ struct ExpandedPanelContent: View {
     let learning: LearningModel
     let lookupOrigin: LookupOrigin?
     var showsSource = true
-    /// The pinned target language; an empty value means 自动.
+    /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
 
@@ -21,7 +21,7 @@ struct ExpandedPanelContent: View {
             }
             if hasResultSection {
                 // The rule separates the editable source from the result, so it belongs with the source
-                // field: once 逐句对照 folds that field away it has nothing above it to separate, and
+                // field: once Sentence by Sentence folds that field away it has nothing above it to separate, and
                 // it was left stranded above the pairs.
                 if showsSource && !showsAlignedPairs { Divider() }
                 resultSection.padding(.top, showsSource ? 12 : 0)

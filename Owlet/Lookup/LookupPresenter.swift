@@ -15,7 +15,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
     private(set) var mode: Mode?
     let store: LookupStore
     let speech: LookupSpeech
-    /// The notebook a card's 加入生词本 writes to; nil keeps the card read-only, which is how the
+    /// The notebook a card's Add to Notebook writes to; nil keeps the card read-only, which is how the
     /// tests and previews build it.
     var collection: CollectionAction?
     private var popover: NSPopover?
@@ -33,7 +33,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
 
     var isShown: Bool { mode != nil }
 
-    /// A settled selection only offers 查询; nothing is requested until the user picks it.
+    /// A settled selection only offers Look Up; nothing is requested until the user picks it.
     func showToolbar(
         _ query: Result<LookupQuery, LookupQuery.Refusal>, at rect: NSRect, in view: NSView?
     ) {
@@ -60,7 +60,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         close(refocus: false)
     }
 
-    /// The toolbar's 查询: the card replaces it in the same popover.
+    /// The toolbar's Look Up: the card replaces it in the same popover.
     func confirmToolbar() {
         guard case .toolbar(.success(let query))? = mode else { return }
         lookUp(query, at: nil, in: nil)
@@ -78,7 +78,7 @@ final class LookupPresenter: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// 重试 and 按当前语境重查: the current query only, re-stamped so a changed model or reading
+    /// Retry and Look Up in This Sentence: the current query only, re-stamped so a changed model or reading
     /// notation reaches the request and the key it is cached under together. A failed recheck keeps
     /// the other answer.
     func requestCurrent() {

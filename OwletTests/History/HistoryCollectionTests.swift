@@ -5,7 +5,7 @@ import Testing
 
 @testable import Owlet
 
-/// Collecting from 历史详情 (T17): the detail reuses the collect action, the 语境 is that record's
+/// Collecting from a history record: the detail reuses the collect action, the context is that record's
 /// own snapshot, and the history lifecycle stays independent from the notebook.
 @MainActor
 struct HistoryCollectionTests {
@@ -33,7 +33,7 @@ struct HistoryCollectionTests {
         #expect(entry.language == "zh-Hans")
         let context = try #require(entry.contexts.first)
         #expect(context.source == "I will follow up tomorrow.")
-        // A translate record has no polish pair, so the entry shows one plain 原句.
+        // A translate record has no polish pair, so the entry shows one plain source sentence.
         #expect(context.polishBefore == nil)
         #expect(context.polishAfter == nil)
     }
@@ -58,13 +58,13 @@ struct HistoryCollectionTests {
             operation: .translate, source: "She followed up on the request.", result: "我明天会跟进。",
             language: "zh-Hans")
         let reused = try vocabulary.collect(VocabularyDraft.from(record: second))
-        // The same language and expression reuse the entry and append the new 原句.
+        // The same language and expression reuse the entry and append the new source sentence.
         #expect(reused === entry)
         #expect(try vocabulary.entries().count == 1)
         #expect(entry.contexts.count == 2)
         #expect(entry.contexts.last?.source == "She followed up on the request.")
 
-        // Re-collecting the same record adds nothing, so one 收藏 press never forks a 语境.
+        // Re-collecting the same record adds nothing, so one save press never forks a context.
         _ = try vocabulary.collect(VocabularyDraft.from(record: record))
         #expect(entry.contexts.count == 2)
     }
@@ -78,7 +78,7 @@ struct HistoryCollectionTests {
                 return count
             }
             if call == 1 { throw URLError(.notConnectedToInternet) }
-            // A compliant model echoes the context it was sent, so the entry keeps the exact 原句 it
+            // A compliant model echoes the context it was sent, so the entry keeps the exact source sentence it
             // was collected with rather than the expression standing in for it.
             let request1 =
                 try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
@@ -96,7 +96,7 @@ struct HistoryCollectionTests {
         let entry = try #require(action.collect(VocabularyDraft.from(record: record)))
         await action.task?.value
 
-        // The failure keeps what was already saved, its 原句 included.
+        // The failure keeps what was already saved, its source sentence included.
         #expect(try vocabulary.entries().count == 1)
         #expect(entry.meaning.isEmpty)
         #expect(entry.contexts.first?.source == "I will follow up tomorrow.")
@@ -122,7 +122,7 @@ struct HistoryCollectionTests {
         let entry = try #require(try vocabulary.entries().first)
         #expect(entry.expression == "我明天会跟进。")
         #expect(entry.contexts.first?.source == "I will follow up tomorrow.")
-        // A fresh context proves the clear reached no cascade down to the 语境.
+        // A fresh context proves the clear reached no cascade down to the context.
         let fresh = ModelContext(history.container)
         #expect(try fresh.fetchCount(FetchDescriptor<VocabularyContext>()) == 1)
     }

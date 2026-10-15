@@ -197,9 +197,9 @@ struct HistoryView: View {
     }
 }
 
-/// One record: the source, then the result that reads heavier, in one scrolling column. 学习 keeps
+/// One record: the source, then the result that reads heavier, in one scrolling column. Study keeps
 /// the learned sentence in view: the source and its divider collapse, the result rides up, and a
-/// second divider and the learning items grow in below it. 返回 reverses it.
+/// second divider and the learning items grow in below it. Back reverses it.
 private struct HistoryDetail: View {
     let record: HistoryRecord
     @Bindable var learning: LearningModel
@@ -300,7 +300,7 @@ extension View {
     }
 }
 
-/// Short, human dates for the detail header, matching the 今天 HH:mm style of the design.
+/// Short, human dates for the detail header, matching the "Today HH:mm" style of the design.
 enum HistoryTime {
     static func display(_ date: Date) -> String {
         let calendar = Calendar.current

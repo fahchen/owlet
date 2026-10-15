@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 语言 group of the settings form: the subset every other language control offers. The system list
+/// Languages group of the settings form: the subset every other language control offers. The system list
 /// is hundreds of languages long, so it is only seen here, while adding one; the rest of the app
 /// stays on what was picked.
 struct LanguageSettingsView: View {

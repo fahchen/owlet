@@ -115,7 +115,7 @@ struct ServiceModelOptionsTests {
     }
 
     /// The vendor table is data, so its invariants are asserted directly: unique ids, a real address
-    /// for every vendor (自定义 is the one entry that asks for one), a default model to fill in, and a
+    /// for every vendor (OpenAI Compatible is the one entry that asks for one), a default model to fill in, and a
     /// keychain account that matches the id except for the custom entry.
     @Test func thePresetTableIsWellFormed() throws {
         let ids = ServicePreset.all.map(\.id)
@@ -186,7 +186,7 @@ struct ServiceModelOptionsTests {
         #expect(SettingsStore.choice(in: defaults).preset == .moonshot)
     }
 
-    /// 自定义 writes no address: whatever the user typed stays, which is the whole point of the entry
+    /// OpenAI Compatible writes no address: whatever the user typed stays, which is the whole point of the entry
     /// the preset list is built on.
     @Test func theCustomEntryLeavesTheAddressAlone() {
         defaults.set("https://my.gateway/v1", forKey: SettingsStore.baseURLKey)

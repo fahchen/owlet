@@ -55,7 +55,7 @@ struct CardButton: View {
     let title: String
     let symbol: String
     var key: KeyHint? = nil
-    /// False for ⌘C, which the Edit menu's 拷贝 routes, so selected text still copies itself.
+    /// False for ⌘C, which the Edit menu's Copy routes, so selected text still copies itself.
     var bindsKey = true
     /// A state that is on rather than an action, such as a stored bookmark: the glyph takes the
     /// accent and the label names the state instead of the command.

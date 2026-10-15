@@ -2,7 +2,7 @@ import Testing
 
 @testable import Owlet
 
-/// The 文本处理 page switches arrangement at exactly 600pt of content area.
+/// The Text page switches arrangement at exactly 600pt of content area.
 struct ProcessingLayoutTests {
     @Test func switchesAtTheThreshold() {
         #expect(ProcessingLayout.sideBySideThreshold == 600)

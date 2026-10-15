@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// The 语言 page's two language settings: where a translation goes (BDR-0003 — the fallback target plus
+/// The Languages page's two language settings: where a translation goes (BDR-0003: the fallback target plus
 /// one row per source language), and which languages learning should leave alone (BDR-0012). The table
 /// starts empty, and every edit is saved at once like the other pickers here. Both sections offer only
-/// the languages chosen in the 语言 group.
+/// the languages chosen in the Languages group.
 struct TargetMappingSettingsView: View {
-    /// The languages in play, from the 语言 group above.
+    /// The languages in play, from the Languages group above.
     let languages: [String]
     @AppStorage(SettingsStore.targetLanguageKey) private var fallbackTarget =
         SettingsStore.defaultTargetLanguage
-    /// The languages the reader already speaks; empty means 未指定, which leaves learning exactly as it
+    /// The languages the reader already speaks; empty means Not Specified, which leaves learning exactly as it
     /// was before the setting existed. Held as state with the mapping rows, so one `load`/`save` pair
     /// owns this page's settings.
     @State private var nativeLanguages: [String] = []
@@ -41,8 +41,8 @@ struct TargetMappingSettingsView: View {
                     "The source is detected from the text. The fallback is used when it cannot be detected or has no row; one source keeps one mapping."
                 ))
         }
-        // Its own section: 母语 decides what learning may recommend, which is a different concern from
-        // where a translation goes — it only happens to be chosen from the same set of languages. The
+        // Its own section: Native Languages decides what learning may recommend, which is a different concern from
+        // where a translation goes; it only happens to be chosen from the same set of languages. The
         // info glyph carries the explanation, since a footer here would read as part of the mapping.
         Section {
             LabeledContent {
@@ -126,7 +126,7 @@ struct TargetMappingSettingsView: View {
         )
     }
 
-    /// The chosen languages as names, or 未指定 when none is chosen.
+    /// The chosen languages as names, or Not Specified when none is chosen.
     private var nativeSummary: String {
         let chosen = options.filter { nativeLanguages.contains($0.tag) }
         return chosen.isEmpty
@@ -148,7 +148,7 @@ struct TargetMappingSettingsView: View {
     }
 
     private func load() {
-        // A language leaving the 语言 selection leaves this list too, like the mapping rows.
+        // A language leaving the Languages selection leaves this list too, like the mapping rows.
         nativeLanguages = SettingsStore.nativeLanguages().filter { tag in
             options.contains { $0.tag == tag }
         }

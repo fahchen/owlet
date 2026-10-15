@@ -1,7 +1,7 @@
 import Foundation
 
 /// BCP 47 comparison keys per `spec/llm/contract.md`: the primary subtag decides, and Chinese is
-/// split by script because 简体 and 繁體 are different targets.
+/// split by script because Simplified and Traditional Chinese are different targets.
 enum LanguageTag {
     /// The canonical tag used as a mapping key, a picker tag and a request target. Other languages
     /// keep their lowercased primary subtag; Chinese gains the script the contract requires.

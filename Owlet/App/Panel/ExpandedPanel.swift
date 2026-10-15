@@ -24,8 +24,8 @@ struct ExpandedPanel: View {
     /// The translation's height when learning opened, which the learning column tries to keep.
     @State private var learningEntryHeight: CGFloat = 0
     private static let maxHeight: CGFloat = 480
-    /// Set by 返回: keeps an auto-requested result from reopening the learning column. The items are
-    /// kept, so 学习 shows them again without a second request.
+    /// Set by Back: keeps an auto-requested result from reopening the learning column. The items are
+    /// kept, so Study shows them again without a second request.
     @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
 

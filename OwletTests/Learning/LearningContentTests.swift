@@ -140,7 +140,7 @@ struct LearningContentTests {
         #expect(model.state == .success(try LearningResult.parse(learningPayload)))
         #expect(calls.withLock { $0 } == 1)
 
-        // 收起 then 展开 must show what was already generated instead of paying again.
+        // Collapsing then expanding must show what was already generated instead of paying again.
         model.isExpanded = false
         model.isExpanded = true
         model.generate(for: request)

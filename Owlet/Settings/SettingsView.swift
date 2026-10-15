@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The app's settings window. The `Settings` scene in `OwletApp` is what puts 设置… and ⌘, in the App
+/// The app's settings window. The `Settings` scene in `OwletApp` is what puts Settings… and ⌘, in the App
 /// menu; this view is its content: one tab per group of settings, each tab a `Form` of sections.
 struct SettingsView: View {
     /// The pane to open on, kept so the window returns to the last one people used.
     @AppStorage(SettingsStore.settingsPaneKey) private var pane = SettingsPane.general.rawValue
     /// The app's shortcut registry; its pane records the global bindings.
     let shortcuts: ShortcutController
-    /// One-shot request from the panel's contract-error entry: open the 模型 pane, focused.
+    /// One-shot request from the panel's contract-error entry: open the Model pane, focused.
     @Binding var promptFocus: Operation?
     @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
 
@@ -42,12 +42,12 @@ struct SettingsView: View {
         .onChange(of: promptFocus) { _, _ in applyPromptFocus() }
     }
 
-    /// The failing operation's editor lives on the 模型 pane, so the pane follows the request.
+    /// The failing operation's editor lives on the Model pane, so the pane follows the request.
     private func applyPromptFocus() {
         if promptFocus != nil { pane = SettingsPane.model.rawValue }
     }
 
-    /// A pane that no longer exists (the Prompt tab was folded into 模型) or is hidden (调试 showing
+    /// A pane that no longer exists (the Prompt tab was folded into Model) or is hidden (Debug showing
     /// while the switch is off) must not leave the window blank.
     private func normalisePane() {
         if pane == "prompt" {

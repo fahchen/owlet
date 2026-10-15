@@ -10,7 +10,7 @@ struct ServicePreset: Sendable, Hashable, Identifiable {
     let id: String
     /// The English source key for the name shown in the list.
     let title: String
-    /// The vendor's published base URL, or nil for 自定义, where the address is the user's to type.
+    /// The vendor's published base URL, or nil for OpenAI Compatible, where the address is the user's to type.
     let baseURL: String?
     /// The model filled in when the preset is chosen; empty means the user names one.
     let defaultModel: String
@@ -31,7 +31,7 @@ extension ServicePreset {
     static let customID = "openAICompatible"
     static let deepSeekID = "deepSeek"
 
-    /// 自定义: any OpenAI-compatible endpoint. The whole list is a convenience over this entry, which is
+    /// OpenAI Compatible: any OpenAI-compatible endpoint. The whole list is a convenience over this entry, which is
     /// why it stays first and keeps the protocol's own schema-capable default.
     static let custom = ServicePreset(
         id: customID, title: "OpenAI Compatible", baseURL: nil, defaultModel: "",
@@ -81,7 +81,7 @@ extension ServicePreset {
     static func preset(id: String) -> ServicePreset? { all.first { $0.id == id } }
 }
 
-/// One row of the 服务 picker: an HTTP vendor preset or a local agent. The picker's selection is this
+/// One row of the Service picker: an HTTP vendor preset or a local agent. The picker's selection is this
 /// value's `id`; what gets persisted is that id, and `provider` is derived from it.
 enum ServiceChoice: Sendable, Hashable {
     case preset(ServicePreset)

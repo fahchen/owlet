@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 语言 pane: which languages are in play, and where each detected source language goes. The two
+/// Languages pane: which languages are in play, and where each detected source language goes. The two
 /// sections are one group of settings — the mapping can only use what the selection offers — so they
 /// share a pane.
 struct LanguageSettingsPane: View {

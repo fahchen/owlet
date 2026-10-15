@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The source-language control on the input side: 自动 follows what the text looks like, and an
+/// The source-language control on the input side: Automatic follows what the text looks like, and an
 /// explicit choice is what the mapping is looked up with — the request itself still lets the model
 /// read the language, so this only decides which target the mapping picks.
 struct SourceLanguagePicker: View {
-    /// The text the 自动 label resolves from.
+    /// The text the Automatic label resolves from.
     let text: String
     @Binding var pinnedSource: String
 

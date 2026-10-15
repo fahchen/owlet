@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 通用 pane: the preferences that are neither about languages nor about the model.
+/// General pane: the preferences that are neither about languages nor about the model.
 struct GeneralSettingsPane: View {
     @AppStorage(SettingsStore.translateLearningKey) private var translateLearning = false
     @AppStorage(SettingsStore.polishLearningKey) private var polishLearning = false

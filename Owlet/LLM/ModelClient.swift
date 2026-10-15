@@ -105,7 +105,7 @@ struct ModelClient: Sendable {
     /// a test can act as a different mapping.
     var targetMapping: @Sendable () -> TargetMapping = { SettingsStore.targetMapping() }
     /// The languages the reader already speaks, which recommendations skip (BDR-0012); empty means
-    /// 未指定.
+    /// Not Specified.
     var nativeLanguages: @Sendable () -> [String] = { SettingsStore.nativeLanguages() }
 
     func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)

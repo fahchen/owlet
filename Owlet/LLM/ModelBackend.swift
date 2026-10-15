@@ -87,7 +87,7 @@ struct OpenAICompatibleBackend: ModelBackend {
             "messages": messages(for: request),
             "response_format": responseFormat(request.format),
         ]
-        // 自动 sends no effort parameter at all, and a local agent maps the level to its own switch
+        // Automatic sends no effort parameter at all, and a local agent maps the level to its own switch
         // rather than to this OpenAI-style field.
         if config.provider.localAgent == nil,
             let value = ModelEffort.reasoningEffort(for: request.effort, model: request.model)

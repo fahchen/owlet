@@ -24,7 +24,7 @@ struct LanguageOption: Hashable, Identifiable, Sendable {
 
 /// The language choices, taken from the system rather than a list this app maintains, so a language
 /// the app has never heard of is still selectable. Chinese is the one addition: the system list has
-/// only `zh`, while the contract treats 简体 and 繁體 as different targets.
+/// only `zh`, while the contract treats Simplified and Traditional Chinese as different targets.
 enum LanguageCatalog {
     static let targets: [LanguageOption] = options()
 

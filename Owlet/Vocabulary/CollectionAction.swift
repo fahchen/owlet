@@ -168,8 +168,8 @@ final class CollectionAction {
         let client = client
         let expression = entry.expression
         let language = entry.language
-        // The context only shapes the explanation; a 原句 collected from 历史详情 is in the record's
-        // other language, so the expression stands in for it there.
+        // The context only shapes the explanation; a source sentence collected from a history record is in the
+        // record's other language, so the expression stands in for it there.
         let stored = entry.contexts.first?.source ?? ""
         let context = stored.localizedStandardContains(expression) ? stored : expression
         // BDR-0005 as revised: the language comes from the settings **now**, not from the language the
@@ -247,8 +247,8 @@ extension VocabularyDraft {
             definitionLocale: query.definitionLanguage)
     }
 
-    /// Builds the snapshot for collecting from 历史详情: the result is the expression and the record's
-    /// own source text is the context, so the entry keeps its 原句 after the history is deleted, and a
+    /// Builds the snapshot for collecting from a history record: the result is the expression and the record's
+    /// own source text is the context, so the entry keeps its source sentence after the history is deleted, and a
     /// polish record keeps the before/after comparison it was collected from.
     @MainActor static func from(
         record: HistoryRecord, mapping: TargetMapping = SettingsStore.targetMapping()

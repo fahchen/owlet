@@ -14,13 +14,13 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// The value this agent's own effort switch accepts per UI level. `自动` sends nothing at all; a
+    /// The value this agent's own effort switch accepts per UI level. Automatic sends nothing at all; a
     /// level the agent does not offer is sent as the nearest lower one, as with every other provider.
     ///
-    /// Neither Claude Code nor Codex has a way to switch thinking off, so 关闭 becomes the lowest level
-    /// they accept — the same treatment GPT-6 Astra gets. Codex's enum also has `none`, but the models
+    /// Neither Claude Code nor Codex has a way to switch thinking off, so Off becomes the lowest level
+    /// they accept, the same treatment GPT-6 Astra gets. Codex's enum also has `none`, but the models
     /// behind it do not: `gpt-6.1-sol` answers HTTP 400 `Unsupported value: 'none'` and lists
-    /// `low／medium／high／xhigh／max`, and 关闭 is what an untouched install asks for.
+    /// `low/medium/high/xhigh/max`, and Off is what an untouched install asks for.
     var effortValues: [EffortLevel: String] {
         [.off: "low", .low: "low", .medium: "medium", .high: "high", .max: "max"]
     }
@@ -176,7 +176,7 @@ enum AgentProcessError: Error, Equatable {
     case notStarted(String)
 }
 
-/// What 「检测」 found when it went looking for an agent, or why it found nothing. A plain optional
+/// What Detect found when it went looking for an agent, or why it found nothing. A plain optional
 /// would leave the settings pane with nothing to say about a lookup that failed.
 enum AgentDetection: Sendable, Equatable {
     case found(executable: URL, version: String)

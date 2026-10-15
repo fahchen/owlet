@@ -234,8 +234,8 @@ struct LocalAgentTests {
         #expect(value(after: "--model", in: plan(.codexCLI, model: "gpt-5").arguments) == "gpt-5")
     }
 
-    /// The same rule as every other provider: 自动 sends nothing, and a level the agent does not offer
-    /// becomes the nearest lower one — Claude Code has no 关闭, so 关闭 is its lowest.
+    /// The same rule as every other provider: Automatic sends nothing, and a level the agent does not offer
+    /// becomes the nearest lower one. Claude Code has no Off, so Off is its lowest.
     @Test func effortMapsToEachAgentsOwnSwitch() {
         for kind in LocalAgentKind.allCases {
             #expect(value(after: "--effort", in: plan(kind).arguments) == nil)
@@ -243,8 +243,8 @@ struct LocalAgentTests {
             #expect(!plan(kind).arguments.contains { $0.hasPrefix("model_reasoning_effort") })
         }
         #expect(value(after: "--effort", in: plan(.claudeCode, effort: .medium).arguments) == "medium")
-        // 关闭 is the untouched install's level. Codex's own enum accepts `none`, but its models do not:
-        // `gpt-6.1-sol` answered HTTP 400 and listed low／medium／high／xhigh／max, so 关闭 is its lowest.
+        // Off is the untouched install's level. Codex's own enum accepts `none`, but its models do not:
+        // `gpt-6.1-sol` answered HTTP 400 and listed low/medium/high/xhigh/max, so Off is its lowest.
         #expect(plan(.codexCLI, effort: .off).arguments.contains("model_reasoning_effort=\"low\""))
         #expect(!plan(.codexCLI, effort: .off).arguments.contains("model_reasoning_effort=\"none\""))
         #expect(value(after: "--effort", in: plan(.claudeCode, effort: .off).arguments) == "low")
@@ -749,7 +749,7 @@ struct LocalAgentTests {
     }
 
     /// When the agent said nothing about the model, the static per-CLI table decides, exactly as it did
-    /// before there was a catalogue: Claude Code has no `none`, so 关闭 becomes its lowest level.
+    /// before there was a catalogue: Claude Code has no `none`, so Off becomes its lowest level.
     @Test func aModelWithNoWordFromTheAgentKeepsTheStaticTable() {
         #expect(LocalAgentKind.claudeCode.effortValue(.off) == "low")
         #expect(LocalAgentKind.codexCLI.effortValue(.off) == "low")

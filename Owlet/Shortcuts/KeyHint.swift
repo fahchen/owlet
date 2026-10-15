@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// A fixed key the app claims: the one place its combination is written, so a button's binding, its
-/// tooltip and its row on the 快捷键 page cannot drift apart.
+/// tooltip and its row on the Shortcuts page cannot drift apart.
 struct KeyHint: Equatable, Sendable {
     let title: String
     let key: KeyEquivalent
@@ -39,14 +39,14 @@ struct KeyHint: Equatable, Sendable {
 
 extension KeyHint {
     // The floating panel. `FloatingPanel.command(for:)` claims replace, copy, retry and Esc from its
-    // own key monitor; 学习 is the learning button's shortcut.
+    // own key monitor; Study is the learning button's shortcut.
     static let panelReplace = KeyHint(title: "Replace", key: .return, modifiers: .command)
     static let panelCopy = KeyHint(title: "Copy Result", key: "c", modifiers: .command)
     static let panelRetry = KeyHint(title: "Try Again", key: "r", modifiers: .command)
     static let panelLearn = KeyHint(title: "Study / Back", key: "l", modifiers: .command)
     static let panelCancel = KeyHint(title: "Stop / Close", key: .escape, modifiers: [])
     /// Read-only reading text claims Return on a selection; `LookupTextView.keyDown` handles it,
-    /// and the 快捷键 page lists it.
+    /// and the Shortcuts page lists it.
     static let lookUp = KeyHint(title: "Look Up Selection", key: .return, modifiers: [])
 
     // The main window.
@@ -60,7 +60,7 @@ extension KeyHint {
     static let next = KeyHint(title: "Next", key: .downArrow, modifiers: .command)
     static let delete = KeyHint(title: "Delete", key: .delete, modifiers: .command)
 
-    /// The 快捷键 page's groups, by where the keys work.
+    /// The Shortcuts page's groups, by where the keys work.
     static let groups: [(title: String, keys: [KeyHint])] = [
         ("Panel", [panelReplace, panelCopy, panelRetry, panelLearn, panelCancel, lookUp]),
         ("Translate & Polish", [process, translateMode, polishMode, cancel, learn, copy]),

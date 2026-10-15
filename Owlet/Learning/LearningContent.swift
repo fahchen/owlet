@@ -49,7 +49,7 @@ struct LearningRequest: Equatable {
     }
 }
 
-/// Owns the optional 学习表达 disclosure: it stays silent until the user expands it, then spends at
+/// Owns the optional Study Expressions disclosure: it stays silent until the user expands it, then spends at
 /// most one request and never touches the main result.
 @MainActor @Observable
 final class LearningModel {
@@ -60,12 +60,12 @@ final class LearningModel {
         case success([LearningResult.Item])
     }
 
-    /// The disclosure state; the section requests only when this turns true or T13 enables auto.
+    /// The disclosure state; the section requests only when this turns true or the auto-request switch is on.
     var isExpanded = false
     private(set) var state: State = .idle
     /// The recommendation indices the user checked, so only what they chose reaches the notebook.
     var selected: Set<Int> = []
-    /// T13's per-operation switch; off unless the user turned it on in settings.
+    /// The per-operation auto-request switch; off unless the user turned it on in settings.
     var autoRequest: (Operation) -> Bool = { SettingsStore.autoRequestsLearning(for: $0) }
     /// The request in flight; tests await it, the views only observe `state`.
     private(set) var task: Task<Void, Never>?
@@ -83,13 +83,13 @@ final class LearningModel {
         self.config = config
     }
 
-    /// Responds to 展开: requests once, and a later 收起／展开 reuses whatever this produced.
+    /// Responds to expanding: requests once, and a later collapse and expand reuses whatever this produced.
     func generate(for request: LearningRequest) {
         guard state == .idle else { return }
         send(request)
     }
 
-    /// Retries only a failed request, so one press of 重试 costs exactly one request.
+    /// Retries only a failed request, so one press of Retry costs exactly one request.
     func retry(for request: LearningRequest) {
         guard case .failure = state else { return }
         send(request)

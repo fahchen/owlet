@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 模型 pane: how the app reaches the service, and which model and thinking level it asks for. There
+/// Model pane: how the app reaches the service, and which model and thinking level it asks for. There
 /// is no save button: every control is either a `@AppStorage` binding or writes on commit, which is
 /// how a settings window is expected to behave.
 struct ModelSettingsPane: View {
@@ -42,7 +42,7 @@ struct ModelSettingsPane: View {
         case failed(String)
     }
 
-    /// The chosen service, resolved from what is persisted. An unknown id falls back to 自定义 rather
+    /// The chosen service, resolved from what is persisted. An unknown id falls back to OpenAI Compatible rather
     /// than leaving the pane without a selection.
     private var choice: ServiceChoice { ServiceChoice.choice(id: serviceID) ?? .preset(.custom) }
     private var provider: Provider { choice.provider }
@@ -205,7 +205,7 @@ struct ModelSettingsPane: View {
             : L10n.shared.string("The API key is kept in the keychain, and applies when the field loses focus.")
     }
 
-    /// The manual 「检测」: look the agent up and take what it found.
+    /// The manual Detect: look the agent up and take what it found.
     private func detect() {
         guard provider.isLocalAgent else { return }
         agent = .checking

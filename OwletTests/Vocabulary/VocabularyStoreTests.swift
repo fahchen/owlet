@@ -5,7 +5,7 @@ import Testing
 
 @testable import Owlet
 
-/// One fresh in-memory notebook per test, per `tasks/plan.md`; several suites below need one.
+/// One fresh in-memory notebook per test; several suites below need one.
 @MainActor
 func makeVocabularyStore() throws -> VocabularyStore {
     let schema = Schema([VocabularyEntry.self, VocabularyContext.self])
@@ -425,8 +425,8 @@ struct VocabularyDraftTests {
         #expect(VocabularyDraft.from(region: .source, model: model, selection: nil) == nil)
     }
 
-    /// Collecting from the result of a translation: the expression is English but the 原句 kept with
-    /// it is the Chinese source, so each needs its own language (BDR-0008's 语境归因).
+    /// Collecting from the result of a translation: the expression is English but the source sentence kept with
+    /// it is the Chinese source, so each needs its own language (BDR-0008's context attribution).
     @Test func aTranslatedResultKeepsTheSourceSentenceLanguage() async throws {
         let content =
             #"{"source_language":"zh-Hans","target_language":"en","segments":[{"source":"我明天会跟进。","target":"I will follow up tomorrow."}]}"#

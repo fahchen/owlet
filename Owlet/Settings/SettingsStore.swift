@@ -317,7 +317,7 @@ enum SettingsStore {
 extension SettingsStore {
     static let effortKey = "service.effort"
 
-    /// The saved 思考强度, defaulting to 自动 so an untouched install keeps sending no effort parameter.
+    /// The saved Reasoning Effort, defaulting to Automatic so an untouched install keeps sending no effort parameter.
     static func effort(in defaults: UserDefaults = .standard) -> EffortLevel {
         defaults.string(forKey: effortKey).flatMap(EffortLevel.init) ?? .off
     }
@@ -344,7 +344,7 @@ extension SettingsStore {
     }
 }
 
-/// How a result is laid out: whole 原文／译文 regions, or the response's paired sentences.
+/// How a result is laid out: whole Source / Result Sections, or the response's paired sentences.
 enum TranslationDisplayMode: String, CaseIterable, Sendable {
     case sectioned
     case aligned
@@ -361,7 +361,7 @@ enum TranslationDisplayMode: String, CaseIterable, Sendable {
 extension SettingsStore {
     static let displayModeKey = "translation.displayMode"
 
-    /// The saved display preference, defaulting to 分区 so an untouched install keeps the old layout.
+    /// The saved display preference, defaulting to Source / Result Sections so an untouched install keeps the old layout.
     static func displayMode(in defaults: UserDefaults = .standard) -> TranslationDisplayMode {
         defaults.string(forKey: displayModeKey).flatMap(TranslationDisplayMode.init) ?? .sectioned
     }
@@ -385,7 +385,7 @@ extension SettingsStore {
         defaults.set(mapping.fallback, forKey: targetLanguageKey)
     }
 
-    /// The language the user pinned; nil (or an empty value) means 自动.
+    /// The language the user pinned; nil (or an empty value) means Automatic.
     static func pinnedTarget(in defaults: UserDefaults = .standard) -> String? {
         guard let tag = defaults.string(forKey: pinnedTargetKey), !tag.isEmpty else { return nil }
         return tag
@@ -399,12 +399,12 @@ extension SettingsStore {
         }
     }
 
-    /// The source 自动 uses: the user's choice when they made one, else what the text looks like.
+    /// The source Automatic uses: the user's choice when they made one, else what the text looks like.
     static func autoSource(for text: String, in defaults: UserDefaults = .standard) -> String? {
         pinnedSource(in: defaults) ?? LanguageDetector.detect(text)
     }
 
-    /// The language the user pinned as the source; nil (or an empty value) means 自动.
+    /// The language the user pinned as the source; nil (or an empty value) means Automatic.
     static func pinnedSource(in defaults: UserDefaults = .standard) -> String? {
         guard let tag = defaults.string(forKey: pinnedSourceKey), !tag.isEmpty else { return nil }
         return tag
@@ -418,19 +418,19 @@ extension SettingsStore {
         }
     }
 
-    /// What 自动 resolves to for this text: the mapping row for the source, else the fallback.
+    /// What Automatic resolves to for this text: the mapping row for the source, else the fallback.
     /// Detection happens here, once per request.
     static func autoTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
         targetMapping(in: defaults).target(forSource: autoSource(for: text, in: defaults))
     }
 
     /// The target a newly chosen source carries over: its mapping row, so switching the source moves
-    /// the target with it, and 自动 for an automatic source. The user can still change the target after.
+    /// the target with it, and Automatic for an automatic source. The user can still change the target after.
     static func target(followingSource source: String, in defaults: UserDefaults = .standard) -> String {
         source.isEmpty ? "" : targetMapping(in: defaults).target(forSource: source)
     }
 
-    /// The target a request should use: an explicit choice wins, otherwise 自动 decides.
+    /// The target a request should use: an explicit choice wins, otherwise Automatic decides.
     static func resolvedTarget(for text: String, in defaults: UserDefaults = .standard) -> String {
         pinnedTarget(in: defaults) ?? autoTarget(for: text, in: defaults)
     }
@@ -531,7 +531,7 @@ extension SettingsStore {
     }
 }
 
-/// Per-operation 学习表达 switches; an absent key reads as off, so learning stays opt-in.
+/// Per-operation Study Expressions switches; an absent key reads as off, so learning stays opt-in.
 extension SettingsStore {
     static let translateLearningKey = "learning.auto.translate"
     static let polishLearningKey = "learning.auto.polish"
@@ -554,7 +554,7 @@ extension SettingsStore {
     static let nativeLanguagesKey = "learning.nativeLanguages"
 
     /// The languages the reader already speaks, which learning content skips (BDR-0012). More than one,
-    /// because a bilingual reader wants neither language taught back to them. Empty means 未指定, and an
+    /// because a bilingual reader wants neither language taught back to them. Empty means Not Specified, and an
     /// unset value behaves exactly as before the setting existed.
     static func nativeLanguages(in defaults: UserDefaults = .standard) -> [String] {
         defaults.stringArray(forKey: nativeLanguagesKey) ?? []
@@ -565,7 +565,7 @@ extension SettingsStore {
     }
 
     /// Whether learning can say anything about text in `language`: it cannot when that language is one
-    /// the reader already speaks — the whole of a polish (原文与结果同语言) and one side of a translation.
+    /// the reader already speaks: the whole of a polish (source and result share a language) and one side of a translation.
     static func learnsFrom(_ language: String?, in defaults: UserDefaults = .standard) -> Bool {
         let native = nativeLanguages(in: defaults)
         guard !native.isEmpty, let language else { return true }
@@ -593,7 +593,7 @@ extension SettingsStore {
         _ text: String, for operation: Operation, in defaults: UserDefaults = .standard
     ) -> Bool {
         guard !isBlank(text) else { return false }
-        // A prompt equal to the default is stored as "no custom prompt", so the state stays 默认 even
+        // A prompt equal to the default is stored as "no custom prompt", so the state stays Default even
         // if the built-in prompts change in a later version.
         if text == defaultPrompt(for: operation) {
             defaults.removeObject(forKey: promptKey(for: operation))

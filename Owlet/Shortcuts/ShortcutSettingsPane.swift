@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// 快捷键 pane of the settings window: the global recorders, then the panel's fixed keys. Keyboard
+/// Shortcuts pane of the settings window: the global recorders, then the panel's fixed keys. Keyboard
 /// bindings are a preference, so they belong with the other preferences rather than in the sidebar.
 struct ShortcutSettingsPane: View {
     let controller: ShortcutController

@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// The two 学习表达 switches start off, persist, and are controlled per operation.
+/// The two Study Expressions switches start off, persist, and are controlled per operation.
 struct LearningSwitchTests {
     let suite = "LearningSwitchTests.\(UUID().uuidString)"
     var defaults: UserDefaults { UserDefaults(suiteName: suite)! }

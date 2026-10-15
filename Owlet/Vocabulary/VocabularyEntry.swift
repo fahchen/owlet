@@ -32,7 +32,7 @@ final class VocabularyEntry {
     }
 
     /// Whether the meaning stored here was written in another language than the settings now ask for.
-    /// False when there is no meaning yet — that case has its own 补充释义 entry.
+    /// False when there is no meaning yet; that case has its own Fill In Meaning action.
     func meaningLanguageIsStale(mapping: TargetMapping = SettingsStore.targetMapping()) -> Bool {
         guard !definitionLocale.isEmpty else { return false }
         return !LanguageTag.same(definitionLocale, currentMeaningLanguage(mapping: mapping))
@@ -64,7 +64,7 @@ final class VocabularyEntry {
 final class VocabularyContext {
     var source: String = ""
     /// The language this sentence is written in, which is not always the entry's: collecting an
-    /// English expression out of a Chinese translation stores a Chinese 原句 under an `en` entry.
+    /// English expression out of a Chinese translation stores a Chinese source sentence under an `en` entry.
     /// Empty when the region could not tell (a translation's source language is never stored).
     var language: String = ""
     var polishBefore: String?
@@ -105,7 +105,7 @@ struct VocabularyDraft: Equatable {
     /// The sentence the expression was collected from; the meaning request uses it as context.
     var context: String
     /// The language of that sentence. It differs from `language` whenever the expression was taken
-    /// from the result of a translation, whose 原句 stays in the source language.
+    /// from the result of a translation, whose source sentence stays in the source language.
     var contextLanguage: String?
     var polishBefore: String?
     var polishAfter: String?

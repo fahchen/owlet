@@ -23,8 +23,8 @@ struct OwletApp: App {
         // Before any view is built: put the stored interface language where Foundation reads it, so the
         // String Catalog resolves to it for this launch.
         AppLanguage.applyStoredChoice()
-        // A card's 加入生词本 writes through the same notebook the pages use, so a word added from a
-        // lookup shows up in 生词本 immediately. The notebook, the lookups and the panel all live as
+        // A card's Add to Notebook writes through the same notebook the pages use, so a word added from a
+        // lookup shows up in Notebook immediately. The notebook, the lookups and the panel all live as
         // long as the app does.
         let notebook = CollectionAction()
         _collection = State(initialValue: notebook)
@@ -66,7 +66,7 @@ struct OwletApp: App {
             CommandGroup(replacing: .pasteboard) { PasteboardButtons() }
             SidebarCommands()
         }
-        // A real settings window: the scene is what puts 设置… and ⌘, in the App menu, and SwiftUI
+        // A real settings window: the scene is what puts Settings… and ⌘, in the App menu, and SwiftUI
         // manages showing it. Nothing else in the app carries a settings entry.
         Settings {
             SettingsView(shortcuts: shortcuts, promptFocus: $promptFocus)
@@ -130,7 +130,7 @@ private struct MainView: View {
         .task { history.observe(translation) }
     }
 
-    /// The processing page's service errors belong on the 模型 pane, so the pane is chosen before the
+    /// The processing page's service errors belong on the Model pane, so the pane is chosen before the
     /// window comes up.
     private func openModelSettings() {
         UserDefaults.standard.set(SettingsPane.model.rawValue, forKey: SettingsStore.settingsPaneKey)
@@ -168,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// 关闭窗口 (⌘W): a single-window app with no documents has nothing to New/Open/Save, and SwiftUI
+/// Close Window (⌘W): a single-window app with no documents has nothing to New/Open/Save, and SwiftUI
 /// only adds the system Close to a File menu it creates for a document scene, so the command is ours.
 private struct CloseWindowButton: View {
     var body: some View {
@@ -177,7 +177,7 @@ private struct CloseWindowButton: View {
     }
 }
 
-/// 翻译文本／润色文本 (⌘↩) in the File menu: the main page's submit action, named for the operation
+/// Translate Text / Polish Text (⌘↩) in the File menu: the main page's submit action, named for the operation
 /// the page is on.
 private struct SubmitTextButton: View {
     let translation: TextProcessingModel
@@ -191,7 +191,7 @@ private struct SubmitTextButton: View {
     }
 }
 
-/// 翻译 (⌘1) and 润色 (⌘2): switch the main page's operation, bringing the page up if another is showing.
+/// Translate (⌘1) and Polish (⌘2): switch the main page's operation, bringing the page up if another is showing.
 private struct OperationButtons: View {
     let translation: TextProcessingModel
     @Binding var page: MainView.Page
@@ -208,7 +208,7 @@ private struct OperationButtons: View {
     }
 }
 
-/// The Edit menu's pasteboard commands. 拷贝 (⌘C) copies selected text as always; with nothing
+/// The Edit menu's pasteboard commands. Copy (⌘C) copies selected text as always; with nothing
 /// selected it copies what the page offers — the result, a record's result, an expression — so the
 /// one key does both, and the page's copy button only has to name it.
 private struct PasteboardButtons: View {
@@ -234,7 +234,7 @@ private struct PasteboardButtons: View {
     }
 
     // ponytail: only an AppKit text view's selection counts; a selection in SwiftUI selectable Text
-    // (逐句对照) is not seen, so ⌘C there copies the whole result. Route through the responder chain's
+    // (Sentence by Sentence) is not seen, so ⌘C there copies the whole result. Route through the responder chain's
     // validation if that matters.
     private var hasTextSelection: Bool {
         (NSApp.keyWindow?.firstResponder as? NSTextView).map { $0.selectedRange().length > 0 } ?? false
@@ -289,7 +289,7 @@ private struct MenuBarLabel: View {
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
                 history.observe(panel.model)
-                // The contract error's 提示词设置 entry lands on the failing operation's editor, not on
+                // The contract error's Prompt Settings entry lands on the failing operation's editor, not on
                 // the service fields it used to open.
                 panel.openPromptSettings = { operation in
                     promptFocus = operation

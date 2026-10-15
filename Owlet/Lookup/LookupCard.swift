@@ -36,7 +36,7 @@ struct LookupCard: View {
         return collection.isCollected(language: language, expression: query.text)
     }
 
-    /// Whether the card can offer 加入生词本 at all: a notebook action is wired in and the text's
+    /// Whether the card can offer Add to Notebook at all: a notebook action is wired in and the text's
     /// language is known. Read-only usage without one keeps the card exactly as it was.
     private var canCollect: Bool { presenter.collection != nil && notebookLanguage != nil }
 
@@ -96,7 +96,7 @@ struct LookupCard: View {
         }
     }
 
-    /// 加入生词本／已收藏 as the same round glass action as 发音, beside it, so the two read as one pair.
+    /// Add to Notebook / Saved as the same round glass action as Speak, beside it, so the two read as one pair.
     /// Filled and accented once the entry is stored, matching the learning rows. The card stays open,
     /// and the entry keeps the meaning the lookup already paid for.
     private func collectButton(_ result: LookupResult) -> some View {

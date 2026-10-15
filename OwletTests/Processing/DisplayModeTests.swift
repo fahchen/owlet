@@ -3,7 +3,7 @@ import Testing
 
 @testable import Owlet
 
-/// 翻译显示方式: the preference persists, the response pairs are exposed for 逐句对照, and switching
+/// Translation Display: the preference persists, the response pairs are exposed for Sentence by Sentence, and switching
 /// the mode never spends a model request.
 @MainActor
 struct DisplayModeTests {
@@ -29,7 +29,7 @@ struct DisplayModeTests {
         #expect(SettingsStore.displayMode(in: defaults) == .aligned)
     }
 
-    /// The pairs come straight from the response, so 逐句对照 never splits on punctuation, and both
+    /// The pairs come straight from the response, so Sentence by Sentence never splits on punctuation, and both
     /// copy and write-back still read the joined targets.
     @Test func successfulResultKeepsTheResponsePairs() async {
         let reply =

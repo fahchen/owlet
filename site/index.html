@@ -17,6 +17,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500&display=swap">
+<script>
+  // Before the first paint, so a saved or system dark theme never flashes light.
+  (() => {
+    const pref = localStorage.getItem("owlet.theme") || "system";
+    const dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  })();
+</script>
 <style>
   :root {
     --ink: oklch(0.22 0.004 260);
@@ -57,10 +65,10 @@
   .meta { font-size: 13px; color: var(--dim); }
   .btn {
     display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
-    color: white; text-decoration: none; font-weight: 500; font-size: 15px;
+    color: var(--btn-ink); text-decoration: none; font-weight: 500; font-size: 15px;
     transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s cubic-bezier(.16, 1, .3, 1);
   }
-  .btn:hover { color: white; transform: translateY(-1px); }
+  .btn:hover { color: var(--btn-ink); transform: translateY(-1px); }
   .btn:active { transform: translateY(0); }
   .btn:focus-visible, .more-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
   .more-link { text-decoration: none; color: var(--dim); }
@@ -73,9 +81,9 @@
   /* A faint Tahoe wash, as if the wallpaper showed through glass; on the stage, so it holds still while the shots change. */
   .stage {
     background:
-      radial-gradient(55% 45% at 18% 12%, oklch(0.94 0.035 250 / .9), transparent 70%),
-      radial-gradient(45% 45% at 86% 28%, oklch(0.95 0.035 320 / .8), transparent 70%),
-      radial-gradient(60% 50% at 55% 100%, oklch(0.95 0.03 195 / .8), transparent 70%),
+      radial-gradient(55% 45% at 18% 12%, var(--wash-1), transparent 70%),
+      radial-gradient(45% 45% at 86% 28%, var(--wash-2), transparent 70%),
+      radial-gradient(60% 50% at 55% 100%, var(--wash-3), transparent 70%),
       var(--band);
   }
   .step { margin: 0 auto 88px; max-width: 1032px; }
@@ -146,32 +154,64 @@
     --glass-hi: inset 0 1px 0 oklch(1 0 0 / .95);
     --glass-drop: 0 10px 28px -14px oklch(0.3 0.04 260 / .28), 0 1px 2px oklch(0.3 0.02 260 / .06);
     --spring: cubic-bezier(.22, 1, .36, 1);
+    --wash-1: oklch(0.95 0.03 250 / .7); --wash-2: oklch(0.96 0.03 320 / .6); --wash-3: oklch(0.96 0.025 195 / .6);
+    --card-base: oklch(1 0 0 / .68); --mix-base: oklch(1 0 0); --chip-any: oklch(1 0 0 / .25); --bar: oklch(0.80 0.006 260);
+    --track: oklch(1 0 0 / .45); --pill-top: oklch(1 0 0 / .98); --pill-bot: oklch(1 0 0 / .78); --pill-hi: oklch(1 0 0);
+    --btn-top: oklch(0.36 0.01 260 / .92); --btn-bot: oklch(0.19 0.01 260 / .94); --btn-ink: oklch(0.99 0 0);
   }
+  /* Dark: the script resolves "system" to light or dark before the first paint, so one block serves both. */
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --ink: oklch(0.95 0.004 260); --dim: oklch(0.74 0.01 260); --bg: oklch(0.17 0.008 260); --band: oklch(0.2 0.01 260);
+    --line: oklch(1 0 0 / .1);
+    --amber: oklch(0.80 0.12 70); --blue: oklch(0.76 0.12 255); --green: oklch(0.78 0.13 150); --rose: oklch(0.77 0.13 355); --violet: oklch(0.76 0.12 300);
+    --glass: oklch(0.3 0.01 260 / .55);
+    --glass-ring: inset 0 0 0 .5px oklch(1 0 0 / .12), 0 0 0 .5px oklch(0 0 0 / .4);
+    --glass-hi: inset 0 1px 0 oklch(1 0 0 / .12);
+    --glass-drop: 0 10px 28px -14px oklch(0 0 0 / .6), 0 1px 2px oklch(0 0 0 / .3);
+    --wash-1: oklch(0.32 0.06 250 / .45); --wash-2: oklch(0.32 0.06 320 / .35); --wash-3: oklch(0.32 0.05 195 / .35);
+    --card-base: oklch(0.25 0.01 260 / .7); --mix-base: oklch(0.2 0.01 260); --chip-any: oklch(1 0 0 / .05); --bar: oklch(0.45 0.01 260);
+    --track: oklch(0.28 0.01 260 / .6); --pill-top: oklch(0.44 0.01 260 / .95); --pill-bot: oklch(0.36 0.01 260 / .95); --pill-hi: oklch(1 0 0 / .14);
+    --btn-top: oklch(0.99 0 0 / .96); --btn-bot: oklch(0.88 0.004 260 / .96); --btn-ink: oklch(0.2 0.005 260);
+  }
+  :root[data-theme=dark] .shot img, :root[data-theme=dark] .pane > img { filter: drop-shadow(0 18px 40px oklch(0 0 0 / .55)); }
+  :lang(ja) body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "SF Pro Text", sans-serif; }
+
+  /* Language and appearance, top right, on the same glass as the rest of the page. */
+  .prefs { position: fixed; top: 14px; right: 14px; z-index: 20; display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; font-size: 13px; }
+  .prefs button { font: inherit; color: var(--dim); background: none; border: 0; cursor: pointer; border-radius: 999px; padding: 5px 10px; min-height: 30px; transition: color .2s, background .2s; }
+  .prefs button:hover { color: var(--ink); }
+  .prefs button[aria-pressed=true] { color: var(--ink); background: var(--pill-top); box-shadow: inset 0 0 0 .5px var(--pill-hi), 0 1px 3px oklch(0 0 0 / .12); }
+  .prefs .sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; }
+  .prefs .theme { display: grid; place-items: center; width: 30px; padding: 0; }
+  .prefs .theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .prefs .theme svg:not(.on) { display: none; }
+  .prefs button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
   /* Faint wallpaper light, so the glass has something to show through. */
   .hero, .inside, .features {
     background:
-      radial-gradient(40% 50% at 15% 20%, oklch(0.95 0.03 250 / .7), transparent 70%),
-      radial-gradient(35% 45% at 88% 35%, oklch(0.96 0.03 320 / .6), transparent 70%),
-      radial-gradient(45% 40% at 50% 100%, oklch(0.96 0.025 195 / .6), transparent 70%),
+      radial-gradient(40% 50% at 15% 20%, var(--wash-1), transparent 70%),
+      radial-gradient(35% 45% at 88% 35%, var(--wash-2), transparent 70%),
+      radial-gradient(45% 40% at 50% 100%, var(--wash-3), transparent 70%),
       var(--bg);
   }
-  .glassy, .chip, .prompt {
+  .glassy, .chip, .prompt, .prefs {
     background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8);
     box-shadow: var(--glass-hi), var(--glass-ring), var(--glass-drop);
   }
   .card {
-    background: color-mix(in oklab, var(--c, white) 13%, oklch(1 0 0 / .68));
+    background: color-mix(in oklab, var(--c, var(--mix-base)) 13%, var(--card-base));
     -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
     /* A light lift only: the glass edge separates the cards, not the shadow. */
     box-shadow: var(--glass-hi), var(--glass-ring), 0 4px 14px -10px oklch(0.3 0.04 260 / .14);
   }
-  .chip.any { background: oklch(1 0 0 / .25); box-shadow: none; }
+  .chip.any { background: var(--chip-any); box-shadow: none; }
   .card :is(.chip, .prompt) { box-shadow: var(--glass-hi), var(--glass-ring); }
 
   /* The download button: dark glass with a specular top edge. */
   .btn {
     position: relative; overflow: hidden;
-    background: linear-gradient(180deg, oklch(0.36 0.01 260 / .92), oklch(0.19 0.01 260 / .94));
+    background: linear-gradient(180deg, var(--btn-top), var(--btn-bot));
     -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
     box-shadow: inset 0 1px 0 oklch(1 0 0 / .3), inset 0 0 0 .5px oklch(1 0 0 / .14), 0 10px 24px -12px oklch(0.2 0.02 260 / .6), 0 1px 2px oklch(0.2 0 0 / .2);
   }
@@ -182,13 +222,13 @@
   .tabs {
     position: relative; display: grid; grid-template-columns: repeat(3, 1fr); width: fit-content; margin: 28px auto 32px;
     padding: 4px; border-radius: 999px; font-size: 14px; font-weight: 500;
-    background: oklch(1 0 0 / .45); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
-    box-shadow: inset 0 1px 0 oklch(1 0 0 / .9), var(--glass-ring), 0 6px 18px -10px oklch(0.3 0.04 260 / .25);
+    background: var(--track); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow: var(--glass-hi), var(--glass-ring), 0 6px 18px -10px oklch(0.3 0.04 260 / .25);
   }
   .tabs::before {
     content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 999px;
-    background: linear-gradient(180deg, oklch(1 0 0 / .98), oklch(1 0 0 / .78));
-    box-shadow: inset 0 1px 0 white, inset 0 0 0 .5px oklch(1 0 0 / .9), 0 2px 6px oklch(0.3 0.03 260 / .14), 0 0 0 .5px oklch(0.3 0.02 260 / .08);
+    background: linear-gradient(180deg, var(--pill-top), var(--pill-bot));
+    box-shadow: inset 0 1px 0 var(--pill-hi), inset 0 0 0 .5px var(--pill-hi), 0 2px 6px oklch(0.3 0.03 260 / .14), 0 0 0 .5px oklch(0.3 0.02 260 / .08);
     transition: transform .55s var(--spring);
   }
   #tab-history:checked ~ .tabs::before { transform: translateX(100%); }
@@ -250,7 +290,7 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
   .chip i { font-style: normal; color: var(--c); margin: 0 4px; }
-  .chip.any { border: 1px dashed color-mix(in oklab, var(--c) 60%, white); color: var(--c); font-family: var(--hand); }
+  .chip.any { border: 1px dashed color-mix(in oklab, var(--c) 60%, var(--mix-base)); color: var(--c); font-family: var(--hand); }
   .field { padding: 0 0 8px; box-shadow: inset 0 -.5px 0 color-mix(in oklab, var(--c) 45%, transparent); font-size: 15px; }
   .field s { color: var(--dim); margin-right: 8px; }
   .field b { font-weight: 500; }
@@ -267,8 +307,8 @@
   .layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .layouts > div { display: grid; gap: 5px; padding: 4px 0; }
   .layouts > div + div { padding-left: 20px; box-shadow: inset .5px 0 0 var(--line); }
-  .layouts i { display: block; height: 5px; border-radius: 3px; background: oklch(0.80 0.006 260); }
-  .layouts i.t { background: color-mix(in oklab, var(--c) 45%, white); }
+  .layouts i { display: block; height: 5px; border-radius: 3px; background: var(--bar); }
+  .layouts i.t { background: color-mix(in oklab, var(--c) 45%, var(--mix-base)); }
   .layouts i.gap { background: none; height: 3px; }
   .layouts small { color: var(--dim); font-size: 12px; margin-top: 4px; }
   .locks { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -298,97 +338,108 @@
 </style>
 </head>
 <body>
+<div class="prefs glassy" role="group">
+  <span class="langs" role="group" aria-label="Language" data-i18n-aria="lang">
+    <button type="button" data-lang="en" lang="en">EN</button><button type="button" data-lang="zh" lang="zh-Hans">中</button><button type="button" data-lang="ja" lang="ja">日</button>
+  </span>
+  <span class="sep" aria-hidden="true"></span>
+  <button type="button" class="theme" aria-label="Appearance: System" title="Appearance: System">
+    <svg data-pref="system" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none"/></svg>
+    <svg data-pref="light" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>
+    <svg data-pref="dark" viewBox="0 0 16 16"><path d="M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z"/></svg>
+  </button>
+</div>
 
 <header class="hero">
   <div>
     <img src="icon.png" alt="Owlet app icon" width="64" height="64">
     <h1>Owlet</h1>
-    <p class="tagline">A quiet companion for reading and writing in another language.</p>
-    <p class="lead">Press a shortcut, and Owlet translates or polishes what you select, then keeps the words worth learning. In <span class="ann" style="--c: var(--amber)" data-note="Safari, Mail, PDFs…">any app</span>.</p>
+    <p class="tagline" data-i18n="tagline">A quiet companion for reading and writing in another language.</p>
+    <p class="lead" data-i18n="lead">Press a shortcut, and Owlet translates or polishes what you select, then keeps the words worth learning. In <span class="ann" style="--c: var(--amber)" data-note="Safari, Mail, PDFs…">any app</span>.</p>
     <div class="links">
-      <a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg>Download for Mac</a>
-      <span class="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span>
+      <a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg><span data-i18n="cta">Download for Mac</span></a>
+      <span class="meta" data-i18n="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span>
     </div>
   </div>
 </header>
 
-<section class="story" aria-label="How Owlet works">
+<section class="story" aria-label="How Owlet works" data-i18n-aria="story.aria">
   <div class="stage">
     <div class="steps">
       <figure class="step">
-        <figcaption class="cap"><b class="k1">Translate</b><h2>Read it in your language.</h2><p>Select a few lines and press your shortcut. The original stays on top; the translation sits below.</p></figcaption>
+        <figcaption class="cap"><b class="k1" data-i18n="k1">Translate</b><h2 data-i18n="s1.h">Read it in your language.</h2><p data-i18n="s1.p">Select a few lines and press your shortcut. The original stays on top; the translation sits below.</p></figcaption>
         <div class="shot">
-          <img src="media/translate.webp" width="1546" height="414" alt="Owlet panel with the first stanza of Jianjia from the Classic of Poetry above its English translation">
+          <img src="media/translate.webp" width="1546" height="414" data-i18n-alt="s1.alt" alt="Owlet panel with the first stanza of Jianjia from the Classic of Poetry above its English translation">
           <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
             <path pathLength="1" stroke="var(--amber)" d="M128 92C142 92 150 100 160 110M160 110l-8-2M160 110l-2-8"/>
             <path pathLength="1" stroke="var(--blue)" d="M128 206C142 206 150 200 160 197M160 197l-8-4M160 197l-7 4"/>
             <path pathLength="1" stroke="var(--rose)" d="M762 280C758 262 766 246 772 232M772 232l-6 8M772 232l6 7"/>
             <path pathLength="1" stroke="var(--violet)" d="M868 186C850 190 840 200 832 207M832 207l9-2M832 207l3-8"/>
           </svg>
-          <span class="note r" style="--c: var(--amber); right: 86.5%; top: 19%">what you<br>selected</span>
-          <span class="note r" style="--c: var(--blue); right: 86.5%; top: 57%">now in<br>English</span>
-          <span class="note" style="--c: var(--rose); left: 72%; top: 86%">learn from it</span>
-          <span class="note" style="--c: var(--violet); left: 87%; top: 50%">⌘C copies</span>
+          <span class="note r" style="--c: var(--amber); right: 86.5%; top: 19%" data-i18n="n.selected">what you<br>selected</span>
+          <span class="note r" style="--c: var(--blue); right: 86.5%; top: 57%" data-i18n="n.english">now in<br>English</span>
+          <span class="note" style="--c: var(--rose); left: 72%; top: 86%" data-i18n="n.learn">learn from it</span>
+          <span class="note" style="--c: var(--violet); left: 87%; top: 50%" data-i18n="n.copy">⌘C copies</span>
         </div>
       </figure>
       <figure class="step">
-        <figcaption class="cap"><b class="k2">Learn</b><h2>Find the words worth keeping.</h2><p>Open Learn for the words that matter here, each explained in the line where you met it.</p></figcaption>
+        <figcaption class="cap"><b class="k2" data-i18n="k2">Learn</b><h2 data-i18n="s2.h">Find the words worth keeping.</h2><p data-i18n="s2.p">Open Learn for the words that matter here, each explained in the line where you met it.</p></figcaption>
         <div class="shot">
-          <img src="media/learn.webp" width="1546" height="408" alt="Owlet panel with three words to learn: lush, long for, and seek" loading="lazy">
+          <img src="media/learn.webp" width="1546" height="408" data-i18n-alt="s2.alt" alt="Owlet panel with three words to learn: lush, long for, and seek" loading="lazy">
           <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
             <path pathLength="1" stroke="var(--rose)" d="M866 82C830 84 780 92 735 100M735 100l8-5M735 100l8 3"/>
             <path pathLength="1" stroke="var(--blue)" d="M600 280C596 262 600 246 605 234M605 234l-6 8M605 234l6 7"/>
           </svg>
-          <span class="note" style="--c: var(--rose); left: 87%; top: 19%">worth<br>keeping</span>
-          <span class="note" style="--c: var(--blue); left: 54%; top: 86%">explained in context</span>
+          <span class="note" style="--c: var(--rose); left: 87%; top: 19%" data-i18n="n.worth">worth<br>keeping</span>
+          <span class="note" style="--c: var(--blue); left: 54%; top: 86%" data-i18n="n.context">explained in context</span>
         </div>
       </figure>
       <figure class="step">
-        <figcaption class="cap"><b class="k3">Keep</b><h2>Keep them with one click.</h2><p>Each word goes into your word book, along with the line it came from.</p></figcaption>
+        <figcaption class="cap"><b class="k3" data-i18n="k3">Keep</b><h2 data-i18n="s3.h">Keep them with one click.</h2><p data-i18n="s3.p">Each word goes into your word book, along with the line it came from.</p></figcaption>
         <div class="shot">
-          <img src="media/collect.webp" width="1546" height="408" alt="Owlet panel with the word lush saved to the word book" loading="lazy">
+          <img src="media/collect.webp" width="1546" height="408" data-i18n-alt="s3.alt" alt="Owlet panel with the word lush saved to the word book" loading="lazy">
           <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
             <path pathLength="1" stroke="var(--green)" d="M528 36C520 55 528 72 533 86M533 86l-7-6M533 86l2-9"/>
             <path pathLength="1" stroke="var(--amber)" d="M250 36C262 52 284 66 293 78M293 78l-8-4M293 78l-1-9"/>
           </svg>
-          <span class="note" style="--c: var(--green); left: 47%; top: 1%">saved</span>
-          <span class="note" style="--c: var(--amber); left: 8%; top: 1%">⌘-click any word to look it up</span>
+          <span class="note" style="--c: var(--green); left: 47%; top: 1%" data-i18n="n.saved">saved</span>
+          <span class="note" style="--c: var(--amber); left: 8%; top: 1%" data-i18n="n.lookup">⌘-click any word to look it up</span>
         </div>
       </figure>
     </div>
     <div>
-      <div class="progress glassy" aria-hidden="true"><span>Translate</span><span>Learn</span><span>Keep</span></div>
-      <p class="credit">《蒹葭》 · Classic of Poetry</p>
+      <div class="progress glassy" aria-hidden="true"><span data-i18n="k1">Translate</span><span data-i18n="k2">Learn</span><span data-i18n="k3">Keep</span></div>
+      <p class="credit" data-i18n="credit">《蒹葭》 · Classic of Poetry</p>
     </div>
   </div>
 </section>
 
-<section class="inside" aria-label="Inside the app">
+<section class="inside" aria-label="Inside the app" data-i18n-aria="inside.h">
   <div class="wrap">
-    <h2>Inside the app</h2>
-    <p class="sub">Where your words and translations live.</p>
+    <h2 data-i18n="inside.h">Inside the app</h2>
+    <p class="sub" data-i18n="inside.sub">Where your words and translations live.</p>
     <input type="radio" name="inside" id="tab-notebook" checked>
     <input type="radio" name="inside" id="tab-history">
     <input type="radio" name="inside" id="tab-languages">
     <div class="tabs" role="presentation">
-      <label for="tab-notebook">Word book</label>
-      <label for="tab-history">History</label>
-      <label for="tab-languages">Languages</label>
+      <label for="tab-notebook" data-i18n="tab.notebook">Word book</label>
+      <label for="tab-history" data-i18n="tab.history">History</label>
+      <label for="tab-languages" data-i18n="tab.languages">Languages</label>
     </div>
     <div class="panes">
       <div class="pane p-notebook">
-        <img src="media/notebook.webp" width="2160" height="1380" alt="The Owlet word book with five saved expressions in English, French, and Japanese, and the selected one showing its source sentence" loading="lazy">
+        <img src="media/notebook.webp" width="2160" height="1380" data-i18n-alt="notebook.alt" alt="The Owlet word book with five saved expressions in English, French, and Japanese, and the selected one showing its source sentence" loading="lazy">
         <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
           <path pathLength="1" stroke="var(--amber)" d="M640 312C632 280 626 252 622 234M622 234l-6 8M622 234l7 6"/>
         </svg>
-        <span class="note" style="--c: var(--amber); left: 58%; top: 50%">the line you found it in</span>
+        <span class="note" style="--c: var(--amber); left: 58%; top: 50%" data-i18n="n.line">the line you found it in</span>
       </div>
       <div class="pane p-history">
-        <img src="media/history.webp" width="2160" height="1380" alt="Owlet history with translations and a polish grouped by day, the latest showing the poem and its translation" loading="lazy">
+        <img src="media/history.webp" width="2160" height="1380" data-i18n-alt="history.alt" alt="Owlet history with translations and a polish grouped by day, the latest showing the poem and its translation" loading="lazy">
         <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
           <path pathLength="1" stroke="var(--blue)" d="M152 336C147 324 147 314 150 303M150 303l-6 7M150 303l6 6"/>
         </svg>
-        <span class="note" style="--c: var(--blue); left: 14%; top: 54%">every translation and polish,<br>by day</span>
+        <span class="note" style="--c: var(--blue); left: 14%; top: 54%" data-i18n="n.history">every translation and polish,<br>by day</span>
       </div>
       <div class="pane p-languages">
         <div class="window">
@@ -401,14 +452,14 @@
               <span><svg viewBox="0 0 18 18"><rect x="2" y="5" width="14" height="8.5" rx="1.6"/><path d="M5 8h.01M8 8h.01M11 8h.01M14 8h.01M6 11h6"/></svg>Shortcuts</span>
             </div>
           </div>
-          <div class="content"><img src="media/languages.webp" width="1240" height="2236" alt="Owlet language settings with six languages, a target for each source language, and native languages" loading="lazy"></div>
+          <div class="content"><img src="media/languages.webp" width="1240" height="2236" data-i18n-alt="languages.alt" alt="Owlet language settings with six languages, a target for each source language, and native languages" loading="lazy"></div>
         </div>
         <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
           <path pathLength="1" stroke="var(--rose)" d="M200 319C240 321 262 331 276 343M276 343l-9-1M276 343l-3-8"/>
           <path pathLength="1" stroke="var(--green)" d="M200 463C225 471 240 481 250 491M250 491l-8-2M250 491l-2-8"/>
         </svg>
-        <span class="note r" style="--c: var(--rose); right: 80.5%; top: 46.3%">add any<br>language</span>
-        <span class="note r" style="--c: var(--green); right: 80.5%; top: 68.3%">a target for<br>each source</span>
+        <span class="note r" style="--c: var(--rose); right: 80.5%; top: 46.3%" data-i18n="n.addlang">add any<br>language</span>
+        <span class="note r" style="--c: var(--green); right: 80.5%; top: 68.3%" data-i18n="n.target">a target for<br>each source</span>
       </div>
     </div>
   </div>
@@ -416,29 +467,29 @@
 
 <section class="features">
   <div class="wrap">
-    <h2>And the details</h2>
-    <p class="sub">Small things that make another language a little easier.</p>
+    <h2 data-i18n="features.h">And the details</h2>
+    <p class="sub" data-i18n="features.sub">Small things that make another language a little easier.</p>
     <div class="polish">
-      <h3>Polish</h3>
-      <p>Fixes grammar and smooths the phrasing, in the same language.</p>
+      <h3 data-i18n="polish.h">Polish</h3>
+      <p data-i18n="polish.p">Fixes grammar and smooths the phrasing, in the same language.</p>
       <p class="before">The moon is very beautiful tonight, it makes me remember my hometown.</p>
-      <p class="after">The moon is beautiful tonight. It <span class="ann" style="--c: var(--green)" data-note="more natural">reminds me of</span> home.</p>
+      <p class="after">The moon is beautiful tonight. It <span class="ann" style="--c: var(--green)" data-note="more natural" data-i18n-note="polish.note">reminds me of</span> home.</p>
     </div>
     <div class="bento">
       <div class="card w4" style="--c: var(--blue)">
-        <h3>Any language</h3><p>Add the languages you read. Owlet detects the source and picks the target.</p>
+        <h3 data-i18n="c.lang.h">Any language</h3><p data-i18n="c.lang.p">Add the languages you read. Owlet detects the source and picks the target.</p>
         <div class="viz chips">
           <span class="chip">日本語<i>→</i>简体中文</span><span class="chip">English<i>→</i>简体中文</span>
           <span class="chip">Français<i>→</i>English</span><span class="chip">한국어<i>→</i>English</span>
-          <span class="chip">简体中文<i>→</i>English</span><span class="chip any">+ any language</span>
+          <span class="chip">简体中文<i>→</i>English</span><span class="chip any" data-i18n="c.lang.any">+ any language</span>
         </div>
       </div>
       <div class="card" style="--c: var(--green)">
-        <h3>Replace in place</h3><p>Translate or polish straight over your selection.</p>
+        <h3 data-i18n="c.replace.h">Replace in place</h3><p data-i18n="c.replace.p">Translate or polish straight over your selection.</p>
         <div class="viz field"><s lang="zh-Hans">明天见</s><b>See you tomorrow</b></div>
       </div>
       <div class="card" style="--c: var(--rose)">
-        <h3>Look up and listen</h3><p>⌘-click a word for its meaning, reading, and sound.</p>
+        <h3 data-i18n="c.lookup.h">Look up and listen</h3><p data-i18n="c.lookup.p">⌘-click a word for its meaning, reading, and sound.</p>
         <div class="viz mini">
           <div class="top"><b>lush</b><span>/lʌʃ/ · adj.</span>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M2 6v4h3l4 3V3L5 6H2zM11.5 5.5a3.5 3.5 0 0 1 0 5M13.5 3.5a6.5 6.5 0 0 1 0 9"/></svg></div>
@@ -446,7 +497,7 @@
         </div>
       </div>
       <div class="card" style="--c: var(--amber)">
-        <h3>Readings your way</h3><p>One reading system for each language.</p>
+        <h3 data-i18n="c.read.h">Readings your way</h3><p data-i18n="c.read.p">One reading system for each language.</p>
         <div class="viz reads">
           <div><b>lush</b><span>/lʌʃ/</span></div>
           <div><b lang="ja">木漏れ日</b><span lang="ja">こもれび</span></div>
@@ -454,35 +505,35 @@
         </div>
       </div>
       <div class="card" style="--c: var(--violet)">
-        <h3>Side by side</h3><p>Read in two blocks, or line by line.</p>
+        <h3 data-i18n="c.side.h">Side by side</h3><p data-i18n="c.side.p">Read in two blocks, or line by line.</p>
         <div class="viz layouts" aria-hidden="true">
-          <div><i style="width: 90%"></i><i style="width: 70%"></i><i class="gap"></i><i class="t" style="width: 95%"></i><i class="t" style="width: 60%"></i><small>Blocks</small></div>
-          <div><i style="width: 80%"></i><i class="t" style="width: 90%"></i><i class="gap"></i><i style="width: 70%"></i><i class="t" style="width: 75%"></i><small>Sentences</small></div>
+          <div><i style="width: 90%"></i><i style="width: 70%"></i><i class="gap"></i><i class="t" style="width: 95%"></i><i class="t" style="width: 60%"></i><small data-i18n="c.side.blocks">Blocks</small></div>
+          <div><i style="width: 80%"></i><i class="t" style="width: 90%"></i><i class="gap"></i><i style="width: 70%"></i><i class="t" style="width: 75%"></i><small data-i18n="c.side.sentences">Sentences</small></div>
         </div>
       </div>
       <div class="card w3" style="--c: var(--violet)">
-        <h3>Your own model</h3><p>Any OpenAI-compatible service, or an agent CLI already on your Mac.</p>
+        <h3 data-i18n="c.model.h">Your own model</h3><p data-i18n="c.model.p">Any OpenAI-compatible service, or an agent CLI already on your Mac.</p>
         <div class="viz chips">
           <span class="chip">DeepSeek</span><span class="chip">Kimi</span><span class="chip">Qwen</span><span class="chip">OpenRouter</span>
           <span class="chip">Ollama</span><span class="chip">LM Studio</span><span class="chip">Claude Code</span><span class="chip">Codex</span>
         </div>
       </div>
       <div class="card w3" style="--c: var(--green)">
-        <h3>Private</h3><p>No account. No Owlet server.</p>
+        <h3 data-i18n="c.private.h">Private</h3><p data-i18n="c.private.p">No account. No Owlet server.</p>
         <div class="viz locks chips">
-          <span class="chip">History on your Mac</span><span class="chip">Words on your Mac</span><span class="chip">API key in the Keychain</span>
+          <span class="chip" data-i18n="c.private.history">History on your Mac</span><span class="chip" data-i18n="c.private.words">Words on your Mac</span><span class="chip" data-i18n="c.private.key">API key in the Keychain</span>
         </div>
       </div>
       <div class="card" style="--c: var(--rose)">
-        <h3>Knows your languages</h3><p>Tell it your native languages once.</p>
-        <div class="viz native"><span class="chip" lang="zh-Hans">简体中文<small>native</small></span><em>left out of suggestions</em></div>
+        <h3 data-i18n="c.native.h">Knows your languages</h3><p data-i18n="c.native.p">Tell it your native languages once.</p>
+        <div class="viz native"><span class="chip" lang="zh-Hans">简体中文<small data-i18n="c.native.tag">native</small></span><em data-i18n="c.native.note">left out of suggestions</em></div>
       </div>
       <div class="card" style="--c: var(--amber)">
-        <h3>Your own prompts</h3><p>Tune how it translates and polishes.</p>
-        <div class="viz"><div class="prompt">Keep the poem’s line breaks. Prefer plain, modern English.</div><div class="restore">↺ Restore Default</div></div>
+        <h3 data-i18n="c.prompt.h">Your own prompts</h3><p data-i18n="c.prompt.p">Tune how it translates and polishes.</p>
+        <div class="viz"><div class="prompt" data-i18n="c.prompt.text">Keep the poem’s line breaks. Prefer plain, modern English.</div><div class="restore" data-i18n="c.prompt.restore">↺ Restore Default</div></div>
       </div>
       <div class="card" style="--c: var(--blue)">
-        <h3>Native on macOS</h3><p>Liquid Glass, and an interface in four languages.</p>
+        <h3 data-i18n="c.mac.h">Native on macOS</h3><p data-i18n="c.mac.p">Liquid Glass, and an interface in four languages.</p>
         <div class="viz chips"><span class="chip">English</span><span class="chip" lang="zh-Hans">简体中文</span><span class="chip" lang="zh-Hant">繁體中文</span><span class="chip" lang="ja">日本語</span></div>
       </div>
     </div>
@@ -491,12 +542,65 @@
 
 <div class="end">
   <img src="icon.png" alt="" width="48" height="48">
-  <h2>Bring Owlet to your Mac.</h2>
-  <div class="links"><a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg>Download for Mac</a><span class="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span></div>
+  <h2 data-i18n="end.h">Bring Owlet to your Mac.</h2>
+  <div class="links"><a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg><span data-i18n="cta">Download for Mac</span></a><span class="meta" data-i18n="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span></div>
 </div>
 
 <footer>
-  <div class="wrap"><span>Owlet</span><span>Made for reading slowly.</span></div>
+  <div class="wrap"><span>Owlet</span><span data-i18n="footer">Made for reading slowly.</span></div>
 </footer>
+<script>
+  // English lives in the markup; the other languages replace it, and English comes back from what was read first.
+  const strings = {"zh": {"title": "Owlet · 在 Mac 上读写任何语言", "tagline": "在另一种语言里读写时，一个安静的伙伴。", "lead": "按下快捷键，Owlet 就会翻译或润色你选中的文字，再帮你留下值得学的词。<span class=\"ann\" style=\"--c: var(--amber)\" data-note=\"Safari、邮件、PDF…\">任何应用</span>里都能用。", "cta": "下载 Mac 版", "meta": "macOS Tahoe 26 或更高版本 · <a class=\"more-link\" href=\"changelog.html\">更新日志 <span>→</span></a>", "story.aria": "Owlet 怎么用", "k1": "翻译", "k2": "学习", "k3": "收藏", "s1.h": "用你的语言读。", "s1.p": "选中几行，按下快捷键。原文在上，译文在下。", "s1.alt": "Owlet 浮窗：《诗经·蒹葭》首章与它的英文译文", "n.selected": "你选中的<br>文字", "n.english": "已是<br>英文", "n.learn": "从中学习", "n.copy": "⌘C 复制", "s2.h": "找出值得留下的词。", "s2.p": "打开「学习」，看这段里值得学的词，每个都结合它所在的句子来解释。", "s2.alt": "Owlet 浮窗：三个值得学的词 lush、long for、seek", "n.worth": "值得<br>留下", "n.context": "结合语境解释", "s3.h": "一键收藏。", "s3.p": "每个词连同它出现的那一句，一起存进生词本。", "s3.alt": "Owlet 浮窗：lush 已存入生词本", "n.saved": "已收藏", "n.lookup": "⌘ 单击任意词即可查询", "credit": "《诗经·蒹葭》", "inside.h": "应用内部", "inside.sub": "你的词和译文都在这里。", "tab.notebook": "生词本", "tab.history": "历史记录", "tab.languages": "语言", "notebook.alt": "Owlet 生词本：五条英语、法语、日语表达，选中的一条显示它的原句", "history.alt": "Owlet 历史记录：按天分组的翻译与润色，最新一条是这首诗及其译文", "languages.alt": "Owlet 语言设置：六种语言、每种源语言的翻译目标与母语", "n.line": "你遇到它的那一句", "n.history": "每次翻译与润色，<br>按天排列", "n.addlang": "添加任意<br>语言", "n.target": "每种源语言<br>一个目标", "features.h": "还有这些细节", "features.sub": "让另一种语言变得容易一点的小地方。", "polish.h": "润色", "polish.p": "在同一种语言里修正语法、理顺措辞。", "polish.note": "更自然", "c.lang.h": "任意语言", "c.lang.p": "添加你读的语言。Owlet 会识别原文语言，并选好翻译目标。", "c.lang.any": "+ 任意语言", "c.replace.h": "原地替换", "c.replace.p": "翻译或润色的结果直接替换你的选区。", "c.lookup.h": "查词与发音", "c.lookup.p": "⌘ 单击一个词，看释义、读音并听发音。", "c.read.h": "读音随你选", "c.read.p": "每种语言选一种读音体系。", "c.side.h": "对照阅读", "c.side.p": "分成两块读，或逐句对照。", "c.side.blocks": "分区", "c.side.sentences": "逐句", "c.model.h": "用你自己的模型", "c.model.p": "任意兼容 OpenAI 的服务，或 Mac 上已有的 agent CLI。", "c.private.h": "隐私", "c.private.p": "不需要账号，也没有 Owlet 服务器。", "c.private.history": "历史记录留在 Mac 上", "c.private.words": "生词留在 Mac 上", "c.private.key": "API Key 存在钥匙串", "c.native.h": "懂你的语言", "c.native.p": "告诉它一次你的母语就好。", "c.native.tag": "母语", "c.native.note": "不会出现在推荐里", "c.prompt.h": "自定义提示词", "c.prompt.p": "调整它翻译和润色的方式。", "c.prompt.text": "保留诗的换行，用平实的现代英语。", "c.prompt.restore": "↺ 恢复默认", "c.mac.h": "macOS 原生", "c.mac.p": "Liquid Glass，界面支持四种语言。", "end.h": "把 Owlet 带到你的 Mac 上。", "footer": "为慢慢读而做。", "theme.system": "外观：跟随系统", "theme.light": "外观：浅色", "theme.dark": "外观：深色", "lang": "语言"}, "ja": {"title": "Owlet · Mac であらゆる言語を読み書き", "tagline": "ほかの言語で読み書きするときの、静かな相棒。", "lead": "ショートカットを押すと、選んだ文章を Owlet が翻訳または推敲し、覚えておきたい言葉を残します。<span class=\"ann\" style=\"--c: var(--amber)\" data-note=\"Safari、メール、PDF…\">どのアプリでも</span>使えます。", "cta": "Mac 版をダウンロード", "meta": "macOS Tahoe 26 以降 · <a class=\"more-link\" href=\"changelog.html\">新機能 <span>→</span></a>", "story.aria": "Owlet の使い方", "k1": "翻訳", "k2": "学習", "k3": "保存", "s1.h": "自分の言語で読む。", "s1.p": "数行を選んでショートカットを押すだけ。原文は上に、訳文は下に。", "s1.alt": "Owlet のパネル：『詩経』蒹葭の第一章とその英訳", "n.selected": "選んだ<br>テキスト", "n.english": "英語に<br>なった", "n.learn": "ここから学ぶ", "n.copy": "⌘C でコピー", "s2.h": "残したい言葉を見つける。", "s2.p": "「学習」を開くと、ここで大切な言葉が、出会った一文に沿って説明されます。", "s2.alt": "Owlet のパネル：学ぶべき三語 lush、long for、seek", "n.worth": "残す<br>価値あり", "n.context": "文脈で説明", "s3.h": "ワンクリックで保存。", "s3.p": "言葉は、出てきた一文と一緒に単語帳へ。", "s3.alt": "Owlet のパネル：lush を単語帳に保存したところ", "n.saved": "保存済み", "n.lookup": "⌘ クリックでどの単語も調べられる", "credit": "『詩経』蒹葭", "inside.h": "アプリの中", "inside.sub": "言葉と訳文の置き場所。", "tab.notebook": "単語帳", "tab.history": "履歴", "tab.languages": "言語", "notebook.alt": "Owlet の単語帳：英語・フランス語・日本語の五つの表現と、選んだ表現の原文", "history.alt": "Owlet の履歴：日ごとにまとめた翻訳と推敲。最新はこの詩とその訳", "languages.alt": "Owlet の言語設定：六つの言語、原文の言語ごとの訳先、母語", "n.line": "出会った一文", "n.history": "すべての翻訳と推敲を<br>日ごとに", "n.addlang": "どの言語も<br>追加できる", "n.target": "原文の言語ごとに<br>訳先を設定", "features.h": "細部まで", "features.sub": "ほかの言語を少しだけ楽にする、小さな工夫。", "polish.h": "推敲", "polish.p": "同じ言語のまま、文法を直し、言い回しを整えます。", "polish.note": "より自然", "c.lang.h": "あらゆる言語", "c.lang.p": "読む言語を追加すると、Owlet が原文の言語を判別し、訳先を選びます。", "c.lang.any": "+ どの言語でも", "c.replace.h": "その場で置き換え", "c.replace.p": "翻訳や推敲の結果で、選んだ範囲をそのまま置き換えます。", "c.lookup.h": "調べて、聞く", "c.lookup.p": "⌘ クリックで意味と読みを確かめ、発音も聞けます。", "c.read.h": "読み方は自由に", "c.read.p": "言語ごとに読みの表記を選べます。", "c.side.h": "並べて読む", "c.side.p": "二つのブロックで、または一文ずつ対訳で。", "c.side.blocks": "ブロック", "c.side.sentences": "文ごと", "c.model.h": "好きなモデルで", "c.model.p": "OpenAI 互換のサービス、または Mac にある agent CLI。", "c.private.h": "プライバシー", "c.private.p": "アカウント不要。Owlet のサーバーもありません。", "c.private.history": "履歴は Mac に", "c.private.words": "単語も Mac に", "c.private.key": "API キーはキーチェーンに", "c.native.h": "あなたの言語を知る", "c.native.p": "母語を一度伝えるだけ。", "c.native.tag": "母語", "c.native.note": "おすすめから外します", "c.prompt.h": "自分のプロンプト", "c.prompt.p": "翻訳と推敲の仕方を調整できます。", "c.prompt.text": "詩の改行は残し、平易な現代英語で。", "c.prompt.restore": "↺ 既定に戻す", "c.mac.h": "macOS ネイティブ", "c.mac.p": "Liquid Glass。インターフェイスは4言語に対応。", "end.h": "Owlet を Mac に。", "footer": "ゆっくり読むために。", "theme.system": "外観：システムに合わせる", "theme.light": "外観：ライト", "theme.dark": "外観：ダーク", "lang": "言語"}};
+  const kinds = { i18n: "innerHTML", "i18n-alt": "alt", "i18n-aria": "aria-label", "i18n-note": "data-note" };
+  // Per element, because one key can sit on several elements (both download buttons).
+  const english = new WeakMap();
+  const htmlLang = { en: "en", zh: "zh-Hans", ja: "ja" };
+  let englishTitle;
+
+  function setLanguage(lang) {
+    for (const [kind, target] of Object.entries(kinds)) {
+      for (const el of document.querySelectorAll(`[data-${kind}]`)) {
+        const key = el.getAttribute(`data-${kind}`);
+        const saved = english.get(el) || {};
+        saved[target] ??= target === "innerHTML" ? el.innerHTML : el.getAttribute(target);
+        english.set(el, saved);
+        const value = lang === "en" ? saved[target] : strings[lang][key] ?? saved[target];
+        if (target === "innerHTML") el.innerHTML = value; else el.setAttribute(target, value);
+      }
+    }
+    englishTitle ??= document.title;
+    document.title = lang === "en" ? englishTitle : strings[lang].title;
+    document.documentElement.lang = htmlLang[lang];
+    for (const b of document.querySelectorAll("[data-lang]")) b.setAttribute("aria-pressed", b.dataset.lang === lang);
+    localStorage.setItem("owlet.lang", lang);
+    setTheme(localStorage.getItem("owlet.theme") || "system", lang);
+  }
+
+  const themeNames = { en: { system: "Appearance: System", light: "Appearance: Light", dark: "Appearance: Dark" } };
+  const dark = matchMedia("(prefers-color-scheme: dark)");
+  function setTheme(pref, lang = document.documentElement.lang.slice(0, 2)) {
+    const isDark = pref === "dark" || (pref === "system" && dark.matches);
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    const button = document.querySelector(".prefs .theme");
+    for (const svg of button.querySelectorAll("svg")) svg.classList.toggle("on", svg.dataset.pref === pref);
+    const label = lang in strings ? strings[lang]["theme." + pref] : themeNames.en[pref];
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    localStorage.setItem("owlet.theme", pref);
+  }
+
+  const order = ["system", "light", "dark"];
+  document.querySelector(".prefs .theme").addEventListener("click", () => {
+    const now = localStorage.getItem("owlet.theme") || "system";
+    setTheme(order[(order.indexOf(now) + 1) % order.length]);
+  });
+  dark.addEventListener("change", () => setTheme(localStorage.getItem("owlet.theme") || "system"));
+  for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => setLanguage(b.dataset.lang));
+
+  const saved = localStorage.getItem("owlet.lang");
+  const guess = navigator.languages.map((l) => l.toLowerCase()).map((l) => (l.startsWith("zh") ? "zh" : l.startsWith("ja") ? "ja" : l.startsWith("en") ? "en" : null)).find(Boolean);
+  setLanguage(saved || guess || "en");
+</script>
 </body>
 </html>

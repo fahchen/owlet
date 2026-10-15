@@ -1,0 +1,5 @@
+# Cloudflare Pages for the website. The site is static files with no build step; the screenshots are
+# made on a Mac by scripts/site-media.ts and committed, so deploys only upload site/. Deploys run in .github/workflows/site.yml.
+name = "owlet"
+pages_build_output_dir = "site"
+compatibility_date = "2026-10-15"

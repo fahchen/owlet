@@ -1,0 +1,8 @@
+# Pages applies these on top of its defaults. Screenshots change only when regenerated, so they
+# may be cached for a day; the pages themselves always revalidate.
+/media/*
+  Cache-Control: public, max-age=86400
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

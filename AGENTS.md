@@ -39,7 +39,7 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 
 ## 版本
 
-发版只改 `project.yml` 的 `MARKETING_VERSION`（用户看到的版本）与 `CURRENT_PROJECT_VERSION`（同一版本下每次交付递增的构建号），`scripts/prod-build.sh` 从产物的 `CFBundleShortVersionString` 读取并用于命名与打印。**不要**另建 VERSION 文件或 tag 作为第二真源。用户可见的改动随提交写进 `CHANGELOG.md` 的 Unreleased，发版时改成该版本号与日期。官网的 `site/changelog.html` 由 `scripts/site-changelog.py` 从它生成，不要手改。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。
+发版只改 `project.yml` 的 `MARKETING_VERSION`（用户看到的版本）与 `CURRENT_PROJECT_VERSION`（同一版本下每次交付递增的构建号），`scripts/prod-build.sh` 从产物的 `CFBundleShortVersionString` 读取并用于命名与打印。**不要**另建 VERSION 文件或 tag 作为第二真源。用户可见的改动随提交写进 `CHANGELOG.md` 的 Unreleased，发版时改成该版本号与日期。官网的更新日志页不进仓库：推到 main 后 `.github/workflows/site.yml` 用 `scripts/site-changelog.ts` 从它生成并部署到 Cloudflare Pages（owlet.fahchen.dev）；本地看用 `mise run site:preview`。Pages 项目、域名与部署用的 Secrets 由 `infra/` 的 Terraform 管理（`cd infra && mise run apply`），不在后台手改。若把 `MARKETING_VERSION` 去掉，脚本会回退到提交号并明确标注。
 
 ## 界面语言
 

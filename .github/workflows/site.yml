@@ -1,0 +1,33 @@
+name: site
+# Publishes the website on every push to main that touches it. The changelog page is not kept in the
+# repository: it is rendered from CHANGELOG.md here, right before the upload.
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - CHANGELOG.md
+      - scripts/site-changelog.ts
+      - wrangler.toml
+      - .github/workflows/site.yml
+  workflow_dispatch:
+
+concurrency:
+  group: site
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # Bun runs the TypeScript directly, with no install step.
+      - uses: oven-sh/setup-bun@v2
+      - run: bun scripts/site-changelog.ts
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy --branch main

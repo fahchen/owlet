@@ -1,0 +1,10 @@
+[tools]
+terraform = "1.16.6"
+
+[env]
+# The GitHub provider reads this; the Cloudflare token is yours to export before running.
+GITHUB_TOKEN = "{{exec(command='gh auth token')}}"
+
+[tasks.apply]
+description = "Create or update the website's Cloudflare Pages project, domain and deploy secrets"
+run = "terraform init -input=false && terraform apply"

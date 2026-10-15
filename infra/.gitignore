@@ -1,0 +1,5 @@
+# State holds the deploy token in plain text, so it stays on this machine.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars

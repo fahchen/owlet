@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owlet · Read and write in any language on your Mac</title>
+<meta name="description" content="Select text in any app and press a shortcut. Owlet translates or polishes it, and keeps the words worth learning in a word book on your Mac.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Owlet">
+<meta property="og:description" content="A quiet companion for reading and writing in another language, on your Mac.">
+<meta property="og:image" content="media/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: oklch(0.22 0.004 260);
+    --dim: oklch(0.50 0.006 260);
+    --bg: oklch(1 0 0);
+    --band: oklch(0.975 0.002 260);
+    --line: oklch(0.22 0.004 260 / .1);
+    --amber: oklch(0.50 0.12 60);
+    --blue: oklch(0.50 0.15 255);
+    --green: oklch(0.48 0.13 150);
+    --rose: oklch(0.50 0.16 355);
+    --violet: oklch(0.52 0.15 300);
+    --hand: "Shantell Sans", cursive;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+  a:hover { color: var(--blue); }
+  h1, h2, h3 { font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 24px; }
+
+  /* Inline handwritten note: a tinted target, an arrow, and a label below it. */
+  .ann { position: relative; background: color-mix(in oklab, var(--c) 14%, transparent); border-radius: 4px; padding: 0 3px; }
+  .ann::before {
+    content: ""; position: absolute; left: 62%; top: calc(100% + 2px); width: 32px; height: 26px; background: var(--c);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 26' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M28 24C21 22 11 15 5 4M5 4l8 2M5 4l1 8'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .ann::after { content: attr(data-note); position: absolute; left: calc(62% + 22px); top: calc(100% + 22px); font: 500 15px var(--hand); color: var(--c); white-space: nowrap; transform: rotate(-3deg); }
+
+  /* Hero */
+  .hero { min-height: 80vh; display: grid; place-items: center; text-align: center; position: relative; padding: 48px 24px; }
+  .hero img { width: 64px; height: 64px; }
+  .hero h1 { font-size: 28px; margin-top: 12px; }
+  .hero p { color: var(--dim); font-size: 17px; margin: 12px 0 0; }
+  .hero p.tagline { color: var(--ink); font-size: 19px; margin-top: 8px; }
+  .hero p.lead { max-width: 30em; margin: 14px auto 44px; font-size: 16px; text-wrap: balance; }
+  .links { margin-top: 36px; display: flex; flex-direction: column; gap: 14px; align-items: center; font-size: 15px; }
+  .meta { font-size: 13px; color: var(--dim); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
+    color: white; text-decoration: none; font-weight: 500; font-size: 15px;
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s cubic-bezier(.16, 1, .3, 1);
+  }
+  .btn:hover { color: white; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:focus-visible, .more-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+  .more-link { text-decoration: none; color: var(--dim); }
+  .more-link:hover { color: var(--ink); }
+  .more-link span { display: inline-block; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+  .more-link:hover span { transform: translateX(3px); }
+
+  /* Story */
+  .story { background: var(--band); padding: 96px 0; }
+  /* A faint Tahoe wash, as if the wallpaper showed through glass; on the stage, so it holds still while the shots change. */
+  .stage {
+    background:
+      radial-gradient(55% 45% at 18% 12%, oklch(0.94 0.035 250 / .9), transparent 70%),
+      radial-gradient(45% 45% at 86% 28%, oklch(0.95 0.035 320 / .8), transparent 70%),
+      radial-gradient(60% 50% at 55% 100%, oklch(0.95 0.03 195 / .8), transparent 70%),
+      var(--band);
+  }
+  .step { margin: 0 auto 88px; max-width: 1032px; }
+  .step:last-child { margin-bottom: 0; }
+  .cap { text-align: center; }
+  .cap b { font-size: 13px; font-weight: 600; }
+  .cap h2 { font-size: 17px; margin-top: 2px; }
+  .cap p { color: var(--dim); margin: 4px auto 0; max-width: 34em; }
+  .k1 { color: var(--blue); } .k2 { color: var(--rose); } .k3 { color: var(--green); }
+  /* The shot and its notes share one box; the SVG's viewBox matches the box, so arrows land in place. */
+  .shot { position: relative; aspect-ratio: 1000 / 330; margin-top: 24px; }
+  .shot img { position: absolute; left: 15%; top: 18.2%; width: 70%; height: auto; filter: drop-shadow(0 18px 32px oklch(0.3 0.02 260 / .14)) drop-shadow(0 1px 3px oklch(0.3 0.02 260 / .08)); }
+  .shot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .note { position: absolute; font: 500 16px/1.25 var(--hand); color: var(--c); white-space: nowrap; transform: rotate(-3deg); }
+  .note.r { text-align: right; }
+  .credit { text-align: center; font-size: 13px; color: var(--dim); margin-top: 40px; }
+  .progress { display: none; }
+
+  @media (prefers-reduced-motion: no-preference) and (min-width: 821px) {
+    @supports (animation-timeline: view()) {
+      .story { height: 340vh; padding: 0; view-timeline: --story block; }
+      .stage { position: sticky; top: 0; height: 100vh; display: grid; grid-template-rows: 1fr auto; padding: 56px 24px 32px; }
+      .steps { display: grid; place-items: start center; }
+      .step { grid-area: 1 / 1; width: 100%; margin: 0; animation: linear both; animation-timeline: --story; }
+      .step:nth-child(1) { animation-name: first; animation-range: contain 0% contain 38%; }
+      .step:nth-child(2) { animation-name: middle; animation-range: contain 30% contain 70%; }
+      .step:nth-child(3) { animation-name: last; animation-range: contain 62% contain 100%; }
+      @keyframes first { 0%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-24px); } }
+      @keyframes middle { 0% { opacity: 0; transform: translateY(24px); } 28%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-24px); } }
+      @keyframes last { 0% { opacity: 0; transform: translateY(24px); } 28%, 100% { opacity: 1; transform: none; } }
+
+      /* Each step's notes draw in once the step has settled. */
+      .shot path, .note { animation: linear both; animation-timeline: --story; }
+      .shot path { stroke-dasharray: 1; animation-name: draw; }
+      .note { animation-name: ink; }
+      .step:nth-child(1) :is(path, .note) { animation-range: contain 2% contain 12%; }
+      .step:nth-child(2) :is(path, .note) { animation-range: contain 40% contain 50%; }
+      .step:nth-child(3) :is(path, .note) { animation-range: contain 72% contain 82%; }
+      @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+      @keyframes ink { from { opacity: 0; } to { opacity: 1; } }
+
+      .progress { display: flex; gap: 28px; justify-content: center; font-size: 13px; color: var(--dim); }
+      .progress span { animation: on linear; animation-timeline: --story; }
+      .progress span:nth-child(1) { animation-range: contain 0% contain 34%; }
+      .progress span:nth-child(2) { animation-range: contain 34% contain 66%; }
+      .progress span:nth-child(3) { animation-range: contain 66% contain 100%; }
+      @keyframes on { from, to { color: var(--ink); } }
+      .credit { margin-top: 12px; }
+    }
+  }
+
+  /* Inside the app: radio tabs, one pane at a time; a pane's arrows redraw each time it is shown. */
+  .inside { padding: 120px 0 0; }
+  .inside h2 { font-size: 17px; text-align: center; }
+  .inside .sub { text-align: center; color: var(--dim); margin: 6px 0 0; }
+  .inside input[type=radio] { position: absolute; opacity: 0; pointer-events: none; }
+  .tabs label:hover { color: var(--ink); }
+  #tab-notebook:focus-visible ~ .tabs [for=tab-notebook], #tab-history:focus-visible ~ .tabs [for=tab-history],
+  #tab-languages:focus-visible ~ .tabs [for=tab-languages] { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .pane > img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 18px 32px oklch(0.3 0.02 260 / .14)) drop-shadow(0 1px 3px oklch(0.3 0.02 260 / .08)); }
+  .pane > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+
+  /* ---------- Liquid Glass layer ---------- */
+  :root {
+    --glass: oklch(1 0 0 / .55);
+    --glass-ring: inset 0 0 0 .5px oklch(1 0 0 / .85), 0 0 0 .5px oklch(0.3 0.02 260 / .08);
+    --glass-hi: inset 0 1px 0 oklch(1 0 0 / .95);
+    --glass-drop: 0 10px 28px -14px oklch(0.3 0.04 260 / .28), 0 1px 2px oklch(0.3 0.02 260 / .06);
+    --spring: cubic-bezier(.22, 1, .36, 1);
+  }
+  /* Faint wallpaper light, so the glass has something to show through. */
+  .hero, .inside, .features {
+    background:
+      radial-gradient(40% 50% at 15% 20%, oklch(0.95 0.03 250 / .7), transparent 70%),
+      radial-gradient(35% 45% at 88% 35%, oklch(0.96 0.03 320 / .6), transparent 70%),
+      radial-gradient(45% 40% at 50% 100%, oklch(0.96 0.025 195 / .6), transparent 70%),
+      var(--bg);
+  }
+  .glassy, .chip, .prompt {
+    background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8);
+    box-shadow: var(--glass-hi), var(--glass-ring), var(--glass-drop);
+  }
+  .card {
+    background: color-mix(in oklab, var(--c, white) 13%, oklch(1 0 0 / .68));
+    -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
+    /* A light lift only: the glass edge separates the cards, not the shadow. */
+    box-shadow: var(--glass-hi), var(--glass-ring), 0 4px 14px -10px oklch(0.3 0.04 260 / .14);
+  }
+  .chip.any { background: oklch(1 0 0 / .25); box-shadow: none; }
+  .card :is(.chip, .prompt) { box-shadow: var(--glass-hi), var(--glass-ring); }
+
+  /* The download button: dark glass with a specular top edge. */
+  .btn {
+    position: relative; overflow: hidden;
+    background: linear-gradient(180deg, oklch(0.36 0.01 260 / .92), oklch(0.19 0.01 260 / .94));
+    -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / .3), inset 0 0 0 .5px oklch(1 0 0 / .14), 0 10px 24px -12px oklch(0.2 0.02 260 / .6), 0 1px 2px oklch(0.2 0 0 / .2);
+  }
+  .btn::before { content: ""; position: absolute; inset: 0 0 50% 0; border-radius: inherit; background: linear-gradient(oklch(1 0 0 / .16), transparent); pointer-events: none; }
+  .btn:hover { box-shadow: inset 0 1px 0 oklch(1 0 0 / .45), inset 0 0 0 .5px oklch(1 0 0 / .2), 0 14px 28px -12px oklch(0.2 0.02 260 / .65), 0 1px 2px oklch(0.2 0 0 / .2); }
+
+  /* Segmented control: a glass track and a glass pill that slides to the chosen tab. */
+  .tabs {
+    position: relative; display: grid; grid-template-columns: repeat(3, 1fr); width: fit-content; margin: 28px auto 32px;
+    padding: 4px; border-radius: 999px; font-size: 14px; font-weight: 500;
+    background: oklch(1 0 0 / .45); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / .9), var(--glass-ring), 0 6px 18px -10px oklch(0.3 0.04 260 / .25);
+  }
+  .tabs::before {
+    content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 999px;
+    background: linear-gradient(180deg, oklch(1 0 0 / .98), oklch(1 0 0 / .78));
+    box-shadow: inset 0 1px 0 white, inset 0 0 0 .5px oklch(1 0 0 / .9), 0 2px 6px oklch(0.3 0.03 260 / .14), 0 0 0 .5px oklch(0.3 0.02 260 / .08);
+    transition: transform .55s var(--spring);
+  }
+  #tab-history:checked ~ .tabs::before { transform: translateX(100%); }
+  #tab-languages:checked ~ .tabs::before { transform: translateX(200%); }
+  .tabs label { position: relative; z-index: 1; cursor: pointer; text-align: center; white-space: nowrap; color: var(--dim); padding: 7px clamp(12px, 3vw, 20px); border-radius: 999px; transition: color .3s; }
+  #tab-notebook:checked ~ .tabs [for=tab-notebook], #tab-history:checked ~ .tabs [for=tab-history],
+  #tab-languages:checked ~ .tabs [for=tab-languages] { color: var(--ink); }
+
+  .panes { position: relative; aspect-ratio: 2160 / 1380; max-width: 960px; margin: 0 auto; }
+  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transform: translateY(10px) scale(.985);
+    transition: opacity .45s var(--spring), transform .6s var(--spring), visibility 0s .45s; }
+  #tab-notebook:checked ~ .panes .p-notebook, #tab-history:checked ~ .panes .p-history,
+  #tab-languages:checked ~ .panes .p-languages { opacity: 1; visibility: visible; transform: none; transition: opacity .45s var(--spring), transform .6s var(--spring); }
+  .pane path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .9s .35s var(--spring); }
+  .pane .note { opacity: 0; transition: opacity .5s .75s; }
+  #tab-notebook:checked ~ .panes .p-notebook :is(path, .note), #tab-history:checked ~ .panes .p-history :is(path, .note),
+  #tab-languages:checked ~ .panes .p-languages :is(path, .note) { stroke-dashoffset: 0; opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .pane, .pane path, .pane .note, .tabs::before { transition: none; }
+  }
+
+  /* The Languages pane, in a settings window drawn around the real capture. */
+  .window { position: absolute; left: 22%; width: 56%; top: 0; bottom: 0; border-radius: 16px; overflow: hidden;
+    background: oklch(0.985 0 0); box-shadow: 0 0 0 .5px oklch(0.3 0.02 260 / .14), 0 22px 44px -18px oklch(0.3 0.03 260 / .35); }
+  .titlebar { position: relative; padding: 10px 14px 8px; text-align: center;
+    background: oklch(0.97 0.004 260 / .8); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow: inset 0 -.5px 0 oklch(0.3 0.02 260 / .12), inset 0 1px 0 white; }
+  .lights { position: absolute; left: 14px; top: 13px; display: flex; gap: 7px; }
+  .lights i { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 .5px oklch(0 0 0 / .15); }
+  .lights i:nth-child(1) { background: oklch(0.68 0.2 25); } .lights i:nth-child(2) { background: oklch(0.83 0.16 85); } .lights i:nth-child(3) { background: oklch(0.72 0.18 145); }
+  .titlebar .title { font-size: 12px; font-weight: 600; color: oklch(0.35 0.005 260); }
+  .toolbar { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+  .toolbar span { display: grid; justify-items: center; gap: 1px; padding: 4px 10px; border-radius: 8px; font-size: 10.5px; color: oklch(0.45 0.005 260); }
+  .toolbar span.on { background: oklch(0.3 0.02 260 / .08); color: var(--blue); }
+  .toolbar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .window .content { position: absolute; inset: 86px 0 0; overflow: hidden; mask: linear-gradient(#000 82%, transparent); }
+  .window .content img { width: 100%; height: auto; display: block; }
+
+  /* The step indicator sits on a glass pill. */
+  .progress { width: fit-content; margin: 0 auto; padding: 6px 16px; border-radius: 999px; }
+
+  /* Features */
+  .features { padding: 120px 0; }
+  .features h2 { font-size: 17px; text-align: center; }
+  .features .sub { text-align: center; color: var(--dim); margin: 6px 0 48px; }
+  .polish { text-align: center; max-width: 720px; margin: 0 auto 64px; }
+  .polish h3 { font-size: 15px; }
+  .polish p { margin: 4px 0 0; color: var(--dim); font-size: 15px; }
+  .polish .before { text-decoration: line-through; margin-top: 16px; }
+  .polish .after { color: var(--ink); font-size: 17px; }
+
+  /* Bento: each card carries a small drawing of the thing it describes, in plain HTML. */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; max-width: 960px; margin: 0 auto; }
+  .card { grid-column: span 2; border-radius: 22px; padding: 24px 24px 26px; }
+  .card.w4 { grid-column: span 4; } .card.w3 { grid-column: span 3; }
+  .card h3 { font-size: 15px; }
+  .card > p { margin: 2px 0 0; color: var(--dim); font-size: 14px; }
+  .viz { margin-top: 20px; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+  .chip i { font-style: normal; color: var(--c); margin: 0 4px; }
+  .chip.any { border: 1px dashed color-mix(in oklab, var(--c) 60%, white); color: var(--c); font-family: var(--hand); }
+  .field { padding: 0 0 8px; box-shadow: inset 0 -.5px 0 color-mix(in oklab, var(--c) 45%, transparent); font-size: 15px; }
+  .field s { color: var(--dim); margin-right: 8px; }
+  .field b { font-weight: 500; }
+  .field b::after { content: ""; display: inline-block; width: 1.5px; height: 1.1em; background: var(--blue); vertical-align: -3px; margin-left: 2px; }
+  .mini { padding-top: 12px; box-shadow: inset 0 .5px 0 color-mix(in oklab, var(--c) 35%, transparent); }
+  .mini .top { display: flex; align-items: baseline; gap: 8px; }
+  .mini .top b { font-size: 17px; }
+  .mini .top span { color: var(--dim); }
+  .mini .top svg { margin-left: auto; color: var(--c); }
+  .mini p { margin: 4px 0 0; color: var(--dim); }
+  .reads div { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--line); }
+  .reads div:first-child { border-top: 0; }
+  .reads span { color: var(--c); }
+  .layouts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .layouts > div { display: grid; gap: 5px; padding: 4px 0; }
+  .layouts > div + div { padding-left: 20px; box-shadow: inset .5px 0 0 var(--line); }
+  .layouts i { display: block; height: 5px; border-radius: 3px; background: oklch(0.80 0.006 260); }
+  .layouts i.t { background: color-mix(in oklab, var(--c) 45%, white); }
+  .layouts i.gap { background: none; height: 3px; }
+  .layouts small { color: var(--dim); font-size: 12px; margin-top: 4px; }
+  .locks { display: flex; gap: 8px; flex-wrap: wrap; }
+  .native { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .native .chip small { color: var(--c); margin-left: 6px; font-size: 12px; }
+  .native em { font: 500 14px var(--hand); font-style: normal; color: var(--c); transform: rotate(-3deg); }
+  .prompt { border-radius: 10px; padding: 10px 12px; font: 12.5px/1.5 ui-monospace, "SF Mono", monospace; color: var(--dim); }
+  .restore { margin-top: 8px; font-size: 13px; color: var(--c); }
+
+  @media (max-width: 820px) { .bento { grid-template-columns: 1fr; } .card, .card.w4, .card.w3 { grid-column: auto; } }
+
+  .end { text-align: center; padding: 40px 0 120px; }
+  .end h2 { font-size: 17px; margin-top: 12px; }
+  .end .links { margin-top: 16px; }
+  .end img { width: 48px; height: 48px; }
+  footer { border-top: 1px solid var(--line); padding: 20px 0 40px; font-size: 13px; color: var(--dim); }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; }
+
+  @media (max-width: 820px) {
+    .stage { padding-inline: 20px; }
+    .hero .ann::before { left: auto; right: 62%; transform: scaleX(-1); }
+    .hero .ann::after { left: auto; right: calc(62% + 22px); transform: rotate(3deg); }
+    .shot { aspect-ratio: auto; }
+    .shot img { position: static; width: 100%; }
+    .shot svg, .note, .pane svg { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div>
+    <img src="icon.png" alt="Owlet app icon" width="64" height="64">
+    <h1>Owlet</h1>
+    <p class="tagline">A quiet companion for reading and writing in another language.</p>
+    <p class="lead">Press a shortcut, and Owlet translates or polishes what you select, then keeps the words worth learning. In <span class="ann" style="--c: var(--amber)" data-note="Safari, Mail, PDFs…">any app</span>.</p>
+    <div class="links">
+      <!-- ponytail: points at GitHub Releases; repo is private and has no releases yet. -->
+      <a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg>Download for Mac</a>
+      <span class="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span>
+    </div>
+  </div>
+</header>
+
+<section class="story" aria-label="How Owlet works">
+  <div class="stage">
+    <div class="steps">
+      <figure class="step">
+        <figcaption class="cap"><b class="k1">Translate</b><h2>Read it in your language.</h2><p>Select a few lines and press your shortcut. The original stays on top; the translation sits below.</p></figcaption>
+        <div class="shot">
+          <img src="media/translate.webp" width="1546" height="414" alt="Owlet panel with the first stanza of Jianjia from the Classic of Poetry above its English translation">
+          <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
+            <path pathLength="1" stroke="var(--amber)" d="M128 92C142 92 150 100 160 110M160 110l-8-2M160 110l-2-8"/>
+            <path pathLength="1" stroke="var(--blue)" d="M128 206C142 206 150 200 160 197M160 197l-8-4M160 197l-7 4"/>
+            <path pathLength="1" stroke="var(--rose)" d="M762 280C758 262 766 246 772 232M772 232l-6 8M772 232l6 7"/>
+            <path pathLength="1" stroke="var(--violet)" d="M868 186C850 190 840 200 832 207M832 207l9-2M832 207l3-8"/>
+          </svg>
+          <span class="note r" style="--c: var(--amber); right: 86.5%; top: 19%">what you<br>selected</span>
+          <span class="note r" style="--c: var(--blue); right: 86.5%; top: 57%">now in<br>English</span>
+          <span class="note" style="--c: var(--rose); left: 72%; top: 86%">learn from it</span>
+          <span class="note" style="--c: var(--violet); left: 87%; top: 50%">⌘C copies</span>
+        </div>
+      </figure>
+      <figure class="step">
+        <figcaption class="cap"><b class="k2">Learn</b><h2>Find the words worth keeping.</h2><p>Open Learn for the words that matter here, each explained in the line where you met it.</p></figcaption>
+        <div class="shot">
+          <img src="media/learn.webp" width="1546" height="408" alt="Owlet panel with three words to learn: lush, long for, and seek" loading="lazy">
+          <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
+            <path pathLength="1" stroke="var(--rose)" d="M866 82C830 84 780 92 735 100M735 100l8-5M735 100l8 3"/>
+            <path pathLength="1" stroke="var(--blue)" d="M600 280C596 262 600 246 605 234M605 234l-6 8M605 234l6 7"/>
+          </svg>
+          <span class="note" style="--c: var(--rose); left: 87%; top: 19%">worth<br>keeping</span>
+          <span class="note" style="--c: var(--blue); left: 54%; top: 86%">explained in context</span>
+        </div>
+      </figure>
+      <figure class="step">
+        <figcaption class="cap"><b class="k3">Keep</b><h2>Keep them with one click.</h2><p>Each word goes into your word book, along with the line it came from.</p></figcaption>
+        <div class="shot">
+          <img src="media/collect.webp" width="1546" height="408" alt="Owlet panel with the word lush saved to the word book" loading="lazy">
+          <svg viewBox="0 0 1000 330" preserveAspectRatio="none" aria-hidden="true">
+            <path pathLength="1" stroke="var(--green)" d="M528 36C520 55 528 72 533 86M533 86l-7-6M533 86l2-9"/>
+            <path pathLength="1" stroke="var(--amber)" d="M250 36C262 52 284 66 293 78M293 78l-8-4M293 78l-1-9"/>
+          </svg>
+          <span class="note" style="--c: var(--green); left: 47%; top: 1%">saved</span>
+          <span class="note" style="--c: var(--amber); left: 8%; top: 1%">⌘-click any word to look it up</span>
+        </div>
+      </figure>
+    </div>
+    <div>
+      <div class="progress glassy" aria-hidden="true"><span>Translate</span><span>Learn</span><span>Keep</span></div>
+      <p class="credit">《蒹葭》 · Classic of Poetry</p>
+    </div>
+  </div>
+</section>
+
+<section class="inside" aria-label="Inside the app">
+  <div class="wrap">
+    <h2>Inside the app</h2>
+    <p class="sub">Where your words and translations live.</p>
+    <input type="radio" name="inside" id="tab-notebook" checked>
+    <input type="radio" name="inside" id="tab-history">
+    <input type="radio" name="inside" id="tab-languages">
+    <div class="tabs" role="presentation">
+      <label for="tab-notebook">Word book</label>
+      <label for="tab-history">History</label>
+      <label for="tab-languages">Languages</label>
+    </div>
+    <div class="panes">
+      <div class="pane p-notebook">
+        <img src="media/notebook.webp" width="2160" height="1380" alt="The Owlet word book with five saved expressions in English, French, and Japanese, and the selected one showing its source sentence" loading="lazy">
+        <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
+          <path pathLength="1" stroke="var(--amber)" d="M640 312C632 280 626 252 622 234M622 234l-6 8M622 234l7 6"/>
+        </svg>
+        <span class="note" style="--c: var(--amber); left: 58%; top: 50%">the line you found it in</span>
+      </div>
+      <div class="pane p-history">
+        <img src="media/history.webp" width="2160" height="1380" alt="Owlet history with translations and a polish grouped by day, the latest showing the poem and its translation" loading="lazy">
+        <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
+          <path pathLength="1" stroke="var(--blue)" d="M152 336C147 324 147 314 150 303M150 303l-6 7M150 303l6 6"/>
+        </svg>
+        <span class="note" style="--c: var(--blue); left: 14%; top: 54%">every translation and polish,<br>by day</span>
+      </div>
+      <div class="pane p-languages">
+        <div class="window">
+          <div class="titlebar">
+            <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="title">Languages</span>
+            <div class="toolbar" aria-hidden="true">
+              <span><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="2.6"/><path d="M9 2v2.2M9 13.8V16M2 9h2.2M13.8 9H16M4 4l1.6 1.6M12.4 12.4 14 14M4 14l1.6-1.6M12.4 5.6 14 4"/></svg>General</span>
+              <span class="on"><svg viewBox="0 0 18 18"><path d="M3 4.5h12v7H8l-3.5 3v-3H3z"/><path d="M7 10l2-5 2 5M7.6 8.6h2.8"/></svg>Languages</span>
+              <span><svg viewBox="0 0 18 18"><path d="M5.5 14h7.5a3 3 0 0 0 .3-6 4.5 4.5 0 0 0-8.6 1A2.5 2.5 0 0 0 5.5 14z"/></svg>Model</span>
+              <span><svg viewBox="0 0 18 18"><rect x="2" y="5" width="14" height="8.5" rx="1.6"/><path d="M5 8h.01M8 8h.01M11 8h.01M14 8h.01M6 11h6"/></svg>Shortcuts</span>
+            </div>
+          </div>
+          <div class="content"><img src="media/languages.webp" width="1240" height="2236" alt="Owlet language settings with six languages, a target for each source language, and native languages" loading="lazy"></div>
+        </div>
+        <svg viewBox="0 0 1000 639" preserveAspectRatio="none" aria-hidden="true">
+          <path pathLength="1" stroke="var(--rose)" d="M200 319C240 321 262 331 276 343M276 343l-9-1M276 343l-3-8"/>
+          <path pathLength="1" stroke="var(--green)" d="M200 463C225 471 240 481 250 491M250 491l-8-2M250 491l-2-8"/>
+        </svg>
+        <span class="note r" style="--c: var(--rose); right: 80.5%; top: 46.3%">add any<br>language</span>
+        <span class="note r" style="--c: var(--green); right: 80.5%; top: 68.3%">a target for<br>each source</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="wrap">
+    <h2>And the details</h2>
+    <p class="sub">Small things that make another language a little easier.</p>
+    <div class="polish">
+      <h3>Polish</h3>
+      <p>Fixes grammar and smooths the phrasing, in the same language.</p>
+      <p class="before">The moon is very beautiful tonight, it makes me remember my hometown.</p>
+      <p class="after">The moon is beautiful tonight. It <span class="ann" style="--c: var(--green)" data-note="more natural">reminds me of</span> home.</p>
+    </div>
+    <div class="bento">
+      <div class="card w4" style="--c: var(--blue)">
+        <h3>Any language</h3><p>Add the languages you read. Owlet detects the source and picks the target.</p>
+        <div class="viz chips">
+          <span class="chip">日本語<i>→</i>简体中文</span><span class="chip">English<i>→</i>简体中文</span>
+          <span class="chip">Français<i>→</i>English</span><span class="chip">한국어<i>→</i>English</span>
+          <span class="chip">简体中文<i>→</i>English</span><span class="chip any">+ any language</span>
+        </div>
+      </div>
+      <div class="card" style="--c: var(--green)">
+        <h3>Replace in place</h3><p>Translate or polish straight over your selection.</p>
+        <div class="viz field"><s lang="zh-Hans">明天见</s><b>See you tomorrow</b></div>
+      </div>
+      <div class="card" style="--c: var(--rose)">
+        <h3>Look up and listen</h3><p>⌘-click a word for its meaning, reading, and sound.</p>
+        <div class="viz mini">
+          <div class="top"><b>lush</b><span>/lʌʃ/ · adj.</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M2 6v4h3l4 3V3L5 6H2zM11.5 5.5a3.5 3.5 0 0 1 0 5M13.5 3.5a6.5 6.5 0 0 1 0 9"/></svg></div>
+          <p>Growing thickly and richly.</p>
+        </div>
+      </div>
+      <div class="card" style="--c: var(--amber)">
+        <h3>Readings your way</h3><p>One reading system for each language.</p>
+        <div class="viz reads">
+          <div><b>lush</b><span>/lʌʃ/</span></div>
+          <div><b lang="ja">木漏れ日</b><span lang="ja">こもれび</span></div>
+          <div><b lang="zh-Hant">蒹葭</b><span>jiān jiā</span></div>
+        </div>
+      </div>
+      <div class="card" style="--c: var(--violet)">
+        <h3>Side by side</h3><p>Read in two blocks, or line by line.</p>
+        <div class="viz layouts" aria-hidden="true">
+          <div><i style="width: 90%"></i><i style="width: 70%"></i><i class="gap"></i><i class="t" style="width: 95%"></i><i class="t" style="width: 60%"></i><small>Blocks</small></div>
+          <div><i style="width: 80%"></i><i class="t" style="width: 90%"></i><i class="gap"></i><i style="width: 70%"></i><i class="t" style="width: 75%"></i><small>Sentences</small></div>
+        </div>
+      </div>
+      <div class="card w3" style="--c: var(--violet)">
+        <h3>Your own model</h3><p>Any OpenAI-compatible service, or an agent CLI already on your Mac.</p>
+        <div class="viz chips">
+          <span class="chip">DeepSeek</span><span class="chip">Kimi</span><span class="chip">Qwen</span><span class="chip">OpenRouter</span>
+          <span class="chip">Ollama</span><span class="chip">LM Studio</span><span class="chip">Claude Code</span><span class="chip">Codex</span>
+        </div>
+      </div>
+      <div class="card w3" style="--c: var(--green)">
+        <h3>Private</h3><p>No account. No Owlet server.</p>
+        <div class="viz locks chips">
+          <span class="chip">History on your Mac</span><span class="chip">Words on your Mac</span><span class="chip">API key in the Keychain</span>
+        </div>
+      </div>
+      <div class="card" style="--c: var(--rose)">
+        <h3>Knows your languages</h3><p>Tell it your native languages once.</p>
+        <div class="viz native"><span class="chip" lang="zh-Hans">简体中文<small>native</small></span><em>left out of suggestions</em></div>
+      </div>
+      <div class="card" style="--c: var(--amber)">
+        <h3>Your own prompts</h3><p>Tune how it translates and polishes.</p>
+        <div class="viz"><div class="prompt">Keep the poem’s line breaks. Prefer plain, modern English.</div><div class="restore">↺ Restore Default</div></div>
+      </div>
+      <div class="card" style="--c: var(--blue)">
+        <h3>Native on macOS</h3><p>Liquid Glass, and an interface in four languages.</p>
+        <div class="viz chips"><span class="chip">English</span><span class="chip" lang="zh-Hans">简体中文</span><span class="chip" lang="zh-Hant">繁體中文</span><span class="chip" lang="ja">日本語</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="end">
+  <img src="icon.png" alt="" width="48" height="48">
+  <h2>Bring Owlet to your Mac.</h2>
+  <div class="links"><a class="btn" href="https://github.com/fahchen/owlet/releases/latest"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10"/></svg>Download for Mac</a><span class="meta">macOS Tahoe 26 or later · <a class="more-link" href="changelog.html">What’s new <span>→</span></a></span></div>
+</div>
+
+<footer>
+  <div class="wrap"><span>Owlet</span><span>Made for reading slowly.</span></div>
+</footer>
+</body>
+</html>

@@ -1,93 +1,91 @@
-[English](dictionary-sources.md) · [简体中文](dictionary-sources.zh-CN.md)
+# Discovery：本地词典查词
 
-# Discovery: Local Dictionary Lookup
-
-Status: under design discussion (2026-10-11), not implemented. The user has confirmed that reading lookup is "local dictionary first; the AI in-context explanation is requested only after a manual click", and that translation learning adopts **B: automatically add local dictionary results after generation**. There is currently no ready-made offline dictionary; the choice of offline format is still to be confirmed, and choosing B for learning does not mean choosing MDX/MDD.
+状态：设计讨论中（2026-10-11），未实现。用户已确认阅读查词「本地词典优先，AI 语境解释只在手动点击后请求」，以及翻译 learning 采用 **B：生成后自动补充本地词典结果**。目前没有现成离线词库；离线格式选择仍待确认，learning 的 B 不代表选择 MDX/MDD。
 
 ## Story / Actor / Value
 
-A user who is reading can look words up in the system dictionary or in a local dictionary they imported, without configuring a model service; when they need to understand the original sentence, they request the AI themselves. After translation learning succeeds, supplementary content from the same local dictionary is provided automatically. Importing means choosing a file on this Mac; nothing is uploaded to a server.
+阅读中的用户可以查询系统词典或自行导入的本地词典，不配置模型服务也能查词；需要理解原句时，再主动请求 AI。翻译 learning 成功生成后，自动提供同一套本地词典的补充内容。导入指本机文件选择，不上传服务器。
 
 ## Decisions Made
 
-- **Reading lookup is local first, AI is manual.** A lookup queries the local source first; a miss, a failure or a source switch must never automatically request the model. This rule does not change the existing learning switch or the learning generation flow.
-- **Translation learning adds dictionary content automatically (B chosen).** Learning expressions that were generated successfully are automatically looked up in the currently selected local dictionary; the existing AI in-context meaning, recommendation reason and saving behaviour are kept. The dictionary result is a supplement, collapsed by default; the local lookup does not wait for a user click, and no extra model request is sent for the dictionary supplement.
-- **No existing files yet.** The first version does not assume the user already has MDX or other files; the offline format is chosen explicitly first, then formal acceptance criteria are written.
+- **阅读查词本地优先，AI 手动。** 查询先访问本地来源；未找到、失败、切换来源均不得自动请求模型。本规则不改变已有学习开关及学习生成流程。
+- **翻译 learning 自动补充（已选 B）。** 已成功生成的学习表达自动查询当前选择的本地词典；原有 AI 文中义、推荐理由与收藏行为保留。词典结果作为默认折叠的补充，不要求用户再点击才发起本地查询，也不为词典补充另发模型请求。
+- **暂无现成文件。** 首版不以用户已有 MDX 等文件为前提，离线格式先明确选择，再写正式验收。
 
-## Automatic dictionary supplement for translation learning (B confirmed)
+## 翻译 learning 自动补充（B 已确认）
 
-- [x] The local dictionary is queried automatically only after the existing learning flow successfully produces entries; when learning is off and not temporarily expanded, no extra learning content is generated. With no recommended entries there is no query.
-- [x] AI recommendations and in-context meanings are shown first; copy, replace and save never wait for the dictionary. A dictionary miss or failure only affects the supplement area; it does not make learning generation fail and does not fall back to the model automatically.
-- [x] Each expression keeps its main learning content; dictionary results are collapsed by default, and expanding shows the source, the original sense and any reading / part of speech available. The dictionary's own language does not change the language AI definitions use under BDR-0005.
-- [x] Clicking a row still saves / unsaves it; expanding the dictionary, copying or retrying does not trigger saving. Saving still stores the original learning expression and its definition; the dictionary supplement does not overwrite stored fields.
-- [x] Supplements for the same expression and the same source / version can be reused; expanding again does not re-request a lookup that is in flight or already obtained in this session; a new learning batch or a source change must not be overwritten by an old response.
-- [x] A miss states "this dictionary has no result", and a failure can be retried on its own. No model configuration is needed to run the dictionary supplement, but generating learning recommendations still follows the existing model and switch requirements.
+- [x] 仅在既有学习流程成功产生条目后自动查本地词典；学习关闭且未临时展开时不额外生成学习内容。没有推荐条目时不查询。
+- [x] AI 推荐与文中义先显示，复制、替换及收藏均不等待词典。词典未命中或失败只影响补充区域，不使学习生成失败、不自动回退到模型。
+- [x] 每条表达保留主要学习内容；词典结果默认折叠，展开可看来源、原始词义及已有读音／词性。词典原语言不改变 AI 释义按 BDR-0005 使用的语言。
+- [x] 行点击仍收藏／取消收藏；操作词典展开、复制或恢复动作不触发收藏。收藏仍保存原学习表达及其释义，词典补充不覆盖已存字段。
+- [x] 相同表达和同一来源／版本的补充可复用，重复展开不重复请求正在查询或本次已取得的结果；新学习批次与来源变化不得被旧响应覆盖。
+- [x] 未命中说明「该词典未找到结果」，失败可单独重试。无需用户配置模型才能执行词典补充，但生成学习推荐本身仍遵循现有模型与开关要求。
 
-Confirmed acceptance examples:
+已确认验收例：
 
-1. The user turns on translation learning and a `bank` entry is generated: the AI in-context meaning and saved state appear first and the local lookup runs automatically; once the dictionary returns, all original senses can be expanded, with no new model request.
-2. While the dictionary lookup is still running, the user copies the translation or saves the entry: the action runs immediately under the existing rules, without waiting for the dictionary and without writing dictionary content that has not arrived into the saved entry.
-3. The entry is a phrase / whole sentence the dictionary does not contain: the AI learning content is still readable, the supplement area says nothing was found, and the entry is not cut down to another headword nor filled in by an automatic model request.
-4. The user expands / collapses the supplement or copies dictionary text: the saved state does not change; a failed lookup can be retried on its own, and a late result only affects its original entry.
-5. The user turns off translation learning and does not temporarily expand it: no learning entries are generated, and enabling the dictionary feature does not automatically request learning or batch lookups.
+1. 用户开启翻译学习，生成 `bank` 条目：先显示 AI 文中义与收藏状态，自动在本地查询；词典返回后可展开查看全部原义，不新增模型请求。
+2. 词典查询仍在进行时，用户复制译文或收藏条目：动作立即按既有规则执行，不等待词典，也不把尚未到达的词典内容写入收藏。
+3. 条目是词典未收录的短语／整句：AI 学习内容仍可读，补充区域说明未找到，不截成别的词条或自动请求模型补齐。
+4. 用户展开／收起补充或复制词典文字：收藏状态不变；查询失败可独立重试，迟到结果只影响其原条目。
+5. 用户关闭翻译学习且未临时展开：不生成学习条目，也不因词典功能开启而自动请求学习或批量查词。
 
-## Rules Discovered (proposed, to be confirmed)
+## Rules Discovered（建议，待确认）
 
-- [ ] Keep the existing reading entry, selection and card; learning rows still save / unsave on click, editable areas still edit, and a lookup neither saves nor writes back.
-- [ ] With no imported dictionary, default to "System Dictionary". The "Dictionary" group in settings can import and remove dictionaries and choose the default local source; the card can switch source, which only affects the current lookup and never silently changes the default. The first version queries one source at a time, with no merging of multiple dictionaries and no automatic round-robin.
-- [ ] The card title keeps the actual query text and shows the source and the dictionary's original text. System sources are labelled "System Dictionary" uniformly; custom sources show the name and version from the package. Dictionary senses are not labelled "meaning in this sentence", and the card is not forced to show only one sense.
-- [ ] Dictionary definitions stay in the dictionary's own language; they do not follow BDR-0005's AI target language and are not translated automatically. Readings that can be obtained are shown exactly as the dictionary gives them; base forms, parts of speech or phonetics are never invented.
-- [ ] The card offers "Explain in context"; only a click goes through the existing AI lookup contract and BDR-0005 / 0006, sending the current query and its local context, never the whole dictionary. Dictionary content stays viewable; an AI failure does not affect dictionary results already shown.
-- [ ] A miss clearly shows "this dictionary has no result", and the user can switch local source or click the AI action; the local dictionary can be queried even with no model configured. When a whole sentence has no entry, it is not shrunk to one of its words and passed off as the sentence's definition.
-- [ ] When the system dictionary has no result, do not infer that the Mac has no dictionaries installed; offer "Open in Dictionary" to help the user check the system source. That explicit system app action is separate from Owlet's local lookup and cannot promise that everything in the system UI is offline.
-- [ ] Import validates first, then builds a queryable copy; an available dictionary is not replaced before completion. Failure / cancellation leaves no partial result and does not modify the original file. The dictionary copy remains usable after restart; removing deletes only Owlet's copy, never the user's source file, saved words or history.
-- [ ] The same file is not imported twice; replacing a version requires an explicit user choice, and a failure keeps the old version. Deleting the current default dictionary falls back to the system source with a clear notice.
-- [ ] When language metadata is missing, let the user choose the headword / definition language or leave it unknown; never infer Japanese from the file name, extension or format. With an unknown language, definitions are still readable, but the TTS language is not guessed.
-- [ ] Keep manual system TTS and do not call system speech the dictionary's original audio. Closing / switching the card or source stops the old audio; a missing usable voice does not block definitions.
-- [ ] After a source switch, removal or version change, old responses do not overwrite new results or re-open the card; an old cache does not pass itself off as results from the new dictionary version. Esc, body focus, keyboard and VoiceOver keep the existing lookup boundaries.
+- [ ] 沿用现有阅读入口、选区与卡片；学习行继续点击收藏／取消，可编辑区域继续编辑，查询不收藏、不写回。
+- [ ] 没有导入词典时默认「系统词典」。设置的「词典」分组可导入、移除词典及选择默认本地来源；卡片内可切换来源，只影响当前查询，不悄悄修改默认值。首版一次查询一个来源，不做多词典合并或自动轮询。
+- [ ] 卡片标题保留实际查询文本，显示来源与词典原文。系统来源统一标「系统词典」；自定义来源显示包内名称与版本。词典义不标成「本句含义」，不强制只显示一个义项。
+- [ ] 词典释义保持词典自身语言，不套用 BDR-0005 的 AI 目标语言，也不自动翻译。能取得的读音按词典原样显示，不伪造原形、词性或音标。
+- [ ] 卡片提供「按原句解释」；只有点击后才走现有 AI lookup 契约及 BDR-0005／0006，发送当前查询与局部语境，不发送整本词库。词典内容仍可查看；AI 失败不影响已有词典结果。
+- [ ] 未命中明确显示「该词典未找到结果」，可换本地来源或点击 AI 动作；未配置模型时仍能查询本地词典。整句没有词条时不缩成其中一个词后冒充整句释义。
+- [ ] 系统词典没有结果时不推断机器未装词库，提供「在系统词典中打开」帮助用户查看系统来源。该明确的系统应用动作与 Owlet 的本地查询分开，不能承诺系统界面的所有内容离线。
+- [ ] 导入先校验，再建立可查询副本；完成前不替换可用词典。失败／取消不留下半成品、不改原文件。重启后词典副本仍可用；移除只删除 Owlet 副本，不删除用户源文件、收藏或历史。
+- [ ] 重复文件不重复导入；替换版本须由用户明确选择，失败保留旧版。删除当前默认词典后回到系统来源，并明确提示。
+- [ ] 语言元数据缺失时让用户选择词条／释义语言或保留未知，不按文件名、扩展名或格式推断日语。语言未知仍可读释义，但不猜 TTS 语言。
+- [ ] 继续手动系统 TTS，不把系统朗读称作词典原声。关闭／切换卡片或来源停止旧音；缺少可用语音不妨碍释义。
+- [ ] 来源切换、移除或换版本后，旧响应不覆盖新结果、不重新弹卡；旧缓存不冒充新版词典结果。Esc、正文焦点、键盘和 VoiceOver 延续现有查词边界。
 
-## Examples (proposed acceptance examples)
+## Examples（建议验收例）
 
-1. No model configured, the system source matches `bank`: show "System Dictionary" and the dictionary's original senses with no model request; only choosing "Explain in context" prompts for configuration.
-2. Looking up `bank` in a sentence about a river bank: the dictionary may list both the bank and river bank senses and must not automatically claim which one is meant in the text; after the user clicks the AI action, the in-context explanation is shown separately.
-3. An English-English dictionary is imported and a word is looked up on a Chinese-to-English page: the dictionary still shows the English original; the AI explanation follows the definition language rules for that run.
-4. After importing a supported text dictionary, look up offline: neither a model nor the original file path is needed; importing a corrupt package fails while existing dictionaries remain usable.
-5. The dictionary has no entry for a whole sentence: show not found, without automatically shrinking the selection or going online; the user can request the AI explicitly.
-6. Look up A, then switch source / look up B / remove the source: A's late result must not overwrite the current card; saved words and source files stay as they were.
+1. 无模型配置，系统来源命中 `bank`：展示「系统词典」及词典原义，不发模型请求；选择「按原句解释」才提示配置需求。
+2. 在河岸原句中查询 `bank`：词典可能列出银行与河岸两义，不能自动声称哪项是文中义；用户点击 AI 后另展示语境解释。
+3. 导入英英词典，在中译英页面查询：词典仍展示英语原文；AI 解释按该次处理的释义语言规则。
+4. 导入支持的文本词典后断网查询：无需模型及原始文件路径；损坏包导入失败，既有词典仍可使用。
+5. 词典没有整句条目：显示未找到，不自动缩短选区、不自动联网；用户可主动请求 AI。
+6. 查 A 后切换来源／查 B／移除来源：A 的迟到结果不得覆盖当前卡片；收藏与源文件保持原样。
 
 ## Open Questions
 
-- [ ] Offline format: **A (recommended) the text subset of Yomitan v3 ZIP**, or **B dedicated MDX/MDD compatibility**. Ship only one first; do not implement several parsers at once.
-- [ ] Should the card and source selection follow the single-source plan above, or aggregate several dictionaries at once? Single source first is recommended; aggregation is not a confirmed requirement for this round.
-- [ ] Native verification: get at least one real successful result from the system API; verify offline lookup, long entries, focus / Esc and accessibility on the current system and on the minimum supported version.
-- [ ] Limits on input, package size, total decompressed size, entry count and index resources are set before implementation; anything over the limit is rejected explicitly, without silently dropping entries.
+- [ ] 离线格式：**A（建议）Yomitan v3 ZIP 文本子集**，或 **B MDX/MDD 专项兼容**。只选一种首发，不同时实现多个解析器。
+- [ ] 卡片与来源选择按上述单来源方案，还是需要同时汇总多本？建议先用单来源；汇总不是本轮已确认要求。
+- [ ] 原生验证：系统接口至少取得一条真实成功结果；验证断网查询、长词条、焦点／Esc、辅助功能，以及当前系统与最低支持版本。
+- [ ] 输入、包大小、解压总量、词条数与索引资源上限在实现前定下，超限明确拒绝，不静默丢词条。
 
-## Relation to existing specs
+## 与既有规格的关系
 
-- The first step of [BDR-0008](../vocabulary/decisions/BDR-0008-reading-word-lookup.md) excluded the system dictionary, and its card requires the AI in-context meaning. This feature is an explicit extension: dictionary senses and AI explanations are kept separate, and the local lookup does not go through the LLM response contract. Once confirmed, add a BDR that supplements / supersedes the corresponding scope instead of erasing the old decision.
-- BDR-0005 / 0006 continue to govern AI explanations and the existing vocabulary supplements; "fixed definition language" and "no reading for whole sentences" are not imposed on raw dictionary content. The automatic dictionary supplement in learning is extra display and does not change the existing learning switch, recommendation generation or saved-data contract.
-- The current term "definition" (释义) is limited to model output; proposal: add "dictionary sense: the original explanation provided by a local dictionary, which does not mean the app chose the in-sentence meaning". Update the [glossary](../glossary.md) once confirmed.
-- At the time of writing, `Owlet/Lookup/` and the floating panel had uncommitted implementation work by other agents whose completion status was not checked; this round only added this file, did not adjust that implementation and did not close T47 to T51.
+- [BDR-0008](../vocabulary/decisions/BDR-0008-reading-word-lookup.md) 的首步排除了系统词典，且卡片要求 AI 文中义。本功能是显式扩展：词典义与 AI 解释分开，本地查询不经过 LLM 返回契约。确认后新增补充／取代相应范围的 BDR，不直接擦掉旧决定。
+- BDR-0005／0006 继续约束 AI 解释及已有生词本补充；不把「固定释义语言」「整句不标读音」强加到原始词典内容。learning 的自动词典补充是额外展示，不改变已有学习开关、推荐生成及收藏数据契约。
+- 「释义」现术语限定模型生成；建议增加「词典义：本地词典提供的原始解释，不代表应用选择了句中义」。待确认后改 [glossary](../glossary.md)。
+- 目前 `Owlet/Lookup/` 与浮窗有其他 agent 的未提交实现，未核验其完成状态；本轮仅新增本文件，不调整该实现或关闭 T47–T51。
 
-## Technical research (kept separate from product rules)
+## 技术研究（与产品规则分开）
 
-- Apple's public Dictionary Services returns plain text, not structured senses, readings or audio that can be reliably taken apart. The system dictionary source should not fake an AI response that satisfies `$defs.lookup`; reuse the selection, anchor, card container and system speech, while keeping content and caches separate per source.
-- The public API requires `nil` for the dictionary parameter and does not promise enumerating or selecting a specific system dictionary such as Oxford; users manage system sources in Dictionary.app. Symbols the framework exports but does not document must not be treated as usable API.
-- `DCSGetTermRangeInString` can expand to the longest word / phrase; do not use it to expand an explicit manual selection. A plain definition returned by the dictionary does not prove the right sense for the current sentence was chosen.
-- Yomitan's public ZIP / JSON structure is suitable to evaluate first. The recommendation is that the first version accept only v3 term text definitions, keeping the term form, reading, definitions and source metadata, without claiming full compatibility. Unsupported definition content rejects the package with an explanation; importing half a dictionary and reporting success is not allowed. Dictionary CSS, scripts, images, external links and audio are not loaded. Missing language information requires user confirmation.
-- MDX/MDD requires handling binary blocks, compression / encoding, HTML and resource relationships; evaluate it separately as another format option, without first building a generic dictionary engine.
-- Imported copies / indexes may be persisted, but lookup history is not added because of them; result caches live only in memory. Caches distinguish at least source and version; AI caches still follow the existing context and model conditions and do not share success / failure state.
-- The import boundary validates file structure, resource limits and in-package paths, and rolls back atomically on failure; dictionary content is never executed and download / update URLs are never followed automatically. A lookup does not load the whole dictionary's definitions into memory and does not build a large index on the UI thread.
+- Apple 的公共 Dictionary Services 返回纯文本，而非可稳定拆解的结构化义项、读音或音频。系统词典来源不应伪造一个满足 `$defs.lookup` 的 AI 响应；复用选区、锚点、卡片容器与系统朗读，内容与缓存按来源分开。
+- 公共 API 的词典参数要求 `nil`，不承诺枚举、选择 Oxford 等具体系统词典；用户在 Dictionary.app 管理系统来源。不得把 framework 导出但未公开的符号当作可用 API。
+- `DCSGetTermRangeInString` 可扩大到最长词／短语，不用它扩大明确手选范围；词典返回的普通释义不证明选中了当前句的正确义项。
+- Yomitan 的公开 ZIP／JSON 结构适合优先评估。建议首发只接受 v3 词条文本释义，保留词形、reading、释义与来源元数据；不宣称完整兼容。遇到不支持的释义内容明确拒绝该包并说明，不能导入半本后显示成功；不加载词典 CSS、脚本、图片、外链或音频。缺少语言信息需用户确认。
+- MDX/MDD 需处理二进制块、压缩／编码、HTML 与资源关系，作为另一种格式方案单独评估，不先造通用词典引擎。
+- 导入副本／索引可持久保存，但查词历史不因此新增；结果缓存仅内存。缓存至少区分来源和版本；AI 缓存仍按现有语境与模型条件，不共享成功／失败状态。
+- 导入边界校验文件结构、资源上限与包内路径，失败原子回退；不执行词库内容，不自动跟随下载／更新 URL。查询不加载整本释义到内存、不在 UI 线程建立大索引。
 
-## Sources and limits of evidence
+## 依据与证据边界
 
-- [Apple: Accessing Dictionaries](https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/DictionaryServicesProgGuide/access/access.html): returns CFString plain text; this archived document needs to be checked against the current SDK.
-- [Apple: DCSCopyTextDefinition](https://developer.apple.com/documentation/coreservices/1446842-dcscopytextdefinition) and [Dictionary Services](https://developer.apple.com/documentation/coreservices/dictionary_services): the public API and the first matching definition.
-- [Apple: Dictionary User Guide](https://support.apple.com/guide/dictionary/welcome/mac) and [Look Up guide](https://support.apple.com/en-md/guide/mac-help/mchl3983326c/mac): boundaries of the system source and the system Look Up UI.
-- [Yomitan packaging notes](https://github.com/yomidevs/yomitan/blob/master/docs/making-yomitan-dictionaries.md), [v3 term schema](https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-term-bank-v3-schema.json), [index schema](https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-index-schema.json): format and optional language information.
-- [StarDict official format](https://github.com/huzheng001/stardict-3/blob/master/dict/doc/StarDictFileFormat), [reverse-engineered MDX format notes](https://github.com/zhansliu/writemdict/blob/master/fileformat.md): the compatibility cost of other formats. Parser licences and dictionary content licences are separate matters; this design does not bundle, download or distribute third-party dictionaries.
-- A read-only probe with the local 27.0 SDK got no definition for any of `apple / running / bank / 苹果 / 猫`; this neither proves the Mac has no dictionaries nor proves the integration works. A successful match, the native dictionary popover, offline lookup and running on macOS 26 are not yet verified.
+- [Apple：Accessing Dictionaries](https://developer.apple.com/library/archive/documentation/UserExperience/Conceptual/DictionaryServicesProgGuide/access/access.html)：返回 CFString 纯文本；历史文档需结合当前 SDK 核对。
+- [Apple：DCSCopyTextDefinition](https://developer.apple.com/documentation/coreservices/1446842-dcscopytextdefinition) 与 [Dictionary Services](https://developer.apple.com/documentation/coreservices/dictionary_services)：公共接口与首个命中定义。
+- [Apple：Dictionary 使用指南](https://support.apple.com/guide/dictionary/welcome/mac) 与 [查找指南](https://support.apple.com/en-md/guide/mac-help/mchl3983326c/mac)：系统来源与系统查找界面边界。
+- [Yomitan 打包说明](https://github.com/yomidevs/yomitan/blob/master/docs/making-yomitan-dictionaries.md)、[v3 词条 Schema](https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-term-bank-v3-schema.json)、[元数据 Schema](https://github.com/yomidevs/yomitan/blob/master/ext/data/schemas/dictionary-index-schema.json)：格式与可选语言信息。
+- [StarDict 官方格式](https://github.com/huzheng001/stardict-3/blob/master/dict/doc/StarDictFileFormat)、[MDX 逆向格式说明](https://github.com/zhansliu/writemdict/blob/master/fileformat.md)：其他格式的兼容代价。解析器许可与词库内容许可是两回事，本设计不内置、下载或分发第三方词库。
+- 只读探针使用本机 27.0 SDK，`apple / running / bank / 苹果 / 猫` 均未取得释义；这不证明机器没有词库，也不证明接入成功。尚未验证成功命中、原生词典弹窗、断网查询或 macOS 26 运行。
 
-## Next steps
+## 下一步
 
-Once the format and card behaviour are confirmed, turn the settled rules into features / BDRs for lookup and learning, and sync the product definition, dictionary settings and component mapping, and the [roadmap](../../docs/roadmap.md). First deliver a real successful path for the system dictionary, then reuse it for the learning auto-supplement and one offline format; do not interrupt the current AI lookup implementation work. The collapsed supplement in learning uses the native DisclosureGroup, and it must be verified that its actions and whole-row saving do not interfere with each other.
+确认格式与卡片行为后，将已定规则落为查词及 learning 的 feature／BDR，并同步产品、词典设置与组件对照及[路线图](../../docs/roadmap.zh-CN.md)。先交付系统词典的真实成功路径，再复用于 learning 自动补充和一种离线格式；不打断当前 AI 查词实现任务。learning 的折叠补充使用原生 DisclosureGroup，须验证其操作与整行收藏互不干扰。

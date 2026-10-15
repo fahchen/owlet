@@ -1,37 +1,35 @@
-[English](BDR-0014-system-liquid-glass-intensity.md) · [简体中文](BDR-0014-system-liquid-glass-intensity.zh-CN.md)
+# BDR-0014：玻璃强度归系统设置，应用只指向它
 
-# BDR-0014: Glass intensity belongs to System Settings; the app only points to it
+状态：已确认（用户 2026-10-13），已实现（T64）。来源：用户决定应用不再提供自己的液态玻璃强度控制，改为在设置里指向系统设置。
 
-Status: Accepted (user, 2026-10-13), Implemented (T64). Origin: the user decided the app should no longer offer its own Liquid Glass intensity control and should point to System Settings from its settings instead.
+## 决定
 
-## Decision
+应用只保留「玻璃效果」两选一（更透明／更高对比度），并在该行下说明：液态玻璃及其强度在**系统设置 › 外观**中调整，附一个打开该面板的原生入口。应用不提供任何暗示可以自行调整玻璃强度的控件。
 
-The app keeps only the two-way "Glass Effect" choice (More Transparent / Higher Contrast), with a note under that row: Liquid Glass and its intensity are adjusted in **System Settings › Appearance**, plus a native link that opens that pane. The app offers no control that suggests it can adjust glass intensity itself.
+## SDK 事实（macOS 27 SDK 复核两次）
 
-## SDK facts (checked twice against the macOS 27 SDK)
-
-| API | What it can express |
+| API | 能表达什么 |
 | --- | --- |
-| `SwiftUICore.Glass` | `regular` / `clear` / `identity`, plus `tint` and `interactive`; no continuous intensity |
-| `NSGlassEffectView` | `style` (Regular / Clear), `cornerRadius`, `tintColor`, and on macOS 27 also `effectIsInteractive`; no continuous intensity |
-| Public symbols | No public API exists to set a continuous glass intensity |
+| `SwiftUICore.Glass` | `regular` / `clear` / `identity`，另有 `tint` 与 `interactive`；没有连续强度 |
+| `NSGlassEffectView` | `style`（Regular／Clear）、`cornerRadius`、`tintColor`，macOS 27 多一个 `effectIsInteractive`；没有连续强度 |
+| 公开符号 | 不存在可设置连续玻璃强度的公开 API |
 
-The real intensity slider is in **System Settings › Appearance › Liquid Glass** and applies system-wide. The panel's glass is drawn by the window server, so it already follows that setting; the app does not need to replicate it.
+真正的强度滑杆在**系统设置 › 外观 › Liquid Glass**，系统级生效；浮窗玻璃由 window server 绘制，因此已经跟随该设置，不需要应用再复刻一遍。
 
-## Alternatives rejected
+## 备选与不采纳
 
-- **Five-step SwiftUI `Material` slider**: rejected by the user; after switching to `Material` it no longer looks like Liquid Glass.
-- **Automatically following the system accessibility switches**: rejected by the user; too much hassle for the user.
+- **五档 SwiftUI `Material` 滑杆**：用户否决——换成 `Material` 之后不再像液态玻璃。
+- **自动跟随系统无障碍开关**：用户否决——对用户来说太麻烦。
 
-Both have been reverted. `PanelGlassEffect` stays a two-way choice, and `PanelGlassEffectTests` passes unchanged.
+两个方案都已回退，`PanelGlassEffect` 保持两选一，`PanelGlassEffectTests` 原样通过。
 
-## Consequences and costs
+## 后果与代价
 
-- **Accepted cost: part of the panel glass's look is no longer controlled by the app.** When the user raises or lowers the system intensity, the app neither compensates nor pretends it can. The two places (System Settings and app settings) show different parts of the same thing and do not contradict each other.
-- Pointing to System Settings instead of copying a fake intensity control gives the user a single entry point, and they will not assume the app can override the system intensity.
+- **接受的代价：浮窗玻璃的一部分观感不再由应用掌握。** 用户把系统强度调高或调低时，应用既不补偿也不假装能补偿；两处（系统设置与应用设置）显示的是同一件事的不同部分，不会互相矛盾。
+- 指向系统设置而不是复制一个假的强度控件，用户看到的入口唯一，也不会误以为应用能覆盖系统强度。
 
-## Impact
+## 影响
 
-- `Owlet/Settings/GeneralSettingsPane.swift`: under Glass Effect in the "Panel" group, add a secondary note and an "Open System Settings" link.
-- `Owlet/Settings/PanelGlassEffect.swift`: add `SettingsStore.appearanceSettingsURL` (the `x-apple.systempreferences:` URL for the Appearance pane, optional, never force-unwrapped).
-- `strings/translations.json`: two new interface strings (the note and the link label); the catalog is regenerated.
+- `Owlet/Settings/GeneralSettingsPane.swift`：「浮窗」分组的玻璃效果下加一行次级说明与「打开系统设置」链接。
+- `Owlet/Settings/PanelGlassEffect.swift`：新增 `SettingsStore.appearanceSettingsURL`（外观面板的 `x-apple.systempreferences:` URL，可选值，不强制解包）。
+- `strings/translations.json`：两条新界面串（说明与链接标签），目录随之重新生成。

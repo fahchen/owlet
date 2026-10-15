@@ -1,19 +1,17 @@
-[English](BDR-0002-preserve-open-toolbar-on-error.md) · [简体中文](BDR-0002-preserve-open-toolbar-on-error.zh-CN.md)
+# BDR-0002：错误提示保留已展开的工具栏
 
-# BDR-0002: Errors keep an expanded toolbar open
+状态：已确认。来源：用户确认打开前遇阻使用紧凑提示，打开后出错保留工具栏。
 
-Status: Accepted. Source: the user confirmed that a problem before opening uses a compact notice, and an error after opening keeps the toolbar.
+## 决定
 
-## Decision
+工具栏尚未展开时，阻断操作的问题以紧凑提示呈现，并提供对应的行内设置或恢复入口。
 
-While the toolbar has not expanded yet, a problem that blocks the operation is shown as a compact notice, with the matching inline settings or recovery entry.
+工具栏已经展开后，错误在内容区呈现，不将窗口收起。用户能继续查看原文及仍可用的结果，选择设置、重试或复制等适用操作。
 
-Once the toolbar has expanded, errors are shown in the content area and the window does not collapse. The user can keep reading the source text and any results that are still usable, and choose the applicable action: settings, retry, or copy.
+## 原因
 
-## Rationale
+打开前遇阻不需要展示无法使用的完整处理界面；打开后遇错则应保留用户已有的阅读和操作上下文。
 
-When the operation is blocked before opening, there is no need to show a full processing interface that cannot be used. When an error happens after opening, the reading and working context the user already has should be kept.
+## 影响
 
-## Consequences
-
-The same error can be presented differently depending on whether the toolbar has expanded. Error presentation does not change the replacement authorization or validity requirements for the original selection.
+同一种错误可以因工具栏是否已展开而采用不同呈现方式。错误呈现不改变原选区的替换授权与有效性要求。

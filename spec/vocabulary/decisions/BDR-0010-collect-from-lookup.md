@@ -1,29 +1,27 @@
-[English](BDR-0010-collect-from-lookup.md) · [简体中文](BDR-0010-collect-from-lookup.zh-CN.md)
+# BDR-0010：查词卡可显式加入生词本
 
-# BDR-0010: The lookup card can explicitly add to the notebook
+状态：已确认（2026-10-11，用户要求「查询的单词要支持可以加入生词本」）。
 
-Status: Accepted (2026-10-11, the user asked that "a looked-up word can be added to the notebook").
+部分取代 [BDR-0008](BDR-0008-reading-word-lookup.md) 的「查词结果只供当场阅读，不收藏」。查询输入框、查询历史与写回生词本释义仍不做；查词本身仍然不自动入库。
 
-Partly supersedes "lookup results are for reading on the spot, not saved" in [BDR-0008](BDR-0008-reading-word-lookup.md). A query input field, query history and writing back to a notebook meaning are still out of scope; a lookup by itself is still never saved automatically.
+## 决定
 
-## Decision
+- **卡片底部一个显式动作：`加入生词本`／`已收藏`。** 与学习表达的逐条收藏用同一语义与同一个书签图标：点一下即入库，再点一下即移除，不弹确认、不跳页。
+- **保存的内容全部来自本次查词结果，不另发请求。** 表达用查询词形，语言用查词结果得知的文本语言，原形用 `lemma`，语境用本次局部语境，释义用卡片上的释义，释义语言用本次 `definition_language`。查词已经付过这一次请求，再为收藏请求一次是浪费。
+- **卡片保持打开。** 入库是阅读中的顺手动作，不是结束信号；释义、原形与发音留在眼前，按错也能立即取消。
+- **复用生词本既有规则，不新增一套。** 同语言同表达复用条目并追加语境；已有释义与原有原句不被覆盖；删除沿用条目删除；无语境的查询不伪造原句，只存词形与释义。
+- **语言未知时不提供该动作。** 条目以语言加表达为身份，没有语言就没有可用的键。
 
-- **One explicit action at the bottom of the card: `Add to Notebook` / `Saved`.** Same semantics and same bookmark icon as saving a single study expression: one click saves, another click removes. No confirmation, no navigation.
-- **Everything saved comes from this lookup's result; no extra request is sent.** The expression is the queried form, the language is the text language learned from the lookup, the lemma is `lemma`, the context is this lookup's local context, the meaning is the meaning on the card, and the meaning language is this lookup's `definition_language`. The lookup has already paid for one request; requesting again just to save would be waste.
-- **The card stays open.** Saving is a side action while reading, not a signal to finish. The meaning, lemma and pronunciation stay in view, and a mistaken click can be undone right away.
-- **The notebook's existing rules are reused; no new set is added.** The same expression in the same language reuses the entry and appends the context; an existing meaning and existing source sentences are not overwritten; deletion is the normal entry deletion. A lookup without context does not fake a source sentence and stores only the form and the meaning.
-- **The action is not offered when the language is unknown.** An entry's identity is its language plus expression; without a language there is no usable key.
+### 备选与否决
 
-### Alternatives and rejections
+- **入库后关闭卡片。** 与「复制后浮窗关闭」同一步调，但用户常要对照释义或听发音，关掉就得重查。否决。
+- **只存词形与语境，释义留到生词本里再补。** 多一次操作与一次请求，而释义就在眼前。否决。
+- **查词自动入库。** 与「不自动收藏」的既有原则冲突，也不符合用户明确动作的偏好。否决。
 
-- **Close the card after saving.** Matches "the panel closes after copying", but users often want to compare the meaning or hear the pronunciation, and closing would force another lookup. Rejected.
-- **Store only the form and context, and fill in the meaning later in the notebook.** One more action and one more request, while the meaning is right there. Rejected.
-- **Save every lookup automatically.** Conflicts with the existing principle of no automatic saving, and with the user's preference for explicit actions. Rejected.
+## 影响
 
-## Impact
-
-- `spec/vocabulary/features/word-lookup.feature`: the rule "a lookup is not saving or writing back" is rewritten, adding five groups of scenarios: add, remove, append context, failure, and no context.
-- `spec/product.md`: the scope sentence of "Looking up words while reading" drops "a lookup does not write back to the notebook".
-- `spec/llm/contract.md`: the lookup section keeps "a lookup failure only affects the card"; saving becomes writing an entry on the user's action.
-- Implementation: `CollectionAction` gains saving from a lookup result and a membership check, `VocabularyStore` gains saving from a lookup snapshot, `LookupPresenter` carries the notebook action, `LookupCard` gains an action row; `OwletApp` makes lookups in the panel and the main window share the app-level notebook.
-- Still out of scope: a query input field, query history, writing back to an existing notebook meaning from the card, and using a notebook entry's own lemma for lookup reuse.
+- `spec/vocabulary/features/word-lookup.feature`：「查词不等同收藏或写回」规则改写，补加入、取消、追加语境、失败与无语境五组场景。
+- `spec/product.md`：「阅读中查词」的范围句去掉「查询不写回生词本」。
+- `spec/llm/contract.md`：查词段「查词失败只影响卡片」保留，入库改为按用户动作写条目。
+- 实现：`CollectionAction` 增按查词结果的收藏与成员判断，`VocabularyStore` 增按查词快照保存，`LookupPresenter` 携带生词本动作，`LookupCard` 增动作行；`OwletApp` 让浮窗与主窗口的查词共用应用级生词本。
+- 仍不做：查询输入框、查询历史、从卡片写回生词本已有释义、生词本条目自带原形参与查词复用。

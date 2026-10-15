@@ -12,7 +12,7 @@ Owlet is a menu bar app for macOS 26 and later. It translates and polishes selec
 ## Docs
 
 - [Product definition](spec/product.md)
-- [BDD behaviour specs](spec/README.md)
+- [BDD behaviour specs](spec/README.md) (the specs are written in Chinese)
 - [Visual and interaction rules](spec/DESIGN.md)
 - [Liquid Glass components](docs/liquid-glass-components.md)
 - [Panel debugging, testing and screenshots](docs/panel-debugging-and-testing.md)

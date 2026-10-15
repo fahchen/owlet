@@ -1,65 +1,63 @@
-[English](BDR-0007-history-as-learning-log.md) · [简体中文](BDR-0007-history-as-learning-log.zh-CN.md)
+# BDR-0007：历史作为学习本，收藏记录来源
 
-# BDR-0007: History as the learning log, saved entries record their origin
+状态：已接受（2026-10-04，待实现）。来源：用户需求——「我想要通过这个软件构建我的生词本和学习本」，澄清「学习本」指历史记录；追加「可以同时记录一下来源的 app」。
 
-Status: Accepted (2026-10-04, pending implementation). Source: user request "I want to build my vocabulary notebook and learning log with this app", clarified that the "learning log" means history; later added "it could also record the source app".
+范围：收藏条目记什么出处；历史怎么分组、筛选、与生词本关联。历史保存规则、删除规则、「历史不持有写回权限」都不变。
 
-Scope: what origin a saved entry records, and how history is grouped, filtered and linked to the notebook. The rules for saving history, deleting it, and "history does not hold write-back permission" are unchanged.
+## 用户价值与动机
 
-## User value and motivation
+今天历史与生词本是两个互不知道对方的列表：从一条翻译收藏了两个词，历史不知道；一个词是在 Slack 里遇到的，生词本不知道。用户把历史当学习日记来回看——「那天翻了什么、学了什么」——这两条线不接上，日记只有一半。
 
-Today history and the notebook are two lists that know nothing about each other: when two words are saved from one translation, history does not know; when a word was met in Slack, the notebook does not know. The user reviews history as a learning diary ("what did I translate and learn that day"), and with these two threads disconnected the diary is only half there.
+把来源接上之后：生词本的每个词有出处，可以按「在 Slack 遇到的」筛；历史的每条记录知道自己贡献了几个词，可以按「有收藏的」筛，详情里直接跳到那些词。
 
-Once origins are connected, every word in the notebook has a source and can be filtered by "met in Slack"; every history record knows how many words it contributed, can be filtered by "has saved entries", and its detail jumps straight to those words.
+## 决定
 
-## Decision
+### 1. 不新建「学习本」实体
 
-### 1. No new "learning log" entity
+用户澄清学习本就是历史。在现有历史上加分组、筛选、关联，不另起模型。
 
-The user clarified that the learning log is history. Grouping, filtering and links are added to the existing history; no new model is introduced.
+### 2. 收藏记录来源入口
 
-### 2. Saved entries record their capture entry point
+每条语境记录它从哪个入口来：划选、学习推荐、历史。回答「这个词是我手选的还是模型推荐的」。
 
-Each context records which entry point it came from: text selection, study recommendations, or history. This answers "did I pick this word myself or did the model recommend it".
+### 3. 来源 App 是原文所在的 App，随链路传递
 
-### 3. The source app is the app the source text came from, and it is carried along the chain
+在 Mail 里划选触发翻译 → 历史记下 Mail → 从学习区或历史详情收藏的词也记 Mail。手动输入的文本没有来源 App。
 
-Selecting text in Mail triggers a translation, so history records Mail, and words saved from the study area or the history detail also record Mail. Manually entered text has no source app.
+备选「只在划选收藏那一刻记前台 App」不采纳：多数收藏走学习区，那一刻的前台 App 是 Owlet 自己，没有信息量，这列会大面积为空。
 
-Rejected alternative "record the frontmost app only at the moment of saving a selection": most saves go through the study area, where the frontmost app at that moment is Owlet itself, which carries no information, so this column would be mostly empty.
+代价：历史多存一列。Owlet 读选区时本来就要拿前台 App，成本接近零。
 
-Cost: history stores one more column. Owlet already reads the frontmost app when it reads the selection, so the cost is close to zero.
+### 4. 历史按天分组，最新在前
 
-### 4. History is grouped by day, newest first
+分组标题文案是实现细节。
 
-The group header wording is an implementation detail.
+### 5. 历史可按「有收藏」与来源 App 筛选，与翻译／润色叠加
 
-### 5. History can be filtered by "has saved entries" and by source app, combined with Translate / Polish
+与生词本筛选器的叠加规则一致（[BDR-0004](../../vocabulary/decisions/BDR-0004-editable-notebook.md)）。生词本也加来源 App 筛选，与语言、标签、重点叠加。
 
-The combination rule matches the notebook filters ([BDR-0004](../../vocabulary/decisions/BDR-0004-editable-notebook.md)). The notebook also gains a source app filter, combined with language, tags and starred.
+### 6. 历史详情关联收藏词条，弱引用、单向展示
 
-### 6. The history detail links to saved entries through a weak, one-way reference
+详情列出从该记录收藏的词条，可跳转到生词本。关联是展示用的弱引用：
 
-The detail lists the entries saved from that record and can jump to the notebook. The link is a weak reference for display only:
+- 删历史不删词条（现有规则不变）；词条上的来源入口与来源 App 仍显示——它们是收藏时的事实，不随历史消失；只是不再能跳回历史。
+- 删词条后历史详情的列表相应减少。
 
-- Deleting history does not delete entries (existing rule unchanged). The capture entry point and source app on an entry are still shown, because they are facts from the time of saving and do not disappear with history; they just can no longer jump back to history.
-- Deleting an entry shrinks the list in the history detail accordingly.
+备选「真实外键级联」不采纳：历史可整体清空而生词本必须活下来，级联方向与这条规则矛盾。
 
-Rejected alternative "a real foreign key with cascade": history can be cleared entirely while the notebook must survive, so the cascade direction contradicts that rule.
+## 影响
 
-## Consequences
+- `spec/history/features/learning-log.feature`（新增）：来源 App、分组、筛选、关联。
+- `spec/vocabulary/features/collection.feature`：新增 Rule「收藏记录来源入口与原文所在的 App」。
+- `spec/vocabulary/features/notebook.feature`：按来源 App 筛选；清空历史后来源仍显示。
+- `spec/product.md`：「学习内容与收藏」「个人生词本」「历史记录」三节对应句子更新。
+- 术语：新增「来源」；「历史」定义补关联（待确认）。
+- 数据：语境新增来源入口与来源 App；历史新增来源 App；历史↔词条关联键，见 `Owlet/Vocabulary/` 与 `Owlet/History/` 中的 SwiftData 模型。
+- 实现：选区读取处已有前台 App 信息，沿 `TextProcessingModel` → `HistoryRecord` → `LearningRequest` / `VocabularyDraft` 传递；历史列表加分组与两个筛选；详情加词条列表。
 
-- `spec/history/features/learning-log.feature` (new): source app, grouping, filtering, links.
-- `spec/vocabulary/features/collection.feature`: new Rule "saved entries record their capture entry point and the app the source text came from".
-- `spec/vocabulary/features/notebook.feature`: filter by source app; origins are still shown after clearing history.
-- `spec/product.md`: the matching sentences in the three sections on study content and saving, the personal notebook, and history are updated.
-- Terminology: add "origin"; extend the definition of "history" with the link (to be confirmed).
-- Data: contexts gain the capture entry point and source app; history gains the source app; a history-to-entry link key. See the SwiftData models in `Owlet/Vocabulary/` and `Owlet/History/`.
-- Implementation: the selection reader already has the frontmost app; carry it through `TextProcessingModel` → `HistoryRecord` → `LearningRequest` / `VocabularyDraft`; add grouping and two filters to the history list; add an entry list to the detail.
+## 明确不做
 
-## Out of scope
-
-- No new learning log model.
-- No cascade from history to entries.
-- Do not record the frontmost app at the moment of saving from the study area.
-- No per-app statistics or charts.
+- 不新建学习本模型。
+- 不做历史→词条级联。
+- 不记录学习区收藏那一刻的前台 App。
+- 不做按 App 的统计或图表。

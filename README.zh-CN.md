@@ -11,9 +11,9 @@ Owlet 是 macOS 26 及以上的菜单栏应用：翻译与润色所选文字，�
 
 ## 文档
 
-- [产品定义](spec/product.zh-CN.md)
-- [BDD 行为规格](spec/README.zh-CN.md)
-- [视觉与交互规则](spec/DESIGN.zh-CN.md)
+- [产品定义](spec/product.md)
+- [BDD 行为规格](spec/README.md)
+- [视觉与交互规则](spec/DESIGN.md)
 - [Liquid Glass 组件对照](docs/liquid-glass-components.zh-CN.md)
 - [Panel 调试、测试与截图](docs/panel-debugging-and-testing.zh-CN.md)
 - [选中文本获取](docs/selected-text-capture.zh-CN.md)

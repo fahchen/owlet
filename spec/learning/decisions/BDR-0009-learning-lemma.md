@@ -1,41 +1,39 @@
-[English](BDR-0009-learning-lemma.md) · [简体中文](BDR-0009-learning-lemma.zh-CN.md)
+# BDR-0009：学习契约区分词形与原形
 
-# BDR-0009: The study contract separates surface form and lemma
+状态：已确认（2026-10-11）。来源：真实 DeepSeek 调用的学习推荐 `.format` 失败——模型返回字典形，语境里是活用形，本地逐字匹配判失败。
 
-Status: Accepted (2026-10-11). Source: study recommendations from a real DeepSeek call failed with `.format`. The model returned the dictionary form, the context contained an inflected form, and the local verbatim match judged it a failure.
+## 问题
 
-## Problem
+学习契约的 `text` 同时被要求两件事：既要是收藏进生词本的表达，又必须逐字出现在 `context` 里。日语下一句话里出现的是活用形，而值得收藏的是字典形，两者字面不同：
 
-The study contract's `text` was asked to do two things at once: be the expression saved to the notebook, and appear verbatim in `context`. In Japanese, a sentence contains the inflected form while the form worth saving is the dictionary form, and the two differ literally:
-
-| `text` returned by the model | Actual form in the context | Verbatim match |
+| 模型返回的 `text` | 语境里的实际词形 | 逐字匹配 |
 | --- | --- | --- |
 | `跳ね上がる` | `跳ね上がっている` | ❌ |
 | `史上最高値をつける` | `…をつけて` | ❌ |
 | `拍車がかかる` | `…がかかっている` | ❌ |
-| `受け渡し`／`現物`／`需給逼迫` | same form | ✅ |
+| `受け渡し`／`現物`／`需給逼迫` | 同形 | ✅ |
 
-`LearningResult.parse` uses `localizedStandardContains` for a literal check, so the whole study response was judged a `format` failure. The user saw "the returned structure does not match the contract" even though the main result itself was fine. Chinese and English noun phrases usually have the same form, so the defect reproduced reliably only when reading Japanese.
+`LearningResult.parse` 用 `localizedStandardContains` 做字面判定，于是整条学习响应被判为 `format` 失败——用户看到「返回的结构不符合约定」，而主结果本身是好的。中文与英文的名词短语通常同形，所以这个缺陷读日语时才会稳定复现。
 
-## Decision
+## 决定
 
-- **`text` uses the form in the context.** `text` must be the literal text actually in this run's source or result (inflected and conjugated forms both count), and it must still appear verbatim in `context`. This keeps "which sentence, and where, this recommendation came from" verifiable, and preserves the boundary held since T48 that "the reply's correspondence to the request can be checked locally".
-- **A new `lemma` field stores the dictionary form.** It is given only when the dictionary form differs from `text` and can be determined; otherwise it is `null`. The model is not required to force one when unsure, nor to give a base form for a whole sentence.
-- **The notebook expression stays the form the user saved.** The entry's `expression` stores `text` (the inflected form), and `lemma` is stored as secondary information. The reasoning matches [BDR-0008](../../vocabulary/decisions/BDR-0008-reading-word-lookup.md): the lookup card uses the looked-up form as its title and the base form as secondary information, and a notebook entry does not change what the user saved at the time.
-- **No local semantic check beyond "the form must appear in the context".** This is the defect actually fixed here: the old rule had smuggled "the base form must equal the surface form" into the shape check.
-- **The rest of the contract is unchanged.** The meaning language, the `kind` values, `items` being allowed to be empty, and the same contract doubling as the meaning fill-in after a manual save all stay as they were.
+- **`text` 用语境中的词形。** `text` 必须是本次原文或结果里的实际字面（活用形、变位形都算），继续要求它逐字出现在 `context` 中。这样「这条推荐出自哪句话的哪个位置」仍然可验证，也保住了 T48 以来「本地能校验返回与请求的对应关系」的边界。
+- **新增 `lemma` 字段存字典形。** 只有字典形与 `text` 不同、且能确定时才给，否则为 `null`。不要求模型在拿不准时硬凑，不要求它对整句给原形。
+- **生词本的表达仍是用户收藏时的词形。** 条目 `expression` 存 `text`（活用形），另存 `lemma` 作为次级信息。理由与 [BDR-0008](../../vocabulary/decisions/BDR-0008-reading-word-lookup.md) 一致：查词卡以查询词形作标题、原形作次级信息，生词本条目不改变用户当时收下的东西。
+- **不再要求「词形必须出现在语境里」之外的本地语义校验。** 这是本次真正修掉的缺陷：原规则把「原形必须等于词形」偷偷夹带进了形状校验。
+- **契约其余部分不动。** 释义语言、`kind` 取值、`items` 允许为空、同一契约兼作手动收藏后的补充释义，都照旧。
 
-### Alternatives rejected
+### 备选与否决
 
-- **Drop the verbatim check and keep only non-empty and shape checks.** Simpler, but it also loses the verifiability of "which sentence the recommendation came from". The rule that `context` must come from the source or result already had no local check, so dropping `text` too would leave only the shape. Rejected.
-- **Change the prompt to force the inflected form and leave the contract alone.** It would pass validation, but the notebook would collect conjugated forms such as `跳ね上がっている`, and pronunciation and later lookups would all land on the inflected form. Rejected: it shifts the convenience of local validation onto the quality of the user's data.
-- **Have the model give both forms, but put the base form in `text` and the surface form in a new field.** This contradicts the lookup card's "surface form as title", and what the notebook shows by default would differ from what the user actually saw. Rejected.
+- **去掉逐字校验，只保非空与形状。** 更省事，但会同时丢掉「推荐出自哪句话」的可验证性；而 `context` 必须来自原文／结果这条规则本来就没有本地校验，再放掉 `text` 就只剩形状了。否决。
+- **改 prompt 强制返回活用形，不动契约。** 能过校验，但生词本会收进 `跳ね上がっている` 这类变位形，发音与后续查词都落在活用形上。否决：把本地校验的便利转嫁给用户的数据质量。
+- **让模型同时给出词形与原形，但原形放 `text`、词形放新字段。** 与查词卡「词形作标题」相矛盾，且生词本默认展示的东西会和用户实际看到的不一致。否决。
 
-## Consequences
+## 影响
 
-- `spec/llm/responses.schema.json`: `$defs.learning.items` gains a nullable `lemma`, listed in `required`.
-- Study section of `spec/llm/contract.md`: the example adds `lemma`, and the division of roles between `text` and `lemma` is spelled out.
-- `Owlet/LLM/ModelResponse.swift`: `LearningResult.Item` gains `lemma`; `parse` checks that the nullable field is not blank and does not duplicate `text`.
-- `Owlet/LLM/ModelClient.swift`: the study and meaning fill-in prompts add a `lemma` description and example.
-- `Owlet/Vocabulary/`: entries and context snapshots carry `lemma`; the notebook detail shows it as secondary text under the expression; export includes the field (`version` goes to 2).
-- Follow-up: the base form on lookup cards and notebook entries is currently provided independently by the lookup request. The notebook's own `lemma` is used only for display and does not yet take part in lookups or reuse keys.
+- `spec/llm/responses.schema.json`：`$defs.learning.items` 增加可空 `lemma` 并列入 `required`。
+- `spec/llm/contract.md` 学习段：示例加 `lemma`，`text` 与 `lemma` 的分工写明。
+- `Owlet/LLM/ModelResponse.swift`：`LearningResult.Item` 增 `lemma`，`parse` 校验可空字段不得为空白、且不得与 `text` 重复。
+- `Owlet/LLM/ModelClient.swift`：学习与补释义两处 prompt 补 `lemma` 说明与示例。
+- `Owlet/Vocabulary/`：条目与语境快照带 `lemma`；生词本详情在表达下方次级显示；导出带上该字段（`version` 升到 2）。
+- 后续：查词卡与生词本条目的原形目前由查词请求独立给出，生词本自带的 `lemma` 只用于展示，尚未参与查词或复用键。

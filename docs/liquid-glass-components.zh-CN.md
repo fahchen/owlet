@@ -279,7 +279,7 @@ T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使�
 
 ## T47 查词卡组件对照（浮窗已实现，其余待实现）
 
-行为见 [查词规格](../spec/vocabulary/features/word-lookup.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.zh-CN.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。
+行为见 [查词规格](../spec/vocabulary/features/word-lookup.feature)，决定见 [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md)。以下是实现候选，不代表已替换控件或已验收；不增加退役原型的截图／状态计数。
 
 | 阅读区域 | 保留行为与原生承载边界 |
 | --- | --- |
@@ -291,6 +291,6 @@ T45：学习双栏以原生 spring 与 move／opacity 过渡；词条整行使�
 
 T48：选区工具栏与查词卡共用一个系统 `NSPopover`（`.transient`）。工具栏只有一个 `.plain` 的「查询」文字按钮，popover 本身即工具栏外框，不再套一层玻璃按钮，也不加悬停提示；超限时直接显示原因；卡片 320pt 宽，标题 16pt semibold 为查询词形，次级 13pt `.secondary` 依次为不同的原形、读音、词性，释义 15pt，来源／无原句用 `Label` + `.secondary`；加载为居中次要色文字，失败为居中红色 `Label` 加纯文本「重试」，「按当前语境重查」为纯文本按钮，发音为 36pt `CardButton`。右键菜单在系统菜单顶部插入「查询所选」。查词卡优先验证系统 popover，内容用系统 Text／Label、ProgressView、Button；选区动作使用原生工具栏／菜单承载，不手画控件。原形次级展示，来源、失败、禁用发音原因在内容中可读并可被辅助功能访问。
 
-悬停仅按 [DESIGN 封闭例外](../spec/DESIGN.zh-CN.md#查词悬停的封闭例外2026-10-07-已确认2026-10-11-改为按住--时显示)。原生验证须覆盖真实文字命中（不能仅凭最近字符索引）、中日文分词、双击／拖拽／复制、学习行收藏隔离、popover 焦点、Esc 层级、VoiceOver，以及系统语音可用／缺失。先验证首个阅读区域，再决定其他区域的最小改动，不预定五处统一替换。
+悬停仅按 [DESIGN 封闭例外](../spec/DESIGN.md#查词悬停的封闭例外2026-10-07-已确认2026-10-11-改为按住--时显示)。原生验证须覆盖真实文字命中（不能仅凭最近字符索引）、中日文分词、双击／拖拽／复制、学习行收藏隔离、popover 焦点、Esc 层级、VoiceOver，以及系统语音可用／缺失。先验证首个阅读区域，再决定其他区域的最小改动，不预定五处统一替换。
 
-T55（[BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.zh-CN.md)）：卡片标题行右侧、`发音` 左侧是一个 `CardGlassButton`（`.glass`、圆形边框、36pt、13pt 字形），与 `发音` 同一个组件，只是标本为 `bookmark`／`bookmark.fill`、已收藏取强调色；`.hoverTip` 与辅助功能值给出「加入生词本／取消收藏」（系统无可用语音时 `发音` 的原因同样走提示，不再占一行说明）。文本语言未知或未接入生词本时不出现该按钮。不用自绘控件，不加确认弹窗。
+T55（[BDR-0010](../spec/vocabulary/decisions/BDR-0010-collect-from-lookup.md)）：卡片标题行右侧、`发音` 左侧是一个 `CardGlassButton`（`.glass`、圆形边框、36pt、13pt 字形），与 `发音` 同一个组件，只是标本为 `bookmark`／`bookmark.fill`、已收藏取强调色；`.hoverTip` 与辅助功能值给出「加入生词本／取消收藏」（系统无可用语音时 `发音` 的原因同样走提示，不再占一行说明）。文本语言未知或未接入生词本时不出现该按钮。不用自绘控件，不加确认弹窗。

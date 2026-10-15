@@ -1,66 +1,64 @@
-[English](BDR-0006-on-demand-enrichment.md) · [简体中文](BDR-0006-on-demand-enrichment.zh-CN.md)
+# BDR-0006：读音与词性按需补充
 
-# BDR-0006: Reading and part of speech are filled in on demand
+状态：已接受（2026-10-04）；第 6 条的按语言读音体系设置已实现（2026-10-11，随阅读查词审阅），详情页按需补充仍待实现。来源：用户需求——生词本要有音标、词性等字段，后期还会扩展。
 
-Status: Accepted (2026-10-04). Item 6, the per-language reading notation setting, is implemented (2026-10-11, reviewed together with word lookup while reading); on-demand filling on the detail page is not yet implemented. Source: user request. The notebook needs fields such as phonetic transcription and part of speech, and will gain more later.
+范围：生词本条目的读音与词性怎么来、怎么刷新、体系怎么定。收藏流程不变（仍是「加入生词本即保存」，[BDR-0004](BDR-0004-editable-notebook.md)），释义语言规则不变（[BDR-0005](../../learning/decisions/BDR-0005-definition-language.md)）。
 
-Scope: where a notebook entry's reading and part of speech come from, how they are refreshed, and how the notation is chosen. The saving flow is unchanged (still "Add to Notebook saves it", [BDR-0004](BDR-0004-editable-notebook.md)), and so are the meaning language rules ([BDR-0005](../../learning/decisions/BDR-0005-definition-language.md)).
+## 用户价值与动机
 
-## User value and motivation
+读音是学外语最常查的信息，词性决定一个词怎么用。但两者都不是收藏那一刻必须有的：收藏要快，多数条目用户不会回头看读音。把它们放到详情页按需补充，收藏不付这个成本，想看的时候一键补上。
 
-The reading is what language learners look up most often, and the part of speech decides how a word is used. Neither is needed at the moment of saving, though. Saving has to be fast, and for most entries the user never goes back to check the reading. Filling them in on demand on the detail page means saving does not pay the cost, and one click adds them when the user wants them.
+## 决定
 
-## Decision
+### 1. 收藏时不请求，详情页按需补充
 
-### 1. Nothing is requested when saving; the detail page fills in on demand
+收藏只存表达、语言、语境，并按现有规则补释义。读音与词性在详情页由用户触发。
 
-Saving stores only the expression, language and context, and fills in the meaning under the existing rules. The reading and part of speech are triggered by the user on the detail page.
+备选「收藏时 LLM 一并返回」不采纳：扩 learning 契约，每次收藏多两个字段，而多数条目用不到。备选「只手动编辑」不采纳：IPA 不可能手打。
 
-Rejected: "the LLM returns them together when saving". It extends the learning contract with two more fields on every save, and most entries never use them. Also rejected: "manual editing only". Nobody can type IPA by hand.
+### 2. 两种动作：「补充缺失」与单项「重新生成」
 
-### 2. Two actions: "Fill In Missing" and a per-field "Regenerate"
+- **补充缺失**：一次请求填所有空字段（释义、读音、词性里空的那些），不碰已有内容——包括用户手改过的值。三项都有时不可用。
+- **重新生成**：释义、读音、词性各一个，只覆盖该项，不确认。
 
-- **Fill In Missing**: one request fills every empty field (whichever of meaning, reading and part of speech are empty) and never touches existing content, including values the user edited. It is unavailable when all three are present.
-- **Regenerate**: one each for meaning, reading and part of speech. It overwrites only that field, without confirmation.
+补充是加法，重新生成是覆盖。用户的原话：「可以是独立的按钮，但是也可以是一个按钮补充缺失的」。备选「一个按钮刷全部三项」不采纳：两种语义一个按钮做不到。
 
-Filling in adds; regenerating overwrites. In the user's words: "they can be separate buttons, but there can also be one button that fills in what is missing". Rejected: "one button refreshes all three". One button cannot carry both meanings.
+收藏时的自动补释义与「补充缺失」是同一语义（只填空），不另起规则。
 
-Filling in the meaning automatically when saving has the same meaning as "Fill In Missing" (only fill what is empty); it does not get a separate rule.
+### 3. 失败不影响已有，可重试；部分成功保留已成功的
 
-### 3. A failure leaves existing content alone and can be retried; a partial success keeps what succeeded
+与释义补充现有规则一致。「补充缺失」里读音成功、词性失败：读音保存，词性可重试。
 
-Same as the existing rule for filling in a meaning. If "Fill In Missing" gets the reading but fails on the part of speech, the reading is saved and the part of speech can be retried.
+### 4. 整句条目不标读音与词性
 
-### 4. Whole-sentence entries have no reading or part of speech
+整句没有词性；整句读音太长没人看。详情页对整句不显示这两项，「补充缺失」只补释义。想要一句日语的假名，收藏短语而不是整句。「整句」的判定是实现细节。
 
-A sentence has no part of speech, and nobody reads a sentence-long transcription. The detail page does not show these two fields for a sentence, and "Fill In Missing" only fills in the meaning. To get the kana of a Japanese sentence, save the phrase rather than the whole sentence. How "whole sentence" is detected is an implementation detail.
+### 5. 读音与词性可编辑，重新生成覆盖
 
-### 5. Reading and part of speech are editable; regenerating overwrites them
+与 BDR-0004 的释义规则一致：模型的地盘，用户可改，重新生成就覆盖。
 
-Same as the meaning rule in BDR-0004: they belong to the model, the user can edit them, and regenerating overwrites them.
+### 6. 读音体系按语言在设置里配置，随读音一起保存
 
-### 6. The reading notation is set per language in Settings and saved with the reading
+放在 [BDR-0003](../../settings/decisions/BDR-0003-translation-target-mapping.md) 已有的「语言」分组：每种语言一个体系。默认英语 IPA、日语假名、中文拼音、其他 IPA。请求时应用指定体系，模型只给字符串。
 
-It lives in the existing "Languages" group from [BDR-0003](../../settings/decisions/BDR-0003-translation-target-mapping.md): one notation per language. Defaults: IPA for English, kana for Japanese, pinyin for Chinese, IPA for everything else. The request specifies the notation; the model only returns a string.
+体系随读音存在条目上；改设置只影响之后的补充，不回填已有读音——与「改映射不回填释义」同一原则。
 
-The notation is stored on the entry together with the reading. Changing the setting affects only later fills and does not backfill existing readings, the same principle as "changing the mapping does not backfill meanings".
+备选「按语言写死」不采纳：日语假名 vs 罗马字是真实分歧。备选「模型自报」不采纳：同一语言可能混出两种体系。
 
-Rejected: "hard-code it per language". Kana versus romaji for Japanese is a real disagreement. Also rejected: "the model reports its own notation". The same language could end up with two notations.
+## 影响
 
-## Impact
+- `spec/vocabulary/features/enrichment.feature`（新增）：以上规则的场景。
+- `spec/product.md`：「个人生词本」加按需补充一条；「语言」分组加读音体系。
+- `spec/llm/contract.md`：按需补充的独立请求与返回字段。
+- `spec/README.md`：settings 域说明加读音体系。
+- 术语：新增「读音」「词性」（待确认）。
+- 数据：条目新增读音、读音体系、词性字段，见 `Owlet/Vocabulary/` 中的 SwiftData 模型；设置新增按语言的读音体系。
+- 实现：`ModelClient` 加一个按需请求；详情页加「补充缺失」与三个「重新生成」；整句判定一个启发式。
 
-- `spec/vocabulary/features/enrichment.feature` (new): scenarios for the rules above.
-- `spec/product.md`: "Personal notebook" gains an item on filling in on demand; the "Languages" group gains the reading notation.
-- `spec/llm/contract.md`: a separate request and response fields for on-demand filling.
-- `spec/README.md`: the settings domain description adds the reading notation.
-- Glossary: adds "reading" and "part of speech" (to be confirmed).
-- Data: entries gain reading, reading notation and part of speech fields, see the SwiftData models in `Owlet/Vocabulary/`; settings gain a per-language reading notation.
-- Implementation: `ModelClient` gains an on-demand request; the detail page gains "Fill In Missing" and three "Regenerate" actions; one heuristic decides whether an entry is a whole sentence.
+## 明确不做
 
-## Explicitly out of scope
-
-- No reading or part of speech request when saving.
-- No reading or part of speech for whole sentences.
-- No refresh-everything button.
-- Changing the notation setting does not backfill.
-- Separate readings for multiple senses (the schema leaves room; the behaviour waits until multiple senses actually appear).
+- 收藏时不请求读音与词性。
+- 整句不标读音与词性。
+- 不做全刷按钮。
+- 改体系设置不回填。
+- 多义项各自读音（schema 已留位，行为留待多义项真正出现时再定）。

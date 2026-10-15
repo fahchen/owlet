@@ -23,7 +23,7 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 
 - 界面一律用 macOS 26 原生 SwiftUI / AppKit 组件，**不手写控件**：不加自定义颜色、tint、
   填充、边框、渐变、光晕、阴影、圆角样式或自定义 `ButtonStyle`。
-- 规则全文与判据见 `spec/DESIGN.zh-CN.md`；逐屏组件对照见 `docs/liquid-glass-components.zh-CN.md`。
+- 规则全文与判据见 `spec/DESIGN.md`；逐屏组件对照见 `docs/liquid-glass-components.zh-CN.md`。
 - 常见落法：页面用 `Form` + `Section`（`.formStyle(.grouped)`），分组容器、卡片、列表行都用
   系统组件；长文本折叠用 `DisclosureGroup`；错误用 `Label(systemImage:)` + 系统红；动作行用
   `PageFooter` + `.glass` / `.glassProminent`。**不要画圆角卡片背景**。
@@ -66,13 +66,13 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 
 ## 文档语言
 
-- 文档默认英文：`foo.md` 是英文，`foo.zh-CN.md` 是简体中文副本，两者首行互相链接；例外是 `spec/` 的 Gherkin `.feature`：只写简体中文一份（英文关键字、中文场景描述），且必须能被官方 Gherkin 解析器解析。改动时两份一起改，内容必须一致。
-- 英文文档里的链接指向英文文件，中文副本里的链接指向 `.zh-CN` 文件。
+- `docs/`、`README`、`AGENTS` 为中英双语，默认英文：`foo.md` 是英文，`foo.zh-CN.md` 是简体中文副本，两者首行互相链接；改动时两份一起改，内容必须一致。英文文档里的链接指向英文文件，中文副本里的链接在有 `.zh-CN` 版本时指向它。
+- `spec/` 只用简体中文写，不另出英文版；其中 Gherkin `.feature` 用英文关键字、中文场景描述，且必须能被官方 Gherkin 解析器解析。
 - 代码注释（含文档注释）一律英文；界面文字仍按「界面语言」一节走 `L10n`。
 
 ## 模型调用
 
-- `spec/llm/contract.zh-CN.md` 是硬约束：结构、目标语言、原文拼接三项都要在本地校验，校验失败
+- `spec/llm/contract.md` 是硬约束：结构、目标语言、原文拼接三项都要在本地校验，校验失败
   不得当成成功结果，也不得写回。
 - 契约失败要能诊断：`ModelError` 区分 `format` / `targetMismatch` / `sourceMismatch`，
   原始请求与返回记录在隐藏调试页（`Owlet/Debug/`，设置里的「调试」开关控制，默认关闭、

@@ -5453,6 +5453,35 @@
         }
       }
     },
+    "Restore the default prompt?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore the default prompt?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "既定のプロンプトに戻しますか？"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复默认提示词？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢復預設提示詞？"
+          }
+        }
+      }
+    },
     "Result": {
       "extractionState": "manual",
       "localizations": {
@@ -7856,6 +7885,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "昨天 %@"
+          }
+        }
+      }
+    },
+    "Your edits to this prompt will be lost.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your edits to this prompt will be lost."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このプロンプトへの編集内容は失われます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对这个提示词的修改将会丢失。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "對這個提示詞的修改將會遺失。"
           }
         }
       }

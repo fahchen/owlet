@@ -11,6 +11,9 @@ struct PromptSettingsView: View {
     @State private var polishDraft = ""
     /// Operation whose draft was blank when it last tried to commit.
     @State private var invalid: Operation?
+    /// Operation whose restore is waiting to be confirmed; restoring throws away the editor's text, so
+    /// it is asked about first.
+    @State private var restoring: Operation?
     @FocusState private var focused: Operation?
 
     var body: some View {
@@ -22,6 +25,20 @@ struct PromptSettingsView: View {
         }
         .onAppear(perform: load)
         .onChange(of: promptFocus) { _, _ in applyFocus() }
+        .confirmationDialog(
+            L10n.shared.string("Restore the default prompt?"),
+            isPresented: Binding(
+                get: { restoring != nil }, set: { if !$0 { restoring = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(L10n.shared.string("Restore Default"), role: .destructive) {
+                if let restoring { restore(restoring) }
+                restoring = nil
+            }
+            Button(L10n.shared.string("Cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.shared.string("Your edits to this prompt will be lost."))
+        }
         // Committing on the edge of focus is what replaces the old save button; leaving the pane also
         // gives up focus, so switching tabs cannot lose an edit.
         .onChange(of: focused) { previous, current in
@@ -58,13 +75,24 @@ struct PromptSettingsView: View {
                 // header does not move as the text changes; it is enabled exactly while the editor
                 // holds something other than the built-in default, so it never does nothing.
                 Button(L10n.shared.string("Restore Default"), systemImage: "arrow.counterclockwise") {
-                    text.wrappedValue = defaultPrompt
+                    restoring = operation
                 }
                 .buttonStyle(.borderless)
                 .controlSize(.small)
                 .disabled(text.wrappedValue == defaultPrompt)
             }
         }
+    }
+
+    /// Confirms a restore: the editor gets the built-in default and it is persisted on the spot, because
+    /// the dialog took focus and waiting for the editor to lose it again would leave the old text in
+    /// force for as long as the pane stays open.
+    private func restore(_ operation: Operation) {
+        switch operation {
+        case .translate: translateDraft = SettingsStore.defaultPrompt(for: operation)
+        case .polish: polishDraft = SettingsStore.defaultPrompt(for: operation)
+        }
+        commit(operation)
     }
 
     /// Writes one editor's text; a blank draft is refused so the previous text stays in force.

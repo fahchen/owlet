@@ -10,7 +10,7 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 - Model Name and Reasoning Effort each take a typed value, with a "Presets" menu beside them listing the candidates. The effort row shows the value it sends (automatic, none, low, medium, high, max) rather than a translated level name; any other typed value is sent as is.
 - A Test button checks the current settings: it translates the first line of the Classic of Poetry's 蒹葭 and shows the reply and how long it took. A model failure — from the Test or from reading the model list — is reported in one place, with a retry.
 - The two System Prompts are shipped in every interface language: switch the language and a prompt you never edited switches with it, while your own edited prompt stays as you wrote it.
-- The prompt editors' restore button now reads "Restore Default" instead of showing an icon alone.
+- The prompt editors' restore button reads "Restore Default" and asks for confirmation before discarding your edits.
 - Service presets: pick DeepSeek, OpenRouter or Ollama, and Owlet fills in the base URL and default model. "OpenAI Compatible" stays for any other service.
 
 ## 0.5.1 — 2026-10-15

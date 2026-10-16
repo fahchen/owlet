@@ -162,6 +162,15 @@ Feature: 自行配置模型服务
       When 用户切换界面语言
       Then 编辑器仍是用户写的那份内容
 
+    Scenario: 恢复默认要先确认
+      Given 用户已有自定义润色 Prompt
+      When 用户点击润色 Prompt 的恢复默认按钮
+      Then 先弹出确认，写明这次修改会丢失
+      When 用户确认
+      Then 编辑器填回默认内容，且后续润色立即使用该默认
+      When 用户取消
+      Then 编辑器内容与已生效的配置都不变
+
     Scenario: 恢复默认
       Given 用户已有自定义润色 Prompt
       When 用户恢复润色默认 Prompt 并离开编辑框

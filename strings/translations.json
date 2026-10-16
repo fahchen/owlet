@@ -939,6 +939,11 @@
     "zh-Hans": "恢复默认",
     "zh-Hant": "恢復預設"
   },
+  "Restore the default prompt?": {
+    "ja": "既定のプロンプトに戻しますか？",
+    "zh-Hans": "恢复默认提示词？",
+    "zh-Hant": "恢復預設提示詞？"
+  },
   "Result": {
     "ja": "結果",
     "zh-Hans": "结果",
@@ -1353,6 +1358,11 @@
     "ja": "昨日 %@",
     "zh-Hans": "昨天 %@",
     "zh-Hant": "昨天 %@"
+  },
+  "Your edits to this prompt will be lost.": {
+    "ja": "このプロンプトへの編集内容は失われます。",
+    "zh-Hans": "对这个提示词的修改将会丢失。",
+    "zh-Hant": "對這個提示詞的修改將會遺失。"
   },
   "Zhuyin": {
     "ja": "注音符号",

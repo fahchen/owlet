@@ -20,11 +20,11 @@ run = "xcodegen generate --quiet"
 
 [tasks.build]
 depends = ["generate"]
-run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet build"
+run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS,arch=arm64' -quiet build"
 
 [tasks.test]
 depends = ["generate"]
-run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS' -quiet test"
+run = "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS,arch=arm64' -quiet test"
 
 [tasks.prod]
 description = "Release build, verified and packaged for another Mac"

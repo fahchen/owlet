@@ -14,14 +14,6 @@ Implemented, but some of the evidence can only come from a person or a real envi
 | Word lookup, step one | All five reading areas work; still to accept: spoken pronunciation with a real system voice, real VoiceOver, and an installed build. | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature), [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
 | Corrective retry for study suggestions | Re-check against real models that the one corrective round repairs a broken reply. | [LLM contract](../spec/llm/contract.md) |
 | Selected text capture | The Accessibility path, the ⌘C fallback and paste write-back are implemented; compatibility across real apps still needs a hand check. | [selected-text-capture.md](selected-text-capture.md) |
-| Debug pane as record cards | Run `mise run dev`, make one failing and one successful request: check the cards read as records in a 620-wide window, that the block disclosures still animate, that `Clear` empties the page, and that `Copy` reads `Copied` for a moment. | `Owlet/Settings/DebugSettingsPane.swift` |
-
-## Not verified end to end
-
-- **Local agents as a model service.** Claude Code and Codex CLI are covered by tests with fake runners. Not verified: quality and latency on a real sign-in, Claude Code's `--json-schema`, compatibility with later CLI versions. Claude Code's model list reads its own cache under `~/.claude/cache/model-catalog/`, which is not an official interface. See [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md).
-- **HTTP service presets.** Base URLs, default models and the JSON Schema capability flags were checked only against each vendor's public documentation; no vendor was called with a real key. See [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md).
-- **OpenAI Responses, Anthropic and Gemini protocols.** Request shapes were checked against each vendor's documentation and by unit tests only; no call with a real key. To accept: send a translation, a lookup and a study request through each protocol with a real key, and check that a JSON Schema request is accepted, a bad key reads as an authentication failure, the model list loads, and the Test button reports both outcomes. Also check by eye that the two text-field-plus-Presets rows sit well in the settings form. See [BDR-0016](../spec/settings/decisions/BDR-0016-wire-protocols.md).
-- **System prompts in every interface language.** Unit tests cover which text is picked and that switching language is not an edit; nothing was seen in the running app. To accept: with the Model page open, switch the interface language and check that an unedited prompt follows it, that an edited one stays as written, and that the four texts read well as prompts (the English, Traditional Chinese and Japanese ones were written for this change). See [BDR-0011](../spec/settings/decisions/BDR-0011-interface-language.md).
 
 ## Designed, not built
 

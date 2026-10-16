@@ -15,12 +15,12 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 - The Debug page lists each recorded request as a card: the heading starts with that request's own glyph, green when it worked and red when it failed, with the text that was sent below and the reason in red when it failed. Clicking a card opens `Response` and `Request` — JSON shown pretty printed — and the copy.
 - Copy buttons say "Copied" for a moment after a press, in the Debug page, the result cards, the notebook, the history and the panel's notices, without the row moving as the word changes.
 
-- About Owlet links to the project on GitHub.
+- About Owlet shows the project's GitHub address as a link, and nothing else.
 - Failures read as a state of the page — symbol, the message in a quiet inset block, then the way out — in the panel and in the window alike; the hover tip is a rounded rectangle rather than a capsule, and shows up to twelve lines.
 
 ### Added
 - A failed request keeps the text of the last result on the page, with the failure under it: a retry that did not work no longer takes away what was already produced.
-- The Debug page shows the service's own body for a failed status (a 4xx or 5xx usually says what it objected to), pretty printed like any other reply.
+- The Debug page shows the service's own body for a failed status (a 4xx or 5xx usually says what it objected to), pretty printed like any other reply; a long `Response` or `Request` scrolls inside its block instead of running down the page.
 - The study column's waiting, empty and failed states are the system's own: a spinner while it works, a centred "nothing more to suggest" with a reason, and a failure with a retry.
 
 ### Fixed

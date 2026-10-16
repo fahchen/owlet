@@ -401,9 +401,9 @@ struct PreviewView: View {
         failed.failureKind = .contract
         log.add(failed)
         for dark in [false, true] {
-            for (suffix, open) in [("", Set<UUID>()), ("-open", [failed.id])] {
+            for (suffix, open, blocks) in [("", Set<UUID>(), false), ("-open", [failed.id], true)] {
                 let name = "settings-debug\(suffix)\(dark ? "-dark" : "")"
-                let view = DebugSettingsPane(expanded: open)
+                let view = DebugSettingsPane(expanded: open, opensBlocks: blocks)
                     .frame(width: size.width, height: size.height)
                     .background(Color(nsColor: .windowBackgroundColor))
                     .environment(\.controlActiveState, .key)

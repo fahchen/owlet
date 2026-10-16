@@ -4438,35 +4438,6 @@
         }
       }
     },
-    "Open source on GitHub: %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open source on GitHub: %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GitHub で公開しています: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "开源，见 GitHub：%@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "開源，見 GitHub：%@"
-          }
-        }
-      }
-    },
     "OpenAI Compatible": {
       "extractionState": "manual",
       "localizations": {

@@ -213,15 +213,13 @@ private struct OperationButtons: View {
     }
 }
 
-/// The standard About panel with one line of credits: the project's address, linked, so the app says
-/// where it comes from without adding a window of its own.
+/// The standard About panel with credits that are one link and nothing else: the project's address,
+/// so the app says where it comes from without adding a window of its own or a sentence about itself.
 @MainActor private func showAboutPanel() {
-    let address = "github.com/fahchen/owlet"
-    guard let url = URL(string: "https://\(address)") else { return }
-    let credits = NSMutableAttributedString(
-        string: L10n.shared.string("Open source on GitHub: %@", address))
-    credits.addAttribute(
-        .link, value: url, range: (credits.string as NSString).range(of: address))
+    guard let url = URL(string: "https://github.com/fahchen/owlet") else { return }
+    let credits = NSAttributedString(
+        string: url.absoluteString.replacingOccurrences(of: "https://", with: ""),
+        attributes: [.link: url])
     NSApplication.shared.orderFrontStandardAboutPanel(options: [.credits: credits])
 }
 

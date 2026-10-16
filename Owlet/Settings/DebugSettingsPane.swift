@@ -10,10 +10,14 @@ struct DebugSettingsPane: View {
     /// and how it went, and one click opens the capture behind it.
     @State private var expanded: Set<UUID> = []
 
-    /// `expanded` lets the preview show an open record; the app always starts with every one closed.
-    init(expanded: Set<UUID> = []) {
+    /// `expanded` and `opensBlocks` let the preview show an open record with its text showing; the app
+    /// always starts with every record and every block closed.
+    init(expanded: Set<UUID> = [], opensBlocks: Bool = false) {
         _expanded = State(initialValue: expanded)
+        self.opensBlocks = opensBlocks
     }
+
+    private var opensBlocks = false
 
     var body: some View {
         Group {
@@ -77,10 +81,10 @@ struct DebugSettingsPane: View {
                 }
                 DebugBlock(
                     title: "Response", symbol: "text.bubble",
-                    text: exchange.response ?? "—", isOpen: false)
+                    text: exchange.response ?? "—", isOpen: opensBlocks)
                 DebugBlock(
                     title: "Request", symbol: "curlybraces",
-                    text: exchange.request, isOpen: false)
+                    text: exchange.request, isOpen: opensBlocks)
                 HStack {
                     Spacer()
                     CopyButton { exchange.report }
@@ -132,7 +136,12 @@ private struct DebugBlock: View {
     let title: String
     let symbol: String
     let text: String
+    /// The block's ceiling: past it the text scrolls, so one long reply cannot push every other record
+    /// off the page.
+    private static let maxHeight: CGFloat = 260
     @State private var isOpen: Bool
+    /// Measured so a short reply still hugs its words rather than sitting in a fixed tall box.
+    @State private var textHeight: CGFloat = 0
 
     init(title: String, symbol: String, text: String, isOpen: Bool) {
         self.title = title
@@ -159,11 +168,15 @@ private struct DebugBlock: View {
             .buttonStyle(.plain)
             .accessibilityValue(L10n.shared.string(isOpen ? "Expanded" : "Collapsed"))
             if isOpen {
-                Text(displayText)
-                    .font(.callout.monospaced())
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .insetBlock()
+                ScrollView(.vertical) {
+                    Text(displayText)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { textHeight = $0 }
+                }
+                .frame(height: min(textHeight, Self.maxHeight))
+                .insetBlock()
             }
         }
     }

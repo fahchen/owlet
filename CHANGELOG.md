@@ -2,26 +2,24 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
-## Unreleased
+## 0.6.0 — 2026-10-16
 
 ### Added
 - More protocols: besides OpenAI Compatible, choose OpenAI Responses, Anthropic or Gemini. The service list now has three groups: protocols, vendor presets, and local agents.
-- The base URL is always editable, and each service remembers its own.
-- Model Name and Reasoning Effort each take a typed value, with a "Presets" menu beside them listing the candidates. The effort row shows the value it sends (automatic, none, low, medium, high, max) rather than a translated level name; any other typed value is sent as is.
-- A Test button checks the current settings: it translates the first line of the Classic of Poetry's 蒹葭 into English and shows the reply and how long it took. A model failure — from the Test or from reading the model list — is reported in one place, with a retry.
-- The two System Prompts are shipped in every interface language: switch the language and a prompt you never edited switches with it, while your own edited prompt stays as you wrote it.
-- The prompt editors' restore button reads "Restore Default" and asks for confirmation before discarding your edits.
-- Service presets: pick DeepSeek, OpenRouter or Ollama, and Owlet fills in the base URL and default model. "OpenAI Compatible" stays for any other service.
-- The Debug page lists each recorded request as a card: the heading starts with that request's own glyph, green when it worked and red when it failed, with the text that was sent below and the reason in red when it failed. Clicking a card opens `Response` and `Request` — JSON shown pretty printed — and the copy.
-- Copy buttons say "Copied" for a moment after a press, in the Debug page, the result cards, the notebook, the history and the panel's notices, without the row moving as the word changes.
-
-- About Owlet shows the project's GitHub address as a link, and nothing else.
-- Failures read as a state of the page — symbol, the message in a quiet inset block, then the way out — in the panel and in the window alike; the hover tip is a rounded rectangle rather than a capsule, and shows up to twelve lines.
-
-### Added
+- Presets for DeepSeek, OpenRouter and Ollama: choosing one fills in the base URL and default model, and the address stays editable — each service remembers its own.
+- Model Name and Reasoning Effort take a typed value, with a "Presets" menu beside them listing the candidates. The effort row shows the value it sends (automatic, none, low, medium, high, max) rather than a translated level name, and any other value is sent as is.
+- A Test button translates the first line of the Classic of Poetry's 蒹葭 into English and reports the reply and how long it took. Anything that goes wrong with the settings or the model is reported in one place, with a retry.
+- The two System Prompts ship in every interface language: a prompt you never edited follows a language switch, while your own edited prompt stays as you wrote it.
+- The Debug page lists each recorded request as its own card — the request's glyph, green when it worked and red when it failed, the text that was sent and the reason it failed. A card opens to `Response` and `Request`, JSON shown pretty printed, with a copy for the whole record and a Clear for the page. A failed status keeps what the service answered, and a long body scrolls inside its block.
 - A failed request keeps the text of the last result on the page, with the failure under it: a retry that did not work no longer takes away what was already produced.
-- The Debug page shows the service's own body for a failed status (a 4xx or 5xx usually says what it objected to), pretty printed like any other reply; a long `Response` or `Request` scrolls inside its block instead of running down the page.
 - The study column's waiting, empty and failed states are the system's own: a spinner while it works, a centred "nothing more to suggest" with a reason, and a failure with a retry.
+
+### Changed
+- Copy buttons say "Copied" for a moment after a press, without the row moving as the word changes.
+- Failures read as a state of the page — the symbol, the message in a quiet inset block, then the way out — in the panel and in the window alike.
+- The prompt editors' "Restore Default" asks for confirmation before discarding your edits.
+- The hover tip is a rounded rectangle and shows up to twelve lines of a long selection.
+- About Owlet shows the project's GitHub address as a link, and nothing else.
 
 ### Fixed
 - Back — and the Study shortcut — closes the learning column again. One state decides whether it shows, so a late reply can no longer keep it open.

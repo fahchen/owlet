@@ -60,11 +60,13 @@ struct CardButton: View {
     /// A state that is on rather than an action, such as a stored bookmark: the glyph takes the
     /// accent and the label names the state instead of the command.
     var isOn = false
+    /// A second glyph drawn under the first, so a button that swaps symbols keeps its width.
+    var alternateSymbol: String? = nil
     let action: () -> Void
 
     var body: some View {
         CardGlassButton(
-            title: title, symbol: symbol,
+            title: title, symbol: symbol, alternateSymbol: alternateSymbol,
             tint: isOn ? Color.accentColor : Color.primary,
             key: bindsKey ? key?.shortcut : nil, keys: bindsKey ? key?.keys : nil, action: action
         )
@@ -76,6 +78,7 @@ struct CardButton: View {
 struct CardGlassButton: View {
     let title: String
     let symbol: String
+    var alternateSymbol: String? = nil
     var tint: Color = .primary
     var key: KeyboardShortcut? = nil
     /// The key's display string, when it has one, for the hover tip.
@@ -84,7 +87,14 @@ struct CardGlassButton: View {
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: symbol).foregroundStyle(tint)
+            ZStack {
+                Label(title, systemImage: symbol).foregroundStyle(tint)
+                if let alternateSymbol {
+                    // Laid out but not drawn: the wider of the two glyphs keeps the circle from
+                    // shifting when the button swaps to the other one.
+                    Label(title, systemImage: alternateSymbol).foregroundStyle(tint).hidden()
+                }
+            }
         }
         .labelStyle(.iconOnly)
         .font(.system(size: 13, weight: .medium))

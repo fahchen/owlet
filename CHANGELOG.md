@@ -8,10 +8,18 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 - More protocols: besides OpenAI Compatible, choose OpenAI Responses, Anthropic or Gemini. The service list now has three groups: protocols, vendor presets, and local agents.
 - The base URL is always editable, and each service remembers its own.
 - Model Name and Reasoning Effort each take a typed value, with a "Presets" menu beside them listing the candidates. The effort row shows the value it sends (automatic, none, low, medium, high, max) rather than a translated level name; any other typed value is sent as is.
-- A Test button checks the current settings: it translates the first line of the Classic of Poetry's 蒹葭 and shows the reply and how long it took. A model failure — from the Test or from reading the model list — is reported in one place, with a retry.
+- A Test button checks the current settings: it translates the first line of the Classic of Poetry's 蒹葭 into English and shows the reply and how long it took. A model failure — from the Test or from reading the model list — is reported in one place, with a retry.
 - The two System Prompts are shipped in every interface language: switch the language and a prompt you never edited switches with it, while your own edited prompt stays as you wrote it.
 - The prompt editors' restore button reads "Restore Default" and asks for confirmation before discarding your edits.
 - Service presets: pick DeepSeek, OpenRouter or Ollama, and Owlet fills in the base URL and default model. "OpenAI Compatible" stays for any other service.
+- The Debug page lists each recorded request as a card: the heading starts with that request's own glyph, green when it worked and red when it failed, with the text that was sent below and the reason in red when it failed. Clicking a card opens `Response` and `Request` — JSON shown pretty printed — and the copy.
+- Copy buttons say "Copied" for a moment after a press, in the Debug page, the result cards, the notebook, the history and the panel's notices, without the row moving as the word changes.
+
+- About Owlet links to the project on GitHub.
+
+### Fixed
+- Back — and the Study shortcut — closes the learning column again. One state decides whether it shows, so a late reply can no longer keep it open.
+- A reply whose sources differ from what was sent only by a space at a segment boundary is accepted. Models move or drop that space routinely and the pairing is still sound; a missing or reordered word still fails.
 
 ## 0.5.1 — 2026-10-15
 

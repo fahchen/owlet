@@ -13,6 +13,7 @@ struct ExpandedPanelContent: View {
     /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
+    @State private var confirmation = CopyConfirmation()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -106,7 +107,12 @@ struct ExpandedPanelContent: View {
                     .foregroundStyle(notice == .cancelled ? Color.primary : Color.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 GlassEffectContainer {
-                    Button(notice.actionTitle) { recover(notice) }.buttonStyle(.glass)
+                    // A copy names itself after the press, so the button never looks like it did nothing.
+                    Button(confirmation.isCopied ? L10n.shared.string("Copied") : notice.actionTitle) {
+                        recover(notice)
+                        if notice.copiesOnPress { confirmation.confirm() }
+                    }
+                    .buttonStyle(.glass)
                 }
             }
         }

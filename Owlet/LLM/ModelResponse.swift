@@ -64,7 +64,14 @@ struct TranslationResult: Equatable {
             throw ModelError.targetMismatch(
                 requested: targetLanguage ?? sourceLanguage, returned: target)
         }
-        guard normalized(segments.map(\.source).joined()) == normalized(submitted) else {
+        let returned = segments.map(\.source).joined()
+        // Whitespace is not content here: a space moved to the next segment or dropped at the boundary
+        // is common and does not break the pairing, so a second, whitespace-free comparison decides.
+        // Everything else — a dropped word, a reordered clause — still fails it.
+        guard
+            normalized(returned) == normalized(submitted)
+                || whitespaceStripped(returned) == whitespaceStripped(submitted)
+        else {
             throw ModelError.sourceMismatch
         }
         return TranslationResult(
@@ -90,6 +97,11 @@ struct TranslationResult: Equatable {
         text.precomposedStringWithCanonicalMapping
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
+    }
+
+    /// The same text with every space removed, for the comparison that forgives whitespace only.
+    private static func whitespaceStripped(_ text: String) -> String {
+        normalized(text).replacingOccurrences(of: " ", with: "")
     }
 
     static func sameLanguage(_ lhs: String, _ rhs: String) -> Bool {

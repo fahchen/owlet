@@ -100,6 +100,11 @@ final class LearningModel {
     func generateIfAutoRequested(for request: LearningRequest) {
         guard request.claimAutoRequest() else { return }
         guard autoRequest(request.operation) else { return }
+        guard state == .idle else { return }
+        // The switch means "show me what there is to learn", so the column opens with the request and
+        // stays open until Back closes it. Back is then the only thing that decides whether the column
+        // is showing: one state, so no second flag can keep it open behind the user's back.
+        isExpanded = true
         generate(for: request)
     }
 

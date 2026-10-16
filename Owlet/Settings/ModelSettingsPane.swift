@@ -472,8 +472,9 @@ struct ModelSettingsPane: View {
             return
         }
         check = .running
-        let target = SettingsStore.targetMapping().target(forSource: LanguageTag.key("zh-Hant"))
-        Task { check = await Self.runTest(config: config, target: target, client: client) }
+        // Always English, whatever the mapping says: a target the source shares a script with (Chinese
+        // to Chinese, say) only rewrites characters, which proves nothing about the service.
+        Task { check = await Self.runTest(config: config, target: "en", client: client) }
     }
 
     /// The test itself, apart from the button, so the preview and the unit tests run the same request.

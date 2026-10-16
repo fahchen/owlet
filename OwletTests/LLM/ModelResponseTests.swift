@@ -100,6 +100,14 @@ func invalidResponsesAreFormatErrors(content: String) {
     #expect(throws: ModelError.sourceMismatch) { try parse(partial) }
 }
 
+/// A space moved to the next segment, or dropped at the boundary, is what models routinely do with the
+/// split; the pairing still holds, so the reply is accepted rather than thrown away.
+@Test func boundaryWhitespaceDoesNotFailTheSourceCheck() throws {
+    let moved =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning.","target":"早上好。"},{"source":"Let's begin.","target":"我们开始吧。"}]}"#
+    #expect(try parse(moved).segments.count == 2)
+}
+
 @Test func nfcNormalizationPasses() throws {
     let json =
         #"{"source_language":"fr","target_language":"en","segments":[{"source":"caf\u00e9","target":"cafe"}]}"#

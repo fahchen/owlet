@@ -14,7 +14,7 @@ Implemented, but some of the evidence can only come from a person or a real envi
 | Word lookup, step one | All five reading areas work; still to accept: spoken pronunciation with a real system voice, real VoiceOver, and an installed build. | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature), [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
 | Corrective retry for study suggestions | Re-check against real models that the one corrective round repairs a broken reply. | [LLM contract](../spec/llm/contract.md) |
 | Selected text capture | The Accessibility path, the ⌘C fallback and paste write-back are implemented; compatibility across real apps still needs a hand check. | [selected-text-capture.md](selected-text-capture.md) |
-| Debug pane redesign | Run `mise run dev`, make one failing and one successful request, check the disclosure motion and the copied record. | `Owlet/Settings/DebugSettingsPane.swift` |
+| Debug pane as record cards | Run `mise run dev`, make one failing and one successful request: check the cards read as records in a 620-wide window, that the block disclosures still animate, that `Clear` empties the page, and that `Copy` reads `Copied` for a moment. | `Owlet/Settings/DebugSettingsPane.swift` |
 
 ## Not verified end to end
 

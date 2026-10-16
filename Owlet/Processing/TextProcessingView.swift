@@ -9,8 +9,6 @@ struct TextProcessingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Injectable, so a preview can show fixture items instead of requesting a model.
     @State var learning = LearningModel()
-    /// Set by Back: keeps an auto-requested result from reopening the learning column.
-    @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
     @AppStorage(SettingsStore.pinnedSourceKey) private var pinnedSource = ""
     @AppStorage(SettingsStore.displayModeKey) private var displayMode = TranslationDisplayMode.sectioned
@@ -35,10 +33,6 @@ struct TextProcessingView: View {
                 if let request = LearningRequest.from(model) {
                     learning.generateIfAutoRequested(for: request)
                 }
-            }
-            // A reset starts a new result, whose learning may open on its own again.
-            .onChange(of: learning.state) { _, state in
-                if state == .idle { learningDismissed = false }
             }
     }
 
@@ -269,9 +263,7 @@ struct TextProcessingView: View {
                 CardButton(title: "Cancel", symbol: "xmark", key: .cancel, action: model.cancel)
             }
             if case .success(let text) = model.state {
-                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
-                    Clipboard.copy(text)
-                }
+                CopyCardButton(title: "Copy Result", key: .copy) { text }
             }
         }
     }
@@ -283,7 +275,6 @@ struct TextProcessingView: View {
             if showsLearning {
                 CardButton(title: "Back", symbol: "chevron.left", key: .learn) {
                     learning.isExpanded = false
-                    learningDismissed = true
                 }
             } else if LearningRequest.from(model) != nil {
                 CardButton(title: "Study", symbol: "lamp.desk", key: .learn) {
@@ -293,9 +284,10 @@ struct TextProcessingView: View {
         }
     }
 
+    /// One state decides the column, so Back always closes it: the auto-request opens it by setting
+    /// this, and nothing else can open it behind the user's back.
     private var showsLearning: Bool {
-        LearningRequest.from(model) != nil
-            && (learning.isExpanded || (learning.state != .idle && !learningDismissed))
+        LearningRequest.from(model) != nil && learning.isExpanded
     }
 
     private var resultText: String? {

@@ -7,6 +7,8 @@ struct DebugExchange: Identifiable, Sendable {
     var date = Date()
     /// "Translate · zh-Hant" / "Polish", naming what was asked for.
     var title: String
+    /// The glyph that names the request on the page: the operation's own, or the entry that asked.
+    var symbol = "terminal"
     /// The request body exactly as sent, pretty printed. The API key travels in a header, so it is
     /// not in here.
     var request: String

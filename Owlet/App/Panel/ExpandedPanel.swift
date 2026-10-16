@@ -24,9 +24,6 @@ struct ExpandedPanel: View {
     /// The translation's height when learning opened, which the learning column tries to keep.
     @State private var learningEntryHeight: CGFloat = 0
     private static let maxHeight: CGFloat = 480
-    /// Set by Back: keeps an auto-requested result from reopening the learning column. The items are
-    /// kept, so Study shows them again without a second request.
-    @State private var learningDismissed = false
     @AppStorage(SettingsStore.pinnedTargetKey) private var pinnedTarget = ""
 
     private var fullHeight: CGFloat { showsLearning ? learningHeight : translationHeight }
@@ -37,9 +34,10 @@ struct ExpandedPanel: View {
             Self.maxHeight)
     }
 
+    /// One state decides the column, so Back always closes it: the items are kept, and Study shows
+    /// them again without a second request.
     private var showsLearning: Bool {
-        LearningRequest.from(model) != nil
-            && (learning.isExpanded || (learning.state != .idle && !learningDismissed))
+        LearningRequest.from(model) != nil && learning.isExpanded
     }
 
     var body: some View {
@@ -85,7 +83,6 @@ struct ExpandedPanel: View {
                 if showsLearning {
                     Button {
                         learning.isExpanded = false
-                        learningDismissed = true
                     } label: {
                         Label(L10n.shared.string("Back"), systemImage: "chevron.left").foregroundStyle(.primary)
                     }
@@ -177,10 +174,6 @@ struct ExpandedPanel: View {
         }
         .onChange(of: model.state) { _, state in
             if state == .loading { learning.reset() }
-        }
-        // A reset starts a new result, whose learning may open on its own again.
-        .onChange(of: learning.state) { _, state in
-            if state == .idle { learningDismissed = false }
         }
         .onChange(of: pinnedTarget) { _, _ in
             learning.reset()

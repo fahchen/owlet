@@ -130,8 +130,11 @@ struct CompactNoticeView: View {
     var recover: () -> Void = {}
     var action: (() -> Void)? = nil
     var isError = true
+    /// True when the recovery entry copies, so the press shows itself for a moment.
+    var copiesOnPress = false
     /// False when the panel root draws the source bar on its own growing surface.
     var showsBar = true
+    @State private var confirmation = CopyConfirmation()
 
     var body: some View {
         VStack(spacing: 12) {
@@ -141,7 +144,9 @@ struct CompactNoticeView: View {
             PanelSegmentedControl(
                 items: [
                     .init(title: message, symbol: symbol, action: recover, tint: isError ? .systemRed : nil),
-                    .init(title: "", symbol: actionSymbol, action: action ?? recover, accessibilityLabel: actionTitle),
+                    .init(
+                        title: "", symbol: recoverySymbol, action: runRecovery,
+                        accessibilityLabel: recoveryLabel),
                 ]
                     + (summary.isEmpty
                         ? [
@@ -159,5 +164,22 @@ struct CompactNoticeView: View {
         }
         .frame(width: PanelMetrics.width)
         .accessibilityElement(children: .contain)
+    }
+
+    /// The recovery entry's glyph: a copy shows the copy glyph, then a checkmark for a moment, so the
+    /// press is visible in a bar that is only glyphs.
+    private var recoverySymbol: String {
+        guard copiesOnPress else { return actionSymbol }
+        return confirmation.isCopied ? "checkmark" : "document.on.document"
+    }
+
+    /// Its label, which is also what the glyph is called out as.
+    private var recoveryLabel: String {
+        confirmation.isCopied ? L10n.shared.string("Copied") : actionTitle
+    }
+
+    private func runRecovery() {
+        (action ?? recover)()
+        if copiesOnPress { confirmation.confirm() }
     }
 }

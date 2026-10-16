@@ -264,9 +264,7 @@ private struct HistoryDetail: View {
                 } else {
                     CardButton(title: "Study", symbol: "lamp.desk", key: .learn) { learning.isExpanded = true }
                 }
-                CardButton(title: "Copy Result", symbol: "document.on.document", key: .copy, bindsKey: false) {
-                    Clipboard.copy(record.result)
-                }
+                CopyCardButton(title: "Copy Result", key: .copy) { record.result }
             }
             .padding([.trailing, .bottom], PanelMetrics.contentInset)
         }

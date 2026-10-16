@@ -130,8 +130,8 @@ struct ModelClient: Sendable {
         let request = try translationRequest(
             text: text, operation: operation, to: target, config: config)
         return try await perform(
-            request, title: Self.debugTitle(operation: operation, target: target), submitted: text,
-            config: config,
+            request, title: Self.debugTitle(operation: operation, target: target),
+            symbol: operation.symbol, submitted: text, config: config,
             parse: { try TranslationResult.parse($0, submitted: text, targetLanguage: target) })
     }
 
@@ -180,7 +180,8 @@ struct ModelClient: Sendable {
             effort: config.effort, customEffort: config.customEffort,
             supportedEfforts: config.supportedEfforts)
         return try await perform(
-            request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
+            request, title: L10n.shared.string("Fill In Meaning"), symbol: "text.badge.plus",
+            submitted: expression,
             config: config,
             parse: { try LearningResult.item($0, expression: expression).meaning })
     }
@@ -230,7 +231,9 @@ struct ModelClient: Sendable {
     private func attempt(
         _ request: ModelRequest, title: String, submitted: String, config: ServiceConfig
     ) async throws -> Result<[LearningResult.Item], ContractError> {
-        try await perform(request, title: title, submitted: submitted, config: config) {
+        try await perform(
+            request, title: title, symbol: "lamp.desk", submitted: submitted, config: config
+        ) {
             (content: String) -> Result<[LearningResult.Item], ContractError> in
             do {
                 return .success(try LearningResult.parse(content))
@@ -354,7 +357,8 @@ struct ModelClient: Sendable {
             }
         }
         return try await perform(
-            request, title: title, submitted: query.text, config: config, parse: parsed)
+            request, title: title, symbol: "magnifyingglass", submitted: query.text,
+            config: config, parse: parsed)
     }
 
     func lookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> ModelRequest {
@@ -462,8 +466,8 @@ struct ModelClient: Sendable {
     /// then parses the answer. Every request type goes through here so none is silently left off the
     /// debug page, and no caller knows which backend ran it.
     private func perform<T>(
-        _ request: ModelRequest, title: String, submitted: String, config: ServiceConfig,
-        parse: (String) throws -> T
+        _ request: ModelRequest, title: String, symbol: String, submitted: String,
+        config: ServiceConfig, parse: (String) throws -> T
     ) async throws -> T {
         let backend = config.provider.backend(transport: transport, agent: localAgent)
         let capture = capture
@@ -475,7 +479,7 @@ struct ModelClient: Sendable {
         defer {
             if records {
                 let exchange = DebugExchange(
-                    title: title, request: backend.describe(request, config: config),
+                    title: title, symbol: symbol, request: backend.describe(request, config: config),
                     submitted: submitted, response: response, failure: failure,
                     failureKind: failureKind)
                 let record = capture.record

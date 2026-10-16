@@ -103,7 +103,7 @@ struct PanelRootView: View {
                 actionSymbol: statusRetries(notice) ? "arrow.clockwise" : "gearshape",
                 recover: { recover(notice) },
                 action: statusRetries(notice) ? compactRetry : nil,
-                isError: notice != .cancelled, showsBar: false)
+                isError: notice != .cancelled, copiesOnPress: notice.copiesOnPress, showsBar: false)
         }
     }
 

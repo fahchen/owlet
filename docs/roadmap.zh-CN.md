@@ -14,7 +14,7 @@
 | 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
 | 学习推荐的纠正重试 | 用真实模型复验：一次纠正能修好违约的返回。 | [LLM 契约](../spec/llm/contract.md) |
 | 选中文字读取 | 辅助功能路径、⌘C 兜底与粘贴写回已实现；在各真实应用上的兼容性仍需手测。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
-| 调试页重排 | 跑 `mise run dev`，各做一次失败与成功的请求，看展开动效与复制内容。 | `Owlet/Settings/DebugSettingsPane.swift` |
+| 调试页改为记录卡片 | 跑 `mise run dev`，各做一次失败与成功的请求：看卡片在 620 宽的窗口里是否像一条条记录、各段原文的折叠动效、`清除` 是否清空、以及 `复制` 是否短暂显示「已复制」。 | `Owlet/Settings/DebugSettingsPane.swift` |
 
 ## 未做端到端验证
 

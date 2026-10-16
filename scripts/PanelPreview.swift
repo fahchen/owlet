@@ -388,10 +388,12 @@ struct PreviewView: View {
         log.add(
             DebugExchange(
                 date: Date(timeIntervalSince1970: 1_760_520_000), title: "Translate · en",
+                symbol: "translate",
                 request: #"{"model": "deepseek-chat", "messages": [ … ]}"#, submitted: PreviewFixtures.source,
                 response: #"{"target_language": "en", "segments": [ … ]}"#))
         var failed = DebugExchange(
             date: Date(timeIntervalSince1970: 1_760_520_180), title: "Study Expressions",
+            symbol: "lamp.desk",
             request: #"{"model": "deepseek-chat", "response_format": {"type": "json_object"}}"#,
             submitted: PreviewFixtures.source, response: #"{"items": [{"text": "lush"}]}"#)
         failed.failure = ModelError.format.message

@@ -255,10 +255,8 @@ private struct VocabularyDetail: View {
                 .panelBottomPadding()
             }
             .scrollBounceBehavior(.basedOnSize)
-            CardButton(title: "Copy Expression", symbol: "document.on.document", key: .copy, bindsKey: false) {
-                Clipboard.copy(entry.expression)
-            }
-            .padding([.trailing, .bottom], PanelMetrics.contentInset)
+            CopyCardButton(title: "Copy Expression", key: .copy) { entry.expression }
+                .padding([.trailing, .bottom], PanelMetrics.contentInset)
         }
     }
 }

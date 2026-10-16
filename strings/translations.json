@@ -99,6 +99,11 @@
     "zh-Hans": "API 密钥",
     "zh-Hant": "API 金鑰"
   },
+  "About Owlet": {
+    "ja": "Owlet について",
+    "zh-Hans": "关于 Owlet",
+    "zh-Hant": "關於 Owlet"
+  },
   "Add Language": {
     "ja": "言語を追加",
     "zh-Hans": "添加语言",
@@ -214,6 +219,11 @@
     "zh-Hans": "Claude Code",
     "zh-Hant": "Claude Code"
   },
+  "Collapsed": {
+    "ja": "折りたたみ",
+    "zh-Hans": "已收起",
+    "zh-Hant": "已收起"
+  },
   "Clear": {
     "ja": "消去",
     "zh-Hans": "清除",
@@ -258,6 +268,11 @@
     "ja": "接続に失敗しました。モデルサービスを確認してください。",
     "zh-Hans": "连接失败，请检查模型服务",
     "zh-Hant": "連線失敗，請檢查模型服務"
+  },
+  "Copied": {
+    "ja": "コピーしました",
+    "zh-Hans": "已复制",
+    "zh-Hant": "已拷貝"
   },
   "Copy": {
     "ja": "コピー",
@@ -614,11 +629,6 @@
     "zh-Hans": "模型名称",
     "zh-Hant": "模型名稱"
   },
-  "Model Raw Reply": {
-    "ja": "モデルの生の返答",
-    "zh-Hans": "模型原始返回",
-    "zh-Hant": "模型原始回傳"
-  },
   "More Transparent": {
     "ja": "より透明",
     "zh-Hans": "更透明",
@@ -919,10 +929,10 @@
     "zh-Hans": "替换原选区",
     "zh-Hant": "取代原選取範圍"
   },
-  "Request Body": {
-    "ja": "リクエスト本文",
-    "zh-Hans": "请求体",
-    "zh-Hant": "請求內容"
+  "Request": {
+    "ja": "リクエスト",
+    "zh-Hans": "请求",
+    "zh-Hant": "請求"
   },
   "Request study expressions after polishing": {
     "ja": "推敲後に学習表現を自動で取得",
@@ -933,6 +943,11 @@
     "ja": "翻訳後に学習表現を自動で取得",
     "zh-Hans": "翻译后自动请求学习表达",
     "zh-Hant": "翻譯後自動請求學習表達"
+  },
+  "Response": {
+    "ja": "レスポンス",
+    "zh-Hans": "响应",
+    "zh-Hant": "回應"
   },
   "Restore Default": {
     "ja": "既定に戻す",
@@ -1108,11 +1123,6 @@
     "ja": "学習表現（訂正）",
     "zh-Hans": "学习表达（纠正）",
     "zh-Hant": "學習表達（糾正）"
-  },
-  "Submitted Text": {
-    "ja": "送信した原文",
-    "zh-Hans": "提交原文",
-    "zh-Hant": "提交原文"
   },
   "Succeeded": {
     "zh-Hans": "成功",
@@ -1378,5 +1388,15 @@
     "ja": "日本語",
     "zh-Hans": "日本語",
     "zh-Hant": "日本語"
+  },
+  "Open source on GitHub: %@": {
+    "ja": "GitHub で公開しています: %@",
+    "zh-Hans": "开源，见 GitHub：%@",
+    "zh-Hant": "開源，見 GitHub：%@"
+  },
+  "Expanded": {
+    "ja": "展開",
+    "zh-Hans": "已展开",
+    "zh-Hant": "已展開"
   }
 }

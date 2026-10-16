@@ -64,6 +64,11 @@ struct OwletApp: App {
                 OperationButtons(translation: translation, page: $page)
             }
             CommandGroup(replacing: .pasteboard) { PasteboardButtons() }
+            // The standard About panel, with the project's address as its credits: a custom window
+            // would be one more surface to keep in step with the system's own.
+            CommandGroup(replacing: .appInfo) {
+                Button(L10n.shared.string("About Owlet")) { showAboutPanel() }
+            }
             SidebarCommands()
         }
         // A real settings window: the scene is what puts Settings… and ⌘, in the App menu, and SwiftUI
@@ -206,6 +211,18 @@ private struct OperationButtons: View {
             .disabled(translation.state == .loading)
         }
     }
+}
+
+/// The standard About panel with one line of credits: the project's address, linked, so the app says
+/// where it comes from without adding a window of its own.
+@MainActor private func showAboutPanel() {
+    let address = "github.com/fahchen/owlet"
+    guard let url = URL(string: "https://\(address)") else { return }
+    let credits = NSMutableAttributedString(
+        string: L10n.shared.string("Open source on GitHub: %@", address))
+    credits.addAttribute(
+        .link, value: url, range: (credits.string as NSString).range(of: address))
+    NSApplication.shared.orderFrontStandardAboutPanel(options: [.credits: credits])
 }
 
 /// The Edit menu's pasteboard commands. Copy (⌘C) copies selected text as always; with nothing

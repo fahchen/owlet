@@ -52,6 +52,15 @@ final class PanelController {
             }
         }
 
+        /// Whether the recovery entry puts the result on the pasteboard, so the button can say so
+        /// afterwards rather than looking like nothing happened.
+        var copiesOnPress: Bool {
+            switch self {
+            case .unwritten, .unwritable: true
+            default: false
+            }
+        }
+
     }
 
     private(set) var expanded = false

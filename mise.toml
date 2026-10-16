@@ -50,7 +50,9 @@ description = "Build and relaunch Owlet locally"
 depends = ["generate"]
 run = [
   "xcodebuild -project Owlet.xcodeproj -scheme Owlet -destination 'platform=macOS,arch=arm64' -derivedDataPath .build -quiet build",
-  "pkill -x Owlet || true",
+  # Wait for the old instance to be gone: an `open` seconds after `pkill` can still lose the race with
+  # the dying process and fail with LaunchServices error -600.
+  "until ! pgrep -qx Owlet; do pkill -x Owlet; sleep 0.2; done",
   "open .build/Build/Products/Debug/Owlet.app",
 ]
 

@@ -16,6 +16,12 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 - Copy buttons say "Copied" for a moment after a press, in the Debug page, the result cards, the notebook, the history and the panel's notices, without the row moving as the word changes.
 
 - About Owlet links to the project on GitHub.
+- Failures read as a state of the page — symbol, the message in a quiet inset block, then the way out — in the panel and in the window alike; the hover tip is a rounded rectangle rather than a capsule, and shows up to twelve lines.
+
+### Added
+- A failed request keeps the text of the last result on the page, with the failure under it: a retry that did not work no longer takes away what was already produced.
+- The Debug page shows the service's own body for a failed status (a 4xx or 5xx usually says what it objected to), pretty printed like any other reply.
+- The study column's waiting, empty and failed states are the system's own: a spinner while it works, a centred "nothing more to suggest" with a reason, and a failure with a retry.
 
 ### Fixed
 - Back — and the Study shortcut — closes the learning column again. One state decides whether it shows, so a late reply can no longer keep it open.

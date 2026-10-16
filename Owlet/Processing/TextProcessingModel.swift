@@ -21,11 +21,15 @@ final class TextProcessingModel {
                 results.removeAll()
                 languages = nil
                 segments = []
+                lastResultText = nil
             }
         }
     }
     var operation: Operation = .translate
     private(set) var state: State = .idle
+    /// The text of the latest finished result for this input, kept through a later failure: a good
+    /// result is not lost to a retry that did not work, and the page shows it beside the error.
+    private(set) var lastResultText: String?
     /// Languages of the latest successful result, so a collected expression keeps its own language.
     private(set) var languages: (source: String, target: String)?
     /// Source/target pairs of the latest successful result, so Sentence by Sentence groups by the response's own
@@ -100,6 +104,7 @@ final class TextProcessingModel {
         }
         let key = ResultKey(operation: operation, language: targetLanguage)
         if let ready = results[key] {
+            lastResultText = ready.text
             // A finished task, so a caller that awaits the request behaves the same either way — the
             // panel's one-shot write-back has to reach the result whether it was computed or cached.
             state = .success(ready.text)
@@ -127,6 +132,7 @@ final class TextProcessingModel {
             guard id == self.operationID else { return }
             if let full {
                 self.results[key] = full
+                self.lastResultText = full.text
                 self.languages = (full.sourceLanguage, full.targetLanguage)
                 self.segments = full.segments
             }

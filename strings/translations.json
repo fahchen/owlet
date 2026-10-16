@@ -714,6 +714,11 @@
     "zh-Hans": "生词本.json",
     "zh-Hant": "生詞本.json"
   },
+  "Nothing here is worth keeping that your notebook does not have.": {
+    "ja": "ここに、ノートにまだない価値のある表現はありません。",
+    "zh-Hans": "这里没有你笔记本里还没有的表达。",
+    "zh-Hant": "這裡沒有你筆記本裡還沒有的表達。"
+  },
   "Nothing more to suggest.": {
     "ja": "今回は追加の提案はありません。",
     "zh-Hans": "这次没有额外推荐。",

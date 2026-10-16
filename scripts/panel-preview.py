@@ -11,6 +11,10 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--live', action='store_true', help='Use DEEPSEEK_API_KEY for model requests')
 parser.add_argument('--background', type=Path, help='Optional local backdrop for glass screenshots')
 parser.add_argument('--screenshots', type=Path, help='Export panel states and collection toggle screenshots, then exit')
+parser.add_argument('--notices', type=Path,
+                    help='Render the expanded panel in each of its notice states offscreen to PNGs, then exit')
+parser.add_argument('--learning', type=Path,
+                    help='Render the study column in each of its states offscreen to PNGs, then exit')
 parser.add_argument('--settings', type=Path,
                     help='Render the General, Debug and Model settings panes offscreen to PNGs, then exit (no Screen Recording grant needed)')
 parser.add_argument('--active', action='store_true', help='Render native controls in active appearance for comparison')
@@ -52,6 +56,10 @@ if args.active:
     environment['OWLET_PREVIEW_ACTIVE'] = '1'
 if args.screenshots:
     environment['OWLET_PREVIEW_SCREENSHOTS'] = str(args.screenshots.resolve())
+if args.notices:
+    environment['OWLET_PREVIEW_NOTICES'] = str(args.notices.resolve())
+if args.learning:
+    environment['OWLET_PREVIEW_LEARNING'] = str(args.learning.resolve())
 if args.settings:
     environment['OWLET_PREVIEW_SETTINGS'] = str(args.settings.resolve())
 if args.transition:

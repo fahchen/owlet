@@ -60,8 +60,10 @@ import SwiftUI
         let content = HoverTipLabel(label: label, keys: keys)
         host.rootView = content
         // Measured off-screen, so the shown view never has to report a size of its own.
+        // Room for a paragraph: the tip is worth having for a long selection, and the height cap is
+        // what keeps it from growing to the whole screen. Past it the text ends in an ellipsis.
         let size = NSHostingController(rootView: content).sizeThatFits(
-            in: CGSize(width: 600, height: 200))
+            in: CGSize(width: 600, height: 400))
         let mouse = NSEvent.mouseLocation
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height - 22)
         // Above the pointer when there is no room below it, as at the bottom of the screen.
@@ -99,6 +101,9 @@ import SwiftUI
 }
 
 private struct HoverTipLabel: View {
+    /// How much of a long tip is shown; the rest is an ellipsis rather than a screen-sized bubble.
+    private static let lineLimit = 12
+
     /// Built by the view that asked for the tip, so `Text` resolves the catalog on its side and the
     /// tooltip and the accessibility hint can never show two different strings.
     let label: () -> Text
@@ -106,13 +111,15 @@ private struct HoverTipLabel: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            label()
+            label().lineLimit(Self.lineLimit)
             if let keys { Text(keys).foregroundStyle(.secondary) }
         }
         .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .glassEffect(.regular, in: Capsule())
+        // A rounded rectangle rather than the default shape: a tip of several lines drawn as a capsule
+        // is an egg, and the point of the tip is that the words are readable (spec/DESIGN.md).
+        .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .padding(6)
     }
 }

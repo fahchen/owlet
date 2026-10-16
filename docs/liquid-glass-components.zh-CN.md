@@ -75,7 +75,7 @@
 
 ### 3.4 组件 › 呈现
 - 浮动工具条窗口 → `NSPanel`（`.borderless`, `.nonactivatingPanel`, `.floating`）+ `NSGlassEffectView`，玻璃由 window server 绘制，保留其默认圆角与样式，不叠自绘边框与内阴影；窗口的 `contentView` 是按玻璃圆角遮罩的容器，`hasShadow = true` 的投影因此跟随玻璃形状——浅色背景上也需要它来分辨浮层边界；紧凑处理条（`loading` / `polish-loading` / `direct-loading`）用同款玻璃容器 + `Text` + `ProgressView` + 玻璃停止按钮，整圈呼吸是未采纳建议（§2.2 #9、T24）。
-- 紧凑提示条（失败／权限／未配置／取消／未能写回）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 1）；展开态内联状态行（`result-notice`）用 `Label(systemImage:)` + 恢复按钮放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
+- 紧凑提示条（失败／权限／未配置／取消／未能写回）→ 同上容器 + `Label` + 一个恢复按钮，失败态另给重试图标按钮（见 §7 例外 1）；展开态内联状态行（`result-notice`）居中排开：更大的符号、放在与调试页同样的缩进块里的文案（`.insetBlock()`：`.quaternary` 填充、8pt 圆角、左侧 2pt 竖线）、一个恢复按钮，都放进内容流，不收起面板；权限未授权引导用 `AXIsProcessTrustedWithOptions` 打开系统设置，不用自绘弹窗。
 
 ### 3.5 组件 › 选择与输入
 - 原文输入区 → 多行 `TextEditor`、单行 `TextField(axis: .vertical)`，聚焦态交给系统焦点环；服务设置用 `Form` 行内的 `TextField` / `SecureField` / `Picker(.menu)`（`entering-data.md`：永不预填密码；`pickers.md`：短列表用弹出式按钮）；快捷键录制控件**无系统组件**，实现用 `Button` + `.glass`，录制中换 `.glassProminent`，注册走 Carbon / `NSEvent`（§7 例外 2）；`⌘ V 粘贴` / `⌘ ↵` / `Esc` 提示在设计图与实现里都保留（§2.2 #7）。

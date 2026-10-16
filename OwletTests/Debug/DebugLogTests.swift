@@ -101,6 +101,21 @@ struct DebugLogTests {
         #expect(box.exchanges.first?.response?.contains("\"ja\"") == true)
     }
 
+    /// A status outside 2xx answers with a body of its own, and that body is the diagnosis: the page
+    /// shows it as the reply rather than leaving the row empty.
+    @Test func aFailedStatusKeepsTheServiceOwnBody() async {
+        let box = Box()
+        var client = ModelClient(
+            transport: stub(status: 422, body: #"{"error":{"message":"unsupported field"}}"#))
+        client.capture = DebugCapture(
+            isEnabled: { true }, record: { box.exchanges.append($0) })
+        _ = try? await client.process(
+            "Hello", operation: .translate, to: "zh-Hans", config: testConfig)
+        await settle(box)
+        #expect(box.exchanges.first?.failure == ModelError.http(422, detail: nil).message)
+        #expect(box.exchanges.first?.response?.contains("unsupported field") == true)
+    }
+
     /// The switch is the only consent for keeping the user's text, so it must decide both whether to
     /// record and whether what was already recorded survives.
     @Test func theSwitchDecidesRecordingAndClearsWhenTurnedOff() {

@@ -190,25 +190,53 @@ struct TextProcessingView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failure(let message, let kind):
-            failure(message, action: kind == .contract ? "Prompt Settings" : "Service Settings")
+            failure(
+                message, action: kind == .contract ? "Prompt Settings" : "Service Settings",
+                beside: model.lastResultText)
         case .missingConfig:
             failure(
                 L10n.shared.string("The model service is not configured"),
-                action: L10n.shared.string("Configure Service"))
+                action: L10n.shared.string("Configure Service"), beside: model.lastResultText)
         case .idle, .success:
             resultScroll
         }
     }
 
-    private func failure(_ message: String, action: String) -> some View {
-        VStack(spacing: 8) {
-            Label(message, systemImage: "exclamationmark.triangle")
+    /// A failure reads as a state of the page rather than as a line of red text: the symbol, then the
+    /// words quoted in a block, then the one way out — the same shape the panel's notices use. When a
+    /// result from before the failure is still around, it stays on the page and the failure sits under
+    /// it: the error is about the retry, not about what was already produced.
+    @ViewBuilder private func failure(_ message: String, action: String, beside kept: String?)
+        -> some View
+    {
+        if kept != nil {
+            VStack(spacing: 0) {
+                resultScroll
+                failureNote(message, action: action)
+            }
+        } else {
+            failureNote(message, action: action)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func failureNote(_ message: String, action: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 26))
                 .foregroundStyle(.red)
-                .multilineTextAlignment(.center)
-            Button(action, systemImage: "gearshape", action: openSettings).buttonStyle(.plain)
+                .accessibilityHidden(true)
+            Text(message)
+                .font(.body)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .failureBlock()
+            Button(action, systemImage: "gearshape", action: openSettings)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
         }
         .padding(.horizontal, PanelMetrics.contentInset)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, PanelMetrics.contentInset)
     }
 
     private var resultScroll: some View {
@@ -225,7 +253,8 @@ struct TextProcessingView: View {
     }
 
     @ViewBuilder private var result: some View {
-        if case .success(let text) = model.state {
+        // The last finished result, which a failure no longer takes off the page.
+        if let text = model.lastResultText {
             let origin = model.languages.map {
                 LookupOrigin.result(of: model.operation, languages: $0, mapping: SettingsStore.targetMapping())
             }

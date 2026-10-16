@@ -92,7 +92,7 @@ struct OperationSwitchTests {
         let model = TextProcessingModel(
             client: ModelClient(transport: { _ in
                 calls.count += 1
-                throw ModelError.http(500)
+                throw ModelError.http(500, detail: nil)
             }),
             config: { testConfig })
         model.input = "Hello"

@@ -1,6 +1,7 @@
 import AVFoundation
 import AppKit
 import ApplicationServices
+import Synchronization
 import SwiftUI
 import SwiftData
 
@@ -322,7 +323,7 @@ struct PreviewView: View {
                 .environment(\.controlActiveState, .key)
                 .environment(\.colorScheme, dark ? .dark : .light)
                 .defaultAppStorage(PreviewFixtures.defaults)
-                guard let data = render(AnyView(view), dark: dark) else { return false }
+                guard let data = render(AnyView(view), size: size, dark: dark) else { return false }
                 let name = "\(shot.name)\(dark ? "-dark" : "").png"
                 do { try data.write(to: directory.appendingPathComponent(name)) } catch { return false }
             }
@@ -407,7 +408,7 @@ struct PreviewView: View {
                     .background(Color(nsColor: .windowBackgroundColor))
                     .environment(\.controlActiveState, .key)
                     .environment(\.colorScheme, dark ? .dark : .light)
-                guard let data = render(AnyView(view), dark: dark) else { return false }
+                guard let data = render(AnyView(view), size: size, dark: dark) else { return false }
                 do { try data.write(to: directory.appendingPathComponent("\(name).png")) } catch { return false }
             }
         }
@@ -428,10 +429,11 @@ struct PreviewView: View {
     /// `NSHostingView` + `cacheDisplay` rather than `ImageRenderer`: the latter draws neither the
     /// grouped `Form`'s rows nor the `Picker`/`Toggle` controls, leaving an empty image.
     private static func png(_ variant: Variant) -> Data? {
-        render(AnyView(content(variant)), dark: variant.dark)
+        render(AnyView(content(variant)), size: size, dark: variant.dark)
     }
 
-    private static func render(_ view: AnyView, dark: Bool) -> Data? {
+    /// File-wide, because the study-column export below draws through it too.
+    fileprivate static func render(_ view: AnyView, size: NSSize, dark: Bool) -> Data? {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: size)
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -523,6 +525,25 @@ final class PreviewPanel: NSPanel {
                 // One run-loop turn, so the hosting view and its AppKit controls are laid out.
                 try? await Task.sleep(for: .milliseconds(100))
                 exit(await SettingsPanePreview.export(to: output) ? 0 : 1)
+            }
+            app.run()
+            return
+        }
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_LEARNING"] {
+            // Offscreen: the study column's edge states are what a person cannot line up by hand.
+            app.setActivationPolicy(.prohibited)
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                exit(await LearningStatePreview.export(to: output) ? 0 : 1)
+            }
+            app.run()
+            return
+        }
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_NOTICES"] {
+            app.setActivationPolicy(.prohibited)
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                exit(await NoticeStatePreview.export(to: output) ? 0 : 1)
             }
             app.run()
             return
@@ -852,4 +873,209 @@ struct MainPreview: View {
     window.makeKeyAndOrderFront(nil)
     app.activate(ignoringOtherApps: true)
     app.run()
+}
+
+
+/// `--learning <dir>`: the study column in each of its states, drawn offscreen. Waiting, failed, empty
+/// and filled cannot be lined up by hand one after another, so the whole set is exported at once.
+@MainActor enum LearningStatePreview {
+    static let size = NSSize(width: 380, height: 260)
+
+    static func export(to output: String) async -> Bool {
+        let directory = URL(fileURLWithPath: output, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            print("Learning export failed: \(error)")
+            return false
+        }
+        // A finished result first: the column is only ever asked about one.
+        PreviewFixtures.model.input = PreviewFixtures.source
+        await PreviewFixtures.model.process(to: "en")?.value
+        guard let request = LearningRequest.from(PreviewFixtures.model) else {
+            print("Learning export failed: no finished result to ask about")
+            return false
+        }
+
+        for dark in [false, true] {
+            for (name, learning) in await models(for: request) {
+                let view = PanelLearningView(
+                    learning: learning, request: request, collection: PreviewFixtures.collection,
+                    fitsRows: false, inline: false
+                )
+                .frame(width: size.width, height: size.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.controlActiveState, .key)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .environment(\.lookups, PreviewFixtures.lookups)
+                .modelContainer(PreviewFixtures.store.container)
+                guard let data = SettingsPanePreview.render(AnyView(view), size: size, dark: dark)
+                else { return false }
+                let file = "learning-\(name)\(dark ? "-dark" : "")"
+                do {
+                    try data.write(to: directory.appendingPathComponent("\(file).png"))
+                } catch {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    /// One model per state, each driven there through the real request path.
+    private static func models(for request: LearningRequest) async -> [(String, LearningModel)] {
+        let items = #"{"items":[{"text":"take a step back","language":"en","kind":"phrase","meaning":"退一步重新审视。","context":"Let's take a step back."},{"text":"the way is hard and long","language":"en","kind":"phrase","meaning":"道路艰险又漫长。","context":"Upstream I go to seek her, but the way is hard and long."}]}"#
+
+        let waiting = model(body: nil, hangs: true)
+        waiting.isExpanded = true
+        waiting.generate(for: request)
+
+        let failed = model(body: nil)
+        failed.generate(for: request)
+        await failed.task?.value
+
+        let empty = model(body: #"{"items":[]}"#)
+        empty.generate(for: request)
+        await empty.task?.value
+
+        let filled = model(body: items)
+        filled.generate(for: request)
+        await filled.task?.value
+
+        return [("waiting", waiting), ("failed", failed), ("empty", empty), ("filled", filled)]
+    }
+
+    /// A client that answers with one JSON body, or fails when there is none. `hangs` keeps the request
+    /// in flight, which is how the waiting state is drawn.
+    private static func model(body: String?, hangs: Bool = false) -> LearningModel {
+        let client = ModelClient(
+            transport: { request in
+                if hangs { try await Task.sleep(for: .seconds(600)) }
+                guard let body else { throw URLError(.notConnectedToInternet) }
+                let wrapper = try JSONSerialization.data(withJSONObject: [
+                    "choices": [["message": ["content": body], "finish_reason": "stop"]]
+                ])
+                return (
+                    wrapper,
+                    HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                )
+            },
+            capture: .off)
+        let learning = LearningModel(client: client, config: { PreviewFixtures.config })
+        learning.autoRequest = { _ in false }
+        return learning
+    }
+}
+
+
+/// `--notices <dir>`: the expanded panel in each of its notice states, drawn offscreen. The glass
+/// button at the bottom does not draw outside a window, so these are for the layout — the words, the
+/// block and where the action sits.
+@MainActor enum NoticeStatePreview {
+    static let size = NSSize(width: PanelMetrics.width, height: 300)
+    /// The page's own failure, which is the same shape in a much wider column.
+    static let pageSize = NSSize(width: 760, height: 420)
+
+    static func export(to output: String) async -> Bool {
+        let directory = URL(fileURLWithPath: output, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            print("Notice export failed: \(error)")
+            return false
+        }
+        PreviewFixtures.model.input = PreviewFixtures.source
+        await PreviewFixtures.model.process(to: "en")?.value
+
+        let notices: [(String, PanelController.Notice)] = [
+            (
+                "network",
+                .failure(
+                    ModelError.network(URLError(.cannotFindHost).localizedDescription).message,
+                    kind: .connection)
+            ),
+            (
+                "contract",
+                .failure(ModelError.format.message, kind: .contract)
+            ),
+            ("unwritten", .unwritten),
+        ]
+        for dark in [false, true] {
+            for (name, notice) in notices {
+                let view = ExpandedPanelContent(
+                    model: PreviewFixtures.model, notice: notice, recover: { _ in },
+                    collection: PreviewFixtures.collection, openNotebook: nil,
+                    learning: PreviewFixtures.learning, lookupOrigin: nil
+                )
+                .frame(width: size.width, height: size.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.controlActiveState, .key)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .environment(\.lookups, PreviewFixtures.lookups)
+                .modelContainer(PreviewFixtures.store.container)
+                guard let data = SettingsPanePreview.render(AnyView(view), size: size, dark: dark)
+                else { return false }
+                let file = "notice-\(name)\(dark ? "-dark" : "")"
+                do {
+                    try data.write(to: directory.appendingPathComponent("\(file).png"))
+                } catch {
+                    return false
+                }
+            }
+            for (name, model) in [("page-failure", await failedModel()),
+                                  ("page-failure-kept", await failedAfterSuccess())] {
+                let page = TextProcessingView(
+                    model: model, openSettings: {}, collection: PreviewFixtures.collection
+                )
+                .frame(width: pageSize.width, height: pageSize.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.controlActiveState, .key)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .environment(\.lookups, PreviewFixtures.lookups)
+                .modelContainer(PreviewFixtures.store.container)
+                .defaultAppStorage(PreviewFixtures.defaults)
+                guard let pageData = SettingsPanePreview.render(AnyView(page), size: pageSize, dark: dark)
+                else { return false }
+                let file = "\(name)\(dark ? "-dark" : "")"
+                do {
+                    try pageData.write(to: directory.appendingPathComponent("\(file).png"))
+                } catch {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    /// A finished result, then a failure on another target: the page keeps the result and puts the
+    /// failure under it.
+    private static func failedAfterSuccess() async -> TextProcessingModel {
+        let calls = Mutex(0)
+        let model = TextProcessingModel(
+            client: ModelClient(
+                transport: { request in
+                    let isLater = calls.withLock { value -> Bool in
+                        value += 1
+                        return value > 1
+                    }
+                    if isLater { throw URLError(.cannotFindHost) }
+                    return try await PreviewFixtures.fixtureTransport(request)
+                }, capture: .off),
+            config: { PreviewFixtures.config })
+        model.input = PreviewFixtures.source
+        await model.process(to: "en")?.value
+        await model.process(to: "ja")?.value
+        return model
+    }
+
+    /// The processing page as a failed request leaves it: driven through the real path, so the state is
+    /// the one the app would be in.
+    private static func failedModel() async -> TextProcessingModel {
+        let model = TextProcessingModel(
+            client: ModelClient(transport: { _ in throw URLError(.cannotFindHost) }, capture: .off),
+            config: { PreviewFixtures.config })
+        model.input = PreviewFixtures.source
+        await model.process(to: "en")?.value
+        return model
+    }
 }

@@ -71,28 +71,26 @@ struct PanelLearningView: View {
     @ViewBuilder private var content: some View {
         switch learning.state {
         case .idle, .loading:
-            Text(L10n.shared.string("Finding useful expressions…"))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .frame(height: inline ? Self.inlineStateHeight : nil)
-                .padding(.horizontal, PanelMetrics.contentInset)
+            waiting
         case .failure(let message):
-            VStack(spacing: 8) {
+            unavailable {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
+            } actions: {
                 Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") {
                     learning.retry(for: request)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(height: inline ? Self.inlineStateHeight : nil)
-            .padding(.horizontal, PanelMetrics.contentInset)
         case .success(let items) where items.isEmpty:
-            Text(L10n.shared.string("Nothing more to suggest."))
-                .foregroundStyle(.secondary)
-                .padding(PanelMetrics.contentInset)
+            unavailable {
+                Label(L10n.shared.string("Nothing more to suggest."), systemImage: "bookmark")
+            } description: {
+                Text(L10n.shared.string("Nothing here is worth keeping that your notebook does not have."))
+            } actions: {
+                EmptyView()
+            }
         case .success(let items) where inline:
             rows(items)
         case .success(let items):
@@ -105,6 +103,58 @@ struct PanelLearningView: View {
             .scrollBounceBehavior(.basedOnSize)
             .panelEdgeBands()
         }
+    }
+
+    /// Waiting: the system spinner over the sentence, centered in whatever room the column has.
+    private var waiting: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+                .controlSize(.small)
+            Text(L10n.shared.string("Finding useful expressions…"))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(height: inline ? Self.inlineStateHeight : nil)
+        .padding(.horizontal, PanelMetrics.contentInset)
+    }
+
+    /// A state with nothing to list gets the system's own "nothing here" layout: a symbol, a line and
+    /// — when there is one — the thing to do about it, centered instead of left in a corner.
+    private func unavailable<Label: View>(
+        @ViewBuilder label: () -> Label
+    ) -> some View {
+        ContentUnavailableView { label() }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(height: inline ? Self.inlineStateHeight : nil)
+            .padding(.horizontal, PanelMetrics.contentInset)
+    }
+
+    private func unavailable<Label: View, Actions: View>(
+        @ViewBuilder label: () -> Label,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        unavailable(label: label) {
+            EmptyView()
+        } actions: {
+            actions()
+        }
+    }
+
+    private func unavailable<Label: View, Description: View, Actions: View>(
+        @ViewBuilder label: () -> Label,
+        @ViewBuilder description: () -> Description,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        ContentUnavailableView {
+            label()
+        } description: {
+            description()
+        } actions: {
+            actions()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(height: inline ? Self.inlineStateHeight : nil)
+        .padding(.horizontal, PanelMetrics.contentInset)
     }
 
     private func rows(_ items: [LearningResult.Item]) -> some View {

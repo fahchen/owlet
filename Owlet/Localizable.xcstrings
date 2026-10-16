@@ -4177,6 +4177,35 @@
         }
       }
     },
+    "Nothing here is worth keeping that your notebook does not have.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing here is worth keeping that your notebook does not have."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここに、ノートにまだない価値のある表現はありません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里没有你笔记本里还没有的表达。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這裡沒有你筆記本裡還沒有的表達。"
+          }
+        }
+      }
+    },
     "Nothing more to suggest.": {
       "extractionState": "manual",
       "localizations": {

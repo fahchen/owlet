@@ -3,7 +3,9 @@ import Foundation
 enum ModelError: Error, Equatable {
     case network(String)
     case unauthorized
-    case http(Int)
+    /// A status outside 2xx. `detail` is the service's own body, kept for the Debug page: a 4xx or 5xx
+    /// usually says what it objected to, and the app would otherwise show a bare number.
+    case http(Int, detail: String?)
     case emptyResponse
     /// The returned JSON does not have the agreed shape: a missing or extra field, a wrong type, a
     /// blank segment, or text outside one code fence.
@@ -26,7 +28,7 @@ enum ModelError: Error, Equatable {
         case .network(let detail):
             L10n.shared.string("Network error: %@", detail)
         case .unauthorized: L10n.shared.string("Authentication failed. Check the API key.")
-        case .http(let code): L10n.shared.string("The service returned HTTP %lld.", code)
+        case .http(let code, _): L10n.shared.string("The service returned HTTP %lld.", code)
         case .emptyResponse: L10n.shared.string("The service returned empty content.")
         case .format:
             L10n.shared.string(
@@ -43,6 +45,13 @@ enum ModelError: Error, Equatable {
         case .refused: L10n.shared.string("The service refused to process this text.")
         case .localAgent(let detail): L10n.shared.string("The local agent failed: %@", detail)
         }
+    }
+
+    /// The service's own words behind a failure, when it said anything. The Debug page shows this as
+    /// the reply; nothing else reads it.
+    var diagnosticBody: String? {
+        if case .http(_, let detail) = self { return detail }
+        return nil
     }
 
     /// What a failure means for the user. Classification is a property of the error, never of its
@@ -493,6 +502,9 @@ struct ModelClient: Sendable {
         } catch {
             failure = (error as? ModelError)?.message ?? error.localizedDescription
             failureKind = (error as? ModelError)?.kind
+            // A failed status still answered with a body, and that body is the diagnosis. A reply that
+            // arrived and failed to parse keeps the reply it already has.
+            if let detail = (error as? ModelError)?.diagnosticBody { response = detail }
             throw error
         }
     }

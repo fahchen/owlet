@@ -183,9 +183,20 @@ enum HTTPBackend {
         }
         if let http = response as? HTTPURLResponse {
             if http.statusCode == 401 || http.statusCode == 403 { throw ModelError.unauthorized }
-            if !(200..<300).contains(http.statusCode) { throw ModelError.http(http.statusCode) }
+            if !(200..<300).contains(http.statusCode) {
+                throw ModelError.http(http.statusCode, detail: Self.detail(from: data))
+            }
         }
         return data
+    }
+
+    /// The body of a failed response, trimmed and cut to something a page can show. nil when there was
+    /// nothing to read.
+    static func detail(from data: Data) -> String? {
+        let text = String(decoding: data, as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        return String(text.prefix(2000))
     }
 
     /// The body as sent, so the debug page shows the real request instead of a reconstruction. The API

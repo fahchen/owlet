@@ -163,15 +163,7 @@ private struct DebugBlock: View {
                     .font(.callout.monospaced())
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    // Not white: the card is already the light surface, so the block reads as an inset
-                    // in it rather than as a second one.
-                    .background(.quaternary, in: .rect(cornerRadius: 8))
-                    .padding(.leading, 14)
-                    // The guide that marks the text as this block's own, as the reference has it.
-                    .background(alignment: .leading) {
-                        Rectangle().fill(.quaternary).frame(width: 2)
-                    }
+                    .insetBlock()
             }
         }
     }

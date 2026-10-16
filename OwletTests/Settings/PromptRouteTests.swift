@@ -60,7 +60,7 @@ struct PromptRouteTests {
         #expect(ModelError.targetMismatch(requested: "en", returned: "ja").kind == .contract)
         #expect(ModelError.unauthorized.kind == .connection)
         #expect(ModelError.network("x").kind == .connection)
-        #expect(ModelError.http(500).kind == .connection)
+        #expect(ModelError.http(500, detail: nil).kind == .connection)
         #expect(ModelError.emptyResponse.kind == .service)
         #expect(ModelError.truncated.kind == .service)
         #expect(ModelError.refused.kind == .service)

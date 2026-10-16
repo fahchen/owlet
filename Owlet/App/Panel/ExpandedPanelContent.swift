@@ -103,9 +103,13 @@ struct ExpandedPanelContent: View {
                 tint: notice == .cancelled ? .secondary : .red
             ) {
                 Text(notice.message)
-                    .font(.system(size: PanelMetrics.textSize))
-                    .foregroundStyle(notice == .cancelled ? Color.primary : Color.red)
+                    .font(.body)
+                    .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // The words of a failure are quoted back rather than spoken over: the same inset a
+                    // captured body gets on the Debug page, without its guide — this is a message, not
+                    // someone else's text — and the symbol above carries the red.
+                    .failureBlock()
                 GlassEffectContainer {
                     // A copy names itself after the press, so the button never looks like it did nothing.
                     Button(confirmation.isCopied ? L10n.shared.string("Copied") : notice.actionTitle) {
@@ -127,14 +131,18 @@ private struct StatusNote<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 10) {
+        // The same shape as the system's "nothing here" pages: symbol, words, action, centered — a
+        // failure should read as a state of the panel, not as a line of text beside an icon.
+        VStack(spacing: 8) {
             Image(systemName: symbol)
+                .font(.system(size: 26))
                 .foregroundStyle(tint)
                 .accessibilityHidden(true)
             content
         }
-        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
-        .padding(.top, 10)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(PanelMetrics.contentInset)
         .accessibilityElement(children: .contain)
     }
 }

@@ -192,8 +192,9 @@ func posted(_ request: ModelRequest, config: ServiceConfig) async throws -> URLR
 }
 
 @Test func serverErrorMapsToHTTP() async {
+    // The service's own body comes along: it is the whole diagnosis for a 4xx or 5xx.
     let client = ModelClient(transport: stub(status: 500, body: "{}"))
-    await #expect(throws: ModelError.http(500)) {
+    await #expect(throws: ModelError.http(500, detail: "{}")) {
         try await client.translate("Hi", to: "zh-Hans", config: testConfig)
     }
 }

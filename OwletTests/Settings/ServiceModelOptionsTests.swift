@@ -3,74 +3,39 @@ import Testing
 
 @testable import Owlet
 
-/// The model row keeps one control per provider: the list only changes the picker's options, so a
-/// save never turns the model name into something else.
+/// The service rows: the effort field's value, the preset table, and what switching services writes.
 @MainActor
 struct ServiceModelOptionsTests {
-    /// One picker row per id. A row built from a name alone carries the name as its label and says
-    /// nothing about effort, which is what the picker invents for a saved name the list does not have.
-    func options(_ ids: [String]) -> [ModelOption] { ids.map { ModelOption(id: $0) } }
-
-    @Test func aSavedModelStaysSelectableWhenTheListArrives() {
-        #expect(
-            ModelSettingsPane.modelOptions(for: .loaded(options(["a", "b"])), model: "c")
-                == options(["c", "a", "b"]))
+    /// The field stores the raw value, whatever its capitalization, so what it shows is what is sent; an
+    /// empty field is Automatic, and a value no level uses is kept as typed.
+    @Test func theEffortFieldKeepsItsRawValues() {
+        #expect(ModelSettingsPane.storedEffort(typed: "LOW") == "low")
+        // Clearing the field and never touching it are the same choice.
+        #expect(ModelSettingsPane.storedEffort(typed: "  ") == "automatic")
+        #expect(ModelSettingsPane.storedEffort(typed: "xhigh") == "xhigh")
+        // A level's title is not a value: it is not translated into one.
+        #expect(ModelSettingsPane.storedEffort(typed: "Highest") == "Highest")
     }
 
-    @Test func theListIsUsedAsItIsWhenItAlreadyOffersTheSavedModel() {
-        #expect(
-            ModelSettingsPane.modelOptions(for: .loaded(options(["a", "b"])), model: "b")
-                == options(["a", "b"]))
-    }
+    /// The Test button runs a real translation of the 蒹葭 line: a valid reply passes with its text,
+    /// an HTTP failure reports the same message a real request would, and both carry the elapsed time.
+    @Test func theTestRunsTheRealTranslationPath() async throws {
+        let segments = try JSONSerialization.data(withJSONObject: [
+            "source_language": "zh-Hant", "target_language": "en",
+            "segments": [["source": ModelSettingsPane.testSentence, "target": "Reeds grow lush."]],
+        ])
+        let passed = await ModelSettingsPane.runTest(
+            config: testConfig, target: "en",
+            client: ModelClient(transport: stub(body: chatBody(String(decoding: segments, as: UTF8.self)))))
+        guard case .passed(let reply, let seconds) = passed else { Issue.record("\(passed)"); return }
+        #expect(reply == "Reeds grow lush.")
+        #expect(seconds >= 0)
 
-    /// The options the agent reported keep the label and the effort facts it gave them; the picker
-    /// shows what the provider said rather than rebuilding each row from its id.
-    @Test func aLoadedOptionKeepsItsLabelAndEfforts() {
-        let option = ModelOption(id: "gpt-6-sol", label: "GPT-6-Sol", efforts: [])
-        #expect(ModelSettingsPane.modelOptions(for: .loaded([option]), model: "gpt-6-sol") == [option])
-    }
-
-    /// Before the first list arrives the picker still shows the saved name rather than nothing.
-    @Test func theSavedModelIsTheOnlyOptionWhileTheListIsLoading() {
-        #expect(ModelSettingsPane.modelOptions(for: .loading, model: "a") == options(["a"]))
-        #expect(ModelSettingsPane.modelOptions(for: .idle, model: "a") == options(["a"]))
-        #expect(ModelSettingsPane.modelOptions(for: .failed("x"), model: "a") == options(["a"]))
-    }
-
-    @Test func nothingIsOfferedWhenNoModelIsSaved() {
-        #expect(ModelSettingsPane.modelOptions(for: .loading, model: "").isEmpty)
-    }
-
-    /// A name saved before the cache changed is still the one in the field, and the picker still offers
-    /// it rather than dropping a configuration that works.
-    @Test func aSavedClaudeModelTheCatalogDoesNotOfferStaysSelectable() {
-        let listed = [ModelOption(id: "claude-opus-5-5", label: "Opus 5.5", efforts: [.low, .high])]
-        #expect(
-            ModelSettingsPane.modelOptions(for: .loaded(listed), model: "claude-opus-4-6")
-                == [ModelOption(id: "claude-opus-4-6")] + listed)
-    }
-
-    /// Only an agent that really has a list gets the picker. A listing command answers on demand, so its
-    /// picker stands whatever the load is doing; a cached catalog only gets one once it produced rows,
-    /// because an empty picker would read as "this agent has no models" when nothing was readable.
-    @Test func onlyAnAgentWithAListGetsThePicker() {
-        let command = LocalAgentKind.codexCLI.modelSource
-        let cache = LocalAgentKind.claudeCode.modelSource
-        let listed = options(["claude-opus-5-5"])
-
-        // No model source at all: an HTTP service, or a provider that only lists through its API.
-        #expect(!ModelSettingsPane.listsModels(nil, models: .loaded(listed)))
-
-        #expect(ModelSettingsPane.listsModels(command, models: .idle))
-        #expect(ModelSettingsPane.listsModels(command, models: .loading))
-        #expect(ModelSettingsPane.listsModels(command, models: .failed("x")))
-        #expect(ModelSettingsPane.listsModels(command, models: .loaded([])))
-
-        #expect(!ModelSettingsPane.listsModels(cache, models: .idle))
-        #expect(!ModelSettingsPane.listsModels(cache, models: .loading))
-        #expect(!ModelSettingsPane.listsModels(cache, models: .failed("x")))
-        #expect(!ModelSettingsPane.listsModels(cache, models: .loaded([])))
-        #expect(ModelSettingsPane.listsModels(cache, models: .loaded(listed)))
+        let failed = await ModelSettingsPane.runTest(
+            config: testConfig, target: "en", client: ModelClient(transport: stub(status: 401, body: "")))
+        guard case .failed(let message, let elapsed) = failed else { Issue.record("\(failed)"); return }
+        #expect(message == ModelError.unauthorized.message)
+        #expect(elapsed != nil)
     }
 
     let suite = "ServiceModelOptionsTests.\(UUID().uuidString)"
@@ -114,9 +79,9 @@ struct ServiceModelOptionsTests {
                 adopt: false, saved: "/gone/claude", isExecutable: { _ in false }))
     }
 
-    /// The vendor table is data, so its invariants are asserted directly: unique ids, a real address
-    /// for every vendor (OpenAI Compatible is the one entry that asks for one), a default model to fill in, and a
-    /// keychain account that matches the id except for the custom entry.
+    /// The preset table is data, so its invariants are asserted directly: unique ids, a real address
+    /// for every entry but OpenAI Compatible, a default model for every vendor (a protocol entry leaves
+    /// the model to the user), and a keychain account that matches the id except for the custom entry.
     @Test func thePresetTableIsWellFormed() throws {
         let ids = ServicePreset.all.map(\.id)
         #expect(Set(ids).count == ids.count)
@@ -131,7 +96,7 @@ struct ServiceModelOptionsTests {
                 let base = try #require(preset.baseURL)
                 let url = try #require(URL(string: base))
                 #expect(["http", "https"].contains(url.scheme ?? ""))
-                #expect(!preset.defaultModel.isEmpty)
+                #expect(preset.defaultModel.isEmpty == ServicePreset.protocols.contains(preset))
                 #expect(preset.keychainAccount == preset.id)
             }
         }
@@ -139,51 +104,67 @@ struct ServiceModelOptionsTests {
         #expect(ServicePreset.preset(id: "nope") == nil)
     }
 
+    /// The picker's first group has one entry per HTTP protocol, each on its own protocol; every vendor
+    /// speaks one of them (BDR-0016).
+    @Test func theProtocolGroupCoversEveryHTTPProtocol() {
+        let http = Provider.allCases.filter { !$0.isLocalAgent }
+        #expect(ServicePreset.protocols.map(\.provider) == http)
+        #expect(ServicePreset.protocols.first == .custom)
+        for vendor in ServicePreset.vendors { #expect(http.contains(vendor.provider)) }
+        #expect(ServiceChoice.choice(id: "anthropic")?.provider == .anthropic)
+        #expect(ServiceChoice.choice(id: "gemini")?.provider == .gemini)
+        #expect(ServiceChoice.choice(id: "openAIResponses")?.provider == .openAIResponses)
+    }
+
     /// The vendors the task named, at the addresses their own documentation publishes. A vendor that
     /// could not be confirmed is deliberately absent rather than carrying an invented URL.
     @Test func theNamedVendorsCarryTheirDocumentedAddresses() {
+        #expect(ServicePreset.vendors == [.deepSeek, .openRouter, .ollama])
         #expect(ServicePreset.deepSeek.baseURL == "https://api.deepseek.com")
-        #expect(ServicePreset.moonshot.baseURL == "https://api.moonshot.cn/v1")
-        #expect(ServicePreset.zhipu.baseURL == "https://open.bigmodel.cn/api/paas/v4")
-        #expect(ServicePreset.qwen.baseURL == "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        #expect(ServicePreset.xAI.baseURL == "https://api.x.ai/v1")
         #expect(ServicePreset.openRouter.baseURL == "https://openrouter.ai/api/v1")
         #expect(ServicePreset.ollama.baseURL == "http://localhost:11434/v1")
-        #expect(ServicePreset.lmStudio.baseURL == "http://localhost:1234/v1")
     }
 
     /// Only vendors whose own documentation shows the OpenAI `json_schema` shape claim the capability;
     /// everything else asks for `json_object` and carries the shape in the prompt, which fails safer
     /// than a request a service rejects (BDR-0015 §3).
     @Test func onlyDocumentedVendorsClaimJSONSchema() {
-        #expect(ServicePreset.custom.supportsJSONSchema)
-        #expect(ServicePreset.moonshot.supportsJSONSchema)
-        #expect(ServicePreset.xAI.supportsJSONSchema)
+        for entry in ServicePreset.protocols { #expect(entry.supportsJSONSchema) }
         #expect(!ServicePreset.deepSeek.supportsJSONSchema)
-        #expect(!ServicePreset.zhipu.supportsJSONSchema)
-        #expect(!ServicePreset.qwen.supportsJSONSchema)
         // OpenRouter's structured output is per endpoint, so the safe answer is no.
         #expect(!ServicePreset.openRouter.supportsJSONSchema)
         #expect(!ServicePreset.ollama.supportsJSONSchema)
-        #expect(!ServicePreset.lmStudio.supportsJSONSchema)
-    }
-
-    /// DeepSeek keeps the model-list behaviour it had as a provider; no other vendor turns the field
-    /// into a picker before its `/models` has been checked.
-    @Test func onlyDeepSeekListsModels() {
-        #expect(ServicePreset.all.filter(\.listsModels).map(\.id) == [ServicePreset.deepSeekID])
     }
 
     /// Choosing a vendor fills in its address and default model, and persists the choice immediately.
     @Test func choosingAPresetWritesItsAddressAndModel() {
         let model = SettingsStore.selectService(
-            ServicePreset.moonshot.id, currentModel: "", in: defaults)
-        #expect(model == "kimi-k3")
-        #expect(defaults.string(forKey: SettingsStore.baseURLKey) == "https://api.moonshot.cn/v1")
-        #expect(defaults.string(forKey: SettingsStore.modelKey) == "kimi-k3")
-        #expect(SettingsStore.serviceID(in: defaults) == ServicePreset.moonshot.id)
+            ServicePreset.openRouter.id, currentModel: "", in: defaults)
+        #expect(model == "openrouter/auto")
+        #expect(defaults.string(forKey: SettingsStore.baseURLKey) == "https://openrouter.ai/api/v1")
+        #expect(defaults.string(forKey: SettingsStore.modelKey) == "openrouter/auto")
+        #expect(SettingsStore.serviceID(in: defaults) == ServicePreset.openRouter.id)
         #expect(SettingsStore.choice(in: defaults).provider == .openAICompatible)
-        #expect(SettingsStore.choice(in: defaults).preset == .moonshot)
+        #expect(SettingsStore.choice(in: defaults).preset == .openRouter)
+    }
+
+    /// An address the user edited belongs to that service: switching away and back restores it, and a
+    /// service never edited gets its preset's address.
+    @Test func eachServiceRemembersItsOwnAddress() {
+        SettingsStore.selectService(ServicePreset.anthropic.id, currentModel: "", in: defaults)
+        defaults.set("https://proxy.example/v1", forKey: SettingsStore.baseURLKey)
+        SettingsStore.selectService(ServicePreset.deepSeekID, currentModel: "", in: defaults)
+        #expect(defaults.string(forKey: SettingsStore.baseURLKey) == "https://api.deepseek.com")
+        SettingsStore.selectService(ServicePreset.anthropic.id, currentModel: "", in: defaults)
+        #expect(defaults.string(forKey: SettingsStore.baseURLKey) == "https://proxy.example/v1")
+    }
+
+    /// A typed effort is kept apart from the levels, so the request can send it verbatim.
+    @Test func aTypedEffortIsReadAsCustom() {
+        defaults.set("xhigh", forKey: SettingsStore.effortKey)
+        #expect(SettingsStore.customEffort(in: defaults) == "xhigh")
+        defaults.set("high", forKey: SettingsStore.effortKey)
+        #expect(SettingsStore.customEffort(in: defaults) == nil)
     }
 
     /// OpenAI Compatible writes no address: whatever the user typed stays, which is the whole point of the entry
@@ -215,9 +196,9 @@ struct ServiceModelOptionsTests {
     /// A stored service id wins over the pre-preset key, so once a choice is made the old key can never
     /// pull the pane back to a previous service.
     @Test func theStoredChoiceBeatsTheLegacyProviderKey() {
-        _ = SettingsStore.selectService(ServicePreset.moonshot.id, currentModel: "", in: defaults)
+        _ = SettingsStore.selectService(ServicePreset.openRouter.id, currentModel: "", in: defaults)
         defaults.set("claudeCode", forKey: SettingsStore.providerKey)
-        #expect(SettingsStore.serviceID(in: defaults) == ServicePreset.moonshot.id)
+        #expect(SettingsStore.serviceID(in: defaults) == ServicePreset.openRouter.id)
     }
 
     /// The model name each service starts as the first time it is chosen: a vendor's default model, and
@@ -225,7 +206,7 @@ struct ServiceModelOptionsTests {
     @Test func everyServiceNamesItsDefaultModel() {
         #expect(ServiceChoice.preset(.custom).defaultModel.isEmpty)
         #expect(ServiceChoice.preset(.deepSeek).defaultModel == "deepseek-chat")
-        #expect(ServiceChoice.preset(.moonshot).defaultModel == "kimi-k3")
+        #expect(ServiceChoice.preset(.openRouter).defaultModel == "openrouter/auto")
         #expect(ServiceChoice.agent(.claudeCode).defaultModel.isEmpty)
         #expect(ServiceChoice.agent(.codexCLI).defaultModel.isEmpty)
     }
@@ -251,24 +232,24 @@ struct ServiceModelOptionsTests {
     /// A switch files the text under the service it was typed for — the outgoing one, not the newly
     /// selected — so switching back restores it instead of losing it to the new service's slot.
     @Test func switchingServicesRemembersAndRestoresTheModelName() {
-        let toMoonshot = SettingsStore.selectService(
-            ServicePreset.moonshot.id, currentModel: "gpt-6-sol", in: defaults)
-        #expect(toMoonshot == "kimi-k3")
+        let toOpenRouter = SettingsStore.selectService(
+            ServicePreset.openRouter.id, currentModel: "gpt-6-sol", in: defaults)
+        #expect(toOpenRouter == "openrouter/auto")
         #expect(SettingsStore.model(forService: ServicePreset.customID, in: defaults) == "gpt-6-sol")
-        #expect(SettingsStore.model(forService: ServicePreset.moonshot.id, in: defaults) == nil)
+        #expect(SettingsStore.model(forService: ServicePreset.openRouter.id, in: defaults) == nil)
 
-        // A name typed for Moonshot is not stored under the service now selected.
+        // A name typed for OpenRouter is not stored under the service now selected.
         let toAgent = SettingsStore.selectService(
-            Provider.claudeCode.rawValue, currentModel: "kimi-k3", in: defaults)
+            Provider.claudeCode.rawValue, currentModel: "openrouter/auto", in: defaults)
         #expect(toAgent.isEmpty)
-        #expect(SettingsStore.model(forService: ServicePreset.moonshot.id, in: defaults) == "kimi-k3")
+        #expect(SettingsStore.model(forService: ServicePreset.openRouter.id, in: defaults) == "openrouter/auto")
         #expect(SettingsStore.model(forService: "claudeCode", in: defaults) == nil)
 
         // Switching back restores the name rather than falling back to the default.
         let back = SettingsStore.selectService(
             ServicePreset.customID, currentModel: "", in: defaults)
         #expect(back == "gpt-6-sol")
-        // Moonshot's own default does not follow the user across services.
-        #expect(SettingsStore.model(forService: ServicePreset.moonshot.id, in: defaults) == "kimi-k3")
+        // OpenRouter's own default does not follow the user across services.
+        #expect(SettingsStore.model(forService: ServicePreset.openRouter.id, in: defaults) == "openrouter/auto")
     }
 }

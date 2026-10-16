@@ -45,6 +45,8 @@ struct ModelRequest: Sendable, Equatable {
     var turns: [ModelTurn]
     var format: ModelResponseFormat
     var effort: EffortLevel
+    /// A value the user typed in place of a level; every backend sends it verbatim and maps nothing.
+    var customEffort: String? = nil
     /// What the provider said the chosen model accepts, when it said anything: the effort switch takes
     /// the nearest lower level in this list, and no level at all when the list is empty.
     var supportedEfforts: [EffortLevel]? = nil
@@ -64,19 +66,15 @@ struct OpenAICompatibleBackend: ModelBackend {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
 
     func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
-        guard let body = try? Self.body(for: request, config: config) else {
-            return "(the request body is unreadable)"
-        }
-        return Self.prettyPrinted(body)
+        HTTPBackend.describe { try Self.body(for: request, config: config) }
     }
 
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
-        var urlRequest = URLRequest(url: config.baseURL.appending(path: "chat/completions"))
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.httpBody = try Self.body(for: request, config: config)
-        return try Self.content(from: try await send(urlRequest))
+        let body = try Self.body(for: request, config: config)
+        let urlRequest = HTTPBackend.post(
+            config.baseURL.appending(path: "chat/completions"), body: body,
+            headers: ["Authorization": "Bearer \(config.apiKey)"])
+        return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
     /// The chat body as the service receives it. Kept separate from sending, so the wire shape is
@@ -87,25 +85,13 @@ struct OpenAICompatibleBackend: ModelBackend {
             "messages": messages(for: request),
             "response_format": responseFormat(request.format),
         ]
-        // Automatic sends no effort parameter at all, and a local agent maps the level to its own switch
-        // rather than to this OpenAI-style field.
-        if config.provider.localAgent == nil,
-            let value = ModelEffort.reasoningEffort(for: request.effort, model: request.model)
+        // Automatic sends no effort parameter at all.
+        if let value = request.customEffort
+            ?? ModelEffort.reasoningEffort(for: request.effort, model: request.model)
         {
             body["reasoning_effort"] = value
         }
         return try JSONSerialization.data(withJSONObject: body)
-    }
-
-    /// The body as sent, so the debug page shows the real request instead of a reconstruction. The API
-    /// key is a header, so it is not included.
-    static func prettyPrinted(_ body: Data) -> String {
-        guard let object = try? JSONSerialization.jsonObject(with: body),
-            let pretty = try? JSONSerialization.data(
-                withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
-            let text = String(data: pretty, encoding: .utf8)
-        else { return "(the request body is unreadable)" }
-        return text
     }
 
     /// Decodes the provider envelope and applies the shared truncation and content-policy rules before
@@ -122,35 +108,9 @@ struct OpenAICompatibleBackend: ModelBackend {
         return content
     }
 
-    /// Sends one request to the service; `listModels` uses this too.
-    func send(_ request: URLRequest) async throws -> Data {
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await transport(request)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
-        } catch {
-            throw ModelError.network(error.localizedDescription)
-        }
-        if let http = response as? HTTPURLResponse {
-            if http.statusCode == 401 || http.statusCode == 403 { throw ModelError.unauthorized }
-            if !(200..<300).contains(http.statusCode) { throw ModelError.http(http.statusCode) }
-        }
-        return data
-    }
-
     private static func messages(for request: ModelRequest) -> [[String: String]] {
-        var messages: [[String: String]] = [["role": "system", "content": request.system]]
-        for turn in request.turns {
-            switch turn {
-            case .user(let text): messages.append(["role": "user", "content": text])
-            case .assistant(let text): messages.append(["role": "assistant", "content": text])
-            }
-        }
-        return messages
+        [["role": "system", "content": request.system]]
+            + HTTPBackend.roles(request.turns).map { ["role": $0.role, "content": $0.text] }
     }
 
     private static func responseFormat(_ format: ModelResponseFormat) -> [String: Any] {
@@ -183,9 +143,312 @@ struct LocalAgentBackend: ModelBackend {
 }
 
 extension Provider {
-    /// The backend that runs one request for this provider: a CLI for a local agent, HTTP otherwise.
+    /// The backend that speaks this provider's protocol: one HTTP wire shape each, or a CLI.
     func backend(transport: @escaping Transport, agent: LocalAgent) -> any ModelBackend {
-        guard let kind = localAgent else { return OpenAICompatibleBackend(transport: transport) }
-        return LocalAgentBackend(kind: kind, agent: agent)
+        switch self {
+        case .openAICompatible: OpenAICompatibleBackend(transport: transport)
+        case .openAIResponses: OpenAIResponsesBackend(transport: transport)
+        case .anthropic: AnthropicBackend(transport: transport)
+        case .gemini: GeminiBackend(transport: transport)
+        case .claudeCode: LocalAgentBackend(kind: .claudeCode, agent: agent)
+        case .codexCLI: LocalAgentBackend(kind: .codexCLI, agent: agent)
+        }
+    }
+}
+
+/// What every HTTP protocol shares: posting a JSON body, the status codes, and showing the body on the
+/// debug page. The wire shapes differ; this part does not.
+enum HTTPBackend {
+    static func post(_ url: URL, body: Data, headers: [String: String]) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        for (field, value) in headers { request.setValue(value, forHTTPHeaderField: field) }
+        request.httpBody = body
+        return request
+    }
+
+    /// Sends one request; a failure becomes the `ModelError` the UI shows, a cancellation stays one.
+    static func send(_ request: URLRequest, transport: Transport) async throws -> Data {
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await transport(request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw ModelError.network(error.localizedDescription)
+        }
+        if let http = response as? HTTPURLResponse {
+            if http.statusCode == 401 || http.statusCode == 403 { throw ModelError.unauthorized }
+            if !(200..<300).contains(http.statusCode) { throw ModelError.http(http.statusCode) }
+        }
+        return data
+    }
+
+    /// The body as sent, so the debug page shows the real request instead of a reconstruction. The API
+    /// key is a header, so it is not included.
+    static func describe(_ body: () throws -> Data) -> String {
+        guard let data = try? body(), let object = try? JSONSerialization.jsonObject(with: data),
+            let pretty = try? JSONSerialization.data(
+                withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+            let text = String(data: pretty, encoding: .utf8)
+        else { return "(the request body is unreadable)" }
+        return text
+    }
+
+    /// The turns as role/text pairs, which is the shape every HTTP protocol starts from.
+    static func roles(_ turns: [ModelTurn], assistant: String = "assistant") -> [(role: String, text: String)] {
+        turns.map {
+            switch $0 {
+            case .user(let text): ("user", text)
+            case .assistant(let text): (assistant, text)
+            }
+        }
+    }
+}
+
+/// The Anthropic Messages API. The schema goes in `output_config.format`, which has no `json_object`
+/// mode: without a schema the shape travels in the system prompt alone.
+struct AnthropicBackend: ModelBackend {
+    var transport: Transport = { try await URLSession.shared.data(for: $0) }
+
+    static let apiVersion = "2023-06-01"
+    /// The API requires a ceiling. This one leaves room for the longest learning reply while keeping a
+    /// non-streaming request well inside the HTTP timeout.
+    static let maxTokens = 16000
+
+    /// Thinking cannot be switched off on current Claude models, so Off is the lowest level, as for the
+    /// local agents.
+    static let effortValues: [EffortLevel: String] = [
+        .off: "low", .low: "low", .medium: "medium", .high: "high", .max: "max",
+    ]
+
+    func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
+        HTTPBackend.describe { try Self.body(for: request) }
+    }
+
+    func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
+        let urlRequest = HTTPBackend.post(
+            config.baseURL.appending(path: "messages"), body: try Self.body(for: request),
+            headers: ["x-api-key": config.apiKey, "anthropic-version": Self.apiVersion])
+        return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
+    }
+
+    static func body(for request: ModelRequest) throws -> Data {
+        var output: [String: Any] = [:]
+        if case .jsonSchema(_, let schema) = request.format {
+            output["format"] = [
+                "type": "json_schema", "schema": try JSONSerialization.jsonObject(with: schema),
+            ]
+        }
+        output["effort"] = request.customEffort ?? effortValues[request.effort]
+        var body: [String: Any] = [
+            "model": request.model,
+            "max_tokens": maxTokens,
+            "system": request.system,
+            "messages": HTTPBackend.roles(request.turns).map { ["role": $0.role, "content": $0.text] },
+        ]
+        if !output.isEmpty { body["output_config"] = output }
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+
+    static func content(from data: Data) throws -> String {
+        let reply = try? JSONDecoder().decode(Reply.self, from: data)
+        if reply?.stopReason == "max_tokens" { throw ModelError.truncated }
+        if reply?.stopReason == "refusal" { throw ModelError.refused }
+        let text = (reply?.content ?? []).filter { $0.type == "text" }.compactMap(\.text).joined()
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ModelError.emptyResponse
+        }
+        return text
+    }
+
+    private struct Reply: Decodable {
+        struct Block: Decodable {
+            var type: String
+            var text: String?
+        }
+        var content: [Block]
+        var stopReason: String?
+
+        enum CodingKeys: String, CodingKey {
+            case content
+            case stopReason = "stop_reason"
+        }
+    }
+}
+
+/// The OpenAI Responses API. Same effort vocabulary as Chat Completions, so the same per-model table
+/// applies; the envelope and the field names differ.
+struct OpenAIResponsesBackend: ModelBackend {
+    var transport: Transport = { try await URLSession.shared.data(for: $0) }
+
+    func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
+        HTTPBackend.describe { try Self.body(for: request) }
+    }
+
+    func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
+        let urlRequest = HTTPBackend.post(
+            config.baseURL.appending(path: "responses"), body: try Self.body(for: request),
+            headers: ["Authorization": "Bearer \(config.apiKey)"])
+        return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
+    }
+
+    static func body(for request: ModelRequest) throws -> Data {
+        let format: [String: Any]
+        switch request.format {
+        case .jsonObject:
+            format = ["type": "json_object"]
+        case .jsonSchema(let name, let schema):
+            format = [
+                "type": "json_schema", "name": name, "strict": true,
+                "schema": try JSONSerialization.jsonObject(with: schema),
+            ]
+        }
+        var body: [String: Any] = [
+            "model": request.model,
+            "instructions": request.system,
+            "input": HTTPBackend.roles(request.turns).map { ["role": $0.role, "content": $0.text] },
+            "text": ["format": format],
+            // The user's text has no reason to outlive the request on the vendor's side.
+            "store": false,
+        ]
+        if let value = request.customEffort
+            ?? ModelEffort.reasoningEffort(for: request.effort, model: request.model)
+        {
+            body["reasoning"] = ["effort": value]
+        }
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+
+    /// `output_text` is an SDK convenience, so the text is read from the message items themselves.
+    static func content(from data: Data) throws -> String {
+        let reply = try? JSONDecoder().decode(Reply.self, from: data)
+        switch reply?.incompleteDetails?.reason {
+        case "max_output_tokens": throw ModelError.truncated
+        case "content_filter": throw ModelError.refused
+        default: break
+        }
+        let parts = (reply?.output ?? []).filter { $0.type == "message" }.flatMap { $0.content ?? [] }
+        if parts.contains(where: { $0.type == "refusal" }) { throw ModelError.refused }
+        let text = parts.filter { $0.type == "output_text" }.compactMap(\.text).joined()
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ModelError.emptyResponse
+        }
+        return text
+    }
+
+    private struct Reply: Decodable {
+        struct Item: Decodable {
+            struct Part: Decodable {
+                var type: String
+                var text: String?
+            }
+            var type: String
+            var content: [Part]?
+        }
+        struct Incomplete: Decodable { var reason: String? }
+        var output: [Item]
+        var incompleteDetails: Incomplete?
+
+        enum CodingKeys: String, CodingKey {
+            case output
+            case incompleteDetails = "incomplete_details"
+        }
+    }
+}
+
+/// The Gemini API's `generateContent`. The schema goes in `responseJsonSchema`, and without one the
+/// reply is still asked for as JSON, which is Gemini's `json_object`.
+struct GeminiBackend: ModelBackend {
+    var transport: Transport = { try await URLSession.shared.data(for: $0) }
+
+    func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
+        HTTPBackend.describe { try Self.body(for: request) }
+    }
+
+    func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
+        let urlRequest = HTTPBackend.post(
+            config.baseURL.appending(path: "models/\(request.model):generateContent"),
+            body: try Self.body(for: request), headers: ["x-goog-api-key": config.apiKey])
+        return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
+    }
+
+    static func body(for request: ModelRequest) throws -> Data {
+        var generation: [String: Any] = ["responseMimeType": "application/json"]
+        if case .jsonSchema(_, let schema) = request.format {
+            generation["responseJsonSchema"] = try JSONSerialization.jsonObject(with: schema)
+        }
+        if let level = request.customEffort ?? thinkingLevel(for: request.effort, model: request.model) {
+            generation["thinkingConfig"] = ["thinkingLevel": level]
+        }
+        let body: [String: Any] = [
+            "systemInstruction": ["parts": [["text": request.system]]],
+            "contents": HTTPBackend.roles(request.turns, assistant: "model").map {
+                ["role": $0.role, "parts": [["text": $0.text]]]
+            },
+            "generationConfig": generation,
+        ]
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+
+    /// `thinkingLevel` exists from Gemini 3 on and is an error on earlier models, so those get nothing.
+    /// Which levels a model takes varies, and an unsupported one is a 400, so each family maps to what
+    /// its documentation lists; none of them can switch thinking off entirely.
+    // ponytail: prefix table like ModelEffort; read `thinking` from GET /models if the families multiply.
+    static func thinkingLevel(for level: EffortLevel, model: String) -> String? {
+        guard level != .automatic else { return nil }
+        let id = model.lowercased().replacingOccurrences(of: "models/", with: "")
+        let table: [EffortLevel: String]
+        if id.hasPrefix("gemini-3-flash") {
+            table = [.off: "MINIMAL", .low: "LOW", .medium: "MEDIUM", .high: "HIGH", .max: "HIGH"]
+        } else if id.hasPrefix("gemini-3") || id.hasPrefix("gemini-4") {
+            // The pro families take only low and high, and an unsupported level is a 400, so a level
+            // they lack falls back rather than being sent.
+            table =
+                id.contains("-pro")
+                ? [.off: "LOW", .low: "LOW", .medium: "LOW", .high: "HIGH", .max: "HIGH"]
+                : [.off: "LOW", .low: "LOW", .medium: "MEDIUM", .high: "HIGH", .max: "HIGH"]
+        } else {
+            return nil
+        }
+        return table[level]
+    }
+
+    static func content(from data: Data) throws -> String {
+        let reply = try? JSONDecoder().decode(Reply.self, from: data)
+        if reply?.promptFeedback?.blockReason != nil { throw ModelError.refused }
+        let candidate = reply?.candidates?.first
+        switch candidate?.finishReason {
+        case nil, "STOP", "FINISH_REASON_UNSPECIFIED": break
+        case "MAX_TOKENS", "CONTINUATION": throw ModelError.truncated
+        default: throw ModelError.refused
+        }
+        let text = (candidate?.content?.parts ?? []).filter { $0.thought != true }.compactMap(\.text)
+            .joined()
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ModelError.emptyResponse
+        }
+        return text
+    }
+
+    private struct Reply: Decodable {
+        struct Candidate: Decodable {
+            struct Content: Decodable {
+                struct Part: Decodable {
+                    var text: String?
+                    var thought: Bool?
+                }
+                var parts: [Part]?
+            }
+            var content: Content?
+            var finishReason: String?
+        }
+        struct Feedback: Decodable { var blockReason: String? }
+        var candidates: [Candidate]?
+        var promptFeedback: Feedback?
     }
 }

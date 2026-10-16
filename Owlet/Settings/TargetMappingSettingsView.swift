@@ -53,7 +53,7 @@ struct TargetMappingSettingsView: View {
                         Toggle(option.name, isOn: nativeBinding(option.tag))
                     }
                 } label: {
-                    Text(nativeSummary)
+                    Text(nativeSummary).pullDownLabelInset()
                 }
             } label: {
                 HStack(spacing: 4) {

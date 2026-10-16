@@ -13,7 +13,8 @@ struct ModelSettingsPane: View {
     @State private var serviceID = ServicePreset.customID
     @AppStorage(SettingsStore.baseURLKey) private var baseURL = ""
     @AppStorage(SettingsStore.modelKey) private var model = ""
-    @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.off
+    /// A level's raw value, or a value the user typed (`SettingsStore.customEffort`).
+    @AppStorage(SettingsStore.effortKey) private var effort = EffortLevel.off.rawValue
     /// The key is only read back from the Keychain, never stored in defaults, so it is a draft that
     /// commits when the field is done.
     @State private var apiKey = ""
@@ -25,14 +26,43 @@ struct ModelSettingsPane: View {
     /// that is not installed is not offered at all.
     @State private var installed: Set<Provider> = []
     @State private var scanned = false
-    @State private var models: Models = .idle
+    /// The models the last successful read produced. Kept through a reading or a failure, so the
+    /// Presets menu never empties out from under the user mid-request.
+    @State private var offered: [ModelOption] = []
+    /// Why the last model-list read failed; a successful one clears it.
+    @State private var listFailure: String?
     @FocusState private var editingKey: Bool
+    @FocusState private var editingBaseURL: Bool
+    @State private var check: Check = .idle
 
-    enum Models: Equatable {
-        case idle, loading
-        case loaded([ModelOption])
-        case failed(String)
+    /// Model lists and the Test button go through this client, so a preview can answer with fixtures.
+    private let client: ModelClient
+    /// Reads a service's key; injectable so a preview never touches the real keychain.
+    private let readKey: (String) -> String?
+
+    /// `check` lets the preview show a test result; the app always starts with none.
+    init(
+        promptFocus: Binding<Operation?>, client: ModelClient = ModelClient(),
+        readKey: @escaping (String) -> String? = { SettingsStore.apiKey(account: $0) },
+        check: Check = .idle
+    ) {
+        _promptFocus = promptFocus
+        self.client = client
+        self.readKey = readKey
+        _check = State(initialValue: check)
     }
+
+    /// The Test button's last run: the model's reply and how long it took, or why it failed.
+    enum Check: Equatable {
+        case idle, running
+        case passed(reply: String, seconds: Double)
+        /// No time when nothing was sent, because the settings are incomplete.
+        case failed(String, seconds: Double?)
+    }
+
+    /// The first line of the Classic of Poetry's 蒹葭, the same text the website shows: short, and in a
+    /// language few targets share, so a reply proves the model really translated.
+    static let testSentence = "蒹葭蒼蒼，白露為霜。"
 
     /// What the last lookup found. A failure leaves the saved path alone: a path the user picked by
     /// hand is better than nothing just because the lookup could not run.
@@ -52,10 +82,13 @@ struct ModelSettingsPane: View {
         Form {
             Section {
                 Picker(L10n.shared.string("Provider"), selection: serviceSelection) {
-                    // Two sections, so the menu separates the remote services from the local agents. An
-                    // empty group is left out rather than showing a separator with nothing under it.
+                    // Three sections: protocols, then named vendors, then local agents. An empty group is
+                    // left out rather than showing a separator with nothing under it.
                     Section {
-                        ForEach(ServicePreset.all) { presetRow($0) }
+                        ForEach(ServicePreset.protocols) { presetRow($0) }
+                    }
+                    Section {
+                        ForEach(ServicePreset.vendors) { presetRow($0) }
                     }
                     if !agentProviders.isEmpty {
                         Section {
@@ -69,7 +102,13 @@ struct ModelSettingsPane: View {
                     // Verbatim, or the placeholder URL renders as a link.
                     TextField(
                         L10n.shared.string("Base URL"), text: $baseURL,
-                        prompt: Text(verbatim: "https://api.openai.com/v1"))
+                        prompt: Text(verbatim: "https://api.openai.com/v1")
+                    )
+                    .focused($editingBaseURL)
+                    .onSubmit(loadModels)
+                    .onChange(of: editingBaseURL) { _, editing in
+                        if !editing { loadModels() }
+                    }
                     SecureField(L10n.shared.string("API Key"), text: $apiKey, prompt: Text(L10n.shared.string("sk-…")))
                         .focused($editingKey)
                         .onSubmit(commitKey)
@@ -84,13 +123,10 @@ struct ModelSettingsPane: View {
             }
             Section(L10n.shared.string("Model")) {
                 modelField
-                modelStatus
-                Picker(L10n.shared.string("Reasoning Effort"), selection: $effort) {
-                    ForEach(EffortLevel.allCases, id: \.self) {
-                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
-                    }
-                }
+                effortField
                 effortSupport
+                testRows
+                modelError
             }
             PromptSettingsView(promptFocus: $promptFocus)
         }
@@ -123,8 +159,13 @@ struct ModelSettingsPane: View {
         guard id != serviceID, let chosen = ServiceChoice.choice(id: id) else { return }
         model = SettingsStore.selectService(id, currentModel: model)
         serviceID = id
-        if let url = chosen.preset?.baseURL { baseURL = url }
+        // The store restored this service's own address, or its preset's.
+        baseURL = UserDefaults.standard.string(forKey: SettingsStore.baseURLKey) ?? baseURL
         apiKey = currentAPIKey
+        check = .idle
+        // The outgoing service's list is not this one's, and neither is its failure.
+        offered = []
+        listFailure = nil
         agentExecutable = chosen.isLocalAgent ? (SettingsStore.agentPath(for: chosen.provider) ?? "") : ""
         agent = .idle
         // Choosing an agent looks for it right away, so the row is filled in without pressing anything.
@@ -135,7 +176,7 @@ struct ModelSettingsPane: View {
     /// The key for the service now selected; a local agent has none.
     private var currentAPIKey: String {
         guard let account = choice.keychainAccount else { return "" }
-        return SettingsStore.apiKey(account: account) ?? ""
+        return readKey(account) ?? ""
     }
 
     private func presetRow(_ preset: ServicePreset) -> some View {
@@ -284,41 +325,30 @@ struct ModelSettingsPane: View {
         agent = .idle
     }
 
-    @ViewBuilder private var modelField: some View {
-        if listsRemoteModels {
-            // The row keeps the same control whatever the list is doing, instead of turning the name
-            // into a loading field.
-            Picker(L10n.shared.string("Model Name"), selection: $model) {
-                ForEach(modelOptions, id: \.self) { Text(verbatim: $0.label).tag($0.id) }
+    /// The field takes any name, and the menu beside it lists what the service offers, so a name the
+    /// list does not carry is still usable. Empty means the agent's own default for a local agent.
+    private var modelField: some View {
+        LabeledContent(L10n.shared.string("Model Name")) {
+            HStack(spacing: 8) {
+                TextField(L10n.shared.string("Model Name"), text: $model, prompt: Text(modelPrompt))
+                    .labelsHidden()
+                presetMenu(listedModels) { model = $0 }
             }
-        } else if listsModels {
-            // An agent whose list this app can read gets the same picker as the HTTP services, with its
-            // own default as a real first choice.
-            Picker(L10n.shared.string("Model Name"), selection: $model) {
-                ForEach(agentModelOptions, id: \.self) { modelRow($0) }
-            }
-        } else {
-            TextField(
-                L10n.shared.string("Model Name"), text: $model, prompt: Text(modelPrompt))
         }
     }
 
-    /// Whether the chosen vendor's own `GET /models` turns the model field into a picker.
-    private var listsRemoteModels: Bool { (preset?.listsModels ?? false) && !provider.isLocalAgent }
-
-    /// Whether the model name is a picker, from what the agent can offer and what the last read made of
-    /// it. A command source always gets one: it answers on demand, so the saved name is a real option
-    /// even before the answer. A cached catalog only gets one once it really produced a list, and
-    /// otherwise keeps the free-form field — an empty picker would read as "this agent has no models"
-    /// when the truth is that nothing could be read.
-    private var listsModels: Bool { Self.listsModels(provider.localAgent?.modelSource, models: models) }
-
-    static func listsModels(_ source: LocalAgentKind.ModelSource?, models: Models) -> Bool {
-        guard let source else { return false }
-        if source.emptyAnswerIsFinal { return true }
-        guard case .loaded(let options) = models else { return false }
-        return !options.isEmpty
+    /// The preset values one row offers, behind a plain button so the field itself stays free-form.
+    private func presetMenu(_ values: [String], choose: @escaping (String) -> Void) -> some View {
+        Menu(L10n.shared.string("Presets")) {
+            ForEach(values, id: \.self) { value in
+                Button(value) { choose(value) }
+            }
+        }
+        .disabled(values.isEmpty)
+        .fixedSize()
     }
+
+    private var listedModels: [String] { offered.map(\.id) }
 
     private var modelPrompt: String {
         provider.isLocalAgent
@@ -326,28 +356,30 @@ struct ModelSettingsPane: View {
             : L10n.shared.string("Enter the model name the provider gives you")
     }
 
-    /// The agent's own default comes first: leaving the model empty is a real choice for a CLI that
-    /// picks its own model, not an omission.
-    private var agentModelOptions: [ModelOption] { [ModelOption(id: "")] + modelOptions }
-
-    @ViewBuilder private func modelRow(_ option: ModelOption) -> some View {
-        if option.id.isEmpty {
-            Text(L10n.shared.string("The agent's own default")).tag("")
-        } else {
-            Text(verbatim: option.label).tag(option.id)
+    /// The effort row takes a raw value by name or any other value typed in, which is sent verbatim.
+    /// The field holds the value itself rather than its title, so what is shown is what is sent.
+    private var effortField: some View {
+        LabeledContent(L10n.shared.string("Reasoning Effort")) {
+            HStack(spacing: 8) {
+                TextField(
+                    L10n.shared.string("Reasoning Effort"),
+                    text: Binding(
+                        get: { effort },
+                        set: { effort = Self.storedEffort(typed: $0) })
+                )
+                .labelsHidden()
+                presetMenu(EffortLevel.allCases.map(\.rawValue)) { effort = $0 }
+            }
         }
     }
 
-    private var modelOptions: [ModelOption] { Self.modelOptions(for: models, model: model) }
-
-    /// What the picker offers: the last list that loaded, plus the saved model so a name the list no
-    /// longer offers stays selectable. Before the first list arrives that is just the saved name.
-    static func modelOptions(for models: Models, model: String) -> [ModelOption] {
-        guard case .loaded(let options) = models else {
-            return model.isEmpty ? [] : [ModelOption(id: model)]
-        }
-        return model.isEmpty || options.contains { $0.id == model }
-            ? options : [ModelOption(id: model)] + options
+    /// A raw value names its level however it is capitalized; empty is Automatic; anything else is kept
+    /// as typed, for a level a newer model adds (`xhigh`, say).
+    static func storedEffort(typed: String) -> String {
+        let text = typed.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return EffortLevel.automatic.rawValue }
+        return EffortLevel.allCases.first { $0.rawValue.caseInsensitiveCompare(text) == .orderedSame }
+            .map(\.rawValue) ?? text
     }
 
     /// What the selected agent model said it accepts, next to the model it belongs to (E2). The value
@@ -374,18 +406,88 @@ struct ModelSettingsPane: View {
         return SettingsStore.supportedEfforts(for: provider, model: model)
     }
 
-    /// The failure sits under the control rather than replacing it, so a bad key never changes what
-    /// the model row is.
-    @ViewBuilder private var modelStatus: some View {
-        if case .failed(let message) = models {
-            // As everywhere else: a red message and a plain retry.
-            HStack(spacing: 8) {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
-                Spacer(minLength: 0)
-                Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise") { loadModels() }
-                    .buttonStyle(.plain)
+    /// The button carries the state — running, passed or failed, with the time it took — and a passed
+    /// reply gets a line of its own below, where a long one has room.
+    @ViewBuilder private var testRows: some View {
+        Button(action: test) {
+            Label {
+                Text(verbatim: testTitle)
+            } icon: {
+                switch check {
+                case .idle: Image(systemName: "bolt.horizontal")
+                case .running: ProgressView().controlSize(.small)
+                case .passed: Image(systemName: "checkmark.circle")
+                case .failed: Image(systemName: "exclamationmark.triangle").foregroundStyle(.red)
+                }
             }
+        }
+        .disabled(check == .running)
+        if case .passed(let reply, _) = check {
+            Text(verbatim: reply).foregroundStyle(.secondary).textSelection(.enabled)
+        }
+    }
+
+    /// Every model failure shows here and nowhere else: reading the list and pressing Test fail for the
+    /// same reasons, so one message serves both instead of the same text appearing twice. The failure
+    /// sits under the controls rather than replacing them, so a bad key never changes what a row is.
+    @ViewBuilder private var modelError: some View {
+        if case .failed(let message, _) = check {
+            errorRow(message, retry: test)
+        } else if let message = listFailure {
+            errorRow(message, retry: loadModels)
+        }
+    }
+
+    private func errorRow(_ message: String, retry: @escaping () -> Void) -> some View {
+        // As everywhere else: a red message and a plain retry, which repeats what just failed.
+        HStack(spacing: 8) {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+            Spacer(minLength: 0)
+            Button(L10n.shared.string("Retry"), systemImage: "arrow.clockwise", action: retry)
+                .buttonStyle(.plain)
+        }
+        .textSelection(.enabled)
+    }
+
+    /// "Test", with the time the last run took once there is one.
+    private var testTitle: String {
+        let title = L10n.shared.string("Test")
+        switch check {
+        case .passed(_, let seconds), .failed(_, .some(let seconds)):
+            return L10n.shared.string("%@ · %@", title, Self.duration(seconds))
+        case .idle, .running, .failed(_, nil):
+            return title
+        }
+    }
+
+    static func duration(_ seconds: Double) -> String { String(format: "%.2f s", seconds) }
+
+    /// Sends one short translation with exactly what is saved, through the same path a real request
+    /// takes, so a pass here means the panel will work too.
+    private func test() {
+        commitKey()
+        guard let config = SettingsStore.currentConfig() else {
+            check = .failed(L10n.shared.string("The model service is not configured"), seconds: nil)
+            return
+        }
+        check = .running
+        let target = SettingsStore.targetMapping().target(forSource: LanguageTag.key("zh-Hant"))
+        Task { check = await Self.runTest(config: config, target: target, client: client) }
+    }
+
+    /// The test itself, apart from the button, so the preview and the unit tests run the same request.
+    static func runTest(config: ServiceConfig, target: String, client: ModelClient) async -> Check {
+        let start = ContinuousClock.now
+        func elapsed() -> Double {
+            let duration = ContinuousClock.now - start
+            return Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+        }
+        do {
+            let reply = try await client.translate(testSentence, to: target, config: config)
+            return .passed(reply: reply, seconds: elapsed())
+        } catch {
+            return .failed((error as? ModelError)?.message ?? error.localizedDescription, seconds: elapsed())
         }
     }
 
@@ -396,39 +498,40 @@ struct ModelSettingsPane: View {
         loadModels()
     }
 
-    /// Reads the list a service can offer: a vendor's `GET /models` once a key is stored, or the list
-    /// the agent's own source gives once its executable is known. Services with neither stay free-form.
+    /// Reads the list a service can offer: its protocol's model list once an address and a key are
+    /// stored, or the list the agent's own source gives once its executable is known. Without one the
+    /// field still takes a typed name.
     private func loadModels() {
-        if listsRemoteModels {
-            guard let url = URL(string: baseURL), let account = choice.keychainAccount,
-                let key = SettingsStore.apiKey(account: account), !key.isEmpty
+        if !provider.isLocalAgent {
+            guard let url = URL(string: baseURL), url.scheme != nil, let account = choice.keychainAccount,
+                let key = readKey(account), !key.isEmpty
             else {
-                models = .idle
+                listFailure = nil
                 return
             }
-            models = .loading
             Task {
                 do {
-                    models = .loaded(
-                        try await ModelClient().listModels(baseURL: url, apiKey: key).map {
-                            ModelOption(id: $0)
-                        })
+                    offered = try await client.listModels(
+                        baseURL: url, apiKey: key, provider: provider
+                    ).map {
+                        ModelOption(id: $0)
+                    }
+                    listFailure = nil
                 } catch {
-                    models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
+                    listFailure = (error as? ModelError)?.message ?? error.localizedDescription
                 }
             }
             return
         }
         guard let kind = provider.localAgent else {
-            models = .idle
+            listFailure = nil
             return
         }
         let path = agentExecutable.isEmpty ? SettingsStore.agentPath(for: provider) : agentExecutable
         guard let path, FileManager.default.isExecutableFile(atPath: path) else {
-            models = .idle
+            listFailure = nil
             return
         }
-        models = .loading
         Task {
             do {
                 let options = try await LocalAgent.models(
@@ -439,9 +542,10 @@ struct ModelSettingsPane: View {
                         option.efforts, for: provider, model: option.id)
                 }
                 SettingsStore.setSupportedEfforts(nil, for: provider, model: "")
-                models = .loaded(options)
+                offered = options
+                listFailure = nil
             } catch {
-                models = .failed((error as? ModelError)?.message ?? error.localizedDescription)
+                listFailure = (error as? ModelError)?.message ?? error.localizedDescription
             }
         }
     }

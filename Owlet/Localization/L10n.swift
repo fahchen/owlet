@@ -41,6 +41,10 @@ final class L10n: @unchecked Sendable {
         revision &+= 1
     }
 
+    /// The language text is resolved in, for content the catalog does not hold: the default prompts
+    /// live in `ModelPrompts.json`, which is keyed by this.
+    var currentLanguage: String { lock.withLock { language } }
+
     /// The text for `key` in the current language, or the English source text when the catalog has no
     /// entry — so a gap shows up as English rather than as a raw key.
     func string(_ key: String) -> String {

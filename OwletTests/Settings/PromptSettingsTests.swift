@@ -38,6 +38,17 @@ struct PromptSettingsTests {
         #expect(SettingsStore.prompt(for: .translate, in: defaults) == DefaultPrompts.translate)
     }
 
+    /// A prompt that is still a shipped default is not an edit, whichever language it was shown in:
+    /// text left in the editor when the interface language changes must not pin the old language.
+    @Test func anotherLanguagesDefaultIsNotACustomPrompt() {
+        let texts = DefaultPrompts.shippedTexts(of: Operation.translate.rawValue)
+        #expect(texts.count == AppLanguage.supported.count)
+        let other = texts.first { $0 != DefaultPrompts.translate }
+        #expect(SettingsStore.setPrompt(other ?? "", for: .translate, in: defaults))
+        #expect(!SettingsStore.isCustomized(.translate, in: defaults))
+        #expect(SettingsStore.prompt(for: .translate, in: defaults) == DefaultPrompts.translate)
+    }
+
     /// Each editor commits on its own, so a blank one must not disturb the other operation.
     @Test func aRefusedBlankLeavesTheOtherOperationAlone() {
         #expect(SettingsStore.setPrompt("翻译2", for: .translate, in: defaults))

@@ -61,9 +61,36 @@ Feature: 自行配置模型服务
       And 换成还没记录过的服务商时用该服务商的默认，即 HTTP 服务用它的预设模型、本机 agent 留空表示用它自己的默认模型
       And 切换与恢复都与其他设置一样立即持久化
 
+    Scenario: 每个服务记住自己的地址
+      Given 用户把 Anthropic 的基础 URL 改成自己的转接地址
+      When 用户切到 DeepSeek 再切回 Anthropic
+      Then 基础 URL 恢复为用户改过的地址
+      And 还没改过地址的服务用它的预设地址
+
+    Scenario: 模型名既可从列表选也可手动输入
+      Given 用户已填好基础 URL 与 API Key
+      When 应用读到该服务的模型清单
+      Then 模型名是可自由输入的文本框，右边一个「预设」按钮下拉列出清单
+      And 用户可以从清单里选一个模型，也可以直接输入清单里没有的名字
+      And 读不到清单时输入框照常可用，且「预设」按钮不可用
+
+    Scenario: 测试当前配置
+      Given 用户填完服务、基础 URL、API Key 与模型名
+      When 用户点击测试
+      Then 应用用当前配置翻译《蒹葭》首句「蒹葭蒼蒼，白露為霜。」
+      And 按钮上显示状态：运行中、成功或失败，以及耗时
+      And 成功时模型返回的译文显示在按钮下方
+      And 配置不完整时提示补齐配置，不发出请求
+
+    Scenario: 模型相关的报错只在一处显示
+      Given 读取模型清单失败，或测试失败
+      Then 模型分组内只有一行错误提示，写明原因并带重试
+      And 同一个原因不在分组内第二次出现
+      And 其他分组里的失败（例如本机 agent 的可执行文件）仍留在自己的位置
+
     Scenario: 选择服务商预设
       Given 用户打开模型标签页
-      When 用户从服务列表选择 Moonshot / Kimi
+      When 用户从服务列表选择 OpenRouter
       Then 基础 URL 填成该服务公开的地址
       And 模型名填成该服务的默认模型
       And 用户仍可修改基础 URL 与模型名
@@ -73,6 +100,27 @@ Feature: 自行配置模型服务
       When 用户选择 OpenAI Compatible
       Then 基础 URL、模型名与 API Key 都由用户自己填写
       And 选择该入口不修改用户已填的地址与模型名
+
+    Scenario: 服务列表按协议、厂商预设、本地 agent 分三组
+      Given 用户打开模型标签页
+      When 用户展开服务列表
+      Then 第一组是协议：OpenAI Compatible、OpenAI Responses、Anthropic、Gemini
+      And 第二组是厂商预设：DeepSeek、OpenRouter、Ollama
+      And 第三组是本地 agent：Claude Code、Codex CLI
+
+    Scenario: 选择协议入口
+      When 用户从服务列表选择 Anthropic
+      Then 基础 URL 填成该协议方自己的地址
+      And 模型名由用户自己填写
+      And 用户仍可把基础 URL 改成任何说这种协议的服务
+      And 请求按该协议的路径、鉴权与请求体发送
+
+    Scenario: 每种协议都受同一份契约约束
+      Given 用户选择任一协议
+      When 模型回复被截断、被拒答或为空
+      Then 应用显示对应的失败，不写回结果
+      When 模型回复完整
+      Then 回复按同一份 JSON 契约在本地校验
 
     Scenario: 返回格式能力跟着所选服务走
       Given 用户选择只接受 json_object 的服务商
@@ -102,6 +150,17 @@ Feature: 自行配置模型服务
       When 用户编辑翻译 Prompt 并离开编辑框
       Then 后续翻译和翻译并替换使用该配置
       And 润色 Prompt 不受影响
+
+    Scenario: 未编辑过的 Prompt 跟随界面语言
+      Given 用户未修改翻译 System Prompt
+      When 用户切换界面语言
+      Then 编辑器显示该语言的默认翻译 Prompt，而不是上一次界面语言的那一份
+      And 切换语言这一下不算编辑：之后切回原语言显示原语言的默认 Prompt
+
+    Scenario: 已编辑过的 Prompt 不跟随界面语言
+      Given 用户编辑了翻译 Prompt 并离开编辑框
+      When 用户切换界面语言
+      Then 编辑器仍是用户写的那份内容
 
     Scenario: 恢复默认
       Given 用户已有自定义润色 Prompt
@@ -138,6 +197,20 @@ Feature: 自行配置模型服务
       When 当前模型支持该档位
       Then 请求发送该模型接受的值
       And 模型不支持该档位时发送最近的较低档
+
+    Scenario: 从列表或手填选择思考强度
+      Given 用户打开模型标签页
+      Then 思考强度是可自由输入的文本框，右边一个「预设」按钮下拉列出各档位的原始值 automatic／none／low／medium／high／max
+      And 值与发送的值一致，不随界面语言翻译
+      And 输入原始值（大小写不敏感）对应那一档，留空为沿用服务商默认
+
+    Scenario: 手动填写思考强度
+      Given 用户在思考强度框里输入列表之外的值，例如 xhigh
+      When 应用组装一次请求
+      Then 请求把该值原样放进该协议的思考强度参数
+      And 不按模型映射，也不替换成其他档位
+      When 用户清空思考强度框
+      Then 回到沿用服务商默认
 
     Scenario: 模型不使用思考强度
       Given 当前模型不接受推理参数

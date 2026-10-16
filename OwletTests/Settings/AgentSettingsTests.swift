@@ -146,9 +146,5 @@ struct AgentSettingsTests {
         // Both local agents take a schema on the command line.
         #expect(Provider.claudeCode.supportsJSONSchema)
         #expect(Provider.codexCLI.supportsJSONSchema)
-        // OpenAI compatible keeps the pre-provider "default" keychain account; the agents use their own.
-        #expect(Provider.openAICompatible.keychainAccount == "default")
-        #expect(Provider.claudeCode.keychainAccount == "claudeCode")
-        #expect(Provider.codexCLI.keychainAccount == "codexCLI")
     }
 }

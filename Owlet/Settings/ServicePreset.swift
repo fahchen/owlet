@@ -1,15 +1,16 @@
 import Foundation
 
-/// One service a user can pick instead of looking up its address and a model name. `Provider` says how
-/// the app reaches a service (the wire protocol, or one of the two local agents); a preset says which
-/// service it is and carries the one vendor difference worth knowing — whether it accepts a response
-/// schema (BDR-0015).
+/// One HTTP service a user can pick instead of looking up its address and a model name. `provider` says
+/// which wire protocol reaches it; the preset says which service it is and carries the one vendor
+/// difference worth knowing — whether it accepts a response schema (BDR-0015, BDR-0016).
 struct ServicePreset: Sendable, Hashable, Identifiable {
     /// Stable key. It names this service's model-memory slot (`service.model.<id>`) and, except for the
     /// custom entry, its keychain account, so the ids older installs already stored keep their meaning.
     let id: String
     /// The English source key for the name shown in the list.
     let title: String
+    /// The wire protocol this service speaks.
+    var provider: Provider = .openAICompatible
     /// The vendor's published base URL, or nil for OpenAI Compatible, where the address is the user's to type.
     let baseURL: String?
     /// The model filled in when the preset is chosen; empty means the user names one.
@@ -18,8 +19,6 @@ struct ServicePreset: Sendable, Hashable, Identifiable {
     /// vendor's own documentation shows that shape; everywhere else the response shape travels in the
     /// system prompt as `json_object`, which is the safe failure mode.
     let supportsJSONSchema: Bool
-    /// Whether the vendor's `GET /models` is read to turn the model field into a picker.
-    let listsModels: Bool
     /// The keychain account this service's key lives under; the custom entry keeps the pre-vendor
     /// "default" so an existing key still resolves.
     let keychainAccount: String
@@ -35,48 +34,48 @@ extension ServicePreset {
     /// why it stays first and keeps the protocol's own schema-capable default.
     static let custom = ServicePreset(
         id: customID, title: "OpenAI Compatible", baseURL: nil, defaultModel: "",
-        supportsJSONSchema: true, listsModels: false, keychainAccount: "default")
+        supportsJSONSchema: true, keychainAccount: "default")
+
+    /// One entry per further protocol, for any endpoint that speaks it. Each fills in the protocol
+    /// owner's own address, because the address field is shared and a vendor's would otherwise linger;
+    /// the model is the user's to name, as for the custom entry.
+    static let openAIResponses = ServicePreset(
+        id: "openAIResponses", title: "OpenAI Responses", provider: .openAIResponses,
+        baseURL: "https://api.openai.com/v1", defaultModel: "", supportsJSONSchema: true,
+        keychainAccount: "openAIResponses")
+    static let anthropic = ServicePreset(
+        id: "anthropic", title: "Anthropic", provider: .anthropic,
+        baseURL: "https://api.anthropic.com/v1", defaultModel: "", supportsJSONSchema: true,
+        keychainAccount: "anthropic")
+    static let gemini = ServicePreset(
+        id: "gemini", title: "Gemini", provider: .gemini,
+        baseURL: "https://generativelanguage.googleapis.com/v1beta", defaultModel: "",
+        supportsJSONSchema: true, keychainAccount: "gemini")
 
     /// The vendors, each with the base URL and default model its documentation publishes. Capabilities
     /// marked true were confirmed against that vendor's own documentation; the rest default to the
     /// safer `json_object` (BDR-0015 §3).
     static let deepSeek = ServicePreset(
         id: deepSeekID, title: "DeepSeek", baseURL: "https://api.deepseek.com",
-        defaultModel: "deepseek-chat", supportsJSONSchema: false, listsModels: true,
+        defaultModel: "deepseek-chat", supportsJSONSchema: false,
         keychainAccount: deepSeekID)
-    static let moonshot = ServicePreset(
-        id: "moonshot", title: "Moonshot / Kimi", baseURL: "https://api.moonshot.cn/v1",
-        defaultModel: "kimi-k3", supportsJSONSchema: true, listsModels: false,
-        keychainAccount: "moonshot")
-    static let zhipu = ServicePreset(
-        id: "zhipu", title: "Zhipu GLM", baseURL: "https://open.bigmodel.cn/api/paas/v4",
-        defaultModel: "glm-5.3", supportsJSONSchema: false, listsModels: false,
-        keychainAccount: "zhipu")
-    static let qwen = ServicePreset(
-        id: "qwen", title: "Qwen (DashScope)",
-        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        defaultModel: "qwen-plus", supportsJSONSchema: false, listsModels: false,
-        keychainAccount: "qwen")
-    static let xAI = ServicePreset(
-        id: "xAI", title: "xAI", baseURL: "https://api.x.ai/v1", defaultModel: "grok-4.7",
-        supportsJSONSchema: true, listsModels: false, keychainAccount: "xAI")
     static let openRouter = ServicePreset(
         id: "openRouter", title: "OpenRouter", baseURL: "https://openrouter.ai/api/v1",
-        defaultModel: "openrouter/auto", supportsJSONSchema: false, listsModels: false,
+        defaultModel: "openrouter/auto", supportsJSONSchema: false,
         keychainAccount: "openRouter")
     static let ollama = ServicePreset(
         id: "ollama", title: "Ollama (Local)", baseURL: "http://localhost:11434/v1",
-        defaultModel: "llama3.2", supportsJSONSchema: false, listsModels: false,
+        defaultModel: "llama3.2", supportsJSONSchema: false,
         keychainAccount: "ollama")
-    static let lmStudio = ServicePreset(
-        id: "lmStudio", title: "LM Studio (Local)", baseURL: "http://localhost:1234/v1",
-        defaultModel: "local-model", supportsJSONSchema: false, listsModels: false,
-        keychainAccount: "lmStudio")
 
-    /// The list the settings pane offers, in order: the custom entry first, then the vendors.
-    static let all: [ServicePreset] = [
-        custom, deepSeek, moonshot, zhipu, qwen, xAI, openRouter, ollama, lmStudio,
-    ]
+    /// The picker's first group: one entry per protocol, OpenAI Compatible first.
+    static let protocols: [ServicePreset] = [custom, openAIResponses, anthropic, gemini]
+
+    /// The picker's second group: only the most common services, one of each kind — a direct vendor,
+    /// an aggregator and a local runtime. Anything else goes through a protocol entry (BDR-0016 §6).
+    static let vendors: [ServicePreset] = [deepSeek, openRouter, ollama]
+
+    static let all = protocols + vendors
 
     static func preset(id: String) -> ServicePreset? { all.first { $0.id == id } }
 }
@@ -107,7 +106,7 @@ enum ServiceChoice: Sendable, Hashable {
 
     var provider: Provider {
         switch self {
-        case .preset: .openAICompatible
+        case .preset(let preset): preset.provider
         case .agent(let agent): agent
         }
     }

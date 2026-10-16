@@ -96,6 +96,7 @@ struct TextProcessingView: View {
                 Text(title)
                 Image(systemName: "chevron.up.chevron.down").imageScale(.small)
             }
+            .pullDownLabelInset()
         }
         .menuIndicator(.hidden)
         .fixedSize()

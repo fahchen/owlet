@@ -133,6 +133,7 @@ struct HistoryView: View {
                 .pickerStyle(.inline)
             } label: {
                 Label(L10n.shared.string("Filter by Type"), systemImage: "line.3.horizontal.decrease")
+                    .pullDownLabelInset()
             }
             .labelStyle(.iconOnly).hoverTip("Filter by Type")
         }

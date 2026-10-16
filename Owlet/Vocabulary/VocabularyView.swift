@@ -110,6 +110,7 @@ struct VocabularyView: View {
                 .pickerStyle(.inline)
             } label: {
                 Label(L10n.shared.string("Filter by Language"), systemImage: "line.3.horizontal.decrease")
+                    .pullDownLabelInset()
             }
             .labelStyle(.iconOnly).hoverTip("Filter by Language")
         }

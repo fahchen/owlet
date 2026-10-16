@@ -2,15 +2,17 @@ import Foundation
 import SwiftUI
 import Security
 
-/// How the app reaches a model over the wire: the OpenAI-compatible HTTP protocol, or one of the two
-/// local agent CLIs. Which *vendor* sits behind the HTTP protocol is `ServicePreset`, not this enum
-/// (BDR-0015).
+/// The protocol a request travels by: one HTTP wire shape each, or one of the two local agent CLIs.
+/// Which vendor sits behind an HTTP protocol is a `ServicePreset`, never a case here (BDR-0016).
 enum Provider: String, CaseIterable, Sendable {
-    case openAICompatible, claudeCode, codexCLI
+    case openAICompatible, openAIResponses, anthropic, gemini, claudeCode, codexCLI
 
     var title: LocalizedStringResource {
         switch self {
         case .openAICompatible: "OpenAI Compatible"
+        case .openAIResponses: "OpenAI Responses"
+        case .anthropic: "Anthropic"
+        case .gemini: "Gemini"
         case .claudeCode: "Claude Code"
         case .codexCLI: "Codex CLI"
         }
@@ -20,13 +22,10 @@ enum Provider: String, CaseIterable, Sendable {
     /// agents get it on the command line). A vendor that cannot overrides it on its `ServicePreset`.
     var supportsJSONSchema: Bool { true }
 
-    /// OpenAI compatible keeps the pre-provider "default" account so existing keys still resolve.
-    var keychainAccount: String { self == .openAICompatible ? "default" : rawValue }
-
     /// The CLI this provider drives, or nil when the provider is an HTTP service.
     var localAgent: LocalAgentKind? {
         switch self {
-        case .openAICompatible: nil
+        case .openAICompatible, .openAIResponses, .anthropic, .gemini: nil
         case .claudeCode: .claudeCode
         case .codexCLI: .codexCLI
         }
@@ -64,6 +63,8 @@ struct ServiceConfig: Sendable, Equatable {
     var apiKey: String
     var provider: Provider = .openAICompatible
     var effort: EffortLevel = .off
+    /// A typed effort value, sent as-is in place of the mapped level.
+    var customEffort: String? = nil
     /// Whether the chosen service can be handed a response schema. A vendor preset carries its own
     /// answer; nil keeps the wire protocol's default, which is what the custom entry and the two local
     /// agents use (BDR-0015 §3). `ModelClient` reads this to pick `.jsonSchema` or `.jsonObject`.
@@ -110,7 +111,8 @@ enum SettingsStore {
             else { return nil }
             return ServiceConfig(
                 baseURL: LocalAgent.unusedBaseURL, model: model, apiKey: "", provider: provider,
-                effort: effort(), supportedEfforts: supportedEfforts(for: provider, model: model),
+                effort: effort(), customEffort: customEffort(in: defaults),
+                supportedEfforts: supportedEfforts(for: provider, model: model),
                 agentExecutable: URL(fileURLWithPath: path),
                 agentFeatures: agentFeatures(for: provider, in: defaults),
                 agentOverrides: agentOverrides(for: provider, in: defaults))
@@ -124,7 +126,7 @@ enum SettingsStore {
         else { return nil }
         return ServiceConfig(
             baseURL: url, model: model, apiKey: key, provider: provider, effort: effort(),
-            supportsJSONSchema: choice.preset?.supportsJSONSchema)
+            customEffort: customEffort(in: defaults), supportsJSONSchema: choice.preset?.supportsJSONSchema)
     }
 
     /// The chosen service's id. A store written before presets existed names the same services under
@@ -147,18 +149,26 @@ enum SettingsStore {
         ServiceChoice.choice(id: serviceID(in: defaults)) ?? .preset(.custom)
     }
 
-    /// Chooses a service and returns the model name to show. The outgoing service keeps the text typed
-    /// for it; a vendor preset also writes its published address, and its model comes from this
-    /// service's slot or the preset's default. A local agent has no address, so only the choice and the
-    /// model name are written.
+    /// Chooses a service and returns the model name to show. The outgoing service keeps the address and
+    /// model typed for it; the incoming one gets back what it remembers, or else its preset's address
+    /// and default model. A local agent has no address, so only the choice and the model are written.
     @discardableResult
     static func selectService(
         _ id: String, currentModel: String, in defaults: UserDefaults = .standard
     ) -> String {
+        let outgoing = ServiceChoice.choice(id: serviceID(in: defaults))
         setModel(currentModel, forService: serviceID(in: defaults), in: defaults)
+        if outgoing?.isLocalAgent == false, let address = defaults.string(forKey: baseURLKey) {
+            defaults.set(address, forKey: rememberedBaseURLKey(forService: serviceID(in: defaults)))
+        }
         guard let choice = ServiceChoice.choice(id: id) else { return currentModel }
         defaults.set(id, forKey: serviceChoiceKey)
-        if let baseURL = choice.preset?.baseURL { defaults.set(baseURL, forKey: baseURLKey) }
+        // OpenAI Compatible with nothing remembered keeps whatever address is there, as it always did.
+        if let address = defaults.string(forKey: rememberedBaseURLKey(forService: id))
+            ?? choice.preset?.baseURL
+        {
+            defaults.set(address, forKey: baseURLKey)
+        }
         let resolved = model(forService: id, in: defaults) ?? choice.defaultModel
         defaults.set(resolved, forKey: modelKey)
         return resolved
@@ -170,6 +180,9 @@ enum SettingsStore {
     /// an older install wrote under `service.model.<provider>` stay valid because a vendor's id equals
     /// the provider name it used to have.
     static func rememberedModelKey(forService id: String) -> String { "service.model.\(id)" }
+
+    /// The address each HTTP service last used, so an edited preset address survives switching away.
+    static func rememberedBaseURLKey(forService id: String) -> String { "service.baseURL.\(id)" }
 
     /// What one service remembers; nil means it has never been chosen, and `ServiceChoice.defaultModel`
     /// then applies. An empty string is a remembered choice: a local agent's own default model.
@@ -320,6 +333,15 @@ extension SettingsStore {
     /// The saved Reasoning Effort, defaulting to Automatic so an untouched install keeps sending no effort parameter.
     static func effort(in defaults: UserDefaults = .standard) -> EffortLevel {
         defaults.string(forKey: effortKey).flatMap(EffortLevel.init) ?? .off
+    }
+
+    /// A value the user typed instead of picking a level. It goes out verbatim, so a level a newer
+    /// model adds (`xhigh`, say) is usable before the app knows it; nil when a known level is chosen.
+    static func customEffort(in defaults: UserDefaults = .standard) -> String? {
+        guard let stored = defaults.string(forKey: effortKey)?.trimmingCharacters(in: .whitespaces),
+            !stored.isEmpty, EffortLevel(rawValue: stored) == nil
+        else { return nil }
+        return stored
     }
 }
 
@@ -593,9 +615,10 @@ extension SettingsStore {
         _ text: String, for operation: Operation, in defaults: UserDefaults = .standard
     ) -> Bool {
         guard !isBlank(text) else { return false }
-        // A prompt equal to the default is stored as "no custom prompt", so the state stays Default even
-        // if the built-in prompts change in a later version.
-        if text == defaultPrompt(for: operation) {
+        // A prompt equal to a shipped default is stored as "no custom prompt", so the state stays
+        // Default even if the built-in prompts change in a later version. Every language counts: text
+        // left in the editor while the interface language changes is the old default, not an edit.
+        if DefaultPrompts.shippedTexts(of: operation.rawValue).contains(text) {
             defaults.removeObject(forKey: promptKey(for: operation))
         } else {
             defaults.set(text, forKey: promptKey(for: operation))
@@ -603,11 +626,11 @@ extension SettingsStore {
         return true
     }
 
-    /// Whether the persisted text differs from the built-in default. This is the storage rule the
+    /// Whether the persisted text differs from every shipped default. This is the storage rule the
     /// prompt editors commit by, not what the editor currently holds.
     static func isCustomized(_ operation: Operation, in defaults: UserDefaults = .standard) -> Bool {
         guard let saved = defaults.string(forKey: promptKey(for: operation)) else { return false }
-        return !isBlank(saved) && saved != defaultPrompt(for: operation)
+        return !isBlank(saved) && !DefaultPrompts.shippedTexts(of: operation.rawValue).contains(saved)
     }
 
     private static func isBlank(_ text: String) -> Bool {

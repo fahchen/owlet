@@ -35,16 +35,6 @@ enum LocalAgentKind: String, CaseIterable, Sendable {
         /// names and the fields are all this app's reading of a cache another program wrote, so any of
         /// them may be absent or change shape (BDR-0013 §9).
         case catalogFile
-
-        /// Whether an empty answer is itself the answer. A listing command always answers, so nothing
-        /// back means this agent has no models; a cache that yields nothing only means it could not be
-        /// read, and the settings row then stays free-form instead of showing an empty picker.
-        var emptyAnswerIsFinal: Bool {
-            switch self {
-            case .command: true
-            case .catalogFile: false
-            }
-        }
     }
 
     /// How this agent can enumerate models. Claude Code has no listing command: it only caches the
@@ -273,7 +263,7 @@ extension LocalAgent {
             writesSchemaFile: schema != nil && kind.schemaDelivery == .file,
             writesInstructionsFile: kind == .codexCLI, timeout: timeout)
         var arguments = arguments(
-            kind: kind, model: request.model, effort: request.effort,
+            kind: kind, model: request.model, effort: request.effort, custom: request.customEffort,
             supported: request.supportedEfforts, features: features, overrides: overrides,
             invocation: invocation)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
@@ -292,8 +282,8 @@ extension LocalAgent {
     }
 
     private static func arguments(
-        kind: LocalAgentKind, model: String, effort: EffortLevel, supported: [EffortLevel]?,
-        features: [String]?, overrides: [String]?, invocation: LocalAgentInvocation
+        kind: LocalAgentKind, model: String, effort: EffortLevel, custom: String?,
+        supported: [EffortLevel]?, features: [String]?, overrides: [String]?, invocation: LocalAgentInvocation
     ) -> [String] {
         var arguments: [String]
         switch kind {
@@ -338,7 +328,7 @@ extension LocalAgent {
             if invocation.schema != nil { arguments += ["--output-schema", invocation.schemaFile.path] }
         }
         if !model.isEmpty { arguments += ["--model", model] }
-        if let value = kind.effortValue(effort, supported: supported) {
+        if let value = custom ?? kind.effortValue(effort, supported: supported) {
             switch kind {
             case .claudeCode: arguments += ["--effort", value]
             // Quoted, because `-c` parses the value as TOML; the quotes make it a string for certain.

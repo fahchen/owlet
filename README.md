@@ -2,7 +2,7 @@
 
 # Owlet
 
-Owlet is a menu bar app for macOS 26 and later. It translates and polishes selected text, keeps a personal notebook of the words and phrases you save, and keeps a history of what you processed. It works with any OpenAI-compatible service, with built-in presets for common vendors, or with a local agent CLI (Claude Code or Codex CLI).
+Owlet is a menu bar app for macOS 26 and later. It translates and polishes selected text, keeps a personal notebook of the words and phrases you save, and keeps a history of what you processed. It speaks the OpenAI Chat Completions, OpenAI Responses, Anthropic Messages and Gemini protocols, with built-in presets for common vendors, or works with a local agent CLI (Claude Code or Codex CLI).
 
 - Website: https://owlet.fahchen.dev
 - Downloads: [Releases](https://github.com/fahchen/owlet/releases)

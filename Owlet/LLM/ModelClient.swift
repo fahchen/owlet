@@ -177,7 +177,8 @@ struct ModelClient: Sendable {
             model: config.model, system: system,
             turns: [.user(String(decoding: payload, as: UTF8.self))],
             format: format(name: "meaning", schema: LearningResult.providerSchema, config: config),
-            effort: config.effort, supportedEfforts: config.supportedEfforts)
+            effort: config.effort, customEffort: config.customEffort,
+            supportedEfforts: config.supportedEfforts)
         return try await perform(
             request, title: L10n.shared.string("Fill In Meaning"), submitted: expression,
             config: config,
@@ -305,7 +306,8 @@ struct ModelClient: Sendable {
         return ModelRequest(
             model: config.model, system: system, turns: turns,
             format: format(name: "learning", schema: LearningResult.providerSchema, config: config),
-            effort: config.effort, supportedEfforts: config.supportedEfforts)
+            effort: config.effort, customEffort: config.customEffort,
+            supportedEfforts: config.supportedEfforts)
     }
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
@@ -411,15 +413,45 @@ struct ModelClient: Sendable {
         return ModelRequest(
             model: config.model, system: system, turns: turns,
             format: format(name: "lookup", schema: LookupResult.providerSchema, config: config),
-            effort: config.effort, supportedEfforts: config.supportedEfforts)
+            effort: config.effort, customEffort: config.customEffort,
+            supportedEfforts: config.supportedEfforts)
     }
 
-    /// The OpenAI-style model list, which belongs to the HTTP services; a local agent lists its models
-    /// through its own command instead (`LocalAgent.models`).
-    func listModels(baseURL: URL, apiKey: String) async throws -> [String] {
-        var request = URLRequest(url: baseURL.appending(path: "models"))
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        let data = try await OpenAICompatibleBackend(transport: transport).send(request)
+    /// The model list an HTTP service offers, in its own protocol's shape; a local agent lists its
+    /// models through its own command instead (`LocalAgent.models`). One page is read, sized to hold
+    /// every model a service lists today.
+    func listModels(
+        baseURL: URL, apiKey: String, provider: Provider = .openAICompatible
+    ) async throws -> [String] {
+        var request: URLRequest
+        switch provider {
+        case .anthropic:
+            request = URLRequest(
+                url: baseURL.appending(path: "models").appending(queryItems: [
+                    URLQueryItem(name: "limit", value: "1000")
+                ]))
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.setValue(AnthropicBackend.apiVersion, forHTTPHeaderField: "anthropic-version")
+        case .gemini:
+            request = URLRequest(
+                url: baseURL.appending(path: "models").appending(queryItems: [
+                    URLQueryItem(name: "pageSize", value: "1000")
+                ]))
+            request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+        case .openAICompatible, .openAIResponses, .claudeCode, .codexCLI:
+            request = URLRequest(url: baseURL.appending(path: "models"))
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        let data = try await HTTPBackend.send(request, transport: transport)
+        if provider == .gemini {
+            // Gemini names a model `models/<id>` and also lists embedding models the app cannot use.
+            guard let list = try? JSONDecoder().decode(GeminiModelList.self, from: data) else {
+                throw ModelError.format
+            }
+            return (list.models ?? [])
+                .filter { $0.supportedGenerationMethods?.contains("generateContent") ?? true }
+                .map { $0.name.replacingOccurrences(of: "models/", with: "") }
+        }
         guard let list = try? JSONDecoder().decode(ModelList.self, from: data) else {
             throw ModelError.format
         }
@@ -483,7 +515,8 @@ struct ModelClient: Sendable {
             format: format(
                 name: operation == .translate ? "translation" : "polish",
                 schema: TranslationResult.providerSchema, config: config),
-            effort: config.effort, supportedEfforts: config.supportedEfforts)
+            effort: config.effort, customEffort: config.customEffort,
+            supportedEfforts: config.supportedEfforts)
     }
 }
 
@@ -507,4 +540,12 @@ struct ChatResponse: Decodable {
 struct ModelList: Decodable {
     struct Model: Decodable { var id: String }
     var data: [Model]
+}
+
+struct GeminiModelList: Decodable {
+    struct Model: Decodable {
+        var name: String
+        var supportedGenerationMethods: [String]?
+    }
+    var models: [Model]?
 }

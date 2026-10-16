@@ -30,6 +30,7 @@
 - [本机 agent 决策](settings/decisions/BDR-0013-local-agent-provider.md)：Claude Code、Codex CLI 作为模型服务时只当一次性的纯补全后端——工具、技能、MCP、项目上下文与会话落盘全关；返回仍走同一份契约，配置完整性改看可执行文件而不是 API Key。
 - [玻璃强度决策](settings/decisions/BDR-0014-system-liquid-glass-intensity.md)：液态玻璃及其强度由系统设置 › 外观统一调整；应用的「玻璃效果」只区分两种玻璃变体，并给出一句说明与打开该面板的入口，不提供自己的强度控件。
 - [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md)：`Provider` 只表示协议与两个本地 agent；HTTP 厂商是数据表 `ServicePreset`，选中即填好公开的 Base URL 与默认模型，返回格式能力跟着预设走，模型记忆按服务分槽。
+- [多协议决策](settings/decisions/BDR-0016-wire-protocols.md)：`Provider` 就是协议（OpenAI Chat Completions、OpenAI Responses、Anthropic、Gemini）加两个本地 agent，每个协议一个后端；预设写明自己的协议；服务列表分协议、厂商预设（只留 DeepSeek、OpenRouter、Ollama）、本地 agent 三组；Base URL 按服务记住；模型名与思考强度是文本框加「预设」菜单，两者都能手填，手填强度原样发送；模型相关的报错只显示一处；测试按钮走正式请求路径。
 
 `spec/` 只用中文写。Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。未完成的工作见 [路线图](../docs/roadmap.zh-CN.md)；技术选型不作为领域场景。
 

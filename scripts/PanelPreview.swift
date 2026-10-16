@@ -231,7 +231,7 @@ struct PreviewView: View {
     }
 }
 
-/// `--settings`: renders the General settings pane to PNG offscreen. Drawing a view into a bitmap
+/// `--settings`: renders the General, Debug and Model settings panes to PNG offscreen. Drawing a view into a bitmap
 /// needs no Screen Recording grant, unlike the window screenshots `--screenshots` takes, so the pane
 /// can be exported on a machine that has never granted it. The pane is a plain grouped `Form` with
 /// no glass surface, so the offscreen draw is faithful to the window.
@@ -254,7 +254,7 @@ struct PreviewView: View {
         Variant(name: "settings-general-on-dark", wholeField: true, dark: true),
     ]
 
-    static func export(to output: String) -> Bool {
+    static func export(to output: String) async -> Bool {
         let directory = URL(fileURLWithPath: output, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -277,8 +277,109 @@ struct PreviewView: View {
             }
         }
         PreviewFixtures.defaults.removeObject(forKey: SettingsStore.wholeFieldTextKey)
-        return exportDebug(to: directory)
+        guard exportDebug(to: directory) else { return false }
+        return await exportModel(to: directory)
     }
+
+    /// The Model pane after a real Test run. The run goes through `ModelSettingsPane.runTest` and the
+    /// real client, contract checks included; only the network is a fixture, and the key is a fake one
+    /// so the export never touches the keychain.
+    private static func exportModel(to directory: URL) async -> Bool {
+        let reply = "Reeds and rushes, green and lush; the white dew turns to frost."
+        let shots: [(name: String, preset: ServicePreset, model: String, effort: String, answer: Answer)] = [
+            ("settings-model-deepseek", .deepSeek, "deepseek-chat", EffortLevel.high.rawValue, .chat(reply)),
+            ("settings-model-anthropic", .anthropic, "claude-opus-5-5", "xhigh", .anthropic(reply)),
+            ("settings-model-responses", .openAIResponses, "gpt-6", EffortLevel.medium.rawValue, .unauthorized),
+        ]
+        // The preview app's own domain and suite, so nothing the real app reads is touched.
+        let standard = UserDefaults.standard
+        defer {
+            standard.removeObject(forKey: SettingsStore.serviceChoiceKey)
+            for key in [SettingsStore.baseURLKey, SettingsStore.modelKey, SettingsStore.effortKey] {
+                PreviewFixtures.defaults.removeObject(forKey: key)
+            }
+        }
+        for shot in shots {
+            let baseURL = shot.preset.baseURL ?? "https://preview.invalid"
+            standard.set(shot.preset.id, forKey: SettingsStore.serviceChoiceKey)
+            PreviewFixtures.defaults.set(baseURL, forKey: SettingsStore.baseURLKey)
+            PreviewFixtures.defaults.set(shot.model, forKey: SettingsStore.modelKey)
+            PreviewFixtures.defaults.set(shot.effort, forKey: SettingsStore.effortKey)
+            let client = ModelClient(
+                transport: transport(shot.answer), promptForOperation: { _ in "Preview" }, capture: .off)
+            let config = ServiceConfig(
+                baseURL: URL(string: baseURL)!, model: shot.model, apiKey: "fixture",
+                provider: shot.preset.provider, effort: EffortLevel(rawValue: shot.effort) ?? .off,
+                customEffort: EffortLevel(rawValue: shot.effort) == nil ? shot.effort : nil,
+                supportsJSONSchema: shot.preset.supportsJSONSchema)
+            let check = await ModelSettingsPane.runTest(config: config, target: "en", client: client)
+            for dark in [false, true] {
+                let view = ModelSettingsPane(
+                    promptFocus: .constant(nil), client: client, readKey: { _ in "fixture-key" }, check: check
+                )
+                .frame(width: size.width, height: size.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.controlActiveState, .key)
+                .environment(\.colorScheme, dark ? .dark : .light)
+                .defaultAppStorage(PreviewFixtures.defaults)
+                guard let data = render(AnyView(view), dark: dark) else { return false }
+                let name = "\(shot.name)\(dark ? "-dark" : "").png"
+                do { try data.write(to: directory.appendingPathComponent(name)) } catch { return false }
+            }
+        }
+        return true
+    }
+
+    enum Answer {
+        case chat(String), anthropic(String), unauthorized
+    }
+
+    /// Model lists answer every GET; the POST gets the shot's reply in its protocol's envelope after a
+    /// pause, so the measured time reads like a real round trip.
+    private static func transport(_ answer: Answer) -> Transport {
+        let sentence = ModelSettingsPane.testSentence
+        let text = answerText(answer)
+        return { request in
+            let url = request.url!
+            func reply(_ status: Int, _ body: String) -> (Data, URLResponse) {
+                (Data(body.utf8), HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!)
+            }
+            if request.httpMethod != "POST" {
+                return reply(200, #"{"data":[{"id":"deepseek-chat"},{"id":"claude-opus-5-5"},{"id":"gpt-6"}]}"#)
+            }
+            let result = try JSONSerialization.data(withJSONObject: [
+                "source_language": "zh-Hant", "target_language": "en",
+                "segments": [["source": sentence, "target": text]],
+            ])
+            let json = String(decoding: result, as: UTF8.self)
+            switch answer {
+            case .chat:
+                try await Task.sleep(for: .milliseconds(1240))
+                let envelope = try JSONSerialization.data(withJSONObject: [
+                    "choices": [["message": ["content": json], "finish_reason": "stop"]]
+                ])
+                return reply(200, String(decoding: envelope, as: UTF8.self))
+            case .anthropic:
+                try await Task.sleep(for: .milliseconds(1860))
+                let envelope = try JSONSerialization.data(withJSONObject: [
+                    "content": [["type": "text", "text": json]], "stop_reason": "end_turn",
+                ])
+                return reply(200, String(decoding: envelope, as: UTF8.self))
+            case .unauthorized:
+                try await Task.sleep(for: .milliseconds(380))
+                return reply(401, #"{"error":{"message":"Incorrect API key provided"}}"#)
+            }
+        }
+    }
+
+    private static func answerText(_ answer: Answer) -> String {
+        switch answer {
+        case .chat(let text), .anthropic(let text): text
+        case .unauthorized: ""
+        }
+    }
+
+
 
     /// The Debug pane with one success and one contract failure, collapsed and with the failure open.
     private static func exportDebug(to directory: URL) -> Bool {
@@ -419,7 +520,7 @@ final class PreviewPanel: NSPanel {
             Task { @MainActor in
                 // One run-loop turn, so the hosting view and its AppKit controls are laid out.
                 try? await Task.sleep(for: .milliseconds(100))
-                exit(SettingsPanePreview.export(to: output) ? 0 : 1)
+                exit(await SettingsPanePreview.export(to: output) ? 0 : 1)
             }
             app.run()
             return

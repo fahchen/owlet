@@ -81,7 +81,7 @@ python3 scripts/panel-preview.py --transition /tmp/owlet-panel-transition.mov
 
 后两张通过直接调用正式的 `CollectionAction.setCollected` 切换，并检查存储成员状态。它们是状态截图，不是鼠标按下截图，也未覆盖真实点击命中区域。每态等待1秒再截图是渲染缓冲，不是生产加载耗时或动画性能指标。
 
-设置页离屏导出（`--settings`）：把 `GeneralSettingsPane` 用 `NSHostingView` 装进固定 620×660pt 画布，`cacheDisplay(in:to:)` 画进 2x 位图后写 PNG，不打开窗口、不申请任何权限，因此**不需要屏幕录制授权**（`--screenshots` 仍然需要）。`ImageRenderer` 在本机渲染同一视图是**全白空图**（`Form` 分组、`Picker`、`Toggle` 都没画出来），所以没有采用它。默认值写在隔离 suite `dev.fahchen.owlet.panel-preview`，导出前后不触碰主 app 的设置；末尾会移除临时写入的键。设置页是普通分组 `Form`、没有玻璃表面，所以离屏绘制与窗口一致；浮窗的 Liquid Glass 由窗口服务器合成，这条路子**不能**替代 `--screenshots` 的材质验收。
+设置页离屏导出（`--settings`）：把 `GeneralSettingsPane` 用 `NSHostingView` 装进固定 620×660pt 画布，`cacheDisplay(in:to:)` 画进 2x 位图后写 PNG，不打开窗口、不申请任何权限，因此**不需要屏幕录制授权**（`--screenshots` 仍然需要）。`ImageRenderer` 在本机渲染同一视图是**全白空图**（`Form` 分组、`Picker`、`Toggle` 都没画出来），所以没有采用它。默认值写在隔离 suite `dev.fahchen.owlet.panel-preview`，导出前后不触碰主 app 的设置；末尾会移除临时写入的键。设置页是普通分组 `Form`、没有玻璃表面，所以离屏绘制与窗口一致；浮窗的 Liquid Glass 由窗口服务器合成，这条路子**不能**替代 `--screenshots` 的材质验收。模型页（`settings-model-deepseek`／`-anthropic`／`-responses`）在一次真实的测试运行后导出：`ModelSettingsPane.runTest` 走真实的 `ModelClient` 与契约校验，只把网络换成 fixture，它按各协议的信封、延迟后作答，所以图上的耗时与回复是测出来的，不是手填的。设置页拿到的是假的读 Key 函数，导出不会读钥匙串（存过 Key 的服务会被钥匙串授权框卡住）。
 
 | 文件 | 状态 |
 | --- | --- |

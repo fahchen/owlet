@@ -784,6 +784,35 @@
         }
       }
     },
+    "Anthropic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic"
+          }
+        }
+      }
+    },
     "Authentication failed. Check the API key.": {
       "extractionState": "manual",
       "localizations": {
@@ -2582,6 +2611,35 @@
         }
       }
     },
+    "Gemini": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini"
+          }
+        }
+      }
+    },
     "General": {
       "extractionState": "manual",
       "localizations": {
@@ -3013,35 +3071,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "韓語"
-          }
-        }
-      }
-    },
-    "LM Studio (Local)": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio (Local)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio（ローカル）"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio（本地）"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio（本機）"
           }
         }
       }
@@ -3564,35 +3593,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "模型原始回傳"
-          }
-        }
-      }
-    },
-    "Moonshot / Kimi": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonshot / Kimi"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonshot / Kimi"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonshot / Kimi"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonshot / Kimi"
           }
         }
       }
@@ -4351,6 +4351,35 @@
         }
       }
     },
+    "OpenAI Responses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI Responses"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI Responses"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI Responses"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI Responses"
+          }
+        }
+      }
+    },
     "OpenRouter": {
       "extractionState": "manual",
       "localizations": {
@@ -4728,6 +4757,35 @@
         }
       }
     },
+    "Presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presets"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プリセット"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预设"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預設"
+          }
+        }
+      }
+    },
     "Press the new combination; Esc cancels, Delete clears.": {
       "extractionState": "manual",
       "localizations": {
@@ -4927,35 +4985,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "結束 Owlet"
-          }
-        }
-      }
-    },
-    "Qwen (DashScope)": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qwen (DashScope)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qwen (DashScope)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qwen (DashScope)"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qwen (DashScope)"
           }
         }
       }
@@ -6497,6 +6526,35 @@
         }
       }
     },
+    "Test": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テスト"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "測試"
+          }
+        }
+      }
+    },
     "Text": {
       "extractionState": "manual",
       "localizations": {
@@ -6609,35 +6667,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "該 agent 使用自己的登入狀態，因此這裡不需要 API Key；它的工具、技能、專案內容與工作階段檔案都保持關閉。"
-          }
-        }
-      }
-    },
-    "The agent's own default": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The agent's own default"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "agent 自身の既定モデル"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "该 agent 自己的默认模型"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "該 agent 自己的預設模型"
           }
         }
       }
@@ -7831,35 +7860,6 @@
         }
       }
     },
-    "Zhipu GLM": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zhipu GLM"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zhipu GLM"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zhipu GLM"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zhipu GLM"
-          }
-        }
-      }
-    },
     "Zhuyin": {
       "extractionState": "manual",
       "localizations": {
@@ -7914,35 +7914,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "並取代"
-          }
-        }
-      }
-    },
-    "xAI": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "xAI"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "xAI"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "xAI"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "xAI"
           }
         }
       }

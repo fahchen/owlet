@@ -53,7 +53,7 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
   求值而匹配不到含 `%@` 的键；也不要把 `LocalizedStringResource` 插进字符串，那会打印它的调试描述。
 - 占位符按**参数类型**选：字符串用 `%@`，整数（`Int`、`.count`、`OSStatus`）用 `%lld`。`%@` 只接受
   对象，传整数会得到 `does not match expected '%lld'` 的运行时错误；`String(format:)` 会检查，别猜。
-- 发给模型的文字（`Owlet/ModelPrompts.json` 的两段默认 Prompt、任务描述与示例）**不本地化**。
+- 发给模型的文字（`Owlet/ModelPrompts.json` 的任务描述与示例）**不本地化**，也不走对照表。两段 System Prompt 是唯一例外：它们在模型页被读、被编辑，所以每种界面语言各有一份（`translate.zh-Hans` 等，裸键放英文原文），未编辑过时跟随界面语言切换（BDR-0011）。
 - `mise run i18n`（需先构建）列出「翻译后会显示成中文」的界面串：它以产物里的 `en.lproj` 为准，
   比对源码中的中文字面量。新增界面文字后跑一次，别让缺口留到用户那里。
 

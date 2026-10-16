@@ -134,6 +134,11 @@
     "zh-Hans": "同语言下已存在相同的表达",
     "zh-Hant": "同語言下已存在相同的表達"
   },
+  "Anthropic": {
+    "ja": "Anthropic",
+    "zh-Hans": "Anthropic",
+    "zh-Hant": "Anthropic"
+  },
   "Authentication failed. Check the API key.": {
     "ja": "認証に失敗しました。API Key を確認してください。",
     "zh-Hans": "认证失败，请检查 API Key。",
@@ -444,6 +449,11 @@
     "zh-Hans": "法语",
     "zh-Hant": "法語"
   },
+  "Gemini": {
+    "ja": "Gemini",
+    "zh-Hans": "Gemini",
+    "zh-Hant": "Gemini"
+  },
   "General": {
     "ja": "一般",
     "zh-Hans": "通用",
@@ -518,11 +528,6 @@
     "ja": "韓国語",
     "zh-Hans": "韩语",
     "zh-Hant": "韓語"
-  },
-  "LM Studio (Local)": {
-    "ja": "LM Studio（ローカル）",
-    "zh-Hans": "LM Studio（本地）",
-    "zh-Hant": "LM Studio（本機）"
   },
   "Languages": {
     "ja": "言語",
@@ -613,11 +618,6 @@
     "ja": "モデルの生の返答",
     "zh-Hans": "模型原始返回",
     "zh-Hant": "模型原始回傳"
-  },
-  "Moonshot / Kimi": {
-    "ja": "Moonshot / Kimi",
-    "zh-Hans": "Moonshot / Kimi",
-    "zh-Hant": "Moonshot / Kimi"
   },
   "More Transparent": {
     "ja": "より透明",
@@ -749,6 +749,11 @@
     "zh-Hans": "OpenAI Compatible",
     "zh-Hant": "OpenAI Compatible"
   },
+  "OpenAI Responses": {
+    "ja": "OpenAI Responses",
+    "zh-Hans": "OpenAI Responses",
+    "zh-Hant": "OpenAI Responses"
+  },
   "OpenRouter": {
     "ja": "OpenRouter",
     "zh-Hans": "OpenRouter",
@@ -824,6 +829,11 @@
     "zh-Hans": "请按快捷键…",
     "zh-Hant": "請按快速鍵…"
   },
+  "Presets": {
+    "ja": "プリセット",
+    "zh-Hans": "预设",
+    "zh-Hant": "預設"
+  },
   "Previous": {
     "ja": "前へ",
     "zh-Hans": "上一条",
@@ -848,11 +858,6 @@
     "ja": "Owlet を終了",
     "zh-Hans": "退出 Owlet",
     "zh-Hant": "結束 Owlet"
-  },
-  "Qwen (DashScope)": {
-    "ja": "Qwen (DashScope)",
-    "zh-Hans": "Qwen (DashScope)",
-    "zh-Hant": "Qwen (DashScope)"
   },
   "Reading Notation": {
     "ja": "読みの表記",
@@ -1119,6 +1124,11 @@
     "zh-Hans": "目标语言",
     "zh-Hant": "目標語言"
   },
+  "Test": {
+    "ja": "テスト",
+    "zh-Hans": "测试",
+    "zh-Hant": "測試"
+  },
   "Text": {
     "ja": "テキスト処理",
     "zh-Hans": "文本处理",
@@ -1138,11 +1148,6 @@
     "ja": "この agent は自身のサインインを使うため、ここに API キーは不要です。ツール、スキル、プロジェクトのコンテキスト、セッションファイルは無効のままです。",
     "zh-Hans": "该 agent 使用自己的登录状态，因此这里不需要 API Key；它的工具、技能、项目上下文与会话文件都保持关闭。",
     "zh-Hant": "該 agent 使用自己的登入狀態，因此這裡不需要 API Key；它的工具、技能、專案內容與工作階段檔案都保持關閉。"
-  },
-  "The agent's own default": {
-    "ja": "agent 自身の既定モデル",
-    "zh-Hans": "该 agent 自己的默认模型",
-    "zh-Hant": "該 agent 自己的預設模型"
   },
   "The content cannot be empty; this change was not applied.": {
     "ja": "内容を空にはできません。この変更は反映されませんでした。",
@@ -1349,11 +1354,6 @@
     "zh-Hans": "昨天 %@",
     "zh-Hant": "昨天 %@"
   },
-  "Zhipu GLM": {
-    "ja": "Zhipu GLM",
-    "zh-Hans": "Zhipu GLM",
-    "zh-Hant": "Zhipu GLM"
-  },
   "Zhuyin": {
     "ja": "注音符号",
     "zh-Hans": "注音",
@@ -1363,11 +1363,6 @@
     "ja": "して置換",
     "zh-Hans": "并替换",
     "zh-Hant": "並取代"
-  },
-  "xAI": {
-    "ja": "xAI",
-    "zh-Hans": "xAI",
-    "zh-Hant": "xAI"
   },
   "日本語": {
     "ja": "日本語",

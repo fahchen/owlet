@@ -2,7 +2,7 @@
 
 # Owlet
 
-Owlet 是 macOS 26 及以上的菜单栏应用：翻译与润色所选文字，把收藏的词句存进个人生词本，并保留处理历史。模型可用任意 OpenAI 兼容服务（内置常见厂商预设），也可用本地 agent CLI（Claude Code 或 Codex CLI）。
+Owlet 是 macOS 26 及以上的菜单栏应用：翻译与润色所选文字，把收藏的词句存进个人生词本，并保留处理历史。模型服务支持 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages 与 Gemini 四种协议（内置常见厂商预设），也可用本地 agent CLI（Claude Code 或 Codex CLI）。
 
 - 官网：https://owlet.fahchen.dev
 - 下载：[Releases](https://github.com/fahchen/owlet/releases)

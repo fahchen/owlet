@@ -60,10 +60,9 @@ struct PromptSettingsView: View {
                 Button(L10n.shared.string("Restore Default"), systemImage: "arrow.counterclockwise") {
                     text.wrappedValue = defaultPrompt
                 }
-                .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
+                .controlSize(.small)
                 .disabled(text.wrappedValue == defaultPrompt)
-                .accessibilityLabel(L10n.shared.string("Restore Default"))
             }
         }
     }

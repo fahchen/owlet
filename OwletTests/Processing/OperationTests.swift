@@ -9,10 +9,11 @@ private let polished =
 @Test func polishRequestUsesPolishPromptWithoutTargetLanguage() throws {
     let request = try clientWithBuiltInPrompt().translationRequest(
         text: "i has a pen.", operation: .polish, to: nil, config: testConfig)
+    // The polish prompt is the one sent, whole and in the interface language, with no target-language
+    // clause; nothing here names a language, so the prompt may be in any of them.
     #expect(request.system.hasPrefix(DefaultPrompts.polish))
+    #expect(!request.system.hasPrefix(DefaultPrompts.translate))
     #expect(!request.system.contains("Target language:"))
-    #expect(request.system.contains("只给一个润色版本"))
-    #expect(request.system.contains("保持原文语言和原意"))
     #expect(request.turns == [.user("i has a pen.")])
 }
 

@@ -20,6 +20,8 @@
 
 - **本机 agent 作为模型服务。** Claude Code 与 Codex CLI 有假 runner 的测试覆盖。未验证：真实登录态下的质量与延迟、Claude Code 的 `--json-schema`、后续 CLI 版本的兼容性。Claude Code 的模型清单读它自己在 `~/.claude/cache/model-catalog/` 的缓存，这不是官方接口。见 [BDR-0013](../spec/settings/decisions/BDR-0013-local-agent-provider.md)。
 - **HTTP 服务商预设。** Base URL、默认模型与 JSON Schema 能力只按各家公开文档核对，没有用真实 Key 调用过任何一家。见 [BDR-0015](../spec/settings/decisions/BDR-0015-provider-presets.md)。
+- **OpenAI Responses、Anthropic 与 Gemini 协议。** 请求形状只按各家文档与单元测试核对，没有用真实 Key 调用过。验收：用真实 Key 经每种协议各发一次翻译、查词与学习请求，确认带 JSON Schema 的请求被接受、错误 Key 显示为认证失败、模型清单能读到、测试按钮能报告成功与失败；并目测「文本框加预设按钮」两行在设置表单里的宽度与对齐。见 [BDR-0016](../spec/settings/decisions/BDR-0016-wire-protocols.md)。
+- **每种界面语言各一份 System Prompt。** 单元测试覆盖取哪一份、以及切换语言不算编辑；没有在真实应用里看过。验收：打开模型页切换界面语言，确认没编辑过的 Prompt 跟着换、编辑过的不变，并读一遍四份文本作为 Prompt 是否通顺（英文、繁体中文与日文是这次新写的）。见 [BDR-0011](../spec/settings/decisions/BDR-0011-interface-language.md)。
 
 ## 设计就绪，未实现
 

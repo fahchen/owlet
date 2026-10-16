@@ -313,16 +313,6 @@ struct LocalAgentTests {
         #expect(invocation.arguments.contains("--print"))
     }
 
-    /// The OpenAI-style effort field belongs to the HTTP body; a local agent gets the level through its
-    /// own switch instead, so the body must not carry a stray key.
-    @Test func aLocalAgentGetsNoOpenAIStyleEffortField() throws {
-        var client = ModelClient()
-        client.promptForOperation = { $0.prompt }
-        let request = try client.translationRequest(
-            text: "Hello", to: "zh-Hans", config: agentConfig)
-        #expect(try wireBody(request, config: agentConfig)["reasoning_effort"] == nil)
-    }
-
     @Test func theDebugPageShowsTheCommandInsteadOfTheBody() throws {
         var client = ModelClient()
         client.promptForOperation = { $0.prompt }
@@ -444,12 +434,10 @@ struct LocalAgentTests {
             ])
     }
 
-    /// Each agent names its own kind of source, and only the cached one may read nothing as "no list".
+    /// Each agent names its own kind of source.
     @Test func eachAgentNamesItsOwnModelSource() {
         #expect(LocalAgentKind.claudeCode.modelSource == .catalogFile)
         #expect(LocalAgentKind.codexCLI.modelSource == .command(["debug", "models"]))
-        #expect(LocalAgentKind.claudeCode.modelSource.emptyAnswerIsFinal == false)
-        #expect(LocalAgentKind.codexCLI.modelSource.emptyAnswerIsFinal == true)
     }
 
     @Test func anUnreadableCatalogIsALocalAgentFailure() {

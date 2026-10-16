@@ -52,7 +52,7 @@ Feature: 把本机的 agent CLI 当作模型服务
     Scenario: 从 agent 自己的清单里选模型
       Given 用户在设置里选了 Codex CLI
       When 应用读取该 agent 的模型清单
-      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      Then 模型名框的下拉列表列出这些模型，留空表示用该 agent 自己的默认模型
       And 清单里标记为不公开的模型不出现
 
     Scenario: 能给出强度清单的 provider 按模型给
@@ -65,14 +65,14 @@ Feature: 把本机的 agent CLI 当作模型服务
     Scenario: 从 Claude Code 自己缓存的模型目录里读清单
       Given 用户在设置里选了 Claude Code
       When 应用能读到它缓存的模型目录
-      Then 模型名以下拉列表给出，第一项是该 agent 自己的默认模型
+      Then 模型名框的下拉列表列出这些模型，留空表示用该 agent 自己的默认模型
       And 每个模型声明了思考强度值域时，强度行下就地显示它支持的档位
-      And 已保存但清单里没有的模型名仍可选
+      And 已保存但清单里没有的模型名仍留在框里
 
     Scenario: 缓存读不出来时 Claude Code 保持自由填写
       Given 用户在设置里选了 Claude Code
       When 它缓存的模型目录缺失、为空或形状变了
-      Then 模型名是自由填写的文本框，不弹出错误
+      Then 模型名框的下拉列表为空，仍可自由填写
       And 留空表示使用它自己的默认模型
       And 已保存的模型名不变，请求照旧可以发出
 

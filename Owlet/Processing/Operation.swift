@@ -55,10 +55,6 @@ enum Operation: String, CaseIterable, Sendable {
         }
     }
 
-    var prompt: String {
-        switch self {
-        case .translate: DefaultPrompts.translate
-        case .polish: DefaultPrompts.polish
-        }
-    }
+    /// The built-in prompt, in the interface language and therefore resolved when it is asked for.
+    var prompt: String { DefaultPrompts.text(rawValue) }
 }

@@ -12,7 +12,7 @@ parser.add_argument('--live', action='store_true', help='Use DEEPSEEK_API_KEY fo
 parser.add_argument('--background', type=Path, help='Optional local backdrop for glass screenshots')
 parser.add_argument('--screenshots', type=Path, help='Export panel states and collection toggle screenshots, then exit')
 parser.add_argument('--settings', type=Path,
-                    help='Render the General settings pane offscreen to PNGs, then exit (no Screen Recording grant needed)')
+                    help='Render the General, Debug and Model settings panes offscreen to PNGs, then exit (no Screen Recording grant needed)')
 parser.add_argument('--active', action='store_true', help='Render native controls in active appearance for comparison')
 parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')

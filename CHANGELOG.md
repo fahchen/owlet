@@ -2,6 +2,11 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
+## Unreleased
+
+### Fixed
+- Text copied from a page with an inline image or emoji translates again. The invisible placeholder left by the copy (U+FFFC) is treated as a space when checking the reply's sources, because a model cannot reproduce it.
+
 ## 0.6.0 — 2026-10-16
 
 ### Added

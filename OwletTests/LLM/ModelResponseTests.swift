@@ -108,6 +108,12 @@ func invalidResponsesAreFormatErrors(content: String) {
     #expect(try parse(moved).segments.count == 2)
 }
 
+/// A page copied with an inline image or emoji carries U+FFFC in its plain text. The model cannot
+/// reproduce that placeholder, and the reply dropping it does not break the pairing.
+@Test func objectReplacementCharactersDoNotFailTheSourceCheck() throws {
+    #expect(try parse(valid, "Good morning. \u{FFFC} Let's begin.").segments.count == 2)
+}
+
 @Test func nfcNormalizationPasses() throws {
     let json =
         #"{"source_language":"fr","target_language":"en","segments":[{"source":"caf\u00e9","target":"cafe"}]}"#

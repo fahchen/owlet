@@ -94,7 +94,11 @@ struct TranslationResult: Equatable {
     }
 
     static func normalized(_ text: String) -> String {
+        // U+FFFC is where a copy puts an inline object (an image, an emoji) in plain text, not text
+        // itself. No model reproduces that placeholder reliably, and dropping it loses nothing
+        // readable, so it compares as a space instead of failing the pairing.
         text.precomposedStringWithCanonicalMapping
+            .replacingOccurrences(of: "\u{FFFC}", with: " ")
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }

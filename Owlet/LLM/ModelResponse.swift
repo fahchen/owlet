@@ -39,27 +39,57 @@ struct TranslationResult: Equatable {
     static func parse(_ content: String, submitted: String, targetLanguage: String?) throws
         -> TranslationResult
     {
-        guard let data = unfenced(content)?.data(using: .utf8),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            Set(object.keys) == ["source_language", "target_language", "segments"],
+        // A structure refusal names the exact check it broke, so the debug page can say where the
+        // shape went wrong instead of leaving a bare structure sentence to reverse-engineer.
+        guard let data = unfenced(content)?.data(using: .utf8) else {
+            throw ModelError.formatDetail(
+                L10n.shared.string("The reply was neither one whole JSON object nor one fenced block."))
+        }
+        let object: [String: Any]
+        var decodeProblem: String?
+        do {
+            object = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        } catch {
+            object = [:]
+            decodeProblem = error.localizedDescription
+        }
+        guard Set(object.keys) == ["source_language", "target_language", "segments"],
             let sourceLanguage = object["source_language"] as? String,
             let target = object["target_language"] as? String,
             let rawSegments = object["segments"] as? [Any], !rawSegments.isEmpty
-        else { throw ModelError.format }
-        let segments = try rawSegments.map { raw -> Segment in
+        else {
+            throw ModelError.formatDetail(
+                decodeProblem.map { L10n.shared.string("The reply was not valid JSON: %@.", $0) }
+                    ?? L10n.shared.string(
+                        "The reply did not hold source_language, target_language and a non-empty segments array."
+                    ))
+        }
+        let segments = try rawSegments.enumerated().map { position, raw -> Segment in
+            let index = position + 1
             guard let dict = raw as? [String: Any], Set(dict.keys) == ["source", "target"],
-                let source = dict["source"] as? String, let target = dict["target"] as? String,
-                // A blank line is content, not a missing field. The model may legitimately give the
-                // paragraph break a segment of its own, and the concatenation check below still holds
-                // it to the submitted text — rejecting it here turned a correct reply into
-                // "a missing field, a wrong type, or empty content". A segment with nothing at all is
-                // still refused, as is an empty translation of text that had some.
-                !source.isEmpty, !target.isEmpty || isBlank(source)
-            else { throw ModelError.format }
+                let source = dict["source"] as? String, let target = dict["target"] as? String
+            else {
+                throw ModelError.formatDetail(
+                    L10n.shared.string("Segment %lld did not hold exactly source and target.", index))
+            }
+            // A blank line is content, not a missing field. The model may legitimately give the
+            // paragraph break a segment of its own, and the concatenation check below still holds
+            // it to the submitted text — rejecting it here turned a correct reply into
+            // "a missing field, a wrong type, or empty content". A segment with nothing at all is
+            // still refused, as is an empty translation of text that had some.
+            guard !source.isEmpty, !target.isEmpty || isBlank(source)
+            else {
+                throw ModelError.formatDetail(
+                    L10n.shared.string("Segment %lld had a field with nothing in it.", index))
+            }
             return Segment(source: source, target: target)
         }
-        guard segments.contains(where: { !isBlank($0.target) }) else { throw ModelError.format }
-        guard !isBlank(sourceLanguage) else { throw ModelError.format }
+        guard segments.contains(where: { !isBlank($0.target) }) else {
+            throw ModelError.formatDetail(L10n.shared.string("No segment translated anything."))
+        }
+        guard !isBlank(sourceLanguage) else {
+            throw ModelError.formatDetail(L10n.shared.string("The source language was blank."))
+        }
         guard sameLanguage(target, targetLanguage ?? sourceLanguage) else {
             throw ModelError.targetMismatch(
                 requested: targetLanguage ?? sourceLanguage, returned: target)
@@ -78,10 +108,14 @@ struct TranslationResult: Equatable {
             sourceLanguage: sourceLanguage, targetLanguage: target, segments: segments)
     }
 
-    /// Strips one Markdown fence wrapping the whole message; nil if fences are malformed.
+    /// Strips one Markdown fence wrapping the whole message; nil if fences are malformed. Fence
+    /// sequences a reply holds inside its string values are content — a README translation carries
+    /// real ```sh blocks — so only a reply that actually starts with a fence is unwrapped, and an
+    /// unwrapped reply goes to the JSON decoder as it is. Whether the text is one whole JSON object
+    /// is the decoder's decision, never this heuristic's.
     static func unfenced(_ content: String) -> String? {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix("```") else { return trimmed.contains("```") ? nil : trimmed }
+        guard trimmed.hasPrefix("```") else { return trimmed }
         var lines = trimmed.components(separatedBy: "\n")
         guard lines.count >= 3, let first = lines.first, let last = lines.last,
             ["```", "```json"].contains(first.trimmingCharacters(in: .whitespaces)),
@@ -89,8 +123,7 @@ struct TranslationResult: Equatable {
         else { return nil }
         lines.removeFirst()
         lines.removeLast()
-        let inner = lines.joined(separator: "\n")
-        return inner.contains("```") ? nil : inner
+        return lines.joined(separator: "\n")
     }
 
     static func normalized(_ text: String) -> String {

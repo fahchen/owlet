@@ -17,6 +17,7 @@ struct PromptContractTests {
             text: "Hello", to: "zh-Hans", config: testConfig)
         #expect(request.system.hasPrefix(Self.hostile))
         #expect(request.system.contains("Concatenated sources must equal the user message exactly."))
+        #expect(request.system.contains("escape every backslash that is part of the text"))
         #expect(request.system.contains("Respond with one json object"))
         #expect(request.system.contains("source_language"))
     }
@@ -46,8 +47,14 @@ struct PromptContractTests {
     @Test func hostilePromptCannotReplaceValidationWithProse() async {
         var client = ModelClient(transport: stub(body: chatBody("这是纯文本，没有 JSON。")))
         client.promptForOperation = { _ in Self.hostile }
-        await #expect(throws: ModelError.format) {
-            try await client.process("Hello", operation: .translate, to: "zh-Hans", config: testConfig)
+        do {
+            _ = try await client.process("Hello", operation: .translate, to: "zh-Hans", config: testConfig)
+            Issue.record("the prose reply was accepted")
+        } catch let error as ModelError {
+            // The user-facing sentence is the structure one; the debug detail quotes the decoder.
+            #expect(error.kind == .contract)
+        } catch {
+            Issue.record("unexpected error type: \(error)")
         }
     }
 

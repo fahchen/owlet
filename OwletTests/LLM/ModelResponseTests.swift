@@ -34,11 +34,50 @@ private func parse(
     #expect(result.text == "Thank you.\n\nBest regards.")
 }
 
+/// Fence characters inside a string value are content, not structure: a reply that carries an
+/// ```sh block inside a segment's text (translating a README) is one complete JSON object, and
+/// any fence-existence check rejects a reply the contract would accept (reported from a real
+/// translation of a README).
+@Test func fencesInsideStringValuesAreContent() throws {
+    let json = #"""
+        {"source_language":"en","target_language":"zh-Hans","segments":[{"source":"```sh\nmise run check\n```\nInstall the tools first.","target":"先安装工具。"}]}
+        """#
+    #expect(
+        try parse(json, "```sh\nmise run check\n```\nInstall the tools first.").text == "先安装工具。")
+}
+
+/// Even when the model does wrap the whole reply in one fence, inner fence sequences stay content.
+@Test func aWrappedReplyMayHoldFencesInsideItsValues() throws {
+    let json = #"""
+        ```json
+        {"source_language":"en","target_language":"zh-Hans","segments":[{"source":"```sh\nmise run check\n```","target":"先安装工具。"}]}
+        ```
+        """#
+    #expect(try parse(json, "```sh\nmise run check\n```").text == "先安装工具。")
+}
+
+/// A reply that is neither wrapped nor a single object still fails, as the contract says.
+@Test func proseAroundAFenceIsStillAFormatError() {
+    do {
+        _ = try parse(
+            #"Sure! ```json {"source_language":"en","target_language":"zh-Hans","segments":[{"source":"a","target":"甲"}]} ```"#
+        )
+        Issue.record("the prose reply was accepted")
+    } catch let error as ModelError {
+        if case .formatDetail = error { return }
+        Issue.record("not a structure failure: \(error)")
+    } catch {
+        Issue.record("unexpected error type: \(error)")
+    }
+}
+
 /// Accepting a blank line must not accept a reply that translates nothing at all.
 @Test func aReplyWithNoTranslationIsStillRefused() throws {
     let json =
         #"{"source_language":"ja","target_language":"en","segments":[{"source":"お世話になっております。","target":"\n"},{"source":"\n","target":""}]}"#
-    #expect(throws: ModelError.format) {
+    #expect(
+        throws: ModelError.formatDetail("No segment translated anything.")
+    ) {
         try parse(json, "お世話になっております。\n", target: "en")
     }
 }
@@ -47,7 +86,9 @@ private func parse(
 @Test func anEmptySegmentIsRefused() throws {
     let json =
         #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"","target":""}]}"#
-    #expect(throws: ModelError.format) { try parse(json, "", target: "zh-Hans") }
+    #expect(
+        throws: ModelError.formatDetail("Segment 1 had a field with nothing in it.")
+    ) { try parse(json, "", target: "zh-Hans") }
 }
 
 @Test func equivalentLanguageTags() throws {
@@ -77,7 +118,18 @@ private func parse(
     #"{"source_language":"en","target_language":"zh-Hans","extra":1,"segments":[{"source":"Good morning. Let's begin.","target":"x"}]}"#,
 ])
 func invalidResponsesAreFormatErrors(content: String) {
-    #expect(throws: ModelError.format) { try parse(content) }
+    do {
+        _ = try parse(content)
+        Issue.record("expected the reply to be refused")
+    } catch let error as ModelError {
+        // The user-facing sentence is the structure one either way; the debug detail names the
+        // exact check that refused it, and details that quote the JSON decoder are not asserted.
+        if case .format = error { return }
+        if case .formatDetail = error { return }
+        Issue.record("not a structure failure: \(error)")
+    } catch {
+        Issue.record("unexpected error type: \(error)")
+    }
 }
 
 /// A well-formed response that answers in another language is its own failure: the user has to know

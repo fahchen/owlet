@@ -5,7 +5,7 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 ## Unreleased
 
 ### Added
-- The panel shows the model's answer as it arrives, and the lookup card shows the meaning as it does (first round: the panel's translate and polish, the lookup card). Nothing changes about when an answer can be trusted: an action pressed while the reply is still arriving is refused with the reason on screen, and nothing partial reaches history, replace or copy. A service that cannot stream sees no difference: the answer is validated once it is complete, as before.
+- Translate and polish show the model's answer as it arrives, in the panel and in the main window, and the lookup card shows the meaning as it does. The arriving text is laid out the way the chosen display setting lays the finished result out — Sentence by Sentence grows the pairs as they close, Source / Result Sections grows the result text alone — so nothing jumps between layouts when the answer is validated. Nothing changes about when an answer can be trusted: an action pressed while the reply is still arriving is refused with the reason on screen, and nothing partial reaches history, replace or copy. A service that cannot stream sees no difference: the answer is validated once it is complete, as before.
 - The Debug page records how a streamed reply arrived — how many deliveries it took — and, for a structure failure, the exact check that refused it, so a record answers "did it stream" and "where did the reply go wrong" without a session.
 
 ### Fixed

@@ -206,6 +206,16 @@ extension TestReplies {
         #expect(model.receiving == nil)
     }
 
+    /// The Source / Result Sections layout grows the very text the finished result shows, so the
+    /// display never jumps from pairs to a whole paragraph when the reply is validated.
+    @Test func receivingTextGrowsIntoTheFinishedResultText() {
+        let segments = [TranslationResult.Segment(source: "Hello", target: "T:Hello")]
+        let result = TranslationResult(
+            sourceLanguage: "en", targetLanguage: "zh-Hans", segments: segments)
+        #expect(ReceivingResult.text(of: segments) == result.text)
+        #expect(ReceivingResult.text(of: []) == "")
+    }
+
     @Test func receivingSurvivesNothingOnceCancelledOrSuperseded() async throws {
         // The stream shows its piece, then stays open, so a cancel catches it mid-arrival.
         let frames = [chatStreamFrame(content), "data: [DONE]\n\n"]

@@ -85,14 +85,10 @@ struct ExpandedPanelContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if model.isReceiving {
-                // The stream's completed pairs grow in place; a lookup is not possible in them yet,
-                // because they have not been validated (BDR-0017).
-                AlignedSegments(
-                    segments: model.receiving ?? [], sourceSize: PanelMetrics.sourceTextSize,
-                    targetSize: PanelMetrics.textSize,
-                    lineSpacing: 4, pairSpacing: 12, sourceOrigin: nil, targetOrigin: nil
-                )
-                .accessibilityLabel(L10n.shared.string("Generating the result"))
+                // The stream's completed pieces grow in the layout the display setting gives the
+                // finished result, so what the user reads is the shape they will keep (BDR-0017).
+                ReceivingResult(
+                    segments: model.receiving ?? [], mode: displayMode, justified: !showsSource)
             } else {
                 Text(model.input)
                     .font(.system(size: PanelMetrics.textSize))

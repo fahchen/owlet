@@ -186,9 +186,15 @@ struct TextProcessingView: View {
         // Loading and errors sit centered in the column, as the learning column's own states do.
         switch model.state {
         case .loading:
-            Text(L10n.shared.string(model.operation.progress.key))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // A run in progress shows its arriving text here, laid out as the setting lays the
+            // finished result out (BDR-0017); before anything displayable it is the progress words.
+            if model.isReceiving {
+                resultScroll
+            } else {
+                Text(L10n.shared.string(model.operation.progress.key))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .failure(let message, let kind):
             failure(
                 message, action: kind == .contract ? "Prompt Settings" : "Service Settings",
@@ -253,8 +259,16 @@ struct TextProcessingView: View {
     }
 
     @ViewBuilder private var result: some View {
-        // The last finished result, which a failure no longer takes off the page.
-        if let text = model.lastResultText {
+        // While a reply is arriving, the layout follows the display setting, as the panel's does;
+        // the last finished result stands only once nothing is in flight.
+        if model.isReceiving {
+            VStack(alignment: .leading, spacing: 7) {
+                ProgressView(L10n.shared.string(model.operation.progress.key)).controlSize(.small)
+                ReceivingResult(
+                    segments: model.receiving ?? [], mode: displayMode, justified: true)
+            }
+        } else if let text = model.lastResultText {
+            // The last finished result, which a failure no longer takes off the page.
             let origin = model.languages.map {
                 LookupOrigin.result(of: model.operation, languages: $0, mapping: SettingsStore.targetMapping())
             }

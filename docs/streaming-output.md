@@ -1,6 +1,6 @@
 # 模型返回的流式显示方案
 
-状态：**已实现，第一轮已落地**（翻译／润色面板与阅读查词；主窗口与学习收集保持整段，见下面的取舍记录与 `spec/processing/decisions/BDR-0017-streaming-display.md`）。本文件不改变请求契约、本地校验与写回规则，与用户可见字符串一律进 `strings/translations.json` 的约束一致。第一轮之后，「必须实测」一节列出的项目仍待人验收（也登记于 [roadmap.md](roadmap.md)）。
+状态：**已实现，第一轮已落地**（翻译／润色面板与阅读查词；主窗口的翻译／润色显示已到达的文字，接收中的排版跟随即将定稿的显示方式；学习收集保持整段，见下面的取舍记录与 `spec/processing/decisions/BDR-0017-streaming-display.md`）。本文件不改变请求契约、本地校验与写回规则，与用户可见字符串一律进 `strings/translations.json` 的约束一致。第一轮之后，「必须实测」一节列出的项目仍待人验收（也登记于 [roadmap.md](roadmap.md)）。
 
 `spec/llm/contract.md` 是硬约束：结构、目标语言、原文拼接三项都在本地校验，校验失败不得当成成功结果、不得写回（[contract.md:17](../spec/llm/contract.md)、[:102](../spec/llm/contract.md)、[:110](../spec/llm/contract.md)）。本方案的所有取舍都从这条出发。
 
@@ -119,6 +119,7 @@
 - **本机 agent**：`LocalAgent` 需要一条「边读 stdout 边产出」的 runner；今天 stdout 落文件、进程结束才 `read`（[LocalAgent.swift:406-447](../Owlet/LLM/LocalAgent.swift)）。Claude 走 `--output-format stream-json --verbose` 逐行解析；**Codex 在本机只能整段到达**（上面已实测），因此它的流最多是一个元素。
 - **组装层**：`ModelClient.perform`（[:430-460](../Owlet/LLM/ModelClient.swift)）分流——需要流式时用 `stream`，把累计文本交给一个 partial 回调，**流结束后仍然用同一条 `parse(content)` 校验**；校验失败仍走现有的错误与纠正路径。`parse` 只吃完整文本，partial 永不进 `parse`。
 - **面板／模型**：`TextProcessingModel.State` 增加一个「正在接收，携带 partial 文本」的状态（或给 `.loading` 带 partial）。**`.success` 仍然只在 `parse` 通过后设置**——这样 `PanelController` 里所有以 `.success` 为门槛的路径（替换 [:317](../Owlet/App/Panel/PanelController.swift)、`inlineNotice` [:224](../Owlet/App/Panel/PanelController.swift)、`lookupOrigin` [:237](../Owlet/App/Panel/PanelController.swift)、`copyResult` [:245](../Owlet/App/Panel/PanelController.swift)）自动保持今天语义，不需要新增「部分结果算结果」的分支。这是本方案能小的关键。
+- **显示层**：接收中的文字由一处 `ReceivingResult` 按显示方式排版——「逐句对照」逐对长出，「原文／译文分段」只长译文文字——面板与主窗口的翻译／润色共用它，定稿时不发生「配对↔整段」的跳变；它不接 `LookupOrigin`，接收中的文字不提供查词、复制或替换。
 - **取消与迟到**：沿用 `ModelClient` 的 `Task` 取消与 `operationID` 守卫（[TextProcessingModel.swift:63-67](../Owlet/Processing/TextProcessingModel.swift)、[:127](../Owlet/Processing/TextProcessingModel.swift)）。HTTP 的 `AsyncBytes` 随 Task 取消；agent 仍由 `AgentProcess` kill（[LocalAgent.swift:947-974](../Owlet/LLM/LocalAgent.swift)）。**新增要求**：取消或切换请求后，已 yield 的 partial 必须清空，不能残留到下一个请求。
 - **调试页**：`DebugExchange.response` 是单个 `String?`（[DebugLog.swift:16](../Owlet/Debug/DebugLog.swift)），调试页承诺不含 Key（[contract.md:104](../spec/llm/contract.md)）。建议**只记最终文本**，不记整条流：流的价值在交互，不在取证；整条流会把大量未校验片段写进记录。若确需取证，只加计数类字段（首个块到达时间、块数），不存每块文本。
 

@@ -21,6 +21,8 @@ EXEMPT_MARKERS = (
     "Explain the text", "Write meaning", "definition_language is", "从这次", "为下面这条",
     "补释义", "学习推荐", "查词 ·", "解释这段", "急剧上涨", "退一步重新审视",
     "在这句话中指", "动词", "原油価格", "跳ね上が",
+    # The model's test sentence is data sent to the model, not interface text (ModelSettingsPane).
+    "蒹葭蒼蒼",
 )
 
 LITERAL = re.compile(r'"((?:[^"\\]|\\.)*)"')

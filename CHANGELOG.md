@@ -4,9 +4,14 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 
 ## Unreleased
 
+### Added
+- The panel shows the model's answer as it arrives, and the lookup card shows the meaning as it does (first round: the panel's translate and polish, the lookup card). Nothing changes about when an answer can be trusted: an action pressed while the reply is still arriving is refused with the reason on screen, and nothing partial reaches history, replace or copy. A service that cannot stream sees no difference: the answer is validated once it is complete, as before.
+- The Debug page records how a streamed reply arrived — how many deliveries it took — and, for a structure failure, the exact check that refused it, so a record answers "did it stream" and "where did the reply go wrong" without a session.
+
 ### Fixed
 - Invisible characters a copy leaves behind — an inline object's placeholder (U+FFFC), a soft hyphen, a zero-width space and a byte-order mark — no longer fail a translation. A model cannot reproduce them, so they are treated as spaces when checking the reply's sources.
 - Text selected in a web page is translated as a copy of it would be: hidden parts of the page (a comment's counters, a chat's hidden timestamps) no longer come along.
+- Translating a text that carries fenced code blocks (a README) no longer fails as a structure error: fence characters inside the reply's own JSON are content, and a reply is unwrapped only when it actually starts with a fence.
 
 ## 0.6.0 — 2026-10-16
 

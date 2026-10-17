@@ -116,6 +116,32 @@ struct DebugLogTests {
         #expect(box.exchanges.first?.response?.contains("unsupported field") == true)
     }
 
+    /// A streamed request is diagnosed the same way a whole one is: how it arrived must be readable
+    /// from the copy alone, and a structure failure names the exact check it broke.
+    @Test func aStreamedFailedRequestNamesTheCheckAndTheDeliveries() async throws {
+        let box = Box()
+        let content =
+            #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"","target":""}]}"#
+        // No stream seam: the degrade path delivers the answer once, through the same records.
+        var client = ModelClient(transport: stub(body: chatBody(content)))
+        client.capture = DebugCapture(
+            isEnabled: { true }, record: { box.exchanges.append($0) })
+        _ = try? await client.process(
+            "Hello", operation: .translate, to: "zh-Hans", config: testConfig,
+            partial: { _ in })
+        await settle(box)
+        let exchange = try #require(box.exchanges.first)
+        #expect(exchange.streamedDeliveries == 1)
+        // Not against English wording: the labels follow the language the runner runs in.
+        let detail = L10n.shared.string("Segment %lld had a field with nothing in it.", 1)
+        #expect(exchange.failureDetail == detail)
+        // The copy carries both lines, so a paste answers "did it stream?" without a session.
+        #expect(exchange.report.contains(detail))
+        #expect(
+            exchange.report.contains(L10n.shared.string("The reply arrived in 1 delivery."))
+        )
+    }
+
     /// The switch is the only consent for keeping the user's text, so it must decide both whether to
     /// record and whether what was already recorded survives.
     @Test func theSwitchDecidesRecordingAndClearsWhenTurnedOff() {

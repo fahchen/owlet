@@ -20,6 +20,13 @@ struct DebugExchange: Identifiable, Sendable {
     /// a translated message must never be the thing that decides which comparison to show.
     var failure: String?
     var failureKind: ModelError.Kind?
+    /// What check a structure failure broke, when the model error named it. The sentence the user
+    /// already read is in `failure`; this is the debug page's where it went wrong.
+    var failureDetail: String?
+    /// How many part deliveries the reply took, when the request streamed at all: one degraded
+    /// delivery is the answer arriving once (BDR-0017 §4), a real stream arrives in many. nil when
+    /// the request never streamed.
+    var streamedDeliveries: Int?
 
     /// Where a source mismatch first stops matching the submitted text. nil for every other failure,
     /// so the page only explains the check that actually failed.
@@ -51,6 +58,14 @@ struct DebugExchange: Identifiable, Sendable {
     var report: String {
         var lines = ["# \(title)", L10n.shared.string("Time: %@", date.formatted(date: .numeric, time: .standard))]
         if let failure { lines.append(L10n.shared.string("Failure: %@", failure)) }
+        if let failureDetail { lines.append(L10n.shared.string("The failed check: %@", failureDetail)) }
+        if let count = streamedDeliveries {
+            // The same sentence the pane shows: one delivery reads "1 delivery", not "1 deliveries".
+            lines.append(
+                count == 1
+                    ? L10n.shared.string("The reply arrived in 1 delivery.")
+                    : L10n.shared.string("The reply arrived in %lld deliveries.", count))
+        }
         if let sourceDivergence { lines.append(L10n.shared.string("Source difference:\n%@", sourceDivergence)) }
         lines.append(L10n.shared.string("\n## Request body\n%@", request))
         if let response { lines.append(L10n.shared.string("\n## Model raw reply\n%@", response)) }

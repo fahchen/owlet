@@ -1,6 +1,6 @@
 # 模型返回的流式显示方案
 
-状态：设计提案，未实现。本文件只讨论「模型的回答如何在到达时显示」，不改请求契约、不改本地校验、不改写回规则，也没有任何用户可见字符串进入 `strings/translations.json`。实现是否开始，取决于人对下面「决策」第 1 条的答复。
+状态：**已实现，第一轮已落地**（翻译／润色面板与阅读查词；主窗口与学习收集保持整段，见下面的取舍记录与 `spec/processing/decisions/BDR-0017-streaming-display.md`）。本文件不改变请求契约、本地校验与写回规则，与用户可见字符串一律进 `strings/translations.json` 的约束一致。第一轮之后，「必须实测」一节列出的项目仍待人验收（也登记于 [roadmap.md](roadmap.md)）。
 
 `spec/llm/contract.md` 是硬约束：结构、目标语言、原文拼接三项都在本地校验，校验失败不得当成成功结果、不得写回（[contract.md:17](../spec/llm/contract.md)、[:102](../spec/llm/contract.md)、[:110](../spec/llm/contract.md)）。本方案的所有取舍都从这条出发。
 

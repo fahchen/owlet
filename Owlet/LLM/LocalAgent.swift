@@ -182,6 +182,8 @@ struct LocalAgent: Sendable {
     /// Runs one invocation and returns the agent's final text. Injectable, so the test suite never
     /// spawns a real agent and never reaches a real model.
     var run: @Sendable (LocalAgentInvocation) async throws -> String = LocalAgent.spawn
+    /// Runs one invocation whose answer arrives as it runs, and yields its pieces.
+    var runStreaming = LocalAgentStream()
     /// A CLI is far slower than an HTTP call, but a hung process must not hold a request open forever.
     var timeout: Duration = .seconds(180)
 
@@ -193,6 +195,15 @@ struct LocalAgent: Sendable {
     /// input the thing to answer; the user's own text never appears here, so `ps` shows nothing private.
     static let stdinInstruction =
         "Answer the request provided on standard input, following the system instructions exactly."
+}
+
+/// How a backend drives one agent call whose answer arrives as it runs. Injectable, so a test can
+/// hand it pieces without spawning a real CLI.
+struct LocalAgentStream: Sendable {
+    var run:
+        @Sendable (LocalAgentInvocation, LocalAgentKind) async throws -> AsyncThrowingStream<
+            String, Error
+        > = LocalAgent.spawnStreaming
 }
 
 extension LocalAgent {
@@ -214,6 +225,23 @@ extension LocalAgent {
             throw ModelError.emptyResponse
         }
         return answer
+    }
+
+    /// One request whose answer the CLI produces while it runs. The recipe is `plan`'s with the
+    /// streaming switches a kind accepts; the fold is the runner's. Only the live requests that show
+    /// parts while they wait take this path — the update behind the panel and the lookup card.
+    func stream(
+        kind: LocalAgentKind, request: ModelRequest, config: ServiceConfig
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        guard let executable = config.agentExecutable else {
+            throw ModelError.localAgent("no executable is set")
+        }
+        return try await runStreaming.run(
+            Self.plan(
+                kind: kind, executable: executable, request: request,
+                directory: Self.temporaryDirectory(), timeout: timeout,
+                features: config.agentFeatures, overrides: config.agentOverrides, streaming: true),
+            kind)
     }
 
     /// The command that would run, for the debug page: a one-shot agent's request *is* its command
@@ -245,9 +273,14 @@ extension LocalAgent {
     ///
     /// The user's text never reaches the command line — arguments are visible to every process on the
     /// machine through `ps` — so it is always written to the process's standard input.
+    ///
+    /// `streaming` asks a kind that can answer in pieces for that shape (`claude`'s stream-json,
+    /// measured to require `--verbose`). The debug page shows the base recipe, so a streamed run's
+    /// command reads without those two switches.
     static func plan(
         kind: LocalAgentKind, executable: URL, request: ModelRequest, directory: URL,
-        timeout: Duration, features: [String]? = nil, overrides: [String]? = nil
+        timeout: Duration, features: [String]? = nil, overrides: [String]? = nil,
+        streaming: Bool = false
     ) -> LocalAgentInvocation {
         let prompt = request.turns.map(\.content).joined(separator: "\n\n")
         // Only a `json_schema` request carries one: a `json_object` shape travels in the prompt, so
@@ -265,7 +298,7 @@ extension LocalAgent {
         var arguments = arguments(
             kind: kind, model: request.model, effort: request.effort, custom: request.customEffort,
             supported: request.supportedEfforts, features: features, overrides: overrides,
-            invocation: invocation)
+            invocation: invocation, streaming: streaming)
         // Codex reads its prompt from stdin only when it is given no prompt argument, and `-` says so
         // explicitly; Claude Code takes the payload as context, so it needs a short positional prompt
         // to make it the thing to answer. That sentence is the app's own words, so `ps` may show it.
@@ -283,7 +316,8 @@ extension LocalAgent {
 
     private static func arguments(
         kind: LocalAgentKind, model: String, effort: EffortLevel, custom: String?,
-        supported: [EffortLevel]?, features: [String]?, overrides: [String]?, invocation: LocalAgentInvocation
+        supported: [EffortLevel]?, features: [String]?, overrides: [String]?, invocation: LocalAgentInvocation,
+        streaming: Bool = false
     ) -> [String] {
         var arguments: [String]
         switch kind {
@@ -292,6 +326,11 @@ extension LocalAgent {
                 "--print", "--tools", "", "--safe-mode", "--strict-mcp-config",
                 "--no-session-persistence", "--system-prompt", invocation.systemPrompt,
             ]
+            if streaming {
+                // The answer arrives in pieces through `--output-format stream-json`; the measured
+                // CLI refuses that format with `--print` unless `--verbose` is also sent.
+                arguments += ["--output-format", "stream-json", "--verbose"]
+            }
             if let schema = invocation.schema, kind.schemaDelivery == .argument {
                 arguments += ["--json-schema", String(decoding: schema, as: UTF8.self)]
             }
@@ -454,6 +493,195 @@ extension LocalAgent {
         let collapsed = text.split(whereSeparator: \.isNewline).joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
         return collapsed.count <= limit ? collapsed : "…" + String(collapsed.suffix(limit))
+    }
+}
+
+extension LocalAgent {
+    /// The live streaming runner. The same slot, prepared directory, environment and timeout as
+    /// `spawn`; the difference is that standard output is read as the process writes it, so the
+    /// answer shows while the CLI still runs.
+    static func spawnStreaming(
+        _ invocation: LocalAgentInvocation, kind: LocalAgentKind
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        let environment = await AgentEnvironment.shared.value(for: invocation.executable)
+        return AsyncThrowingStream { continuation in
+            let running = Task<Void, Never> {
+                do {
+                    try await AgentGate.shared.withSlot {
+                        try await withPreparedDirectory(invocation) { prepared in
+                            try await streamProcess(
+                                prepared, kind: kind, environment: environment
+                            ) { piece in
+                                continuation.yield(piece)
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    // The request was stopped; its late output must not arrive, and the process is
+                    // already dead.
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in running.cancel() }
+        }
+    }
+
+    /// Starts one process and delivers what it produced while it ran.
+    ///
+    /// Standard output is a pipe read line by line instead of a file: the deadlock file redirection
+    /// avoids in `runProcess` does not exist here, because the read runs while the wait does, in the
+    /// same cancelled task. Standard error and any timed-out process are handled as `runProcess`
+    /// does them, so a stream fails with the same message its whole shot would.
+    private static func streamProcess(
+        _ invocation: LocalAgentInvocation, kind: LocalAgentKind, environment: [String: String],
+        yield: @Sendable @escaping (String) -> Void
+    ) async throws {
+        try Task.checkCancellation()
+        guard
+            FileManager.default.createFile(
+                atPath: invocation.stderrFile.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        else { throw ModelError.localAgent("the output files could not be created") }
+        let process = Process()
+        process.executableURL = invocation.executable
+        process.arguments = invocation.arguments
+        process.currentDirectoryURL = invocation.directory
+        process.environment = environment
+        let stdin = try FileHandle(forReadingFrom: invocation.stdinFile)
+        let stderr = try FileHandle(forWritingTo: invocation.stderrFile)
+        let stdout = Pipe()
+        process.standardInput = stdin
+        process.standardOutput = stdout
+        process.standardError = stderr
+
+        let child = AgentProcess(process)
+        let waited = Task {
+            try await child.wait(timeout: invocation.timeout)
+        }
+        // The fold runs while the wait does, so an agent that stops printing answers cannot outlive
+        // the timeout either.
+        var staged = ""
+        do {
+            switch kind {
+            case .claudeCode:
+                var fold = ClaudeStream()
+                for try await line in stdout.fileHandleForReading.bytes.lines {
+                    if let piece = fold.read(line) {
+                        staged += piece
+                        yield(piece)
+                    }
+                }
+                if let rest = fold.rest() {
+                    staged += rest
+                    yield(rest)
+                }
+            case .codexCLI:
+                // Codex answers whole in the file its `-o` names, so its stream is one element that
+                // arrives only at the end; standard output is drained here so a full pipe cannot
+                // stall the process, the same reason `runProcess` redirects it to a file.
+                for try await _ in stdout.fileHandleForReading.bytes {}
+            }
+        } catch {
+            try? stdin.close()
+            try? stderr.close()
+            throw error
+        }
+
+        let status: Int32
+        do {
+            status = try await waited.value
+        } catch let error as AgentProcessError {
+            switch error {
+            case .timedOut:
+                throw ModelError.localAgent(
+                    "no answer within \(invocation.timeout.components.seconds) seconds")
+            case .notStarted(let detail):
+                throw ModelError.localAgent(detail)
+            }
+        }
+        guard status == 0 else {
+            // Not every CLI explains itself on standard error: Claude Code prints a quota message
+            // on standard output and exits 1, which would otherwise read as "exit 1: " with
+            // nothing after it.
+            let onFile = read(invocation.stderrFile)
+            let explained = tail(onFile).isEmpty ? tail(staged) : tail(onFile)
+            throw ModelError.localAgent("exit \(status): \(explained)")
+        }
+        if invocation.answersToFile {
+            // `codex` stops writing if nothing consumes standard output, but its answer is the
+            // file: the single element answers here, after the exit is known.
+            let answer = read(invocation.answerFile).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !answer.isEmpty else { throw ModelError.emptyResponse }
+            yield(answer)
+        }
+    }
+}
+
+/// `claude`'s `--output-format stream-json` line stream, folded into the answer's pieces.
+///
+/// Three kinds of line carry text: `stream_event` holds the provider's own delta (`text_delta`
+/// only, as the whole shot ignores thinking), `assistant` holds a whole message, and `result`
+/// holds the final answer. The `result` backstop only fires when no text has streamed — whatever
+/// the fold already yielded is the story the stream told.
+struct ClaudeStream: Sendable {
+    private struct Event: Decodable {
+        struct Delta: Decodable {
+            var type: String?
+            var text: String?
+        }
+        struct Block: Decodable {
+            var type: String?
+            var text: String?
+        }
+        struct Message: Decodable { var content: [Block]? }
+        var type: String?
+        var event: Delta?
+        var message: Message?
+        var result: String?
+    }
+
+    private var text = ""
+    private var sawText = false
+    private var finale = ""
+
+    mutating func read(_ line: String) -> String? {
+        guard let data = line.data(using: .utf8),
+            let event = try? JSONDecoder().decode(Event.self, from: data)
+        else { return nil }
+        switch event.type {
+        case "stream_event":
+            guard event.event?.type == "text_delta", let piece = event.event?.text, !piece.isEmpty
+            else { return nil }
+            sawText = true
+            text += piece
+            return piece
+        case "assistant":
+            // An install that never emitted partial events still answers whole in its message.
+            guard !sawText else { return nil }
+            let body = (event.message?.content ?? []).filter { $0.type == "text" }
+                .compactMap(\.text).joined()
+            guard !body.isEmpty else { return nil }
+            sawText = true
+            text += body
+            return body
+        case "result":
+            finale = event.result ?? ""
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    /// What the stream is worth at its end: the result event's answer when no text ever streamed,
+    /// else nothing (a piece that never arrived must not be invented).
+    mutating func rest() -> String? {
+        if sawText { return nil }
+        guard !finale.isEmpty else { return nil }
+        sawText = true
+        text += finale
+        return finale
     }
 }
 

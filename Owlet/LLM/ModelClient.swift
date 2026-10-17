@@ -10,6 +10,9 @@ enum ModelError: Error, Equatable {
     /// The returned JSON does not have the agreed shape: a missing or extra field, a wrong type, a
     /// blank segment, or text outside one code fence.
     case format
+    /// The same failure as `.format` with the exact check that refused the reply, so the debug page
+    /// names what the shape got wrong instead of a bare structure sentence.
+    case formatDetail(String)
     /// The returned source text does not reassemble into what was submitted, so the pairing cannot
     /// be trusted even though the JSON itself was well formed.
     case sourceMismatch
@@ -34,6 +37,12 @@ enum ModelError: Error, Equatable {
             L10n.shared.string(
                 "The reply does not match the agreed structure: a missing field, a wrong type, or empty content."
             )
+        // The user reads the same sentence as `.format`; the detail behind it is what the debug
+        // page records, so a structure failure names the exact check that refused the reply.
+        case .formatDetail:
+            L10n.shared.string(
+                "The reply does not match the agreed structure: a missing field, a wrong type, or empty content."
+            )
         case .sourceMismatch:
             L10n.shared.string(
                 "The returned source does not reassemble into what was submitted, so the pairing cannot be trusted."
@@ -54,6 +63,13 @@ enum ModelError: Error, Equatable {
         return nil
     }
 
+    /// The exact check a structure failure broke, for the debug page. The user's sentence never
+    /// needs it: the message above says all the panel shows.
+    var detail: String? {
+        if case .formatDetail(let detail) = self { return detail }
+        return nil
+    }
+
     /// What a failure means for the user. Classification is a property of the error, never of its
     /// wording: a translated message must not decide whether the way out is the prompt editor or the
     /// service settings, nor whether the problem is the connection.
@@ -69,6 +85,7 @@ enum ModelError: Error, Equatable {
     var kind: Kind {
         switch self {
         case .format, .sourceMismatch, .targetMismatch: .contract
+        case .formatDetail: .contract
         case .network, .unauthorized, .http, .localAgent: .connection
         case .emptyResponse, .truncated, .refused: .service
         }
@@ -76,6 +93,11 @@ enum ModelError: Error, Equatable {
 }
 
 typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+
+/// What the assembled layer reports while a streamed answer is still arriving: the raw message
+/// content accumulated so far. It is display-only — never parsed, never trusted — and the final
+/// answer is validated exactly as a complete one is (BDR-0017).
+typealias PartialHandler = @Sendable (String) async -> Void
 
 /// A contract failure together with the model content that produced it, so a caller can show the model
 /// what it must fix instead of asking again from scratch.
@@ -90,7 +112,7 @@ extension ModelClient {
     /// wrong and can be told about. Truncation, refusal, an empty answer and transport failures cannot.
     static func isCorrectable(_ error: ModelError) -> Bool {
         switch error {
-        case .format, .sourceMismatch, .targetMismatch: true
+        case .format, .formatDetail, .sourceMismatch, .targetMismatch: true
         case .network, .unauthorized, .http, .localAgent, .emptyResponse, .truncated, .refused: false
         }
     }
@@ -100,6 +122,17 @@ extension ModelClient {
 
 struct ModelClient: Sendable {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// How a streamed request receives its body while it is still arriving. A caller that injects a
+    /// `transport` stub gets the automatic degradation of BDR-0017 on every path: `nil` (the
+    /// default) means the answer runs whole through `transport`; the stream handler sees it once,
+    /// already complete. A live client uses `ModelClient.live`, which also opens the real byte
+    /// stream; a test can inject a fixture here to drive true streaming.
+    var streamTransport: StreamTransport? = nil
+    /// The client the app composes: ordinary HTTP for the whole reply, and a streamed request reads
+    /// its body while it is still arriving.
+    static var live: ModelClient {
+        ModelClient(streamTransport: { try await URLSession.stream(for: $0) })
+    }
     /// How a request reaches a local agent CLI. The HTTP providers never touch it, and the HTTP
     /// transport is never touched for a local-agent provider.
     var localAgent: LocalAgent = LocalAgent()
@@ -117,30 +150,36 @@ struct ModelClient: Sendable {
     /// Not Specified.
     var nativeLanguages: @Sendable () -> [String] = { SettingsStore.nativeLanguages() }
 
-    func translate(_ text: String, to targetLanguage: String, config: ServiceConfig)
-        async throws -> String
-    {
-        try await process(text, operation: .translate, to: targetLanguage, config: config)
+    func translate(
+        _ text: String, to targetLanguage: String, config: ServiceConfig,
+        partial: PartialHandler? = nil
+    ) async throws -> String {
+        try await process(text, operation: .translate, to: targetLanguage, config: config, partial: partial)
     }
 
     /// `targetLanguage` is ignored for polish, whose result must stay in the source language.
     func process(
-        _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig
+        _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig,
+        partial: PartialHandler? = nil
     ) async throws -> String {
-        try await processResult(text, operation: operation, to: targetLanguage, config: config).text
+        try await processResult(
+            text, operation: operation, to: targetLanguage, config: config, partial: partial
+        ).text
     }
 
     /// Returns the whole validated result so a caller can also read the source and target languages
-    /// of a collected expression.
+    /// of a collected expression. With `partial`, the request streams and each raw accumulation
+    /// reaches the handler while still arriving; the answer is validated only once it is complete.
     func processResult(
-        _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig
+        _ text: String, operation: Operation, to targetLanguage: String, config: ServiceConfig,
+        partial: PartialHandler? = nil
     ) async throws -> TranslationResult {
         let target = operation == .translate ? targetLanguage : nil
         let request = try translationRequest(
             text: text, operation: operation, to: target, config: config)
         return try await perform(
             request, title: Self.debugTitle(operation: operation, target: target),
-            symbol: operation.symbol, submitted: text, config: config,
+            symbol: operation.symbol, submitted: text, config: config, partial: partial,
             parse: { try TranslationResult.parse($0, submitted: text, targetLanguage: target) })
     }
 
@@ -323,16 +362,17 @@ struct ModelClient: Sendable {
     }
 
     /// One explicit reading lookup through `$defs.lookup`. The context and offset come from the
-    /// app's snapshot, so the model is only trusted for the explanation itself.
-    ///
-    /// As with learning, a reply this app cannot accept buys one corrective round naming the claims the
-    /// model got wrong. A lookup is the app's most exacting contract — seven keys, nullable ones
-    /// included, and a definition written in the language that was asked for — and a provider that
-    /// breaks it usually has a fixable answer, not a bad one.
-    func lookup(_ query: LookupQuery, config: ServiceConfig) async throws -> LookupResult {
+    /// app's snapshot, so the model is only trusted for the explanation itself. With `partial`, the
+    /// explanation's own stream reaches the handler while still arriving; everything else is as it
+    /// was, contract and corrective round included.
+    func lookup(
+        _ query: LookupQuery, config: ServiceConfig, partial: PartialHandler? = nil
+    ) async throws -> LookupResult {
         let request = try lookupRequest(query, config: config)
         let title = L10n.shared.string("Look Up · %@", query.definitionLanguage)
-        switch try await attemptLookup(request, query: query, title: title, config: config) {
+        switch try await attemptLookup(
+            request, query: query, title: title, config: config, partial: partial)
+        {
         case .success(let result):
             return result
         case .failure(let error):
@@ -346,7 +386,7 @@ struct ModelClient: Sendable {
                 query, config: config, correcting: error.content, reasons: reasons)
             switch try await attemptLookup(
                 correction, query: query, title: L10n.shared.string("%@ (corrected)", title),
-                config: config)
+                config: config, partial: partial)
             {
             case .success(let result): return result
             case .failure(let retried): throw retried.error
@@ -356,7 +396,8 @@ struct ModelClient: Sendable {
 
     /// Sends one lookup and parses it; the parse failure carries the content back for correction.
     private func attemptLookup(
-        _ request: ModelRequest, query: LookupQuery, title: String, config: ServiceConfig
+        _ request: ModelRequest, query: LookupQuery, title: String, config: ServiceConfig,
+        partial: PartialHandler? = nil
     ) async throws -> Result<LookupResult, ContractError> {
         func parsed(_ content: String) -> Result<LookupResult, ContractError> {
             do {
@@ -367,7 +408,7 @@ struct ModelClient: Sendable {
         }
         return try await perform(
             request, title: title, symbol: "magnifyingglass", submitted: query.text,
-            config: config, parse: parsed)
+            config: config, partial: partial, parse: parsed)
     }
 
     func lookupRequest(_ query: LookupQuery, config: ServiceConfig) throws -> ModelRequest {
@@ -474,34 +515,60 @@ struct ModelClient: Sendable {
     /// Sends one request and hands the finished exchange to the debug capture whatever the outcome,
     /// then parses the answer. Every request type goes through here so none is silently left off the
     /// debug page, and no caller knows which backend ran it.
+    ///
+    /// With `partial`, the answer is read as a stream: each accumulation reaches the handler while
+    /// the answer is still arriving, and the exact same `parse` runs on the finished content. The
+    /// stream's pieces are display only; the contract never sees partial text.
     private func perform<T>(
         _ request: ModelRequest, title: String, symbol: String, submitted: String,
-        config: ServiceConfig, parse: (String) throws -> T
+        config: ServiceConfig, partial: PartialHandler? = nil, parse: (String) throws -> T
     ) async throws -> T {
-        let backend = config.provider.backend(transport: transport, agent: localAgent)
+        let backend = config.provider.backend(
+            transport: transport, stream: streamTransport, agent: localAgent)
         let capture = capture
         let records = capture.isEnabled()
         var response: String?
         var failure: String?
         var failureKind: ModelError.Kind?
+        var failureDetail: String?
+        var streamedDeliveries: Int?
         // The record is handed off, not awaited: diagnostics must never delay or fail a request.
         defer {
             if records {
                 let exchange = DebugExchange(
                     title: title, symbol: symbol, request: backend.describe(request, config: config),
                     submitted: submitted, response: response, failure: failure,
-                    failureKind: failureKind)
+                    failureKind: failureKind, failureDetail: failureDetail,
+                    streamedDeliveries: streamedDeliveries)
                 let record = capture.record
                 Task { await record(exchange) }
             }
         }
         do {
-            let content = try await backend.complete(request, config: config)
+            let content: String
+            if let partial {
+                // The pieces are shown as they land; only the finished content is parsed, so a
+                // reply that never validates can never have shown a result. A client without a
+                // stream seam degrades (BDR-0017 §4) and the handler sees the answer once.
+                var accumulated = ""
+                var delivered = 0
+                for try await piece in backend.stream(request, config: config) {
+                    guard !piece.isEmpty else { continue }
+                    delivered += 1
+                    accumulated += piece
+                    await partial(accumulated)
+                }
+                streamedDeliveries = delivered
+                content = accumulated
+            } else {
+                content = try await backend.complete(request, config: config)
+            }
             response = content
             return try parse(content)
         } catch {
             failure = (error as? ModelError)?.message ?? error.localizedDescription
             failureKind = (error as? ModelError)?.kind
+            failureDetail = (error as? ModelError)?.detail
             // A failed status still answered with a body, and that body is the diagnosis. A reply that
             // arrived and failed to parse keeps the reply it already has.
             if let detail = (error as? ModelError)?.diagnosticBody { response = detail }
@@ -521,7 +588,9 @@ struct ModelClient: Sendable {
 
             \(task)
             Respond with one json object with keys source_language, target_language and segments \
-            (array of {source, target}). Concatenated sources must equal the user message exactly.
+            (array of {source, target}). Concatenated sources must equal the user message exactly. \
+            When writing the JSON, escape every backslash that is part of the text, so the decoded \
+            sources stay character for character.
             Example json: {"source_language":"en","target_language":"zh-Hans",\
             "segments":[{"source":"...","target":"..."}]}
             """

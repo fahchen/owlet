@@ -14,10 +14,7 @@
 | 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
 | 学习推荐的纠正重试 | 用真实模型复验：一次纠正能修好违约的返回。 | [LLM 契约](../spec/llm/contract.md) |
 | 选中文字读取 | 辅助功能路径、⌘C 兜底与粘贴写回已实现；在各真实应用上的兼容性仍需手测。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
-
-## 设计就绪，未实现
-
-- **模型返回的流式显示。** 只改「何时看见」，不改请求契约、本地校验与写回。等待对替换入口的决定。见 [streaming-output.md](streaming-output.md)。
+| 模型返回的流式显示 | 回答到达时即显示片段，但任何片段都不被当成结果；待验收：真实的 OpenAI 兼容服务、真实的本机 agent、安装版。 | [streaming-output.md](streaming-output.md)、[BDR-0017](../spec/processing/decisions/BDR-0017-streaming-display.md) |
 
 ## 尚未进入产品定义的提案
 

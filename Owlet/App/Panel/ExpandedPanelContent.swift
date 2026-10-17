@@ -64,6 +64,7 @@ struct ExpandedPanelContent: View {
         VStack(alignment: .leading, spacing: 7) {
             if model.state == .loading {
                 ProgressView(L10n.shared.string(model.operation.progress.key)).controlSize(.small)
+                    .opacity(model.isReceiving ? 0.5 : 1)
             }
             if case .success(let text) = model.state {
                 if showsAlignedPairs {
@@ -83,7 +84,15 @@ struct ExpandedPanelContent: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
+            } else if model.isReceiving {
+                // The stream's completed pairs grow in place; a lookup is not possible in them yet,
+                // because they have not been validated (BDR-0017).
+                AlignedSegments(
+                    segments: model.receiving ?? [], sourceSize: PanelMetrics.sourceTextSize,
+                    targetSize: PanelMetrics.textSize,
+                    lineSpacing: 4, pairSpacing: 12, sourceOrigin: nil, targetOrigin: nil
+                )
+                .accessibilityLabel(L10n.shared.string("Generating the result"))
             } else {
                 Text(model.input)
                     .font(.system(size: PanelMetrics.textSize))
@@ -112,11 +121,14 @@ struct ExpandedPanelContent: View {
                     .failureBlock()
                 GlassEffectContainer {
                     // A copy names itself after the press, so the button never looks like it did nothing.
-                    Button(confirmation.isCopied ? L10n.shared.string("Copied") : notice.actionTitle) {
-                        recover(notice)
-                        if notice.copiesOnPress { confirmation.confirm() }
+                    // A notice that offers no entry (receiving) shows as words alone.
+                    if !notice.actionTitle.isEmpty {
+                        Button(confirmation.isCopied ? L10n.shared.string("Copied") : notice.actionTitle) {
+                            recover(notice)
+                            if notice.copiesOnPress { confirmation.confirm() }
+                        }
+                        .buttonStyle(.glass)
                     }
-                    .buttonStyle(.glass)
                 }
             }
         }

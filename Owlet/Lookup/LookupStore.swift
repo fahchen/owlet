@@ -7,6 +7,10 @@ import Observation
 final class LookupStore {
     enum Entry: Equatable {
         case loading
+        /// The explanation is arriving piece by piece and is still in flight; shown in the card so
+        /// the wait reads. It is not an answer — it was never validated — so nothing collects or
+        /// reuses it (BDR-0017).
+        case receiving(String)
         case success(LookupResult)
         case failure(String)
     }
@@ -21,8 +25,10 @@ final class LookupStore {
     private let config: () -> ServiceConfig?
     private let defaults: UserDefaults
 
+    /// `ModelClient.live` so a lookup streams while still answering (BDR-0017); a test passes a
+    /// client of its own and the lookup follows it.
     init(
-        client: ModelClient = ModelClient(),
+        client: ModelClient = ModelClient.live,
         config: @escaping () -> ServiceConfig? = SettingsStore.currentConfig,
         defaults: UserDefaults = .standard
     ) {
@@ -55,7 +61,7 @@ final class LookupStore {
 
     /// Sends the query unless the same one is already running; Retry and Look Up in This Sentence land here.
     func request(_ query: LookupQuery) {
-        guard entries[query] != .loading else { return }
+        guard !inFlight(entries[query]) else { return }
         guard let config = config() else {
             store(.failure(L10n.shared.string("The model service is not configured")), for: query)
             return
@@ -65,13 +71,35 @@ final class LookupStore {
         Task {
             let entry: Entry
             do {
-                entry = .success(try await client.lookup(query, config: config))
+                entry = .success(
+                    // The enclosing Task already owns `self` until the lookup completes, so a
+                    // weak capture here would only diverge from it.
+                    try await client.lookup(query, config: config) { accumulated in
+                        await self.receive(accumulated, for: query)
+                    })
             } catch {
                 entry = .failure((error as? ModelError)?.message ?? error.localizedDescription)
             }
             // A later answer only ever fills its own query, so it cannot replace another card.
             self.store(entry, for: query)
         }
+    }
+
+    /// Whether `entry` is a request still answering: loading or a stream still arriving, both of
+    /// which a new request replaces rather than duplicates.
+    private func inFlight(_ entry: Entry?) -> Bool {
+        switch entry {
+        case .loading, .receiving: true
+        default: false
+        }
+    }
+
+    /// One step of the arriving stream: the explanation text the accumulated reply has completed.
+    /// Everything else is dropped, and a query that is no longer the one running sees nothing.
+    private func receive(_ accumulated: String, for query: LookupQuery) {
+        guard inFlight(entries[query]) else { return }
+        guard let meaning = PartialReply.meaning(from: accumulated) else { return }
+        store(.receiving(meaning), for: query)
     }
 
     /// The newest answer for the same words in another real sentence, with every setting that

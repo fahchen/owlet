@@ -73,7 +73,25 @@ struct DebugSettingsPane: View {
                     .lineLimit(isExpanded(exchange) ? nil : 1)
                     .textSelection(.enabled)
             }
+            if let detail = exchange.failureDetail {
+                Text(detail)
+                    .font(.callout.monospaced())
+                    .foregroundStyle(.red)
+                    .lineLimit(isExpanded(exchange) ? nil : 1)
+                    .textSelection(.enabled)
+            }
             if isExpanded(exchange) {
+                if let count = exchange.streamedDeliveries {
+                    // Singular and plural are separate keys, so "%lld deliveries" never reads as
+                    // "1 deliveries".
+                    Text(
+                        count == 1
+                            ? L10n.shared.string("The reply arrived in 1 delivery.")
+                            : L10n.shared.string("The reply arrived in %lld deliveries.", count)
+                    )
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+                }
                 if let divergence = exchange.sourceDivergence {
                     Text(divergence)
                         .font(.callout.monospaced())

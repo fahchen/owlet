@@ -219,11 +219,6 @@
     "zh-Hans": "Claude Code",
     "zh-Hant": "Claude Code"
   },
-  "Collapsed": {
-    "ja": "折りたたみ",
-    "zh-Hans": "已收起",
-    "zh-Hant": "已收起"
-  },
   "Clear": {
     "ja": "消去",
     "zh-Hans": "清除",
@@ -258,6 +253,11 @@
     "ja": "Codex CLI",
     "zh-Hans": "Codex CLI",
     "zh-Hant": "Codex CLI"
+  },
+  "Collapsed": {
+    "ja": "折りたたみ",
+    "zh-Hans": "已收起",
+    "zh-Hant": "已收起"
   },
   "Configure Service": {
     "ja": "サービスを設定",
@@ -389,6 +389,11 @@
     "zh-Hans": "可执行文件",
     "zh-Hant": "可執行檔"
   },
+  "Expanded": {
+    "ja": "展開",
+    "zh-Hans": "已展开",
+    "zh-Hant": "已展開"
+  },
   "Expression": {
     "ja": "表現",
     "zh-Hans": "表达",
@@ -400,9 +405,9 @@
     "zh-Hant": "生詞本中的表達不受影響。"
   },
   "Failed": {
+    "ja": "失敗",
     "zh-Hans": "失败",
-    "zh-Hant": "失敗",
-    "ja": "失敗"
+    "zh-Hant": "失敗"
   },
   "Failure: %@": {
     "ja": "失敗の理由：%@",
@@ -535,9 +540,9 @@
     "zh-Hant": "假名"
   },
   "Kept in memory only, the latest %lld; turning the Debug page off clears them.": {
+    "ja": "メモリにのみ保持し、最新 %lld 件まで。デバッグページをオフにすると消去されます。",
     "zh-Hans": "只保存在内存中，最多 %lld 条；关闭调试页即清空。",
-    "zh-Hant": "只保存在記憶體中，最多 %lld 筆；關閉除錯頁即清空。",
-    "ja": "メモリにのみ保持し、最新 %lld 件まで。デバッグページをオフにすると消去されます。"
+    "zh-Hant": "只保存在記憶體中，最多 %lld 筆；關閉除錯頁即清空。"
   },
   "Korean": {
     "ja": "韓国語",
@@ -834,6 +839,11 @@
     "zh-Hans": "润色中…",
     "zh-Hant": "潤色中…"
   },
+  "Presets": {
+    "ja": "プリセット",
+    "zh-Hans": "预设",
+    "zh-Hant": "預設"
+  },
   "Press the new combination; Esc cancels, Delete clears.": {
     "ja": "新しい組み合わせを押してください。Esc で取り消し、Delete で消去します。",
     "zh-Hans": "按新组合键；Esc 取消，Delete 清除。",
@@ -843,11 +853,6 @@
     "ja": "ショートカットを押してください…",
     "zh-Hans": "请按快捷键…",
     "zh-Hant": "請按快速鍵…"
-  },
-  "Presets": {
-    "ja": "プリセット",
-    "zh-Hans": "预设",
-    "zh-Hant": "預設"
   },
   "Previous": {
     "ja": "前へ",
@@ -885,9 +890,9 @@
     "zh-Hant": "思考強度"
   },
   "Recent Requests": {
+    "ja": "最近のリクエスト",
     "zh-Hans": "最近的请求",
-    "zh-Hant": "最近的請求",
-    "ja": "最近のリクエスト"
+    "zh-Hant": "最近的請求"
   },
   "Record": {
     "ja": "記録",
@@ -1104,6 +1109,11 @@
     "zh-Hans": "发音",
     "zh-Hant": "發音"
   },
+  "Still receiving the result. Replace once it is complete.": {
+    "ja": "結果はまだ受信中です。受け取りが完了してから置き換えられます。",
+    "zh-Hans": "结果仍在接收中，等完整结果到达后再替换。",
+    "zh-Hant": "結果仍在接收中，等完整結果到達後再取代。"
+  },
   "Stop / Close": {
     "ja": "停止／閉じる",
     "zh-Hans": "停止处理 / 关闭",
@@ -1130,9 +1140,9 @@
     "zh-Hant": "學習表達（糾正）"
   },
   "Succeeded": {
+    "ja": "成功",
     "zh-Hans": "成功",
-    "zh-Hant": "成功",
-    "ja": "成功"
+    "zh-Hant": "成功"
   },
   "Takes effect the next time Owlet starts.": {
     "ja": "次回 Owlet の起動時から反映されます。",
@@ -1394,9 +1404,54 @@
     "zh-Hans": "日本語",
     "zh-Hant": "日本語"
   },
-  "Expanded": {
-    "ja": "展開",
-    "zh-Hans": "已展开",
-    "zh-Hant": "已展開"
+  "The reply was neither one whole JSON object nor one fenced block.": {
+    "zh-Hans": "回复既不是一个完整 JSON 对象，也不是一个完整的围栏块。",
+    "zh-Hant": "回覆既不是一個完整 JSON 物件，也不是一個完整的圍欄區塊。",
+    "ja": "返信は完全な JSON オブジェクトでも、全体を囲むフェンスでもありません。"
+  },
+  "The reply was not valid JSON: %@.": {
+    "zh-Hans": "回复不是合法的 JSON：%@。",
+    "zh-Hant": "回覆不是合法的 JSON：%@。",
+    "ja": "返信は有効な JSON ではありません：%@"
+  },
+  "The reply did not hold source_language, target_language and a non-empty segments array.": {
+    "zh-Hans": "回复没有 source_language、target_language 和非空的 segments 数组。",
+    "zh-Hant": "回覆沒有 source_language、target_language 和非空的 segments 陣列。",
+    "ja": "返信に source_language、target_language、空でない segments 配列がありません。"
+  },
+  "Segment %lld did not hold exactly source and target.": {
+    "zh-Hans": "第 %lld 个 segment 没有恰好包含 source 与 target。",
+    "zh-Hant": "第 %lld 個 segment 沒有恰好包含 source 與 target。",
+    "ja": "%lld 番目の segment に source と target が正確にありません。"
+  },
+  "Segment %lld had a field with nothing in it.": {
+    "zh-Hans": "第 %lld 个 segment 里有空字段。",
+    "zh-Hant": "第 %lld 個 segment 裡有空欄位。",
+    "ja": "%lld 番目の segment に空の項目があります。"
+  },
+  "No segment translated anything.": {
+    "zh-Hans": "没有任何 segment 给出译文。",
+    "zh-Hant": "沒有任何 segment 給出譯文。",
+    "ja": "どの segment も訳文を示していません。"
+  },
+  "The source language was blank.": {
+    "zh-Hans": "source_language 是空白。",
+    "zh-Hant": "source_language 是空白。",
+    "ja": "source_language が空白です。"
+  },
+  "The failed check: %@": {
+    "zh-Hans": "未通过的校验：%@",
+    "zh-Hant": "未通過的檢核：%@",
+    "ja": "不合格だったチェック：%@"
+  },
+  "The reply arrived in 1 delivery.": {
+    "zh-Hans": "回复一次送达。",
+    "zh-Hant": "回覆一次送達。",
+    "ja": "返信は一回で届きました。"
+  },
+  "The reply arrived in %lld deliveries.": {
+    "zh-Hans": "回复分 %lld 次送达。",
+    "zh-Hant": "回覆分 %lld 次送達。",
+    "ja": "返信は %lld 回の配信で届きました。"
   }
 }

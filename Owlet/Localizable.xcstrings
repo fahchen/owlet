@@ -3945,6 +3945,35 @@
         }
       }
     },
+    "No segment translated anything.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No segment translated anything."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どの segment も訳文を示していません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有任何 segment 给出译文。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有任何 segment 給出譯文。"
+          }
+        }
+      }
+    },
     "No source sentence": {
       "extractionState": "manual",
       "localizations": {
@@ -5859,6 +5888,64 @@
         }
       }
     },
+    "Segment %lld did not hold exactly source and target.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segment %lld did not hold exactly source and target."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 番目の segment に source と target が正確にありません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 个 segment 没有恰好包含 source 与 target。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 個 segment 沒有恰好包含 source 與 target。"
+          }
+        }
+      }
+    },
+    "Segment %lld had a field with nothing in it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segment %lld had a field with nothing in it."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 番目の segment に空の項目があります。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 个 segment 里有空字段。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %lld 個 segment 裡有空欄位。"
+          }
+        }
+      }
+    },
     "Select All": {
       "extractionState": "manual",
       "localizations": {
@@ -6439,6 +6526,35 @@
         }
       }
     },
+    "Still receiving the result. Replace once it is complete.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still receiving the result. Replace once it is complete."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "結果はまだ受信中です。受け取りが完了してから置き換えられます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结果仍在接收中，等完整结果到达后再替换。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "結果仍在接收中，等完整結果到達後再取代。"
+          }
+        }
+      }
+    },
     "Stop / Close": {
       "extractionState": "manual",
       "localizations": {
@@ -6845,6 +6961,35 @@
         }
       }
     },
+    "The failed check: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The failed check: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不合格だったチェック：%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未通过的校验：%@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未通過的檢核：%@"
+          }
+        }
+      }
+    },
     "The first difference is at character %lld:\nreturned …%@…\nsubmitted …%@…": {
       "extractionState": "manual",
       "localizations": {
@@ -6961,6 +7106,93 @@
         }
       }
     },
+    "The reply arrived in %lld deliveries.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply arrived in %lld deliveries."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信は %lld 回の配信で届きました。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回复分 %lld 次送达。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回覆分 %lld 次送達。"
+          }
+        }
+      }
+    },
+    "The reply arrived in 1 delivery.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply arrived in 1 delivery."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信は一回で届きました。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回复一次送达。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回覆一次送達。"
+          }
+        }
+      }
+    },
+    "The reply did not hold source_language, target_language and a non-empty segments array.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply did not hold source_language, target_language and a non-empty segments array."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信に source_language、target_language、空でない segments 配列がありません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回复没有 source_language、target_language 和非空的 segments 数组。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回覆沒有 source_language、target_language 和非空的 segments 陣列。"
+          }
+        }
+      }
+    },
     "The reply does not match the agreed structure: a missing field, a wrong type, or empty content.": {
       "extractionState": "manual",
       "localizations": {
@@ -7015,6 +7247,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "回傳的目標語言是 %@，與請求的 %@ 不一致。"
+          }
+        }
+      }
+    },
+    "The reply was neither one whole JSON object nor one fenced block.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply was neither one whole JSON object nor one fenced block."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信は完全な JSON オブジェクトでも、全体を囲むフェンスでもありません。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回复既不是一个完整 JSON 对象，也不是一个完整的围栏块。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回覆既不是一個完整 JSON 物件，也不是一個完整的圍欄區塊。"
+          }
+        }
+      }
+    },
+    "The reply was not valid JSON: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reply was not valid JSON: %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返信は有効な JSON ではありません：%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回复不是合法的 JSON：%@。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回覆不是合法的 JSON：%@。"
           }
         }
       }
@@ -7305,6 +7595,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "源語言由原文自動識別。未識別出源語言、或源語言沒有對應列時使用兜底目標；一個源語言只保留一條映射。"
+          }
+        }
+      }
+    },
+    "The source language was blank.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The source language was blank."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "source_language が空白です。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "source_language 是空白。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "source_language 是空白。"
           }
         }
       }

@@ -92,6 +92,15 @@ struct PanelRootView: View {
                     : L10n.shared.string(controller.model.operation.progress.key),
                 symbol: controller.model.operation.symbol, stop: controller.stop, close: controller.close,
                 showsBar: false)
+        case .receiving:
+            // A press asked why replace waits. The explanation runs in the compact bar, and the
+            // one entry it offers stops the arrival.
+            CompactNoticeView(
+                message: controller.notice?.message ?? "", summary: controller.model.input,
+                retry: compactRetry, close: controller.close,
+                symbol: "arrow.down", actionTitle: L10n.shared.string("Cancel"),
+                actionSymbol: "xmark", recover: {}, action: controller.stop,
+                isError: false, showsBar: false)
         case let notice?:
             CompactNoticeView(
                 message: notice.message, summary: controller.model.input,
@@ -131,7 +140,7 @@ struct PanelRootView: View {
         case .unwritten, .unwritable:
             controller.copyResult()
         case .cancelled: controller.processCurrentText()
-        case .translating: break
+        case .translating, .receiving: break
         }
     }
 

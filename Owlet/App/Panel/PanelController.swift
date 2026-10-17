@@ -18,6 +18,8 @@ final class PanelController {
         /// The selection cannot hold text, so the result was never typed anywhere.
         case unwritable
         case cancelled
+        /// A result is still arriving: what is on screen is not yet one, so replace and copy wait.
+        case receiving
 
         var message: String {
             switch self {
@@ -34,13 +36,14 @@ final class PanelController {
             case .unwritten: L10n.shared.string("Could not write back to the other app")
             case .unwritable: L10n.shared.string("The selection cannot be edited")
             case .cancelled: L10n.shared.string("Cancelled")
+            case .receiving: L10n.shared.string("Still receiving the result. Replace once it is complete.")
             }
         }
 
         /// Label of the single recovery entry shown beside the message.
         var actionTitle: String {
             switch self {
-            case .translating: ""
+            case .translating, .receiving: ""
             case .permission: L10n.shared.string("Permission Settings")
             case .unreadable: L10n.shared.string("Enter Text")
             case .missingConfig: L10n.shared.string("Configure Service")
@@ -171,6 +174,8 @@ final class PanelController {
         show()
     }
 
+    /// Starts the current operation; the panel expands on the stream's first visible piece, so the
+    /// arrival can be watched, and the result itself still only appears once it validated.
     func processCurrentText() {
         // The injected store, not `.standard`: a test must not inherit the developer's settings. The
         // target follows the mapping unless the user pinned one, so the panel and the window agree.
@@ -178,7 +183,9 @@ final class PanelController {
         requestID += 1
         let id = requestID
         if expanded { notice = nil }
-        let task = model.process(to: language)
+        let task = model.process(to: language) { [weak self] in
+            self?.expandOnFirstPartial(id: id)
+        }
         // Auto write-back is one-shot: only the first request after a replace trigger, and only with a selection.
         let auto = autoReplace && selection != nil
         autoReplace = false
@@ -211,6 +218,14 @@ final class PanelController {
         }
     }
 
+    /// Expands on the stream's first visible piece. A request superseded after this one started
+    /// never expands: the piece belongs to whichever request is the newest one.
+    private func expandOnFirstPartial(id: Int) {
+        guard id == requestID, !expanded, model.isReceiving else { return }
+        notice = nil
+        expanded = true
+    }
+
     /// Stops the in-flight request without closing; its late result is ignored and never written.
     /// Before expansion, reprocessing keeps the stopped request's write-back intent.
     func stop() {
@@ -238,7 +253,10 @@ final class PanelController {
         case .missingConfig: return .missingConfig
         case .success: return writebackRefusal
         case .idle: return notice == .cancelled ? .cancelled : nil
-        case .loading: return nil
+        case .loading:
+            // While the stream runs, a press on a result action is answered with the reason it
+            // must wait (BDR-0017 §1).
+            return notice == .receiving ? .receiving : nil
         }
     }
 
@@ -319,14 +337,30 @@ final class PanelController {
             // Esc leaves the innermost layer first: an open toolbar or card, then the panel.
             if !lookups.close() { close() }
         case .copy:
+            guard case .success = model.state else {
+                explainReceiving()
+                return
+            }
             copyResult()
         case .retry:
             guard model.state != .loading, !model.input.isEmpty else { return }
             processCurrentText()
         case .replace:
-            guard case .success(let text) = model.state, selection != nil else { return }
+            guard case .success(let text) = model.state, selection != nil else {
+                explainReceiving()
+                return
+            }
             replace(with: text)
         }
+    }
+
+    /// While a result is still arriving, replace and copy give the visible reason they must wait
+    /// instead of failing silently (BDR-0017 §1). The note shows in whatever view is up and clears
+    /// as soon as the answer finishes or a newer request starts.
+    private func explainReceiving() {
+        guard model.isReceiving else { return }
+        notice = .receiving
+        expanded = true
     }
 
     /// Drops any outstanding read and returns to the compact, unexpanded state. Closing has to

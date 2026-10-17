@@ -59,11 +59,55 @@ protocol ModelBackend: Sendable {
     func describe(_ request: ModelRequest, config: ServiceConfig) -> String
     /// Runs one request and returns the model's answer text, or throws what the UI shows.
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String
+    /// The answer as its pieces arrive. The default runs `complete` and yields the whole answer once
+    /// (BDR-0017 §4): a backend without a stream works unchanged, and a request never has to care
+    /// which shape it got.
+    func stream(_ request: ModelRequest, config: ServiceConfig) -> AsyncThrowingStream<String, Error>
+}
+
+extension ModelBackend {
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let whole = Task<Void, Never> {
+                do {
+                    continuation.yield(try await self.complete(request, config: config))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in whole.cancel() }
+        }
+    }
+
+    /// The degradation of BDR-0017 §4 as a stream: `complete` runs once and its answer is the
+    /// stream's only element, so a caller sees the same shape either way. A backend reaches for it
+    /// when no separate stream seam has been given — a `transport` stub serves both paths then.
+    static func degraded(
+        _ complete: @escaping @Sendable () async throws -> String
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let whole = Task<Void, Never> {
+                do {
+                    continuation.yield(try await complete())
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in whole.cancel() }
+        }
+    }
 }
 
 /// An OpenAI-compatible service: the app posts the same chat body it has always posted.
 struct OpenAICompatibleBackend: ModelBackend {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// `nil` (the default) degrades to `complete` (BDR-0017 §4): a `transport` stub then serves
+    /// both paths, so a test that injects one seam covers streaming too.
+    var streamTransport: StreamTransport? = nil
 
     func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
         HTTPBackend.describe { try Self.body(for: request, config: config) }
@@ -77,14 +121,34 @@ struct OpenAICompatibleBackend: ModelBackend {
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        guard let streamTransport else {
+            return Self.degraded { try await self.complete(request, config: config) }
+        }
+        return HTTPStreaming.sse(
+            {
+                HTTPBackend.post(
+                    config.baseURL.appending(path: "chat/completions"),
+                    body: try Self.body(for: request, config: config, stream: true),
+                    headers: ["Authorization": "Bearer \(config.apiKey)"])
+            }, transport: streamTransport
+        ) { OpenAIChatStream() }
+    }
+
     /// The chat body as the service receives it. Kept separate from sending, so the wire shape is
-    /// asserted directly by the tests instead of through a captured request.
-    static func body(for request: ModelRequest, config: ServiceConfig) throws -> Data {
+    /// asserted directly by the tests instead of through a captured request. `stream` adds only the
+    /// streaming switch, which is owned by the transport, not the request.
+    static func body(for request: ModelRequest, config: ServiceConfig, stream: Bool = false)
+        throws -> Data
+    {
         var body: [String: Any] = [
             "model": request.model,
             "messages": messages(for: request),
             "response_format": responseFormat(request.format),
         ]
+        if stream { body["stream"] = true }
         // Automatic sends no effort parameter at all.
         if let value = request.customEffort
             ?? ModelEffort.reasoningEffort(for: request.effort, model: request.model)
@@ -140,16 +204,44 @@ struct LocalAgentBackend: ModelBackend {
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
         try await agent.complete(kind: kind, request: request, config: config)
     }
+
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let stream = Task<Void, Never> {
+                do {
+                    let answer = try await agent.stream(kind: kind, request: request, config: config)
+                    // An answer that never shows anything is the same empty reply the whole shot
+                    // reports, so a shrink of the contract never buys a corrective round.
+                    var answered = false
+                    for try await piece in answer where !piece.isEmpty {
+                        answered = true
+                        continuation.yield(piece)
+                    }
+                    guard answered else { throw ModelError.emptyResponse }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in stream.cancel() }
+        }
+    }
 }
 
 extension Provider {
-    /// The backend that speaks this provider's protocol: one HTTP wire shape each, or a CLI.
-    func backend(transport: @escaping Transport, agent: LocalAgent) -> any ModelBackend {
+    /// The backend that speaks this provider's protocol: one HTTP wire shape each, or a CLI. With no
+    /// stream transport the HTTP backends degrade to `complete` (BDR-0017 §4), matching their own
+    /// and `ModelClient`'s defaults.
+    func backend(
+        transport: @escaping Transport, stream: StreamTransport? = nil, agent: LocalAgent
+    ) -> any ModelBackend {
         switch self {
-        case .openAICompatible: OpenAICompatibleBackend(transport: transport)
-        case .openAIResponses: OpenAIResponsesBackend(transport: transport)
-        case .anthropic: AnthropicBackend(transport: transport)
-        case .gemini: GeminiBackend(transport: transport)
+        case .openAICompatible: OpenAICompatibleBackend(transport: transport, streamTransport: stream)
+        case .openAIResponses: OpenAIResponsesBackend(transport: transport, streamTransport: stream)
+        case .anthropic: AnthropicBackend(transport: transport, streamTransport: stream)
+        case .gemini: GeminiBackend(transport: transport, streamTransport: stream)
         case .claudeCode: LocalAgentBackend(kind: .claudeCode, agent: agent)
         case .codexCLI: LocalAgentBackend(kind: .codexCLI, agent: agent)
         }
@@ -225,6 +317,9 @@ enum HTTPBackend {
 /// mode: without a schema the shape travels in the system prompt alone.
 struct AnthropicBackend: ModelBackend {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// `nil` (the default) degrades to `complete` (BDR-0017 §4): a `transport` stub then serves
+    /// both paths, so a test that injects one seam covers streaming too.
+    var streamTransport: StreamTransport? = nil
 
     static let apiVersion = "2023-06-01"
     /// The API requires a ceiling. This one leaves room for the longest learning reply while keeping a
@@ -248,7 +343,23 @@ struct AnthropicBackend: ModelBackend {
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
-    static func body(for request: ModelRequest) throws -> Data {
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        guard let streamTransport else {
+            return Self.degraded { try await self.complete(request, config: config) }
+        }
+        return HTTPStreaming.sse(
+            {
+                HTTPBackend.post(
+                    config.baseURL.appending(path: "messages"),
+                    body: try Self.body(for: request, stream: true),
+                    headers: ["x-api-key": config.apiKey, "anthropic-version": Self.apiVersion])
+            }, transport: streamTransport
+        ) { AnthropicStream() }
+    }
+
+    static func body(for request: ModelRequest, stream: Bool = false) throws -> Data {
         var output: [String: Any] = [:]
         if case .jsonSchema(_, let schema) = request.format {
             output["format"] = [
@@ -262,6 +373,7 @@ struct AnthropicBackend: ModelBackend {
             "system": request.system,
             "messages": HTTPBackend.roles(request.turns).map { ["role": $0.role, "content": $0.text] },
         ]
+        if stream { body["stream"] = true }
         if !output.isEmpty { body["output_config"] = output }
         return try JSONSerialization.data(withJSONObject: body)
     }
@@ -296,6 +408,9 @@ struct AnthropicBackend: ModelBackend {
 /// applies; the envelope and the field names differ.
 struct OpenAIResponsesBackend: ModelBackend {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// `nil` (the default) degrades to `complete` (BDR-0017 §4): a `transport` stub then serves
+    /// both paths, so a test that injects one seam covers streaming too.
+    var streamTransport: StreamTransport? = nil
 
     func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
         HTTPBackend.describe { try Self.body(for: request) }
@@ -308,7 +423,23 @@ struct OpenAIResponsesBackend: ModelBackend {
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
-    static func body(for request: ModelRequest) throws -> Data {
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        guard let streamTransport else {
+            return Self.degraded { try await self.complete(request, config: config) }
+        }
+        return HTTPStreaming.sse(
+            {
+                HTTPBackend.post(
+                    config.baseURL.appending(path: "responses"),
+                    body: try Self.body(for: request, stream: true),
+                    headers: ["Authorization": "Bearer \(config.apiKey)"])
+            }, transport: streamTransport
+        ) { OpenAIResponsesStream() }
+    }
+
+    static func body(for request: ModelRequest, stream: Bool = false) throws -> Data {
         let format: [String: Any]
         switch request.format {
         case .jsonObject:
@@ -332,6 +463,7 @@ struct OpenAIResponsesBackend: ModelBackend {
         {
             body["reasoning"] = ["effort": value]
         }
+        if stream { body["stream"] = true }
         return try JSONSerialization.data(withJSONObject: body)
     }
 
@@ -376,6 +508,9 @@ struct OpenAIResponsesBackend: ModelBackend {
 /// reply is still asked for as JSON, which is Gemini's `json_object`.
 struct GeminiBackend: ModelBackend {
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
+    /// `nil` (the default) degrades to `complete` (BDR-0017 §4): a `transport` stub then serves
+    /// both paths, so a test that injects one seam covers streaming too.
+    var streamTransport: StreamTransport? = nil
 
     func describe(_ request: ModelRequest, config: ServiceConfig) -> String {
         HTTPBackend.describe { try Self.body(for: request) }
@@ -386,6 +521,25 @@ struct GeminiBackend: ModelBackend {
             config.baseURL.appending(path: "models/\(request.model):generateContent"),
             body: try Self.body(for: request), headers: ["x-goog-api-key": config.apiKey])
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
+    }
+
+    func stream(
+        _ request: ModelRequest, config: ServiceConfig
+    ) -> AsyncThrowingStream<String, Error> {
+        guard let streamTransport else {
+            return Self.degraded { try await self.complete(request, config: config) }
+        }
+        return HTTPStreaming.sse(
+            {
+                HTTPBackend.post(
+                    config.baseURL.appending(
+                        path: "models/\(request.model):streamGenerateContent"
+                    )
+                    .appending(queryItems: [URLQueryItem(name: "alt", value: "sse")]),
+                    body: try Self.body(for: request),
+                    headers: ["x-goog-api-key": config.apiKey])
+            }, transport: streamTransport
+        ) { GeminiStream() }
     }
 
     static func body(for request: ModelRequest) throws -> Data {

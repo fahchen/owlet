@@ -553,4 +553,49 @@ struct PanelControllerTests {
         #expect(writes.texts.isEmpty)
         #expect(!panel.expanded)
     }
+
+    // MARK: Streaming (BDR-0017)
+
+    /// A panel whose stream shows its one piece, then holds until the test releases it.
+    func receivingPanel() -> (PanelController, StreamStub) {
+        var client = ModelClient()
+        client.capture = .off
+        client.transport = { _ in
+            Issue.record("with a stream fixture, the whole-shot transport must never run")
+            throw TestTransportError()
+        }
+        let stub = StreamStub(
+            [chatStreamFrame(TestReplies.reply(for: "Hello")), "data: [DONE]\n\n"],
+            holding: true)
+        client.streamTransport = stub.streamTransport
+        let model = TextProcessingModel(client: client, config: { testConfig })
+        let panel = PanelController(
+            model: model, defaults: UserDefaults(suiteName: "PanelControllerTests.receiving.\(UUID().uuidString)")!)
+        panel.makeWindow = { OffScreenPanel(rootView: $0) }
+        panel.read = { $0(.success(selection)) }
+        panel.copy = { _ in }
+        return (panel, stub)
+    }
+
+    /// While a result is still arriving, a press on copy answers with the reason it must wait, and
+    /// only the finished result acts.
+    @Test func aPressWhileReceivingGivesAReasonAndTheResultActs() async {
+        let (panel, stub) = receivingPanel()
+        panel.processSelection()
+        for _ in 0..<200 where panel.model.receiving == nil {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(panel.model.isReceiving)
+        panel.run(.copy)
+        #expect(panel.notice == .receiving)
+        #expect(panel.expanded)
+        stub.release()
+        for _ in 0..<200 where panel.model.isReceiving {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(panel.model.state == .success("T:Hello"))
+        // The note belongs to the wait: the finished result acts normally again.
+        panel.run(.copy)
+        #expect(panel.notice == nil)
+    }
 }

@@ -6,7 +6,7 @@ struct OwletApp: App {
     /// Keeps a Dock click able to rebuild the main window SwiftUI releases when it is closed.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var translation = TextProcessingModel(
-        client: ModelClient(), config: SettingsStore.currentConfig)
+        client: ModelClient.live, config: SettingsStore.currentConfig)
     @State private var shortcuts: ShortcutController = {
         let controller = ShortcutController()
         controller.start()
@@ -33,7 +33,7 @@ struct OwletApp: App {
         _mainLookups = State(initialValue: lookups)
         _panel = State(
             initialValue: PanelController(
-                model: TextProcessingModel(client: ModelClient(), config: SettingsStore.currentConfig),
+                model: TextProcessingModel(client: ModelClient.live, config: SettingsStore.currentConfig),
                 lookups: lookups))
     }
 

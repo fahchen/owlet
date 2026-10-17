@@ -22,11 +22,21 @@ final class TextProcessingModel {
                 languages = nil
                 segments = []
                 lastResultText = nil
+                receiving = nil
             }
         }
     }
     var operation: Operation = .translate
     private(set) var state: State = .idle
+    /// Segments a still-running stream has already completed, for display only (BDR-0017). They have
+    /// never been through `TranslationResult.parse`, so they are not a result: no copy, no replace,
+    /// no history. nil once the request is over or nothing displayable has arrived yet.
+    private(set) var receiving: [TranslationResult.Segment]?
+    /// Whether a request is streaming and has shown something: while true, the result actions must
+    /// wait and a press on them owes the user a visible reason.
+    var isReceiving: Bool {
+        receiving?.isEmpty == false && state == .loading
+    }
     /// The text of the latest finished result for this input, kept through a later failure: a good
     /// result is not lost to a retry that did not work, and the page shows it beside the error.
     private(set) var lastResultText: String?
@@ -68,6 +78,8 @@ final class TextProcessingModel {
         task?.cancel()
         operationID += 1
         if state == .loading { state = .idle }
+        // A stopped stream's text is not a result; it must not survive into what comes next.
+        receiving = nil
     }
 
     /// Shows an error that happened outside a processing request.
@@ -86,8 +98,13 @@ final class TextProcessingModel {
 
     /// Starts the current operation; any in-flight one is cancelled and its result ignored. A result
     /// already computed for this text and this pair of settings is served from the cache instead.
+    ///
+    /// `onFirstPartial` is called once, on the main actor, when the stream has completed its first
+    /// displayable piece; a panel uses it to expand and show the arrival.
     @discardableResult
-    func process(to targetLanguage: String) -> Task<Void, Never>? {
+    func process(
+        to targetLanguage: String, onFirstPartial: (@MainActor () -> Void)? = nil
+    ) -> Task<Void, Never>? {
         task?.cancel()
         operationID += 1
         autoLearningPending = false
@@ -96,10 +113,12 @@ final class TextProcessingModel {
         let operation = operation
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             state = .idle
+            receiving = nil
             return nil
         }
         guard let config = config() else {
             state = .missingConfig
+            receiving = nil
             return nil
         }
         let key = ResultKey(operation: operation, language: targetLanguage)
@@ -110,16 +129,23 @@ final class TextProcessingModel {
             state = .success(ready.text)
             languages = (ready.sourceLanguage, ready.targetLanguage)
             segments = ready.segments
+            receiving = nil
             return Task {}
         }
         state = .loading
+        receiving = nil
         let client = client
         let task = Task {
             let outcome: State
             var full: TranslationResult?
             do {
                 let result = try await client.processResult(
-                    text, operation: operation, to: targetLanguage, config: config)
+                    text, operation: operation, to: targetLanguage, config: config,
+                    // The enclosing Task already owns `self` until the request completes, so a
+                    // weak capture here would only diverge from it.
+                    partial: { accumulated in
+                        await self.deliver(accumulated, id: id, then: onFirstPartial)
+                    })
                 full = result
                 outcome = .success(result.text)
             } catch let error as ModelError {
@@ -137,9 +163,26 @@ final class TextProcessingModel {
                 self.segments = full.segments
             }
             self.state = outcome
+            // The arrival is over either way: a finished result replaces it, a failure must never
+            // leave partial text behind.
+            self.receiving = nil
             if case .success = outcome { self.autoLearningPending = true }
         }
         self.task = task
         return task
+    }
+
+    /// One step of the arriving stream: the segments the accumulated content has completed become
+    /// the display's incoming text. Everything else — raw JSON, later changes, a superseded
+    /// request's late content — is dropped, and the first displayable piece wakes the listener once.
+    private func deliver(
+        _ accumulated: String, id: Int, then onFirstPartial: (@MainActor () -> Void)?
+    ) {
+        guard id == operationID, case .loading = state, !Task.isCancelled else { return }
+        let pairs = PartialReply.segments(from: accumulated)
+        let first = (receiving ?? []).isEmpty && !pairs.isEmpty
+        guard first || pairs.count != receiving?.count else { return }
+        receiving = pairs
+        if first { onFirstPartial?() }
     }
 }

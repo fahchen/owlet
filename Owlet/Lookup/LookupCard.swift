@@ -63,6 +63,15 @@ struct LookupCard: View {
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
+            } else if case .receiving(let meaning) = current {
+                // The explanation grows as the stream writes it; secondary until it is an answer,
+                // because it has not been validated yet (BDR-0017).
+                Text(meaning)
+                    .font(.system(size: PanelMetrics.sourceTextSize))
+                    .lineSpacing(2)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             status
         }
@@ -137,10 +146,10 @@ struct LookupCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// Loading and failure sit centered, as the panel's and the learning column's own states do.
+    /// Loading, receiving and failure sit centered, as the panel's and the learning column's own states do.
     @ViewBuilder private var status: some View {
         switch current {
-        case .loading?:
+        case .loading?, .receiving?:
             Text(shown == nil ? "Looking up…" : "Looking up again in this sentence…")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
@@ -168,7 +177,7 @@ struct LookupCard: View {
     private func announce(_ entry: LookupStore.Entry?) {
         let message: String? =
             switch entry {
-            case .loading?: "Looking up"
+            case .loading?, .receiving?: "Looking up"
             case .failure(let message)?: L10n.shared.string("Lookup failed: %@", message)
             case .success(let result)?: result.meaning
             case nil: nil

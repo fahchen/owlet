@@ -5,7 +5,8 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 ## Unreleased
 
 ### Fixed
-- Text copied from a page with an inline image or emoji translates again. The invisible placeholder left by the copy (U+FFFC) is treated as a space when checking the reply's sources, because a model cannot reproduce it.
+- Invisible characters a copy leaves behind — an inline object's placeholder (U+FFFC), a soft hyphen, a zero-width space and a byte-order mark — no longer fail a translation. A model cannot reproduce them, so they are treated as spaces when checking the reply's sources.
+- Text selected in a web page is translated as a copy of it would be: hidden parts of the page (a comment's counters, a chat's hidden timestamps) no longer come along.
 
 ## 0.6.0 — 2026-10-16
 

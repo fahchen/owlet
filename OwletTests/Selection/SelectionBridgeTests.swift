@@ -295,6 +295,35 @@ struct SelectionBridgeTests {
         #expect(called.withLock { $0 } == false)
     }
 
+    /// A page's accessibility selection is its DOM range, which keeps visually hidden nodes that a
+    /// copy leaves out (a GitHub comment's hidden counters, Discord's hidden timestamps). On a web
+    /// area the pasteboard is what the user sees, so it wins over the accessibility string.
+    @Test func aWebAreaPrefersTheCopyOverTheAccessibilityText() {
+        let result = SelectionBridge.capture(
+            app,
+            copy: reader(
+                [
+                    kAXRoleAttribute: "AXWebArea" as CFString,
+                    kAXSelectedTextAttribute: "paragraph and hidden counters" as CFString,
+                ], log: Log()),
+            copySelection: { "paragraph" })
+        #expect(result.map(\.text) == .success("paragraph"))
+    }
+
+    /// A copy that yields nothing keeps the accessibility text, so an app that ignores synthetic ⌘C
+    /// still reads its page.
+    @Test func aWebAreaWithoutACopyKeepsTheAccessibilityText() {
+        let result = SelectionBridge.capture(
+            app,
+            copy: reader(
+                [
+                    kAXRoleAttribute: "AXWebArea" as CFString,
+                    kAXSelectedTextAttribute: "paragraph" as CFString,
+                ], log: Log()),
+            copySelection: { nil })
+        #expect(result.map(\.text) == .success("paragraph"))
+    }
+
     /// The ⌘C read hands the user's own pasteboard back and keeps nothing.
     @Test func copyFallbackRestoresThePreviousPasteboard() {
         let fake = FakePasteboard("user text")

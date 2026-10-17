@@ -202,7 +202,13 @@ enum SelectionBridge {
         if let subrole, !(subrole is String) { return .failure(.unreadable) }
         if subrole as? String == kAXSecureTextFieldSubrole { return .failure(.secure) }
         if let found = search(element, copy: copy, marker: marker) {
-            return classify(trusted: true, subrole: nil, text: found.text).map { text in
+            // A page's accessibility selection is its DOM range, which keeps text a copy leaves out:
+            // visually hidden counters, screen-reader timestamps. The pasteboard is what the user
+            // sees, so on a web area it wins; elsewhere the accessibility read stays authoritative,
+            // because pressing ⌘C over it would churn the user's pasteboard for no gain.
+            let isPage = (copy(found.element, kAXRoleAttribute) as? String) == "AXWebArea"
+            let text = isPage ? (copySelection?() ?? found.text) : found.text
+            return classify(trusted: true, subrole: nil, text: text).map { text in
                 (text, found.element, selectedRange(found.element, copy: copy), false)
             }
         }

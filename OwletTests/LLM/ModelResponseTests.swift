@@ -108,10 +108,11 @@ func invalidResponsesAreFormatErrors(content: String) {
     #expect(try parse(moved).segments.count == 2)
 }
 
-/// A page copied with an inline image or emoji carries U+FFFC in its plain text. The model cannot
-/// reproduce that placeholder, and the reply dropping it does not break the pairing.
-@Test func objectReplacementCharactersDoNotFailTheSourceCheck() throws {
-    #expect(try parse(valid, "Good morning. \u{FFFC} Let's begin.").segments.count == 2)
+/// A copy carries characters that stand for nothing readable: an inline object's placeholder, a
+/// soft hyphen, a zero-width space and a byte-order mark. A reply that drops them still pairs.
+@Test(arguments: ["\u{FFFC}", "\u{00AD}", "\u{200B}", "\u{FEFF}"])
+func invisibleCopyCharactersDoNotFailTheSourceCheck(_ character: String) throws {
+    #expect(try parse(valid, "Good morning. \(character) Let's begin.").segments.count == 2)
 }
 
 @Test func nfcNormalizationPasses() throws {

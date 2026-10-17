@@ -94,11 +94,16 @@ struct TranslationResult: Equatable {
     }
 
     static func normalized(_ text: String) -> String {
-        // U+FFFC is where a copy puts an inline object (an image, an emoji) in plain text, not text
-        // itself. No model reproduces that placeholder reliably, and dropping it loses nothing
-        // readable, so it compares as a space instead of failing the pairing.
+        // Characters a copy leaves behind that stand for nothing readable: an inline object's
+        // placeholder (U+FFFC), a soft hyphen, a zero-width space and a byte-order mark. No model
+        // reproduces them reliably, and dropping them changes no visible text, so they compare as
+        // spaces instead of failing the pairing. Zero-width joiners are not in this set: they carry
+        // meaning in emoji sequences and in several scripts.
         text.precomposedStringWithCanonicalMapping
             .replacingOccurrences(of: "\u{FFFC}", with: " ")
+            .replacingOccurrences(of: "\u{00AD}", with: " ")
+            .replacingOccurrences(of: "\u{200B}", with: " ")
+            .replacingOccurrences(of: "\u{FEFF}", with: " ")
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }

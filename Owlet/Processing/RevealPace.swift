@@ -10,13 +10,13 @@ import NaturalLanguage
 /// Display only (BDR-0017): this decides when text is seen, never whether it counts as a result.
 struct RevealPace {
     /// Seconds between one word and the next, while there is room for that pace.
-    var word: TimeInterval = 0.04
+    var word: TimeInterval = 0.02
     /// The shortest time a pair stays on screen before the next pair starts, while there is room.
-    var pairDwell: TimeInterval = 0.2
+    var pairDwell: TimeInterval = 0.1
     /// The longest text that has already arrived waits to be on screen.
-    var budget: TimeInterval = 1.0
+    var budget: TimeInterval = 0.5
     /// The floor between words once the deadline presses.
-    var floor: TimeInterval = 0.005
+    var floor: TimeInterval = 0.0025
 
     /// Everything the stream has completed, in arrival order.
     private var queue: [TranslationResult.Segment] = []

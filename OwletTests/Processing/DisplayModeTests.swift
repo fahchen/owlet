@@ -39,6 +39,7 @@ struct DisplayModeTests {
         await model.process(to: "zh-Hans")?.value
         #expect(model.segments.map(\.source) == ["Good morning. ", "Let's begin."])
         #expect(model.segments.map(\.target) == ["早上好。", "我们开始吧。"])
+        #expect(model.displayPairs.map(\.target) == model.segments.map(\.target))
         guard case .success(let text) = model.state else {
             Issue.record("expected a successful result")
             return
@@ -69,4 +70,27 @@ struct DisplayModeTests {
         model.input = "Goodbye"
         #expect(model.segments.isEmpty)
     }
+
+    /// The pairs a reply is still arriving in are displayable while it waits: Sentence by Sentence shows them
+    /// grouped from the first closed pair on, and the source field folds away then. Nothing is displayable
+    /// before the first pair closes, so the panel still shows the source it is waiting on.
+    @Test func arrivingPairsAreDisplayable() async {
+        let model = TextProcessingModel(
+            client: streamingClient(
+                StreamStub([chatStreamFrame(Self.arriving)], pause: .seconds(60), holding: true)),
+            config: { testConfig })
+        defer { model.cancel() }
+        #expect(model.displayPairs.isEmpty)
+        model.input = "Good morning. Let's begin."
+        _ = model.process(to: "zh-Hans")
+        for _ in 0..<400 where model.displayPairs.isEmpty {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(model.displayPairs.map(\.target) == ["早上好。"])
+        #expect(model.isReceiving)
+    }
+
+    /// One pair closed, the next still being written, so only the closed one is displayable.
+    static let arriving =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"早上好。"},{"source":"Let's begin.","target":"我们开"#
 }

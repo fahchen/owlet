@@ -47,10 +47,11 @@ struct ExpandedPanelContent: View {
             .lineSpacing(2)
     }
 
-    /// Only a finished result has pairs to group; a run in progress still shows the source field.
+    /// A grouped display folds the source field away, because the pairs carry the source themselves;
+    /// that holds while the reply is arriving too, so Sentence by Sentence shows the source once and the
+    /// pairs are not pushed below a source field the finished result would not have.
     private var showsAlignedPairs: Bool {
-        guard showsSource && displayMode == .aligned, case .success = model.state else { return false }
-        return !model.segments.isEmpty
+        showsSource && displayMode == .aligned && !model.displayPairs.isEmpty
     }
 
     private var hasResultSection: Bool {

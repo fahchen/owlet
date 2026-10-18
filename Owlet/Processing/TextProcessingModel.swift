@@ -37,6 +37,14 @@ final class TextProcessingModel {
     var isReceiving: Bool {
         receiving?.isEmpty == false && state == .loading
     }
+    /// The pairs a grouped display shows now: the arriving ones while a reply is coming in, the
+    /// finished result's own once it stands. Empty when there is nothing to group, and the panel
+    /// keeps the source field then — printing the source above pairs that carry it prints it twice.
+    var displayPairs: [TranslationResult.Segment] {
+        if let receiving, !receiving.isEmpty { return receiving }
+        guard case .success = state else { return [] }
+        return segments
+    }
     /// The text of the latest finished result for this input, kept through a later failure: a good
     /// result is not lost to a retry that did not work, and the page shows it beside the error.
     private(set) var lastResultText: String?

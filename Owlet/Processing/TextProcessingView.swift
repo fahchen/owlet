@@ -188,12 +188,12 @@ struct TextProcessingView: View {
         case .loading:
             // A run in progress shows its arriving text here, laid out as the setting lays the
             // finished result out (BDR-0017); before anything displayable it is the progress words.
-            if model.isReceiving {
-                resultScroll
-            } else {
+            if model.revealed.isEmpty {
                 Text(L10n.shared.string(model.operation.progress.key))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                resultScroll
             }
         case .failure(let message, let kind):
             failure(
@@ -259,12 +259,15 @@ struct TextProcessingView: View {
     }
 
     @ViewBuilder private var result: some View {
-        // While a reply is arriving, the layout follows the display setting, as the panel's does;
-        // the last finished result stands only once nothing is in flight. The arriving text is the
+        // While a reply is arriving, the layout follows the display setting, as the panel's does; the
+        // last finished result stands only once nothing is in flight. The arriving text is the
         // progress, so no spinner or processing words sit above it (BDR-0017).
-        if model.isReceiving {
+        if !model.revealed.isEmpty {
+            // A reply that has been validated keeps showing its last words here until the display has
+            // caught up: the text is seen at one pace, and the finished result above takes over after
+            // it. Nothing about when it can be trusted changes with the pace.
             ReceivingResult(
-                segments: model.receiving ?? [], mode: displayMode, justified: true)
+                segments: model.revealed, mode: displayMode, justified: true)
         } else if let text = model.lastResultText {
             // The last finished result, which a failure no longer takes off the page.
             let origin = model.languages.map {

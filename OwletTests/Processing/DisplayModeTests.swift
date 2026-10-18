@@ -73,12 +73,14 @@ struct DisplayModeTests {
 
     /// The pairs a reply is still arriving in are displayable while it waits: Sentence by Sentence shows them
     /// grouped from the first closed pair on, and the source field folds away then. Nothing is displayable
-    /// before the first pair closes, so the panel still shows the source it is waiting on.
+    /// before the first pair closes, so the panel still shows the source it is waiting on. The pace shows
+    /// the pair a word at a time, so only its source is complete.
     @Test func arrivingPairsAreDisplayable() async {
         let model = TextProcessingModel(
             client: streamingClient(
                 StreamStub([chatStreamFrame(Self.arriving)], pause: .seconds(60), holding: true)),
-            config: { testConfig })
+            config: { testConfig },
+            pace: RevealPace(word: 30, pairDwell: 30, budget: 30, floor: 30))
         defer { model.cancel() }
         #expect(model.displayPairs.isEmpty)
         model.input = "Good morning. Let's begin."
@@ -86,11 +88,12 @@ struct DisplayModeTests {
         for _ in 0..<400 where model.displayPairs.isEmpty {
             try? await Task.sleep(for: .milliseconds(5))
         }
-        #expect(model.displayPairs.map(\.target) == ["早上好。"])
+        #expect(model.displayPairs.map(\.source) == ["Good morning. "])
+        #expect(model.displayPairs.map(\.target) == ["Good"])
         #expect(model.isReceiving)
     }
 
     /// One pair closed, the next still being written, so only the closed one is displayable.
     static let arriving =
-        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"早上好。"},{"source":"Let's begin.","target":"我们开"#
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"Good morning. ","target":"Good day to you"},{"source":"Let's begin.","target":"We bega"#
 }

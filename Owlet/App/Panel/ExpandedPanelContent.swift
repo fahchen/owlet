@@ -63,7 +63,7 @@ struct ExpandedPanelContent: View {
 
     private var resultSection: some View {
         VStack(alignment: .leading, spacing: 7) {
-            if case .success(let text) = model.state {
+            if case .success(let text) = model.state, model.revealed.isEmpty {
                 if showsAlignedPairs {
                     AlignedSegments(
                         segments: model.segments, sourceSize: PanelMetrics.sourceTextSize,
@@ -81,12 +81,14 @@ struct ExpandedPanelContent: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            } else if model.isReceiving {
-                // The stream's completed pieces grow in the layout the display setting gives the
-                // finished result, so what the user reads is the shape they will keep (BDR-0017).
-                // The arriving text is the progress: nothing spins or says "Translating" above it.
+            } else if !model.revealed.isEmpty {
+                // The arrival grows in the layout the display setting gives the finished result, and
+                // word by word within a pair, so what the user reads is the shape they will keep and
+                // the pace shows that more is coming (BDR-0017). A validated reply keeps showing the
+                // last of its words here until the display has caught up, and then the finished
+                // result above takes over — with its lookups, which arriving text never offers.
                 ReceivingResult(
-                    segments: model.receiving ?? [], mode: displayMode, justified: !showsSource)
+                    segments: model.revealed, mode: displayMode, justified: !showsSource)
             } else {
                 Text(model.input)
                     .font(.system(size: PanelMetrics.textSize))

@@ -225,9 +225,11 @@ extension TestReplies {
         model.process(to: "zh-Hans")
         for _ in 0..<200 where model.receiving == nil { try? await Task.sleep(for: .milliseconds(5)) }
         #expect(model.receiving != nil)
+        #expect(!model.revealed.isEmpty)
         model.cancel()
         #expect(model.state == .idle)
         #expect(model.receiving == nil)
+        #expect(model.revealed.isEmpty)
         // A superseding request must clear its predecessor's partial in the same way.
         let model2 = TextProcessingModel(
             client: streamingClient(StreamStub(frames, pause: .seconds(60))), config: { testConfig })
@@ -236,6 +238,7 @@ extension TestReplies {
         for _ in 0..<200 where model2.receiving == nil { try? await Task.sleep(for: .milliseconds(5)) }
         model2.input = "Something else"
         #expect(model2.receiving == nil)
+        #expect(model2.revealed.isEmpty)
     }
 
     @Test func aFailureLeavesNoPartialBehind() async throws {
@@ -255,7 +258,70 @@ extension TestReplies {
         for _ in 0..<200 where model.state == .loading { try? await Task.sleep(for: .milliseconds(5)) }
         if case .failure = model.state {} else { Issue.record("the refusal must surface") }
         #expect(model.receiving == nil)
+        #expect(model.revealed.isEmpty)
     }
+
+    /// The pace, not the wire, decides when a word is seen: one piece carrying three words still
+    /// shows its first word alone, and the rest follow at the pace.
+    @Test func theArrivalIsShownWordByWord() async throws {
+        let model = TextProcessingModel(
+            client: streamingClient(
+                StreamStub(
+                    [chatStreamFrame(Self.threeWords), "data: [DONE]\n\n"], pause: .seconds(60))),
+            config: { testConfig },
+            pace: RevealPace(word: 30, pairDwell: 30, budget: 30, floor: 30))
+        model.input = "a b c"
+        model.process(to: "zh-Hans")
+        for _ in 0..<200 where model.revealed.isEmpty { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(model.revealed == [.init(source: "a b c", target: "one")])
+        model.cancel()
+    }
+
+    /// A validated reply keeps arriving until the display catches up, and only then does the finished
+    /// result take over. The pace never decides whether the text counts: it is already trusted, and
+    /// already copyable, while its last words are still being shown.
+    @Test func aValidatedReplyKeepsArrivingUntilTheDisplayCatchesUp() async throws {
+        let half = Self.twoWords.count / 2
+        let model = TextProcessingModel(
+            client: streamingClient(
+                StreamStub(
+                    [
+                        chatStreamFrame(String(Self.twoWords.prefix(half))),
+                        chatStreamFrame(String(Self.twoWords.dropFirst(half))),
+                        "data: [DONE]\n\n",
+                    ], pause: .milliseconds(20))),
+            config: { testConfig },
+            pace: RevealPace(word: 1, pairDwell: 1, budget: 10))
+        model.input = "a b"
+        await model.process(to: "zh-Hans")?.value
+        #expect(model.state == .success("one two"))
+        #expect(model.lastResultText == "one two")
+        #expect(!model.revealed.isEmpty, "the display still holds words back after the result stands")
+        for _ in 0..<600 where !model.revealed.isEmpty { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(model.revealed.isEmpty)
+        #expect(model.state == .success("one two"))
+    }
+
+    /// An answer that arrived in one piece is shown whole, as it always was: a service that cannot
+    /// stream, or a reply that came in a single frame, is not typed out as if it were arriving.
+    @Test func anAnswerThatArrivedInOnePieceIsShownWhole() async throws {
+        let model = TextProcessingModel(
+            client: streamingClient(
+                StreamStub([chatStreamFrame(Self.twoWords), "data: [DONE]\n\n"], pause: .milliseconds(20))),
+            config: { testConfig },
+            pace: RevealPace(word: 5, pairDwell: 5, budget: 5, floor: 5))
+        model.input = "a b"
+        await model.process(to: "zh-Hans")?.value
+        #expect(model.state == .success("one two"))
+        #expect(model.revealed.isEmpty)
+        #expect(model.displayPairs == model.segments)
+    }
+
+    /// One pair, three words, so the pace has something to hold back.
+    static let threeWords =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"a b c","target":"one two three"}]}"#
+    static let twoWords =
+        #"{"source_language":"en","target_language":"zh-Hans","segments":[{"source":"a b","target":"one two"}]}"#
 }
 
 /// The lookup's own receiving state: the meaning shows in the card while the request runs, without

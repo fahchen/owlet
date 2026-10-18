@@ -22,7 +22,7 @@ final class TextProcessingModel {
                 languages = nil
                 segments = []
                 lastResultText = nil
-                receiving = nil
+                clearArrival()
             }
         }
     }
@@ -41,10 +41,13 @@ final class TextProcessingModel {
     /// finished result's own once it stands. Empty when there is nothing to group, and the panel
     /// keeps the source field then — printing the source above pairs that carry it prints it twice.
     var displayPairs: [TranslationResult.Segment] {
-        if let receiving, !receiving.isEmpty { return receiving }
+        if !revealed.isEmpty { return revealed }
         guard case .success = state else { return [] }
         return segments
     }
+    /// What the arrival has put on screen so far, word by word (see `RevealPace`); empty when nothing
+    /// is arriving and no display is still catching up with a reply that has already finished.
+    private(set) var revealed: [TranslationResult.Segment] = []
     /// The text of the latest finished result for this input, kept through a later failure: a good
     /// result is not lost to a retry that did not work, and the page shows it beside the error.
     private(set) var lastResultText: String?
@@ -63,6 +66,17 @@ final class TextProcessingModel {
     }
     private let client: ModelClient
     private let config: () -> ServiceConfig?
+    /// The pace the arrival is shown at; a test injects its own so the display is deterministic.
+    private let paceStyle: RevealPace
+    private var pace: RevealPace
+    /// Puts the arrival on screen one word at a time, while anything is still waiting to be shown.
+    private var revealTask: Task<Void, Never>?
+    /// How many pieces the reply has arrived in. One piece is an answer that did not stream — a
+    /// service that cannot, or a reply that came whole — and it is shown whole, as it always was.
+    private var deliveries = 0
+    /// Distinguishes the running reveal loop from an earlier one, so a loop that has ended cannot
+    /// clear the handle of one that has since started.
+    private var revealID = 0
     private var operationID = 0
     private var task: Task<Void, Never>?
     /// True once a produced result still owes its one automatic learning decision; the claim below
@@ -76,9 +90,11 @@ final class TextProcessingModel {
         return autoLearningPending
     }
 
-    init(client: ModelClient, config: @escaping () -> ServiceConfig?) {
+    init(client: ModelClient, config: @escaping () -> ServiceConfig?, pace: RevealPace = RevealPace()) {
         self.client = client
         self.config = config
+        self.paceStyle = pace
+        self.pace = pace
     }
 
     /// Cancels any in-flight processing and ignores its late result.
@@ -87,7 +103,7 @@ final class TextProcessingModel {
         operationID += 1
         if state == .loading { state = .idle }
         // A stopped stream's text is not a result; it must not survive into what comes next.
-        receiving = nil
+        clearArrival()
     }
 
     /// Shows an error that happened outside a processing request.
@@ -121,12 +137,12 @@ final class TextProcessingModel {
         let operation = operation
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             state = .idle
-            receiving = nil
+            clearArrival()
             return nil
         }
         guard let config = config() else {
             state = .missingConfig
-            receiving = nil
+            clearArrival()
             return nil
         }
         let key = ResultKey(operation: operation, language: targetLanguage)
@@ -137,11 +153,11 @@ final class TextProcessingModel {
             state = .success(ready.text)
             languages = (ready.sourceLanguage, ready.targetLanguage)
             segments = ready.segments
-            receiving = nil
+            clearArrival()
             return Task {}
         }
         state = .loading
-        receiving = nil
+        clearArrival()
         let client = client
         let task = Task {
             let outcome: State
@@ -171,26 +187,87 @@ final class TextProcessingModel {
                 self.segments = full.segments
             }
             self.state = outcome
-            // The arrival is over either way: a finished result replaces it, a failure must never
-            // leave partial text behind.
-            self.receiving = nil
-            if case .success = outcome { self.autoLearningPending = true }
+            // The arrival is over either way. A reply that streamed in pieces keeps arriving until the
+            // display has caught up, so its last words are seen instead of jumping into place; a reply
+            // that came in one piece — a service that cannot stream, an answer handed over whole — is
+            // shown whole, as it always was; and a failure keeps no partial text at all.
+            if case .success = outcome {
+                self.autoLearningPending = true
+                if self.deliveries > 1 {
+                    self.receiving = nil
+                    self.revealArrival()
+                } else {
+                    self.clearArrival()
+                }
+            } else {
+                self.clearArrival()
+            }
         }
         self.task = task
         return task
     }
 
-    /// One step of the arriving stream: the segments the accumulated content has completed become
-    /// the display's incoming text. Everything else — raw JSON, later changes, a superseded
+    /// One step of the arriving stream: the segments the accumulated content has completed become the
+    /// queue the display is paced through. Everything else — raw JSON, later changes, a superseded
     /// request's late content — is dropped, and the first displayable piece wakes the listener once.
     private func deliver(
         _ accumulated: String, id: Int, then onFirstPartial: (@MainActor () -> Void)?
     ) {
         guard id == operationID, case .loading = state, !Task.isCancelled else { return }
+        deliveries += 1
         let pairs = PartialReply.segments(from: accumulated)
         let first = (receiving ?? []).isEmpty && !pairs.isEmpty
         guard first || pairs.count != receiving?.count else { return }
         receiving = pairs
+        pace.push(pairs, at: .now)
+        revealArrival()
         if first { onFirstPartial?() }
+    }
+
+    /// Shows what has arrived so far, one word at a time, and keeps doing so while anything is still
+    /// waiting to be shown: a reply that arrives in one piece still reads as a process, and text that
+    /// arrives after a finished result has been validated keeps coming too (BDR-0017).
+    private func revealArrival() {
+        guard stepReveal() != nil, revealTask == nil else { return }
+        revealID += 1
+        let id = revealID
+        revealTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let wait = self?.stepReveal() else { break }
+                try? await Task.sleep(for: wait)
+            }
+            self?.revealEnded(id: id)
+        }
+    }
+
+    /// Advances the display to now. Returns how long until the next word is due, or nil when
+    /// everything that has arrived is on screen — at which point a finished reply takes the display
+    /// over, while a stream still running simply has nothing more to show yet.
+    private func stepReveal() -> Duration? {
+        pace.advance(to: .now)
+        revealed = pace.visible
+        guard !pace.isDrained else {
+            if case .loading = state {} else { revealed = [] }
+            return nil
+        }
+        return .seconds(pace.wait)
+    }
+
+    /// The reveal loop has ended: forget its handle, unless a later loop has taken it over.
+    private func revealEnded(id: Int) {
+        guard id == revealID else { return }
+        revealTask = nil
+    }
+
+    /// Takes the arrival off the screen and forgets its pace: nothing shown may survive into what
+    /// comes next — a new text, a new request, a stop, a failure.
+    private func clearArrival() {
+        receiving = nil
+        deliveries = 0
+        revealTask?.cancel()
+        revealTask = nil
+        revealID += 1
+        pace = paceStyle
+        revealed = []
     }
 }

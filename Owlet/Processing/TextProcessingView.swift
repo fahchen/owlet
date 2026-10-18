@@ -260,13 +260,11 @@ struct TextProcessingView: View {
 
     @ViewBuilder private var result: some View {
         // While a reply is arriving, the layout follows the display setting, as the panel's does;
-        // the last finished result stands only once nothing is in flight.
+        // the last finished result stands only once nothing is in flight. The arriving text is the
+        // progress, so no spinner or processing words sit above it (BDR-0017).
         if model.isReceiving {
-            VStack(alignment: .leading, spacing: 7) {
-                ProgressView(L10n.shared.string(model.operation.progress.key)).controlSize(.small)
-                ReceivingResult(
-                    segments: model.receiving ?? [], mode: displayMode, justified: true)
-            }
+            ReceivingResult(
+                segments: model.receiving ?? [], mode: displayMode, justified: true)
         } else if let text = model.lastResultText {
             // The last finished result, which a failure no longer takes off the page.
             let origin = model.languages.map {

@@ -62,10 +62,6 @@ struct ExpandedPanelContent: View {
 
     private var resultSection: some View {
         VStack(alignment: .leading, spacing: 7) {
-            if model.state == .loading {
-                ProgressView(L10n.shared.string(model.operation.progress.key)).controlSize(.small)
-                    .opacity(model.isReceiving ? 0.5 : 1)
-            }
             if case .success(let text) = model.state {
                 if showsAlignedPairs {
                     AlignedSegments(
@@ -87,6 +83,7 @@ struct ExpandedPanelContent: View {
             } else if model.isReceiving {
                 // The stream's completed pieces grow in the layout the display setting gives the
                 // finished result, so what the user reads is the shape they will keep (BDR-0017).
+                // The arriving text is the progress: nothing spins or says "Translating" above it.
                 ReceivingResult(
                     segments: model.receiving ?? [], mode: displayMode, justified: !showsSource)
             } else {

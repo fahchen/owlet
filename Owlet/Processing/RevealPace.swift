@@ -4,8 +4,12 @@ import NaturalLanguage
 /// Turns what a stream has completed into what a display may show now: the pairs in arrival order,
 /// each one a word at a time, and each one staying for at least `pairDwell` before the next begins.
 /// A reply that arrived in one piece therefore still reads as a process, and one that arrives faster
-/// than the pace is caught up with within `budget` of the moment its text arrived, so a whole answer
-/// never waits to be seen for long.
+/// than the pace is caught up with within its budget of the moment its text arrived, so a whole
+/// answer never waits to be seen for long.
+///
+/// The budget is shorter once there is a paragraph waiting rather than a sentence (`hurry`): typing
+/// is what makes a short answer look like it is being written, while nobody can follow a paragraph
+/// arriving word by word, so a long one is put on screen almost at once instead of typed at length.
 ///
 /// Display only (BDR-0017): this decides when text is seen, never whether it counts as a result.
 struct RevealPace {
@@ -13,10 +17,16 @@ struct RevealPace {
     var word: TimeInterval = 0.02
     /// The shortest time a pair stays on screen before the next pair starts, while there is room.
     var pairDwell: TimeInterval = 0.1
-    /// The longest text that has already arrived waits to be on screen.
+    /// The longest a short arrival waits to be on screen.
     var budget: TimeInterval = 0.5
+    /// The longest an arrival of `hurryWords` words or more waits: it is read, not watched, so it
+    /// lands almost at once.
+    var hurry: TimeInterval = 0.15
+    /// Words from which an arrival counts as long: what is still waiting to be shown, or the answer
+    /// as a whole, whichever crosses it first.
+    var hurryWords: Int = 30
     /// The floor between words once the deadline presses.
-    var floor: TimeInterval = 0.0025
+    var floor: TimeInterval = 0.0005
 
     /// Everything the stream has completed, in arrival order.
     private var queue: [TranslationResult.Segment] = []
@@ -64,7 +74,10 @@ struct RevealPace {
             ends = nil
         }
         dueWord = max(dueWord, now)
-        dueBy = max(dueBy, now.addingTimeInterval(budget))
+        // The deadline is set, not extended: text that has just come in may need to be put on screen
+        // faster than the arrival before it, and a queue that has grown into a paragraph is exactly
+        // that case.
+        dueBy = now.addingTimeInterval(isLong ? hurry : budget)
     }
 
     /// Puts every word that is due on screen, and records how long to wait for the next one.
@@ -123,6 +136,12 @@ struct RevealPace {
     /// Words of the queued pairs that are not on screen yet.
     private var remainingWords: Int {
         counts[min(shown, counts.count)...].reduce(0, +) - words
+    }
+
+    /// Whether what is on this arrival is a paragraph rather than a sentence: either it arrived in
+    /// one long piece, or the whole answer has grown past `hurryWords` and only its tail is left.
+    private var isLong: Bool {
+        remainingWords >= hurryWords || counts.reduce(0, +) >= hurryWords
     }
 
     /// Where each word of a target ends, so a target can be shown up to a word boundary.

@@ -50,11 +50,11 @@ struct RevealPaceTests {
         #expect(pace.visible.map(\.target) == ["Hi", "Bye"])
     }
 
-    /// A whole answer that arrived in one piece is still caught up with inside its budget, and it is
+    /// A short answer that arrived in one piece is still caught up with inside its budget, and it is
     /// seen arriving rather than appearing at once.
-    @Test func aFastArrivalIsOnScreenWithinItsBudget() {
+    @Test func aShortArrivalIsOnScreenWithinItsBudget() {
         var pace = RevealPace(word: 0.05, pairDwell: 0.3, budget: 1.2)
-        pace.push(pairs((1...40).map { "pair \($0) has four words" }), at: at(0))
+        pace.push(pairs((1...5).map { "pair \($0) has words" }), at: at(0))
         // The caller's own loop: wake, show what is due, sleep until the next word.
         var now: TimeInterval = 0
         var midway = 0
@@ -68,9 +68,48 @@ struct RevealPaceTests {
         }
         #expect(pace.isDrained)
         #expect(midway > 0)
-        #expect(midway < 40, "the answer arrived in stages, not in one jump")
+        #expect(midway < 5, "the answer arrived in stages, not in one jump")
         #expect(now <= 1.25, "the whole answer is on screen inside its budget")
+        #expect(pace.visible.count == 5)
+    }
+
+    /// A paragraph waiting to be shown is not typed out at length: nobody can follow that much text
+    /// arriving word by word, so it lands almost at once instead (BDR-0017).
+    @Test func aLongArrivalLandsAlmostAtOnce() {
+        var pace = RevealPace(word: 0.05, pairDwell: 0.3, budget: 1.2)
+        pace.push(pairs((1...40).map { "pair \($0) has four words" }), at: at(0))
+        var now: TimeInterval = 0
+        var steps = 0
+        while !pace.isDrained, steps < 4_000 {
+            pace.advance(to: at(now))
+            if pace.isDrained { break }
+            now += pace.wait
+            steps += 1
+        }
+        #expect(pace.isDrained)
         #expect(pace.visible.count == 40)
+        #expect(now <= 0.2, "a paragraph is read, not watched: it lands inside the hurry")
+        #expect(now >= 0.1, "…and still arrives rather than appearing whole")
+    }
+
+    /// Once the answer as a whole is past the length, what is left of it is not typed out either: the
+    /// tail of a long answer lands almost at once instead of waiting out its budget word by word.
+    @Test func aLongAnswerHurriesOnceItHasGrownPastTheLength() {
+        var pace = RevealPace(word: 0.05, pairDwell: 0, budget: 1.2)
+        pace.push(pairs((1...4).map { "pair \($0) has words" }), at: at(0))
+        pace.advance(to: at(0.5))
+        #expect(!pace.isDrained, "the first pairs are still being typed at the relaxed pace")
+        pace.push(pairs((1...8).map { "pair \($0) has words" }), at: at(0.5))
+        var now: TimeInterval = 0.5
+        var steps = 0
+        while !pace.isDrained, steps < 2_000 {
+            pace.advance(to: at(now))
+            if pace.isDrained { break }
+            now += pace.wait
+            steps += 1
+        }
+        #expect(pace.isDrained)
+        #expect(now <= 0.7, "the rest of a long answer lands almost at once")
     }
 
     /// A corrective round may take text back: what the stream no longer holds leaves the screen.

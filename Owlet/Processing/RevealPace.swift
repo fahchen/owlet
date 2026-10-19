@@ -27,6 +27,11 @@ struct RevealPace {
     var hurryWords: Int = 30
     /// The floor between words once the deadline presses.
     var floor: TimeInterval = 0.0005
+    /// The shortest time between two updates of the screen. The pace still decides what is due by
+    /// when, but a surface is redrawn at most once a frame: a fast arrival then costs the same to show
+    /// as a slow one, instead of asking for hundreds of layouts a second — which is what made the main
+    /// window, whose page is the heavier one to draw, trail the panel at the same pace.
+    var frame: TimeInterval = 1.0 / 60
 
     /// Everything the stream has completed, in arrival order.
     private var queue: [TranslationResult.Segment] = []
@@ -80,17 +85,18 @@ struct RevealPace {
         dueBy = now.addingTimeInterval(isLong ? hurry : budget)
     }
 
-    /// Puts every word that is due on screen, and records how long to wait for the next one.
+    /// Puts every word that is due on screen, and records how long to wait before looking again: the
+    /// caller sleeps per word at the relaxed pace, and never faster than `frame`.
     mutating func advance(to now: Date) {
         wait = 0
         while true {
             guard shown < queue.count else { return }
             if words == 0, shown > 0, let started = pairStarted, lingers(now, since: started) {
-                wait = max(0.001, started.addingTimeInterval(pairDwell).timeIntervalSince(now))
+                wait = max(frame, started.addingTimeInterval(pairDwell).timeIntervalSince(now))
                 return
             }
             guard now >= dueWord else {
-                wait = max(0.001, dueWord.timeIntervalSince(now))
+                wait = max(frame, dueWord.timeIntervalSince(now))
                 return
             }
             reveal(at: now)

@@ -112,6 +112,29 @@ struct RevealPaceTests {
         #expect(now <= 0.7, "the rest of a long answer lands almost at once")
     }
 
+    /// Whatever the pace, a surface is asked to redraw at most once a frame: the pace says what is due
+    /// by when, and the caller looks again at the frame, not at every word of a fast arrival.
+    @Test func theSurfaceIsRedrawnAtMostOnceAFrame() {
+        var pace = RevealPace(word: 0.02, pairDwell: 0, budget: 0.5, hurry: 0.15, hurryWords: 30)
+        pace.push(pairs((1...10).map { "pair \($0) has words" }), at: at(0))
+        pace.advance(to: at(0))
+        #expect(!pace.isDrained, "a paragraph arriving at once is not all shown in the first look")
+        #expect(pace.wait >= 1.0 / 60 - 0.0001, "the next look waits for a frame, not for a millisecond")
+
+        // The frame does not stretch the pace: what is due by the next look is shown then.
+        var now: TimeInterval = 0
+        var steps = 0
+        while !pace.isDrained, steps < 4_000 {
+            pace.advance(to: at(now))
+            if pace.isDrained { break }
+            now += pace.wait
+            steps += 1
+        }
+        #expect(pace.isDrained)
+        #expect(now <= 0.2, "the paragraph still lands inside its hurry")
+        #expect(steps <= 20, "…in about a dozen redraws, not one per word")
+    }
+
     /// A corrective round may take text back: what the stream no longer holds leaves the screen.
     @Test func aWithdrawnArrivalLeavesTheScreenAtOnce() {
         var pace = RevealPace(word: 0.05, pairDwell: 0, budget: 10)

@@ -64,6 +64,7 @@ A release changes only `MARKETING_VERSION` (the version users see) and `CURRENT_
 
 - Swift 6 with strict concurrency; types are UpperCamelCase, members lowerCamelCase; no template comments at the top of files.
 - Tests use Swift Testing (`@Test` / `#expect` / `@Suite`) with `@testable import Owlet`.
+- CI's Xcode is older than a developer's. A struct's synthesised memberwise initialiser is private there when any stored property is private, so a test (another module) cannot build it with arguments: write the `init` out instead. Xcode 27.1 compiles what CI's Xcode 26 rejects.
 - Everything that depends on external state must be injectable: `UserDefaults(suiteName: "…")`, `ModelClient(transport:)`, and `read` / `write` / `makeWindow` on `PanelController`. Tests must never read the developer's real settings or call a real model.
 - Comments say *why*, not *what*; if one sentence says it, use one sentence.
 

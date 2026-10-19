@@ -83,6 +83,7 @@ scripts/local-check.sh   # 同 check，但产物只写进本仓库的 .build/der
 
 - Swift 6，严格并发；类型 UpperCamelCase、成员 lowerCamelCase；文件头不加模板注释。
 - 测试用 Swift Testing（`@Test` / `#expect` / `@Suite`），`@testable import Owlet`。
+- CI 的 Xcode 比本机旧：结构的存储属性里有 private 时，旧版 Swift 合成的成员逐一初始化器也是 private，测试（另一个模块）就用带参数的构造编不过——这时把 `init` 写出来。本机 Xcode 27.1 能编过、CI 的 Xcode 26 报错的就是这一类。
 - 依赖外部状态的地方都要可注入：`UserDefaults(suiteName: "…")`、`ModelClient(transport:)`、
   `PanelController` 的 `read` / `write` / `makeWindow`。测试不得读开发者真实设置，也不得
   调用真实模型。

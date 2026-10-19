@@ -14,24 +14,41 @@ import NaturalLanguage
 /// Display only (BDR-0017): this decides when text is seen, never whether it counts as a result.
 struct RevealPace {
     /// Seconds between one word and the next, while there is room for that pace.
-    var word: TimeInterval = 0.02
+    var word: TimeInterval
     /// The shortest time a pair stays on screen before the next pair starts, while there is room.
-    var pairDwell: TimeInterval = 0.1
+    var pairDwell: TimeInterval
     /// The longest a short arrival waits to be on screen.
-    var budget: TimeInterval = 0.5
+    var budget: TimeInterval
     /// The longest an arrival of `hurryWords` words or more waits: it is read, not watched, so it
     /// lands almost at once.
-    var hurry: TimeInterval = 0.15
+    var hurry: TimeInterval
     /// Words from which an arrival counts as long: what is still waiting to be shown, or the answer
     /// as a whole, whichever crosses it first.
-    var hurryWords: Int = 30
+    var hurryWords: Int
     /// The floor between words once the deadline presses.
-    var floor: TimeInterval = 0.0005
+    var floor: TimeInterval
     /// The shortest time between two updates of the screen. The pace still decides what is due by
     /// when, but a surface is redrawn at most once a frame: a fast arrival then costs the same to show
     /// as a slow one, instead of asking for hundreds of layouts a second — which is what made the main
     /// window, whose page is the heavier one to draw, trail the panel at the same pace.
-    var frame: TimeInterval = 1.0 / 60
+    var frame: TimeInterval
+
+    /// The knobs, with the pace the app uses. Spelled out rather than left to the synthesised
+    /// initialiser: the stored state below is private, and older Swift makes the synthesised one
+    /// private with it, which the tests (another module) could not then call.
+    init(
+        word: TimeInterval = 0.02, pairDwell: TimeInterval = 0.1, budget: TimeInterval = 0.5,
+        hurry: TimeInterval = 0.15, hurryWords: Int = 30, floor: TimeInterval = 0.0005,
+        frame: TimeInterval = 1.0 / 60
+    ) {
+        self.word = word
+        self.pairDwell = pairDwell
+        self.budget = budget
+        self.hurry = hurry
+        self.hurryWords = hurryWords
+        self.floor = floor
+        self.frame = frame
+    }
 
     /// Everything the stream has completed, in arrival order.
     private var queue: [TranslationResult.Segment] = []

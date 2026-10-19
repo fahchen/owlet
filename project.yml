@@ -38,7 +38,7 @@ targets:
         # The version users and artifacts are named by. `scripts/prod-build.sh` reads
         # CFBundleShortVersionString from the built app, so these two are what turn a packaged name
         # from a commit hash into a version; bump them here, in one place, when releasing.
-        MARKETING_VERSION: "0.6.0"
+        MARKETING_VERSION: "0.7.0"
         # The build number: raise it for every artifact handed out under the same version, so it
         # restarts with a new version.
         CURRENT_PROJECT_VERSION: "1"

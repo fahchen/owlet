@@ -2,7 +2,7 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
-## Unreleased
+## 0.7.0 — 2026-10-20
 
 ### Added
 - Translate and polish show the model's answer as it arrives, in the panel and in the main window, and the lookup card shows the meaning as it does. The arriving text is laid out the way the chosen display setting lays the finished result out — Sentence by Sentence grows the pairs as they close, Source / Result Sections grows the result text alone — so nothing jumps between layouts when the answer is validated. Nothing changes about when an answer can be trusted: an action pressed while the reply is still arriving is refused with the reason on screen, and nothing partial reaches history, replace or copy. A service that cannot stream sees no difference: the answer is validated once it is complete, as before. Nothing spins or says "Translating" above text that is already arriving — the growing text is the progress — so before the first piece the panel keeps its source placeholder and the window its centred words, and both give way to the text. In Sentence by Sentence the panel folds its source field away as soon as the first pair is on screen, as it does for a finished result: the pairs carry the source themselves, and the field would otherwise push them out of the panel's height.

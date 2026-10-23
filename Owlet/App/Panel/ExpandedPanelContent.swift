@@ -12,6 +12,10 @@ struct ExpandedPanelContent: View {
     var showsSource = true
     /// Where the compact bar's screenshot thumbnail moves to as the panel opens.
     var screenshotSpace: Namespace.ID?
+    /// The screenshot fills the width and the source steps aside while the user checks it.
+    var screenshotZoomed = false
+    var toggleScreenshotZoom: () -> Void = {}
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
@@ -21,7 +25,7 @@ struct ExpandedPanelContent: View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSource && !showsAlignedPairs {
                 // The screenshot sits beside the source it was read from, above the rule.
-                besideScreenshot(sourceEditor, alignment: .center).padding(.bottom, 12)
+                sourceWithScreenshot.padding(.bottom, 12)
             }
             if hasResultSection {
                 // The rule separates the editable source from the result, so it belongs with the source
@@ -45,18 +49,52 @@ struct ExpandedPanelContent: View {
     }
 
     /// `content` with the screen region's thumbnail at its trailing top; `content` alone otherwise.
-    /// Centred beside the source block; at the top of the pairs, which can run long.
-    @ViewBuilder private func besideScreenshot(
-        _ content: some View, alignment: VerticalAlignment = .top
-    ) -> some View {
-        if showsSource, let screenshot = model.sourceThumbnail {
-            HStack(alignment: alignment, spacing: 16) {
-                content.frame(maxWidth: .infinity, alignment: .leading)
-                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace)
+    /// The source flows around the screenshot thumbnail at its top trailing corner; zoomed, the
+    /// screenshot takes the full width and the source steps aside until the next click.
+    @ViewBuilder private var sourceWithScreenshot: some View {
+        if let screenshot = model.sourceThumbnail {
+            ZStack(alignment: .topTrailing) {
+                if !screenshotZoomed {
+                    WrappingSourceEditor(
+                        text: $model.input,
+                        clearArea: CGSize(
+                            width: ScreenshotThumbnail.width(of: screenshot) + 16,
+                            height: ScreenshotThumbnail.height)
+                    )
+                    .transition(.opacity)
+                }
+                thumbnail(screenshot)
             }
+            .animation(zoomAnimation, value: screenshotZoomed)
+        } else {
+            sourceEditor
+        }
+    }
+
+    /// The pairs carry the source themselves, so the thumbnail sits at their top trailing edge, and a
+    /// zoomed screenshot above them.
+    @ViewBuilder private func besideScreenshot(_ content: some View) -> some View {
+        if showsSource, let screenshot = model.sourceThumbnail {
+            VStack(alignment: .leading, spacing: 12) {
+                if screenshotZoomed { thumbnail(screenshot) }
+                HStack(alignment: .top, spacing: 16) {
+                    content.frame(maxWidth: .infinity, alignment: .leading)
+                    if !screenshotZoomed { thumbnail(screenshot) }
+                }
+            }
+            .animation(zoomAnimation, value: screenshotZoomed)
         } else {
             content
         }
+    }
+
+    private func thumbnail(_ screenshot: NSImage) -> some View {
+        ScreenshotThumbnail(
+            image: screenshot, namespace: screenshotSpace, zoomed: screenshotZoomed, toggle: toggleScreenshotZoom)
+    }
+
+    private var zoomAnimation: Animation? {
+        reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12)
     }
 
     private var sourceEditor: some View {

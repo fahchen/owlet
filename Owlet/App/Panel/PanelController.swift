@@ -81,6 +81,8 @@ final class PanelController {
     private(set) var replacing = false
     /// Bumped each time the source bar's field should take the keyboard.
     private(set) var focusRequest = 0
+    /// The screen region's screenshot fills the panel's width, with the source hidden (BDR-0019).
+    private(set) var screenshotZoomed = false
     let model: TextProcessingModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
@@ -207,6 +209,17 @@ final class PanelController {
         notice = .unreadable
         expanded = false
         focusRequest += 1
+    }
+
+    /// Zooms the screenshot in or out; from the compact bar it opens the panel already zoomed.
+    func toggleScreenshotZoom() {
+        guard expanded else {
+            if notice == .translating { notice = nil }
+            expanded = true
+            screenshotZoomed = true
+            return
+        }
+        screenshotZoomed.toggle()
     }
 
     /// Esc in the compact bar first ends the edit; a second Esc, or an empty bar, closes.
@@ -447,6 +460,7 @@ final class PanelController {
         model.cancel()
         notice = nil
         expanded = false
+        screenshotZoomed = false
     }
 
     private func show() {

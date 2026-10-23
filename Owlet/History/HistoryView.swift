@@ -330,7 +330,7 @@ enum HistoryTime {
 }
 
 /// A screen region record's screenshot, on a plain group box so a white capture still reads as a
-/// picture; a click or the expand button opens it in Quick Look (BDR-0019).
+/// picture; the zoom pointer shows it can be opened, and a click opens it in Quick Look (BDR-0019).
 private struct HistoryScreenshot: View {
     let data: Data
     @State private var preview: URL?
@@ -346,19 +346,10 @@ private struct HistoryScreenshot: View {
                         .clipShape(ConcentricRectangle())
                 }
                 .buttonStyle(.plain)
+                .pointerStyle(.zoomIn)
                 .frame(maxWidth: .infinity)
                 .padding(8)
                 .accessibilityLabel(L10n.shared.string("Screenshot"))
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Button(
-                    L10n.shared.string("Screenshot"), systemImage: "arrow.up.left.and.arrow.down.right", action: open
-                )
-                .labelStyle(.iconOnly)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .padding(10)
-                .hoverTip("Screenshot")
             }
             .quickLookPreview($preview)
         }

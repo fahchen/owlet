@@ -7,8 +7,6 @@ extension View {
         let shape = RoundedRectangle(cornerRadius: PanelMetrics.cornerRadius)
         return frame(width: PanelMetrics.width, height: height, alignment: .top)
             .clipShape(shape)
-            // What a `ConcentricRectangle` inside, such as the screenshot thumbnail, follows.
-            .containerShape(shape)
             .glassEffect(glass, in: shape)
     }
 }
@@ -80,6 +78,7 @@ struct PanelSourceBar: View {
     /// A screen region's screenshot, leading the bar until the panel opens (BDR-0019).
     var screenshot: NSImage? = nil
     var screenshotSpace: Namespace.ID? = nil
+    var toggleScreenshotZoom: () -> Void = {}
     /// Draws a new region; offered when the screenshot held no text.
     var recapture: (() -> Void)? = nil
     var retry: (() -> Void)? = nil
@@ -94,7 +93,8 @@ struct PanelSourceBar: View {
     var body: some View {
         HStack(spacing: 8) {
             if let screenshot {
-                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace).padding(.trailing, 4)
+                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace, toggle: toggleScreenshotZoom)
+                    .padding(.trailing, 4)
             }
             if let text {
                 TextField(placeholder, text: text, axis: .vertical)

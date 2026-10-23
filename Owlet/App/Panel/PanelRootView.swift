@@ -77,6 +77,7 @@ struct PanelRootView: View {
             placeholder: placeholder, focusRequest: controller.focusRequest,
             submitTitle: controller.model.operation.name,
             screenshot: screenshot, screenshotSpace: screenshotSpace,
+            toggleScreenshotZoom: controller.toggleScreenshotZoom,
             recapture: recapture,
             retry: processing ? nil : compactRetry, close: controller.close, drawsGlass: false)
     }
@@ -103,7 +104,9 @@ struct PanelRootView: View {
             openSettings: settings,
             close: controller.close,
             lookupOrigin: controller.lookupOrigin,
-            screenshotSpace: screenshotSpace
+            screenshotSpace: screenshotSpace,
+            screenshotZoomed: controller.screenshotZoomed,
+            toggleScreenshotZoom: controller.toggleScreenshotZoom
         )
         .environment(\.lookups, controller.lookups)
     }

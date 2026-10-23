@@ -349,6 +349,28 @@ struct PanelControllerTests {
         panel.close()
     }
 
+    /// A click on the thumbnail zooms the screenshot; from the compact bar it opens the panel
+    /// zoomed, and closing forgets the zoom.
+    @Test func thumbnailZoomsAndOpensThePanel() async {
+        let gate = Gate()
+        let (panel, _) = makePanel(gate: gate)
+        panel.screenAccess = { true }
+        panel.captureRegion = { Data([1, 2, 3]) }
+        panel.recognize = { _ in "Hello" }
+        panel.processRegion()
+        await settle()
+        #expect(!panel.expanded)
+        panel.toggleScreenshotZoom()
+        #expect(panel.expanded)
+        #expect(panel.screenshotZoomed)
+        panel.toggleScreenshotZoom()
+        #expect(!panel.screenshotZoomed)
+        panel.toggleScreenshotZoom()
+        panel.close()
+        #expect(!panel.screenshotZoomed)
+        gate.release()
+    }
+
     /// The next selection does not carry an earlier screenshot.
     @Test func aSelectionDropsTheScreenshot() async {
         let (panel, _) = makePanel()

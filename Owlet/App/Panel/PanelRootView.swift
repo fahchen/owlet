@@ -9,12 +9,23 @@ struct PanelRootView: View {
     /// The expanded panel's own height, which the surface grows to. The surface needs it as an
     /// explicit, animated height: a surface that only hugged the panel would snap to its full size.
     @State private var expandedHeight: CGFloat = 0
+    /// The compact bar's height: one line at rest, taller while a pasted text is being edited.
+    @State private var barHeight = PanelMetrics.sourceBarHeight
 
     /// One glass surface carries the source bar and then the expanded panel, so expanding grows
     /// it in place; nil while only a notice capsule shows.
     private var surfaceHeight: CGFloat? {
         if controller.expanded { return max(expandedHeight, PanelMetrics.sourceBarHeight) }
-        return controller.model.input.isEmpty ? nil : PanelMetrics.sourceBarHeight
+        return showsBar ? barHeight : nil
+    }
+
+    /// The bar is the source, so it stays even when emptied; only a missing permission has no
+    /// source to show.
+    private var showsBar: Bool {
+        switch controller.notice {
+        case .permission, .screenPermission: !controller.model.input.isEmpty
+        default: true
+        }
     }
 
     var body: some View {
@@ -29,7 +40,9 @@ struct PanelRootView: View {
                             .onGeometryChange(for: CGFloat.self, of: \.size.height) { expandedHeight = $0 }
                             .transition(.opacity)
                     } else {
-                        sourceBar.background(PanelGlassEffect.compactTint).transition(.opacity)
+                        sourceBar.background(PanelGlassEffect.compactTint)
+                            .onGeometryChange(for: CGFloat.self, of: \.size.height) { barHeight = $0 }
+                            .transition(.opacity)
                     }
                 }
                 .panelSurface(
@@ -52,10 +65,14 @@ struct PanelRootView: View {
 
     /// The source bar for the current compact state, drawn on the shared surface.
     private var sourceBar: some View {
-        let processing = controller.notice == nil || controller.notice == .translating
+        let notice = controller.notice
+        let processing = notice == nil || notice == .translating || notice == .unreadable
         return PanelSourceBar(
-            summary: controller.model.input, retry: processing ? nil : compactRetry, close: controller.close,
-            edit: controller.editSource, drawsGlass: false)
+            summary: controller.model.input, text: Bindable(controller.model).input,
+            placeholder: notice == .unreadable
+                ? L10n.shared.string("No selected text was read. Type or paste it, then press ⌘↩") : "",
+            focusRequest: controller.focusRequest, submitTitle: controller.model.operation.name,
+            retry: processing ? nil : compactRetry, close: controller.close, drawsGlass: false)
     }
 
     private var expandedView: some View {
@@ -71,9 +88,7 @@ struct PanelRootView: View {
             cancel: controller.stop,
             openSettings: settings,
             close: controller.close,
-            lookupOrigin: controller.lookupOrigin,
-            editingSource: controller.editingSource,
-            focusRequest: controller.focusRequest
+            lookupOrigin: controller.lookupOrigin
         )
         .environment(\.lookups, controller.lookups)
     }
@@ -94,6 +109,9 @@ struct PanelRootView: View {
                     : L10n.shared.string(controller.model.operation.progress.key),
                 symbol: controller.model.operation.symbol, stop: controller.stop, close: controller.close,
                 showsBar: false)
+        case .unreadable:
+            // The bar's placeholder says why it is empty; a second line would only repeat it.
+            EmptyView()
         case .receiving:
             // A press asked why replace waits. The explanation runs in the compact bar, and the
             // one entry it offers stops the arrival.

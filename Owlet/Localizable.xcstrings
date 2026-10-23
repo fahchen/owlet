@@ -1393,6 +1393,35 @@
         }
       }
     },
+    "Click to Edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to Edit"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリックして編集"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击编辑"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點擊編輯"
+          }
+        }
+      }
+    },
     "Close Panel": {
       "extractionState": "manual",
       "localizations": {
@@ -2143,35 +2172,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "關閉提示"
-          }
-        }
-      }
-    },
-    "Edit Text": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit Text"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "テキストを編集"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "编辑文本"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "編輯文字"
           }
         }
       }
@@ -3999,6 +3999,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "沒有任何 segment 給出譯文。"
+          }
+        }
+      }
+    },
+    "No selected text was read. Type or paste it, then press ⌘↩": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No selected text was read. Type or paste it, then press ⌘↩"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択したテキストを読み取れませんでした。入力または貼り付けて ⌘↩ を押してください"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未读到选中的文字，输入或粘贴后按 ⌘↩"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未讀到選取的文字，輸入或貼上後按 ⌘↩"
           }
         }
       }

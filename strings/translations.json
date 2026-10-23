@@ -239,6 +239,11 @@
     "zh-Hans": "点按右侧的组合键即可重新录制。",
     "zh-Hant": "點按右側的組合鍵即可重新錄製。"
   },
+  "Click to Edit": {
+    "ja": "クリックして編集",
+    "zh-Hans": "点击编辑",
+    "zh-Hant": "點擊編輯"
+  },
   "Close Panel": {
     "ja": "パネルを閉じる",
     "zh-Hans": "关闭浮窗",
@@ -368,11 +373,6 @@
     "ja": "閉じる",
     "zh-Hans": "关闭提示",
     "zh-Hant": "關閉提示"
-  },
-  "Edit Text": {
-    "ja": "テキストを編集",
-    "zh-Hans": "编辑文本",
-    "zh-Hant": "編輯文字"
   },
   "English": {
     "ja": "English",
@@ -683,6 +683,11 @@
     "ja": "意味はまだありません",
     "zh-Hans": "尚无中文释义",
     "zh-Hant": "尚無中文釋義"
+  },
+  "No selected text was read. Type or paste it, then press ⌘↩": {
+    "ja": "選択したテキストを読み取れませんでした。入力または貼り付けて ⌘↩ を押してください",
+    "zh-Hans": "未读到选中的文字，输入或粘贴后按 ⌘↩",
+    "zh-Hant": "未讀到選取的文字，輸入或貼上後按 ⌘↩"
   },
   "No source sentence": {
     "ja": "原句の文脈なし",

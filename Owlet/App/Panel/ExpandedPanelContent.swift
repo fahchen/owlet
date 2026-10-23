@@ -10,11 +10,6 @@ struct ExpandedPanelContent: View {
     let learning: LearningModel
     let lookupOrigin: LookupOrigin?
     var showsSource = true
-    /// While the user edits, Sentence by Sentence keeps the source field instead of folding it away.
-    var editingSource = false
-    var focusRequest = 0
-    @FocusState private var sourceFocused: Bool
-    @State private var sourceSelection: TextSelection?
     /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
@@ -53,15 +48,8 @@ struct ExpandedPanelContent: View {
 
     private var sourceEditor: some View {
         // A vertical TextField hugs its text, so the gap above the divider matches the one below it.
-        TextField(L10n.shared.string("Source"), text: $model.input, selection: $sourceSelection, axis: .vertical)
+        TextField(L10n.shared.string("Source"), text: $model.input, axis: .vertical)
             .textFieldStyle(.plain)
-            .focused($sourceFocused)
-            // The caret goes after the text, so editing continues it rather than replacing it.
-            .task(id: focusRequest) {
-                guard focusRequest > 0 else { return }
-                sourceFocused = true
-                sourceSelection = TextSelection(insertionPoint: model.input.endIndex)
-            }
             .font(.system(size: PanelMetrics.sourceTextSize))
             .fontWeight(PanelMetrics.sourceWeight)
             .lineSpacing(2)
@@ -71,7 +59,7 @@ struct ExpandedPanelContent: View {
     /// that holds while the reply is arriving too, so Sentence by Sentence shows the source once and the
     /// pairs are not pushed below a source field the finished result would not have.
     private var showsAlignedPairs: Bool {
-        showsSource && !editingSource && displayMode == .aligned && !model.displayPairs.isEmpty
+        showsSource && displayMode == .aligned && !model.displayPairs.isEmpty
     }
 
     private var hasResultSection: Bool {
@@ -124,8 +112,8 @@ struct ExpandedPanelContent: View {
     @ViewBuilder private var status: some View {
         if let notice {
             StatusNote(
-                symbol: isExplanation(notice) ? "info.circle" : "exclamationmark.triangle",
-                tint: isExplanation(notice) ? .secondary : .red
+                symbol: notice != .cancelled ? "exclamationmark.triangle" : "info.circle",
+                tint: notice == .cancelled ? .secondary : .red
             ) {
                 Text(notice.message)
                     .font(.body)
@@ -150,10 +138,6 @@ struct ExpandedPanelContent: View {
         }
     }
 
-    /// A cancel or an empty editor is a state to explain, not a failure to show in red.
-    private func isExplanation(_ notice: PanelController.Notice) -> Bool {
-        notice == .cancelled || notice == .unreadable
-    }
 }
 
 /// In-content status: symbol and message left, recovery entry right.

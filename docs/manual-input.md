@@ -2,7 +2,16 @@
 
 # Manual Input in the Panel
 
-Status: implemented (2026-10-23); the four open decisions are settled in [BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md), which follows the recommendations below. The rest of this document is the design record.
+Status: implemented (2026-10-23) as decided in the UI/UX review; see [BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md). The proposal below is the design record; the review replaced its UI.
+
+## Review outcome (2026-10-23)
+
+The UI/UX review chose a different shape from the proposal below:
+
+- **The source bar is the input.** The compact bar is a borderless system text field: one line at rest, edited in place with a click (the caret lands where you click), growing to five lines while a paste is edited. No pencil button.
+- **Nothing readable: no expansion, no notice.** The bar becomes an empty, focused field; the reason is its placeholder ("No selected text was read. Type or paste it, then press ⌘↩"). No notice capsule below it, no empty panel.
+- **⌘↩ runs the field's text**, and "⌘↩ Translate" shows beside it while editing. **Esc ends the edit first**, then closes. "Click to Edit" shows on hover for the first three times only.
+- Rejected in the review: the empty expanded editor (it reads as an error) and the pencil button (the failed bar already carries a segmented control).
 
 ## What happens today
 

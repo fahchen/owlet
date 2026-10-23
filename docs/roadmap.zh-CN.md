@@ -14,7 +14,7 @@
 | 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
 | 学习推荐的纠正重试 | 用真实模型复验：一次纠正能修好违约的返回。 | [LLM 契约](../spec/llm/contract.md) |
 | 选中文字读取 | 辅助功能路径、⌘C 兜底与粘贴写回已实现；在各真实应用上的兼容性仍需手测。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
-| 浮窗内的手动输入 | 真机核对：全局快捷键后原文编辑器拿到键盘，输入法状态不受影响；空浮窗的高度与布局读起来像说明而不是错误；逐句对照下编辑时重新显示原文；编辑器里的 Esc 与 ⌘↩。 | [manual-input.zh-CN.md](manual-input.zh-CN.md)、[BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md) |
+| 浮窗内的手动输入 | 真机核对：全局快捷键后原文条的输入框拿到键盘，输入法状态不受影响；点击处放置光标；粘贴多行时原文条长高；Esc 先结束编辑再关闭；⌘↩ 处理修改后的文字。 | [manual-input.zh-CN.md](manual-input.zh-CN.md)、[BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md) |
 | 屏幕区域翻译 | 真机核对：macOS 27 上屏幕录制授权的提示与系统设置入口；从应用启动的 `screencapture -i` 归属到 Owlet；Vision 在中文、日文、小字与竖排上的准确率；多栏排版经模型兜底后的顺序。 | [screen-region-input.zh-CN.md](screen-region-input.zh-CN.md)、[BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) |
 
 ## 尚未进入产品定义的提案

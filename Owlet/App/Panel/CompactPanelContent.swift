@@ -67,33 +67,51 @@ struct CompactProcessingView: View {
 struct PanelSourceBar: View {
     @AppStorage(SettingsStore.panelGlassEffectKey) private var glassEffect = PanelGlassEffect.contrast
     let summary: String
+    /// The source itself, editable in place (BDR-0018); nil shows `summary` as read-only text.
+    var text: Binding<String>? = nil
+    /// Why the field is empty, when it is.
+    var placeholder = ""
+    /// Bumped when the field should take the keyboard.
+    var focusRequest = 0
+    /// What ⌘↩ runs, shown beside the field while it is being edited.
+    var submitTitle = ""
     var retry: (() -> Void)? = nil
     let close: () -> Void
-    /// Opens the panel on the source editor; nil where the bar has no panel to expand into.
-    var edit: (() -> Void)? = nil
     /// False on the panel root's surface, which supplies the glass so it can grow into the panel.
     var drawsGlass = true
+    @FocusState private var focused: Bool
+    @State private var showsEditHint = false
+    /// The "Click to Edit" hint teaches the field; after a few showings it is known and stays away.
+    @AppStorage(SettingsStore.panelEditHintsKey) private var editHints = 0
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(summary.replacing(/\s+/, with: " "))
-                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .hoverTip(verbatim: summary)
-            if let edit {
-                Button(action: edit) {
-                    Label(L10n.shared.string("Edit Text"), systemImage: "pencil").foregroundStyle(.primary)
+            if let text {
+                TextField(placeholder, text: text, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
+                    // One line at rest, like the summary; a paste grows the bar while editing.
+                    .lineLimit(focused ? 1...5 : 1...1)
+                    .focused($focused)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .task(id: focusRequest) { if focusRequest > 0 { focused = true } }
+                    .onHover { inside in
+                        showsEditHint = inside && !focused && !text.wrappedValue.isEmpty && editHints < 3
+                        if showsEditHint { editHints += 1 }
+                    }
+                if focused, !text.wrappedValue.isEmpty, !submitTitle.isEmpty {
+                    Text(verbatim: KeyHint.panelReplace.keys + " " + submitTitle)
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if showsEditHint && !focused {
+                    Text(L10n.shared.string("Click to Edit")).font(.caption).foregroundStyle(.secondary)
                 }
-                .labelStyle(.iconOnly)
-                .font(.system(size: 13, weight: .medium))
-                .buttonStyle(.glass(glassEffect.glass))
-                .buttonBorderShape(.circle)
-                .controlSize(.extraLarge)
-                .buttonSizing(.flexible)
-                .frame(width: 36, height: 36)
-                .hoverTip("Edit Text")
+            } else {
+                Text(summary.replacing(/\s+/, with: " "))
+                    .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.sourceWeight))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .hoverTip(verbatim: summary)
             }
             if let retry {
                 PanelSegmentedControl(items: [
@@ -127,7 +145,9 @@ struct PanelSourceBar: View {
         }
         .padding(.leading, 24)
         .padding(.trailing, 12)
-        .frame(width: PanelMetrics.width, height: PanelMetrics.sourceBarHeight)
+        .padding(.vertical, 13)
+        .frame(width: PanelMetrics.width)
+        .frame(minHeight: PanelMetrics.sourceBarHeight)
         .glassEffect(drawsGlass ? glassEffect.compactGlass : .identity)
         .gesture(WindowDragGesture())
     }

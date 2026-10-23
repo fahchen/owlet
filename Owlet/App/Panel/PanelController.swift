@@ -79,10 +79,7 @@ final class PanelController {
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
     private(set) var replacing = false
-    /// The user asked to edit the source, so Sentence by Sentence shows the source field again until
-    /// the next request or close (BDR-0018).
-    private(set) var editingSource = false
-    /// Bumped each time the source editor should take the keyboard.
+    /// Bumped each time the source bar's field should take the keyboard.
     private(set) var focusRequest = 0
     let model: TextProcessingModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
@@ -202,23 +199,18 @@ final class PanelController {
         }
     }
 
-    /// Nothing could be read, so the panel opens as an empty source editor: the editor is the way
-    /// out, not a notice pointing at another window (BDR-0018).
+    /// Nothing could be read, so the source bar itself becomes the input, with the reason as its
+    /// placeholder: no notice, no empty panel (BDR-0018).
     private func showManualInput() {
         model.reset()
         model.input = ""
         notice = .unreadable
-        expanded = true
-        editSource()
-    }
-
-    /// Expands the panel and puts the keyboard in the source editor; a running request keeps running.
-    func editSource() {
-        if notice == .translating { notice = nil }
-        expanded = true
-        editingSource = true
+        expanded = false
         focusRequest += 1
     }
+
+    /// Esc in the compact bar first ends the edit; a second Esc, or an empty bar, closes.
+    var cancelEndsEditing: Bool { !expanded && !model.input.isEmpty }
 
     private func accept(
         _ result: Result<Selection, SelectionError>, id: Int, operation: Operation, replace: Bool
@@ -258,7 +250,6 @@ final class PanelController {
         requestID += 1
         let id = requestID
         if expanded { notice = nil }
-        editingSource = false
         let task = model.process(to: language) { [weak self] in
             self?.expandOnFirstPartial(id: id)
         }
@@ -328,7 +319,7 @@ final class PanelController {
             return .failure(message, kind: kind)
         case .missingConfig: return .missingConfig
         case .success: return writebackRefusal
-        case .idle: return notice == .cancelled || notice == .unreadable ? notice : nil
+        case .idle: return notice == .cancelled ? .cancelled : nil
         case .loading:
             // While the stream runs, a press on a result action is answered with the reason it
             // must wait (BDR-0017 §1).
@@ -422,7 +413,9 @@ final class PanelController {
             guard model.state != .loading, !model.input.isEmpty else { return }
             processCurrentText()
         case .replace:
-            guard model.state != .loading else {
+            // A press before anything arrived restarts with the edited text; once text is arriving,
+            // the press is told why it must wait.
+            guard !model.isReceiving else {
                 explainReceiving()
                 return
             }
@@ -454,7 +447,6 @@ final class PanelController {
         model.cancel()
         notice = nil
         expanded = false
-        editingSource = false
     }
 
     private func show() {
@@ -486,6 +478,7 @@ final class PanelController {
             SettingsStore.setPanelFixedAnchor(topCenter, in: defaults)
         }
         panel.onCommand = { [weak self] command in self?.run(command) }
+        panel.cancelEndsEditing = { [weak self] in self?.cancelEndsEditing ?? false }
         return panel
     }
 }

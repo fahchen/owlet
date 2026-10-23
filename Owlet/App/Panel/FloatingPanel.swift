@@ -20,6 +20,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// User drag ended at this top-center point; the panel then stays anchored there.
     var onDrag: (NSPoint) -> Void = { _ in }
     var onCommand: (Command) -> Void = { _ in }
+    /// Whether Esc in a text field ends the edit instead of reaching `onCommand`.
+    var cancelEndsEditing: () -> Bool = { false }
     /// While a write-back is in flight the panel lets go of the keyboard without dismissing itself:
     /// the keystroke has to reach the app underneath, and the panel has to survive to report a miss.
     var suspendsDismissal = false
@@ -108,6 +110,10 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
             }
             // ⌘C copies the selected text when there is some; only with nothing selected is it the result.
             if command == .copy, hasTextSelection { return event }
+            if command == .cancel, firstResponder is NSTextView, cancelEndsEditing() {
+                makeFirstResponder(nil)
+                return nil
+            }
             onCommand(command)
             return nil
         }

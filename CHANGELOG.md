@@ -8,8 +8,7 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 - Translate Screen Region: a new global shortcut (set it on the Shortcuts page) lets you drag a rectangle on screen in the system's own screenshot interface. The text in it is read on this Mac and translated; the panel shows the screenshot above the recognised source, which you can edit and run again. The result can be copied; there is nothing to write back. The screenshot is kept with the history record, at a reduced size that is enough to look at, and shown in its detail. Owlet asks for Screen Recording permission the first time; when a screenshot holds no readable text, the panel opens the empty editor with the screenshot beside it.
 
 ### Changed
-- When Owlet cannot read any text — nothing selected, a password field, or an app that does not answer in time — the panel opens as an empty source editor with the cursor in it, instead of a notice that sent you to the main window. Type or paste, then press ⌘↩. The result can be copied but is never written back, even from a replace shortcut. A missing Accessibility permission still shows its compact notice.
-- The compact source bar has an Edit Text button: it opens the panel with the cursor at the end of the source, while the request keeps running. In Sentence by Sentence the source field comes back while you edit.
+- The compact source bar is the source itself: click it to edit what was read, then press ⌘↩ to run it again; Esc ends the edit first. When Owlet cannot read any text — nothing selected, a password field, or an app that does not answer in time — the bar becomes an empty field with the cursor in it and the reason as its placeholder, instead of a notice that sent you to the main window. Type or paste, then press ⌘↩. The result can be copied but is never written back, even from a replace shortcut. A missing Accessibility permission still shows its compact notice.
 
 ## 0.7.0 — 2026-10-20
 

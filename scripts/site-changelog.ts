@@ -65,30 +65,49 @@ const page = `<!doctype html>
   :root {
     --ink: oklch(0.22 0.004 260); --dim: oklch(0.50 0.006 260); --line: oklch(0.22 0.004 260 / .1);
     --blue: oklch(0.50 0.15 255); --green: oklch(0.48 0.13 150); --rose: oklch(0.50 0.16 355);
+    --bg: oklch(0.985 0.004 250);
+    --wash-1: oklch(0.90 0.06 250 / .75); --wash-2: oklch(0.92 0.05 315 / .65); --wash-3: oklch(0.93 0.05 195 / .7);
+    --card: oklch(1 0 0 / .46); --code: oklch(0.3 0.02 260 / .06);
+    --glass: inset 0 1.5px 0 oklch(1 0 0 / .95), inset 0 -1px 0 oklch(0.3 0.03 260 / .04), inset 0 0 0 1px oklch(1 0 0 / .7),
+      0 0 0 .5px oklch(0.3 0.03 260 / .07), 0 18px 40px -24px oklch(0.3 0.05 260 / .3);
   }
   :root[data-theme=dark] {
     color-scheme: dark; --ink: oklch(0.95 0.004 260); --dim: oklch(0.74 0.01 260); --line: oklch(1 0 0 / .1);
     --blue: oklch(0.76 0.12 255); --green: oklch(0.78 0.13 150); --rose: oklch(0.77 0.13 355);
+    --bg: oklch(0.17 0.008 260);
+    --wash-1: oklch(0.34 0.08 250 / .55); --wash-2: oklch(0.32 0.08 315 / .45); --wash-3: oklch(0.34 0.07 195 / .45);
+    --card: oklch(0.26 0.01 260 / .5); --code: oklch(1 0 0 / .08);
+    --glass: inset 0 1.5px 0 oklch(1 0 0 / .14), inset 0 -1px 0 oklch(0 0 0 / .2), inset 0 0 0 1px oklch(1 0 0 / .1),
+      0 0 0 .5px oklch(0 0 0 / .45), 0 18px 40px -22px oklch(0 0 0 / .7);
   }
-  :root[data-theme=dark] body { background: oklch(0.17 0.008 260); }
-  :root[data-theme=dark] code { background: oklch(1 0 0 / .08); }
-  body { margin: 0; color: var(--ink); background: oklch(1 0 0); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; -webkit-font-smoothing: antialiased; }
+  body { margin: 0; color: var(--ink); background: var(--bg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; -webkit-font-smoothing: antialiased; }
+  /* The home page's wallpaper, fixed behind the page, so each release reads as glass over it. */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(48% 42% at 12% 8%, var(--wash-1), transparent 72%),
+      radial-gradient(40% 46% at 92% 30%, var(--wash-2), transparent 72%),
+      radial-gradient(56% 44% at 40% 104%, var(--wash-3), transparent 72%);
+  }
   a { color: inherit; text-underline-offset: 4px; text-decoration-thickness: 1px; }
   a:hover { color: var(--blue); }
-  main { max-width: 620px; margin: 0 auto; padding: 72px 24px 120px; }
+  main { max-width: 680px; margin: 0 auto; padding: 72px 24px 120px; }
   .back { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; text-decoration: none; color: var(--dim); }
-  .back img { width: 24px; height: 24px; }
-  h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; margin: 40px 0 6px; }
-  .lede { color: var(--dim); margin: 0 0 56px; }
-  .release { padding: 32px 0; border-top: 1px solid var(--line); }
-  h2 { font-size: 17px; font-weight: 600; margin: 0; }
+  .back img { width: 28px; height: 28px; }
+  h1 { font-size: clamp(34px, 5vw, 48px); line-height: 1.1; font-weight: 600; letter-spacing: -.03em; margin: 40px 0 10px; }
+  .lede { color: var(--dim); font-size: 18px; margin: 0 0 48px; }
+  .release {
+    padding: 28px 30px 30px; margin-bottom: 18px; border-radius: 28px; background: var(--card); box-shadow: var(--glass);
+    -webkit-backdrop-filter: blur(30px) saturate(1.6); backdrop-filter: blur(30px) saturate(1.6);
+  }
+  h2 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; margin: 0; }
   .date { color: var(--dim); font-size: 14px; margin: 2px 0 0; }
-  h3 { font-size: 13px; font-weight: 600; margin: 20px 0 6px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 22px 0 6px; }
   h3.added { color: var(--green); } h3.changed { color: var(--blue); } h3.fixed { color: var(--rose); }
   ul { margin: 0; padding-left: 20px; }
-  li { margin: 6px 0; }
+  li { margin: 8px 0; }
   .release > p:not(.date) { margin: 16px 0 0; }
-  code { font: 14px ui-monospace, "SF Mono", monospace; background: oklch(0.96 0.002 260); border-radius: 4px; padding: 1px 5px; }
+  code { font: 14px ui-monospace, "SF Mono", monospace; background: var(--code); border-radius: 6px; padding: 1px 6px; }
 </style>
 </head>
 <body>

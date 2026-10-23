@@ -29,8 +29,7 @@
   :root {
     --ink: oklch(0.22 0.004 260);
     --dim: oklch(0.50 0.006 260);
-    --bg: oklch(1 0 0);
-    --band: oklch(0.975 0.002 260);
+    --bg: oklch(0.985 0.004 250);
     --line: oklch(0.22 0.004 260 / .1);
     --amber: oklch(0.50 0.12 60);
     --blue: oklch(0.50 0.15 255);
@@ -43,7 +42,7 @@
   body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-underline-offset: 4px; text-decoration-thickness: 1px; }
   a:hover { color: var(--blue); }
-  h1, h2, h3 { font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  h1, h2, h3 { font-weight: 600; margin: 0; letter-spacing: -.02em; }
   .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 24px; }
 
   /* Inline handwritten note: a tinted target, an arrow, and a label below it. */
@@ -56,16 +55,17 @@
 
   /* Hero */
   .hero { min-height: 80vh; display: grid; place-items: center; text-align: center; position: relative; padding: 48px 24px; }
-  .hero img { width: 64px; height: 64px; }
-  .hero h1 { font-size: 28px; margin-top: 12px; }
+  .hero img { width: 76px; height: 76px; filter: drop-shadow(0 12px 24px oklch(0.3 0.04 260 / .18)); }
+  .hero h1 { font-size: 17px; margin-top: 18px; color: var(--dim); letter-spacing: 0; }
   .hero p { color: var(--dim); font-size: 17px; margin: 12px 0 0; }
-  .hero p.tagline { color: var(--ink); font-size: 19px; margin-top: 8px; text-wrap: balance; }
-  .hero p.lead { max-width: 30em; margin: 14px auto 44px; font-size: 16px; text-wrap: balance; }
+  /* The tagline is the headline: one sentence, set large and tight. */
+  .hero p.tagline { color: var(--ink); font-size: clamp(36px, 5.4vw, 62px); line-height: 1.08; font-weight: 600; letter-spacing: -.035em; margin: 10px auto 0; max-width: 14em; text-wrap: balance; }
+  .hero p.lead { max-width: 30em; margin: 22px auto 44px; font-size: 18px; line-height: 1.55; text-wrap: balance; }
   .links { margin-top: 36px; display: flex; flex-direction: column; gap: 14px; align-items: center; font-size: 15px; }
   .meta { font-size: 13px; color: var(--dim); }
   .btn {
-    display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
-    color: var(--btn-ink); text-decoration: none; font-weight: 500; font-size: 15px;
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 999px;
+    color: var(--btn-ink); text-decoration: none; font-weight: 500; font-size: 16px;
     transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s cubic-bezier(.16, 1, .3, 1);
   }
   .btn:hover { color: var(--btn-ink); transform: translateY(-1px); }
@@ -77,21 +77,14 @@
   .more-link:hover span { transform: translateX(3px); }
 
   /* Story */
-  .story { background: var(--band); padding: 96px 0; }
+  .story { padding: 96px 0; }
   /* A faint Tahoe wash, as if the wallpaper showed through glass; on the stage, so it holds still while the shots change. */
-  .stage {
-    background:
-      radial-gradient(55% 45% at 18% 12%, var(--wash-1), transparent 70%),
-      radial-gradient(45% 45% at 86% 28%, var(--wash-2), transparent 70%),
-      radial-gradient(60% 50% at 55% 100%, var(--wash-3), transparent 70%),
-      var(--band);
-  }
   .step { margin: 0 auto 88px; max-width: 1032px; }
   .step:last-child { margin-bottom: 0; }
   .cap { text-align: center; }
-  .cap b { font-size: 13px; font-weight: 600; }
-  .cap h2 { font-size: 17px; margin-top: 2px; }
-  .cap p { color: var(--dim); margin: 4px auto 0; max-width: 34em; }
+  .cap b { font-size: 14px; font-weight: 600; }
+  .cap h2 { font-size: clamp(26px, 2.8vw, 34px); line-height: 1.15; margin-top: 4px; }
+  .cap p { color: var(--dim); font-size: 17px; margin: 8px auto 0; max-width: 34em; }
   .k1 { color: var(--blue); } .k2 { color: var(--rose); } .k3 { color: var(--green); }
   /* The shot and its notes share one box; the SVG's viewBox matches the box, so arrows land in place. */
   .shot { position: relative; aspect-ratio: 1000 / 330; margin-top: 24px; }
@@ -137,8 +130,8 @@
 
   /* Inside the app: radio tabs, one pane at a time; a pane's arrows redraw each time it is shown. */
   .inside { padding: 120px 0 0; }
-  .inside h2 { font-size: 17px; text-align: center; }
-  .inside .sub { text-align: center; color: var(--dim); margin: 6px 0 0; }
+  .inside h2 { font-size: clamp(30px, 3.8vw, 44px); line-height: 1.1; text-align: center; }
+  .inside .sub { text-align: center; color: var(--dim); font-size: 18px; margin: 10px 0 0; }
   .inside input[type=radio] { position: absolute; opacity: 0; pointer-events: none; }
   .tabs label:hover { color: var(--ink); }
   #tab-notebook:focus-visible ~ .tabs [for=tab-notebook], #tab-history:focus-visible ~ .tabs [for=tab-history],
@@ -149,28 +142,28 @@
 
   /* ---------- Liquid Glass layer ---------- */
   :root {
-    --glass: oklch(1 0 0 / .55);
-    --glass-ring: inset 0 0 0 .5px oklch(1 0 0 / .85), 0 0 0 .5px oklch(0.3 0.02 260 / .08);
-    --glass-hi: inset 0 1px 0 oklch(1 0 0 / .95);
-    --glass-drop: 0 10px 28px -14px oklch(0.3 0.04 260 / .28), 0 1px 2px oklch(0.3 0.02 260 / .06);
+    --glass: oklch(1 0 0 / .5);
+    --glass-ring: inset 0 0 0 1px oklch(1 0 0 / .7), 0 0 0 .5px oklch(0.3 0.03 260 / .07);
+    --glass-hi: inset 0 1.5px 0 oklch(1 0 0 / .95), inset 0 -1px 0 oklch(0.3 0.03 260 / .04);
+    --glass-drop: 0 18px 40px -24px oklch(0.3 0.05 260 / .3), 0 1px 2px oklch(0.3 0.02 260 / .05);
     --spring: cubic-bezier(.22, 1, .36, 1);
-    --wash-1: oklch(0.95 0.03 250 / .7); --wash-2: oklch(0.96 0.03 320 / .6); --wash-3: oklch(0.96 0.025 195 / .6);
-    --card-base: oklch(1 0 0 / .68); --mix-base: oklch(1 0 0); --chip-any: oklch(1 0 0 / .25); --bar: oklch(0.80 0.006 260);
+    --wash-1: oklch(0.90 0.06 250 / .75); --wash-2: oklch(0.92 0.05 315 / .65); --wash-3: oklch(0.93 0.05 195 / .7); --wash-4: oklch(0.95 0.04 85 / .45);
+    --card-base: oklch(1 0 0 / .46); --mix-base: oklch(1 0 0); --chip-any: oklch(1 0 0 / .25); --bar: oklch(0.80 0.006 260);
     --track: oklch(1 0 0 / .45); --pill-top: oklch(1 0 0 / .98); --pill-bot: oklch(1 0 0 / .78); --pill-hi: oklch(1 0 0);
     --btn-top: oklch(0.36 0.01 260 / .92); --btn-bot: oklch(0.19 0.01 260 / .94); --btn-ink: oklch(0.99 0 0);
   }
   /* Dark: the script resolves "system" to light or dark before the first paint, so one block serves both. */
   :root[data-theme=dark] {
     color-scheme: dark;
-    --ink: oklch(0.95 0.004 260); --dim: oklch(0.74 0.01 260); --bg: oklch(0.17 0.008 260); --band: oklch(0.2 0.01 260);
+    --ink: oklch(0.95 0.004 260); --dim: oklch(0.74 0.01 260); --bg: oklch(0.17 0.008 260);
     --line: oklch(1 0 0 / .1);
     --amber: oklch(0.80 0.12 70); --blue: oklch(0.76 0.12 255); --green: oklch(0.78 0.13 150); --rose: oklch(0.77 0.13 355); --violet: oklch(0.76 0.12 300);
-    --glass: oklch(0.3 0.01 260 / .55);
-    --glass-ring: inset 0 0 0 .5px oklch(1 0 0 / .12), 0 0 0 .5px oklch(0 0 0 / .4);
-    --glass-hi: inset 0 1px 0 oklch(1 0 0 / .12);
-    --glass-drop: 0 10px 28px -14px oklch(0 0 0 / .6), 0 1px 2px oklch(0 0 0 / .3);
-    --wash-1: oklch(0.32 0.06 250 / .45); --wash-2: oklch(0.32 0.06 320 / .35); --wash-3: oklch(0.32 0.05 195 / .35);
-    --card-base: oklch(0.25 0.01 260 / .7); --mix-base: oklch(0.2 0.01 260); --chip-any: oklch(1 0 0 / .05); --bar: oklch(0.45 0.01 260);
+    --glass: oklch(0.3 0.01 260 / .45);
+    --glass-ring: inset 0 0 0 1px oklch(1 0 0 / .1), 0 0 0 .5px oklch(0 0 0 / .45);
+    --glass-hi: inset 0 1.5px 0 oklch(1 0 0 / .14), inset 0 -1px 0 oklch(0 0 0 / .2);
+    --glass-drop: 0 18px 40px -22px oklch(0 0 0 / .7), 0 1px 2px oklch(0 0 0 / .3);
+    --wash-1: oklch(0.34 0.08 250 / .55); --wash-2: oklch(0.32 0.08 315 / .45); --wash-3: oklch(0.34 0.07 195 / .45); --wash-4: oklch(0.32 0.05 85 / .25);
+    --card-base: oklch(0.26 0.01 260 / .5); --mix-base: oklch(0.2 0.01 260); --chip-any: oklch(1 0 0 / .05); --bar: oklch(0.45 0.01 260);
     --track: oklch(0.28 0.01 260 / .6); --pill-top: oklch(0.44 0.01 260 / .95); --pill-bot: oklch(0.36 0.01 260 / .95); --pill-hi: oklch(1 0 0 / .14);
     --btn-top: oklch(0.99 0 0 / .96); --btn-bot: oklch(0.88 0.004 260 / .96); --btn-ink: oklch(0.2 0.005 260);
   }
@@ -189,23 +182,26 @@
   .prefs .theme svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
   .prefs .theme svg:not(.on) { display: none; }
   .prefs button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-  /* Faint wallpaper light, so the glass has something to show through. */
-  .hero, .inside, .features {
+  /* One wallpaper, fixed behind the whole page like a desktop: every glass surface shows the same
+     soft light through it, and the sections are separated by space, not by bands of colour. */
+  body { background: var(--bg); }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
     background:
-      radial-gradient(40% 50% at 15% 20%, var(--wash-1), transparent 70%),
-      radial-gradient(35% 45% at 88% 35%, var(--wash-2), transparent 70%),
-      radial-gradient(45% 40% at 50% 100%, var(--wash-3), transparent 70%),
-      var(--bg);
+      radial-gradient(48% 42% at 12% 8%, var(--wash-1), transparent 72%),
+      radial-gradient(40% 46% at 92% 30%, var(--wash-2), transparent 72%),
+      radial-gradient(56% 44% at 40% 104%, var(--wash-3), transparent 72%),
+      radial-gradient(30% 30% at 70% 70%, var(--wash-4), transparent 72%);
   }
   .glassy, .chip, .prompt, .prefs {
     background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8);
     box-shadow: var(--glass-hi), var(--glass-ring), var(--glass-drop);
   }
   .card {
-    background: color-mix(in oklab, var(--c, var(--mix-base)) 13%, var(--card-base));
-    -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8);
-    /* A light lift only: the glass edge separates the cards, not the shadow. */
-    box-shadow: var(--glass-hi), var(--glass-ring), 0 4px 14px -10px oklch(0.3 0.04 260 / .14);
+    /* Clear glass: the wallpaper gives it colour; the accent stays in the drawing inside. */
+    background: linear-gradient(180deg, color-mix(in oklab, var(--card-base) 100%, oklch(1 0 0 / .1)), var(--card-base));
+    -webkit-backdrop-filter: blur(30px) saturate(1.6); backdrop-filter: blur(30px) saturate(1.6);
+    box-shadow: var(--glass-hi), var(--glass-ring), var(--glass-drop);
   }
   .chip.any { background: var(--chip-any); box-shadow: none; }
   .card :is(.chip, .prompt) { box-shadow: var(--glass-hi), var(--glass-ring); }
@@ -275,27 +271,27 @@
   @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .card, .polish { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
-      @keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.98); } }
+      @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
     }
   }
 
   /* Features */
   .features { padding: 120px 0; }
-  .features h2 { font-size: 17px; text-align: center; }
-  .features .sub { text-align: center; color: var(--dim); margin: 6px 0 48px; }
-  .polish { text-align: center; max-width: 720px; margin: 0 auto 64px; }
-  .polish h3 { font-size: 15px; }
-  .polish p { margin: 4px 0 0; color: var(--dim); font-size: 15px; }
+  .features h2 { font-size: clamp(30px, 3.8vw, 44px); line-height: 1.1; text-align: center; }
+  .features .sub { text-align: center; color: var(--dim); font-size: 18px; margin: 10px 0 64px; }
+  .polish { text-align: center; max-width: 720px; margin: 0 auto 72px; }
+  .polish h3 { font-size: 21px; }
+  .polish p { margin: 6px 0 0; color: var(--dim); font-size: 16px; }
   .polish .before { text-decoration: line-through; margin-top: 16px; }
-  .polish .after { color: var(--ink); font-size: 17px; }
+  .polish .after { color: var(--ink); font-size: 19px; }
 
   /* Bento: each card carries a small drawing of the thing it describes, in plain HTML. */
-  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; max-width: 960px; margin: 0 auto; }
-  .card { grid-column: span 2; border-radius: 22px; padding: 24px 24px 26px; }
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; max-width: 1000px; margin: 0 auto; }
+  .card { grid-column: span 2; border-radius: 28px; padding: 28px 28px 30px; }
   .card.w4 { grid-column: span 4; } .card.w3 { grid-column: span 3; }
-  .card h3 { font-size: 15px; }
-  .card > p { margin: 2px 0 0; color: var(--dim); font-size: 14px; }
-  .viz { margin-top: 20px; font-size: 14px; }
+  .card h3 { font-size: 17px; letter-spacing: -.015em; }
+  .card > p { margin: 4px 0 0; color: var(--dim); font-size: 15px; line-height: 1.55; }
+  .viz { margin-top: 22px; font-size: 14px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
   .chip i { font-style: normal; color: var(--c); margin: 0 4px; }
@@ -329,11 +325,11 @@
 
   @media (max-width: 820px) { .bento { grid-template-columns: 1fr; } .card, .card.w4, .card.w3 { grid-column: auto; } }
 
-  .end { text-align: center; padding: 40px 0 120px; }
-  .end h2 { font-size: 17px; margin-top: 12px; }
-  .end .links { margin-top: 16px; }
-  .end img { width: 48px; height: 48px; }
-  footer { border-top: 1px solid var(--line); padding: 20px 0 40px; font-size: 13px; color: var(--dim); }
+  .end { text-align: center; padding: 56px 0 140px; }
+  .end h2 { font-size: clamp(30px, 3.8vw, 44px); line-height: 1.1; margin-top: 16px; }
+  .end .links { margin-top: 28px; }
+  .end img { width: 64px; height: 64px; filter: drop-shadow(0 12px 24px oklch(0.3 0.04 260 / .18)); }
+  footer { box-shadow: inset 0 .5px 0 var(--line); padding: 24px 0 44px; font-size: 13px; color: var(--dim); }
   footer .wrap { display: flex; justify-content: space-between; gap: 16px; }
 
   @media (max-width: 820px) {

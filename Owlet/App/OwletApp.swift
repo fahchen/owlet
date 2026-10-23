@@ -300,7 +300,6 @@ private struct MenuBarLabel: View {
                 let open = OpenMainWindow(openWindow: openWindow, page: $page)
                 (NSApp.delegate as? AppDelegate)?.openMainWindow = { open.reopen() }
                 panel.openSettings = { SettingsWindow.show { openSettings() } }
-                panel.openManualInput = { open(.processing) }
                 panel.openNotebook = { open(.vocabulary) }
                 panel.collection = collection
                 history.observe(panel.model)

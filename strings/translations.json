@@ -369,15 +369,15 @@
     "zh-Hans": "关闭提示",
     "zh-Hant": "關閉提示"
   },
+  "Edit Text": {
+    "ja": "テキストを編集",
+    "zh-Hans": "编辑文本",
+    "zh-Hant": "編輯文字"
+  },
   "English": {
     "ja": "English",
     "zh-Hans": "English",
     "zh-Hant": "English"
-  },
-  "Enter Text": {
-    "ja": "手入力",
-    "zh-Hans": "手动输入",
-    "zh-Hant": "手動輸入"
   },
   "Enter the model name the provider gives you": {
     "ja": "プロバイダが指定するモデル名を入力してください",

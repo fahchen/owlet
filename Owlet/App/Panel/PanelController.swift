@@ -43,9 +43,9 @@ final class PanelController {
         /// Label of the single recovery entry shown beside the message.
         var actionTitle: String {
             switch self {
-            case .translating, .receiving: ""
+            case .translating, .receiving, .unreadable: ""
             case .permission: L10n.shared.string("Permission Settings")
-            case .unreadable: L10n.shared.string("Enter Text")
+            // The expanded source editor is the way out, so the explanation needs no button.
             case .missingConfig: L10n.shared.string("Configure Service")
             case .failure(_, let kind):
                 kind == .contract ? L10n.shared.string("Prompt Settings") : L10n.shared.string("Service Settings")
@@ -76,6 +76,11 @@ final class PanelController {
     private(set) var autoReplace = false
     /// The in-flight request will write back on success; labels the processing bar.
     private(set) var replacing = false
+    /// The user asked to edit the source, so Sentence by Sentence shows the source field again until
+    /// the next request or close (BDR-0018).
+    private(set) var editingSource = false
+    /// Bumped each time the source editor should take the keyboard.
+    private(set) var focusRequest = 0
     let model: TextProcessingModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
@@ -84,7 +89,6 @@ final class PanelController {
     var openSettings: () -> Void = {}
     /// Opens the settings page on the prompt editor for the operation whose result failed to parse.
     var openPromptSettings: (Operation) -> Void = { _ in }
-    var openManualInput: () -> Void = {}
     var openNotebook: () -> Void = {}
     /// The notebook collect action; nil when the panel is built without one, which the tests do.
     var collection: CollectionAction?
@@ -100,6 +104,8 @@ final class PanelController {
     private var requestID = 0
     /// Operation whose selection read is still outstanding.
     private var readingID: Int?
+    /// Operation whose read ran past the budget and opened the empty editor.
+    private var timedOutID: Int?
 
     private let defaults: UserDefaults
 
@@ -138,13 +144,30 @@ final class PanelController {
     /// slow answer is usually the right one and still replaces this notice.
     private func readTimedOut(id: Int, operation: Operation, replace: Bool) {
         guard id == requestID, readingID == id else { return }
+        timedOutID = id
         model.operation = operation
         autoReplace = replace
         // The previous text is not what the user selected now, so it must not sit beside this notice.
-        model.input = ""
-        if expanded { model.fail(Notice.unreadable.message) }
-        notice = .unreadable
+        showManualInput()
         show()
+    }
+
+    /// Nothing could be read, so the panel opens as an empty source editor: the editor is the way
+    /// out, not a notice pointing at another window (BDR-0018).
+    private func showManualInput() {
+        model.reset()
+        model.input = ""
+        notice = .unreadable
+        expanded = true
+        editSource()
+    }
+
+    /// Expands the panel and puts the keyboard in the source editor; a running request keeps running.
+    func editSource() {
+        if notice == .translating { notice = nil }
+        expanded = true
+        editingSource = true
+        focusRequest += 1
     }
 
     private func accept(
@@ -152,6 +175,9 @@ final class PanelController {
     ) {
         guard id == requestID, readingID == id else { return }
         readingID = nil
+        // The timeout emptied the editor, so any text in it now is the user's and a late read must
+        // not overwrite it.
+        if timedOutID == id, !model.input.isEmpty { return }
         model.operation = operation
         autoReplace = replace
         selection = nil
@@ -167,9 +193,7 @@ final class PanelController {
             if expanded { model.fail(Notice.permission.message) }
             notice = .permission
         case .failure(.unreadable), .failure(.secure):
-            model.input = ""
-            if expanded { model.fail(Notice.unreadable.message) }
-            notice = .unreadable
+            showManualInput()
         }
         show()
     }
@@ -183,6 +207,7 @@ final class PanelController {
         requestID += 1
         let id = requestID
         if expanded { notice = nil }
+        editingSource = false
         let task = model.process(to: language) { [weak self] in
             self?.expandOnFirstPartial(id: id)
         }
@@ -252,7 +277,7 @@ final class PanelController {
             return .failure(message, kind: kind)
         case .missingConfig: return .missingConfig
         case .success: return writebackRefusal
-        case .idle: return notice == .cancelled ? .cancelled : nil
+        case .idle: return notice == .cancelled || notice == .unreadable ? notice : nil
         case .loading:
             // While the stream runs, a press on a result action is answered with the reason it
             // must wait (BDR-0017 §1).
@@ -346,11 +371,16 @@ final class PanelController {
             guard model.state != .loading, !model.input.isEmpty else { return }
             processCurrentText()
         case .replace:
-            guard case .success(let text) = model.state, selection != nil else {
+            guard model.state != .loading else {
                 explainReceiving()
                 return
             }
-            replace(with: text)
+            // With nothing to write back to, ⌘↩ is the editor's submit, as on the main page (BDR-0018).
+            if selection != nil, case .success(let text) = model.state {
+                replace(with: text)
+            } else if !model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                processCurrentText()
+            }
         }
     }
 
@@ -373,6 +403,7 @@ final class PanelController {
         model.cancel()
         notice = nil
         expanded = false
+        editingSource = false
     }
 
     private func show() {

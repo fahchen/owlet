@@ -2147,6 +2147,35 @@
         }
       }
     },
+    "Edit Text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit Text"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを編集"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑文本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編輯文字"
+          }
+        }
+      }
+    },
     "English": {
       "extractionState": "manual",
       "localizations": {
@@ -2172,35 +2201,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "English"
-          }
-        }
-      }
-    },
-    "Enter Text": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enter Text"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "手入力"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "手动输入"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "手動輸入"
           }
         }
       }

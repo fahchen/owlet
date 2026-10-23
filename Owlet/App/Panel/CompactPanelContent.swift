@@ -69,6 +69,8 @@ struct PanelSourceBar: View {
     let summary: String
     var retry: (() -> Void)? = nil
     let close: () -> Void
+    /// Opens the panel on the source editor; nil where the bar has no panel to expand into.
+    var edit: (() -> Void)? = nil
     /// False on the panel root's surface, which supplies the glass so it can grow into the panel.
     var drawsGlass = true
 
@@ -80,6 +82,19 @@ struct PanelSourceBar: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .hoverTip(verbatim: summary)
+            if let edit {
+                Button(action: edit) {
+                    Label(L10n.shared.string("Edit Text"), systemImage: "pencil").foregroundStyle(.primary)
+                }
+                .labelStyle(.iconOnly)
+                .font(.system(size: 13, weight: .medium))
+                .buttonStyle(.glass(glassEffect.glass))
+                .buttonBorderShape(.circle)
+                .controlSize(.extraLarge)
+                .buttonSizing(.flexible)
+                .frame(width: 36, height: 36)
+                .hoverTip("Edit Text")
+            }
             if let retry {
                 PanelSegmentedControl(items: [
                     .init(

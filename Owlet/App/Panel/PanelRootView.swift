@@ -55,7 +55,7 @@ struct PanelRootView: View {
         let processing = controller.notice == nil || controller.notice == .translating
         return PanelSourceBar(
             summary: controller.model.input, retry: processing ? nil : compactRetry, close: controller.close,
-            drawsGlass: false)
+            edit: controller.editSource, drawsGlass: false)
     }
 
     private var expandedView: some View {
@@ -71,7 +71,9 @@ struct PanelRootView: View {
             cancel: controller.stop,
             openSettings: settings,
             close: controller.close,
-            lookupOrigin: controller.lookupOrigin
+            lookupOrigin: controller.lookupOrigin,
+            editingSource: controller.editingSource,
+            focusRequest: controller.focusRequest
         )
         .environment(\.lookups, controller.lookups)
     }
@@ -135,18 +137,12 @@ struct PanelRootView: View {
         switch notice {
         case .permission:
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
-        case .unreadable: manualInput()
         case .missingConfig, .failure: settings()
         case .unwritten, .unwritable:
             controller.copyResult()
         case .cancelled: controller.processCurrentText()
-        case .translating, .receiving: break
+        case .translating, .receiving, .unreadable: break
         }
-    }
-
-    private func manualInput() {
-        controller.close()
-        controller.openManualInput()
     }
 
     private func settings() {

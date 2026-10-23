@@ -222,6 +222,74 @@ struct PanelControllerTests {
         panel.close()
     }
 
+    /// Nothing readable opens the panel as an empty, focused source editor with the reason as an
+    /// explanation, and no request is sent (BDR-0018).
+    @Test func unreadableOpensTheEmptySourceEditor() async {
+        let (panel, writes) = makePanel()
+        panel.model.input = "Earlier text"
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.processSelection(replace: true)
+        await settle()
+        #expect(panel.expanded)
+        #expect(panel.editingSource)
+        #expect(panel.focusRequest > 0)
+        #expect(panel.model.input.isEmpty)
+        #expect(panel.model.state == .idle)
+        #expect(panel.inlineNotice == .unreadable)
+        #expect(panel.notice?.actionTitle == "")
+        #expect(writes.texts.isEmpty)
+        panel.close()
+    }
+
+    /// Typed text is submitted with ⌘↩, and with no selection the result is never written back,
+    /// even when a replace shortcut opened the editor.
+    @Test func returnSubmitsManualInputWithoutWritingBack() async {
+        let (panel, writes) = makePanel()
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.processSelection(replace: true)
+        panel.model.input = "Hello"
+        panel.run(.replace)
+        await settle()
+        #expect(panel.model.state == .success("T:Hello"))
+        #expect(panel.inlineNotice == nil)
+        #expect(!panel.editingSource)
+        #expect(writes.texts.isEmpty)
+        panel.close()
+    }
+
+    /// After the timeout opened the editor, a late read must not replace what the user typed.
+    @Test func lateReadDoesNotOverwriteTypedText() async {
+        let (panel, _) = makePanel()
+        let reads = deferredReads(panel)
+        panel.processSelection()
+        try? await Task.sleep(for: .milliseconds(1_100))
+        #expect(panel.expanded)
+        panel.model.input = "Typed"
+        reads.completions[0](.success(selection))
+        await settle()
+        #expect(panel.model.input == "Typed")
+        #expect(panel.selection == nil)
+        panel.close()
+    }
+
+    /// Edit Text expands while the request keeps running; the next request ends the editing mode.
+    @Test func editSourceExpandsUntilTheNextRequest() async {
+        let gate = Gate()
+        let (panel, _) = makePanel(gate: gate)
+        panel.processSelection()
+        await settle()
+        #expect(!panel.expanded)
+        panel.editSource()
+        #expect(panel.expanded)
+        #expect(panel.editingSource)
+        #expect(panel.model.state == .loading)
+        gate.release()
+        await settle()
+        panel.processCurrentText()
+        #expect(!panel.editingSource)
+        panel.close()
+    }
+
     /// The panel translates the trimmed text, and the write-back restores the selection's indent and
     /// trailing newline around the result.
     @Test func writeBackKeepsTheSelectionsEdgeWhitespace() async {
@@ -470,7 +538,8 @@ struct PanelControllerTests {
     /// without depending on event dispatch while the screen is locked.
     @Test func opensWithNothingFocusedButTraversalStillReachesTheControls() async throws {
         let (panel, _) = makePanel(realWindow: true)
-        panel.read = { $0(.failure(.unreadable)) }
+        // Not unreadable: that opens the source editor, which takes the keyboard on purpose.
+        panel.read = { $0(.failure(.permission)) }
         panel.processSelection()
         let window = try #require(panel.panel)
         #expect(window.firstResponder === window)

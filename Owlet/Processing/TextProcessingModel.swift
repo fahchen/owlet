@@ -106,6 +106,12 @@ final class TextProcessingModel {
         clearArrival()
     }
 
+    /// Drops any result as well, so an empty editor never sits beside an earlier answer.
+    func reset() {
+        cancel()
+        state = .idle
+    }
+
     /// Shows an error that happened outside a processing request.
     func fail(_ message: String) {
         cancel()

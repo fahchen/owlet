@@ -2,6 +2,12 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
+## Unreleased
+
+### Changed
+- When Owlet cannot read any text — nothing selected, a password field, or an app that does not answer in time — the panel opens as an empty source editor with the cursor in it, instead of a notice that sent you to the main window. Type or paste, then press ⌘↩. The result can be copied but is never written back, even from a replace shortcut. A missing Accessibility permission still shows its compact notice.
+- The compact source bar has an Edit Text button: it opens the panel with the cursor at the end of the source, while the request keeps running. In Sentence by Sentence the source field comes back while you edit.
+
 ## 0.7.0 — 2026-10-20
 
 ### Added

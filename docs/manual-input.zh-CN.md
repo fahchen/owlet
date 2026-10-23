@@ -2,7 +2,7 @@
 
 # 浮窗内的手动输入
 
-状态：设计提案，未实现。本文会改变产品行为，因此先等 `spec/product.md` 的条目与 [BDR-0002](../spec/processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md) 的决定更新；在此之前不写代码，也不新增界面字符串。
+状态：已实现（2026-10-23）；四个待定决策在 [BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md) 裁定，均采用下文的建议。本文其余部分是设计记录。
 
 ## 今天的行为
 

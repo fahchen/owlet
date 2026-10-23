@@ -2,7 +2,7 @@
 
 # Manual Input in the Panel
 
-Status: design proposal, not implemented. This document changes product behaviour and therefore the text in `spec/product.md` and the decision in [BDR-0002](../spec/processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md); it waits for acceptance there before any code is written. No user-visible strings are added yet.
+Status: implemented (2026-10-23); the four open decisions are settled in [BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md), which follows the recommendations below. The rest of this document is the design record.
 
 ## What happens today
 

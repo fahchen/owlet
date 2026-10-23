@@ -9,6 +9,10 @@ final class PanelController {
         case translating
         case permission
         case screenPermission
+        /// The screen region's capture ended in an error; a new region is the way out.
+        case captureFailed
+        /// The screenshot held no text to read, so there is nothing to translate (BDR-0019).
+        case noTextInScreenshot
         case unreadable
         case missingConfig
         /// The message the user reads, and which recovery it offers: a translated message must never
@@ -27,6 +31,8 @@ final class PanelController {
             case .translating: ""
             case .permission: L10n.shared.string("Needs permission to read the selection")
             case .screenPermission: L10n.shared.string("Needs permission to record the screen")
+            case .captureFailed: L10n.shared.string("Could not take the screenshot")
+            case .noTextInScreenshot: L10n.shared.string("No text was found in the screenshot")
             case .unreadable: L10n.shared.string("Could not read any text")
             case .missingConfig: L10n.shared.string("The model service is not configured")
             case .failure(let message, let kind):
@@ -48,6 +54,7 @@ final class PanelController {
             case .translating, .receiving, .unreadable: ""
             case .permission: L10n.shared.string("Permission Settings")
             case .screenPermission: L10n.shared.string("Screen Recording Settings")
+            case .captureFailed, .noTextInScreenshot: L10n.shared.string("Select Another Region")
             // The expanded source editor is the way out, so the explanation needs no button.
             case .missingConfig: L10n.shared.string("Configure Service")
             case .failure(_, let kind):
@@ -179,28 +186,40 @@ final class PanelController {
         let id = requestID
         Task { [weak self] in
             guard let self else { return }
-            let image: Data?
+            let image: Data
             do {
                 guard let captured = try await captureRegion() else { return }
                 image = captured
             } catch {
-                image = nil
+                guard id == requestID else { return }
+                showRegionFailure(.captureFailed)
+                return
             }
-            let text = if let image { await recognize(image) } else { "" }
+            let text = await recognize(image)
             guard id == requestID else { return }
-            let kept = image.map { ScreenRegion.keptCopy(of: $0) }
-            if text.isEmpty {
-                showManualInput()
-                model.sourceImage = kept
-            } else {
-                model.input = text
-                model.sourceImage = kept
-                // The result opens on the screenshot the way the settings ask; a click still toggles it.
-                screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
-                processCurrentText()
+            // Nothing to read is a failure, not an invitation to type: a screen region always has to
+            // come with its text (BDR-0019).
+            guard !text.isEmpty else {
+                showRegionFailure(.noTextInScreenshot)
+                return
             }
+            model.input = text
+            model.sourceImage = ScreenRegion.keptCopy(of: image)
+            // The result opens on the screenshot the way the settings ask; a click still toggles it.
+            screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
+            processCurrentText()
             show()
         }
+    }
+
+    /// A screen region that produced nothing to translate: the compact notice, with a new region as
+    /// the way out.
+    private func showRegionFailure(_ failure: Notice) {
+        model.reset()
+        model.input = ""
+        model.sourceImage = nil
+        notice = failure
+        show()
     }
 
     /// Nothing could be read, so the source bar itself becomes the input, with the reason as its

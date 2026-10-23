@@ -334,18 +334,39 @@ struct PanelControllerTests {
         panel.close()
     }
 
-    /// A screenshot with no text opens the empty editor and keeps the picture to type from.
-    @Test func regionWithoutTextOpensTheEditorWithTheScreenshot() async {
+    /// A screenshot with no text is a failure, not an editor: there is nothing to translate, and a
+    /// new region is the way out (BDR-0019).
+    @Test func regionWithoutTextIsAFailure() async {
         let (panel, _) = makePanel()
         panel.screenAccess = { true }
         panel.captureRegion = { Data([1, 2, 3]) }
         panel.recognize = { _ in "" }
         panel.processRegion()
         await settle()
+        #expect(panel.notice == .noTextInScreenshot)
         #expect(!panel.expanded)
-        #expect(panel.notice == .unreadable)
         #expect(panel.model.input.isEmpty)
-        #expect(panel.model.sourceImage == Data([1, 2, 3]))
+        #expect(panel.model.sourceImage == nil)
+        #expect(panel.model.state == .idle)
+        panel.close()
+    }
+
+    /// A capture that fails says so, rather than opening the selection's empty editor.
+    @Test func failedCaptureIsAFailure() async {
+        struct Failed: Error {}
+        let (panel, _) = makePanel()
+        var recognised = 0
+        panel.screenAccess = { true }
+        panel.captureRegion = { throw Failed() }
+        panel.recognize = { _ in
+            recognised += 1
+            return ""
+        }
+        panel.processRegion()
+        await settle()
+        #expect(panel.notice == .captureFailed)
+        #expect(!panel.expanded)
+        #expect(recognised == 0)
         panel.close()
     }
 

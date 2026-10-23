@@ -79,8 +79,6 @@ struct PanelSourceBar: View {
     var screenshot: NSImage? = nil
     var screenshotSpace: Namespace.ID? = nil
     var toggleScreenshotZoom: () -> Void = {}
-    /// Draws a new region; offered when the screenshot held no text.
-    var recapture: (() -> Void)? = nil
     var retry: (() -> Void)? = nil
     let close: () -> Void
     /// False on the panel root's surface, which supplies the glass so it can grow into the panel.
@@ -127,20 +125,6 @@ struct PanelSourceBar: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .hoverTip(verbatim: summary)
-            }
-            if let recapture {
-                Button(action: recapture) {
-                    Label(L10n.shared.string("Select Another Region"), systemImage: "arrow.clockwise")
-                        .foregroundStyle(.primary)
-                }
-                .labelStyle(.iconOnly)
-                .font(.system(size: 13, weight: .medium))
-                .buttonStyle(.glass(glassEffect.glass))
-                .buttonBorderShape(.circle)
-                .controlSize(.extraLarge)
-                .buttonSizing(.flexible)
-                .frame(width: 36, height: 36)
-                .hoverTip("Select Another Region")
             }
             if let retry {
                 PanelSegmentedControl(items: [

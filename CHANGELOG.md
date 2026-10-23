@@ -4,6 +4,9 @@ User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.ym
 
 ## Unreleased
 
+### Changed
+- Translate Screen Region: a screenshot with no readable text now shows a compact error, "No text was found in the screenshot", with Select Another Region, instead of opening an empty field; a capture that fails says "Could not take the screenshot" the same way, instead of a message about selected text.
+
 ### Fixed
 - In the panel, "Request study expressions after translating" (and after polishing) now works: with the switch on, the study column opens with the result and its expressions are requested on their own, as in the main window. Before, the panel ignored the switch.
 

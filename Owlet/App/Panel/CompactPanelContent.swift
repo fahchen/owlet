@@ -93,8 +93,11 @@ struct PanelSourceBar: View {
     var body: some View {
         HStack(spacing: 8) {
             if let screenshot {
-                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace, toggle: toggleScreenshotZoom)
-                    .padding(.trailing, 4)
+                ScreenshotThumbnail(
+                    image: screenshot, namespace: screenshotSpace, cornerRadius: ScreenshotThumbnail.barRadius,
+                    toggle: toggleScreenshotZoom
+                )
+                .padding(.trailing, 4)
             }
             if let text {
                 TextField(placeholder, text: text, axis: .vertical)

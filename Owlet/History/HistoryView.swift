@@ -242,19 +242,15 @@ private struct HistoryDetail: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.bottom, 12)
                     VStack(alignment: .leading, spacing: 12) {
-                        // The picture spans the pane; only the text keeps to the reading column.
                         if let image = record.sourceImage {
                             HistoryScreenshot(data: image)
                         }
-                        Group {
-                            LookupText(
-                                text: record.source, size: PanelMetrics.textSize, label: "Source",
-                                origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).source
-                            )
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            Divider()
-                        }
-                        .readingColumn()
+                        LookupText(
+                            text: record.source, size: PanelMetrics.textSize, label: "Source",
+                            origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).source
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Divider()
                     }
                     .padding(.bottom, 12)
                     .collapsing(shown: !learning.isExpanded, height: $sourceHeight)
@@ -262,7 +258,6 @@ private struct HistoryDetail: View {
                         text: record.result, size: PanelMetrics.textSize, weight: .medium, justified: true,
                         origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).result
                     )
-                    .readingColumn()
                     if let request {
                         VStack(alignment: .leading, spacing: 12) {
                             Divider()
@@ -272,7 +267,6 @@ private struct HistoryDetail: View {
                                 showsDisclosure: false, fitsRows: false, inline: true)
                         }
                         .padding(.top, 12)
-                        .readingColumn()
                         .collapsing(shown: learning.isExpanded, height: $learningHeight)
                     }
                 }
@@ -313,11 +307,6 @@ private struct HistoryDetail: View {
 }
 
 extension View {
-    /// A reading column: long lines stop at 640pt instead of running across a wide window.
-    fileprivate func readingColumn() -> some View {
-        frame(maxWidth: 640, alignment: .leading)
-    }
-
     /// Opens and closes to the content's own measured height. A number, never nil, so the change
     /// interpolates instead of jumping; the content keeps its height and the clip reveals it.
     fileprivate func collapsing(shown: Bool, height: Binding<CGFloat>) -> some View {

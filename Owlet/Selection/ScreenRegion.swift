@@ -31,8 +31,8 @@ enum ScreenRegion {
         return try? Data(contentsOf: url)
     }
 
-    /// The copy that is kept: Vision reads the full capture, but the panel and history only show it
-    /// at most 640pt wide, so a 1280px JPEG is enough. Falls back to the original if ImageIO fails.
+    /// The copy that is kept: Vision reads the full capture, but the panel and history show it at
+    /// most 160pt high, so a 1280px JPEG is enough. Falls back to the original if ImageIO fails.
     static func keptCopy(of image: Data, maxPixels: Int = 1280, quality: Double = 0.6) -> Data {
         guard let source = CGImageSourceCreateWithData(image as CFData, nil),
             let scaled = CGImageSourceCreateThumbnailAtIndex(

@@ -108,7 +108,7 @@
 | `empty.png` | 已展开且原文为空：`ExpandedPanel` 的 `canRetry` 为假，重试控件 `.disabled`；原文栏仍可编辑。 |
 | `success.png` | 写回成功确认：展开结果内确认替换、动作行以 `完成` 关闭；应用行为为写回成功直接关闭浮窗，此画面仍是原型提案 |
 | `book-list.png` / `book-detail.png` / `book-empty.png` / `no-results.png` | 统一工具栏 · 搜索框 · 弹出式按钮 `全部语言` · `导出…` · `List` 行 · `ContentUnavailableView` 空状态 |
-| `history-list.png` / `history-detail.png` / `history-empty.png` | 同构工具栏 · 类型筛选 · 破坏性 `清空历史` · 详情可复制与收藏 · 屏幕区域的记录在列表行的译文、原文两行左侧显示 54×34 缩略图，圆角与列表选中背景一致（8pt）；详情的截图撑满整个详情区（正文仍是 640pt 阅读宽度），图片带 1pt `.separator` 细边框与 8pt 圆角，不加底色（spec/DESIGN.md 的例外），悬停 `.pointerStyle(.zoomIn)`，点击打开 `quickLookPreview`（不加按钮） |
+| `history-list.png` / `history-detail.png` / `history-empty.png` | 同构工具栏 · 类型筛选 · 破坏性 `清空历史` · 详情可复制与收藏 · 屏幕区域的记录在列表行的译文、原文两行左侧显示 54×34 缩略图，圆角与列表选中背景一致（8pt）；详情的截图与正文都撑满整个详情区（不再用 640pt 阅读宽度），图片带 1pt `.separator` 细边框与 8pt 圆角，不加底色（spec/DESIGN.md 的例外），悬停 `.pointerStyle(.zoomIn)`，点击打开 `quickLookPreview`（不加按钮） |
 | （屏幕区域） | 框选用系统自带的 `screencapture -i` 界面，应用不画覆盖层。截图是 `ScreenshotThumbnail`：约 38pt 高，按与外层同心的圆角裁切（面板里是 `cornerRadius − contentInset` 即 10pt，原文条里是胶囊形），紧凑时在原文条左侧，面板展开时用 `matchedGeometryEffect` 移到原文右上角，原文（`WrappingSourceEditor`，带排除区域的 `NSTextView`）绕着它排；悬停 `.pointerStyle(.zoomIn)`，点击就地放大到占满宽度、原文隐藏。识别不出文字时原文条多一个玻璃 `arrow.clockwise` 按钮「重新框选」（BDR-0019） |
 | `learning.png` / `learning-loading.png` / `learning-error.png` / `learning-empty.png` / `saved.png` | 展开结果内的独立区块 · `ProgressView`／`.redacted` 占位 · 就地重试 · 可勾选列表与 `收藏所选` |
 | `aligned.png` | 逐句对照：配对视图内的系统 `Text`，复制与替换仍只输出译文（§7 例外 3） |

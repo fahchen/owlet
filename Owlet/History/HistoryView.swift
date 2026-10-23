@@ -341,28 +341,29 @@ enum HistoryTime {
     }
 }
 
-/// A screen region record's screenshot, on a plain group box so a white capture still reads as a
-/// picture; the zoom pointer shows it can be opened, and a click opens it in Quick Look (BDR-0019).
+/// A screen region record's screenshot with a hairline border, so a white capture still reads as a
+/// picture on the white page; the zoom pointer shows it can be opened, and a click opens it in Quick
+/// Look (BDR-0019).
 private struct HistoryScreenshot: View {
     let data: Data
     @State private var preview: URL?
 
     var body: some View {
         if let image = NSImage(data: data) {
-            GroupBox {
-                Button(action: open) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 160)
-                        .clipShape(ConcentricRectangle())
-                }
-                .buttonStyle(.plain)
-                .pointerStyle(.zoomIn)
-                .frame(maxWidth: .infinity)
-                .padding(8)
-                .accessibilityLabel(L10n.shared.string("Screenshot"))
+            let shape = RoundedRectangle(cornerRadius: 8)
+            Button(action: open) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(shape)
+                    // An exception to the no-border rule, asked for by the user (spec/DESIGN.md).
+                    .overlay(shape.strokeBorder(.separator, lineWidth: 1))
+                    .frame(maxHeight: 160, alignment: .leading)
             }
+            .buttonStyle(.plain)
+            .pointerStyle(.zoomIn)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(L10n.shared.string("Screenshot"))
             .quickLookPreview($preview)
         }
     }

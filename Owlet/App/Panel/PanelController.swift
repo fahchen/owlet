@@ -189,12 +189,13 @@ final class PanelController {
             }
             let text = if let image { await recognize(image) } else { "" }
             guard id == requestID else { return }
+            let kept = image.map { ScreenRegion.keptCopy(of: $0) }
             if text.isEmpty {
                 showManualInput()
-                model.sourceImage = image
+                model.sourceImage = kept
             } else {
                 model.input = text
-                model.sourceImage = image
+                model.sourceImage = kept
                 processCurrentText()
             }
             show()

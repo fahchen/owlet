@@ -1,4 +1,6 @@
 import AppKit
+import ImageIO
+import UniformTypeIdentifiers
 import Vision
 
 /// Text from a rectangle of the screen: the system's own interactive capture picks the rectangle and
@@ -27,6 +29,29 @@ enum ScreenRegion {
             do { try process.run() } catch { continuation.resume(throwing: error) }
         }
         return try? Data(contentsOf: url)
+    }
+
+    /// The copy that is kept: Vision reads the full capture, but the panel and history only show it
+    /// at most 640pt wide, so a 1280px JPEG is enough. Falls back to the original if ImageIO fails.
+    static func keptCopy(of image: Data, maxPixels: Int = 1280, quality: Double = 0.6) -> Data {
+        guard let source = CGImageSourceCreateWithData(image as CFData, nil),
+            let scaled = CGImageSourceCreateThumbnailAtIndex(
+                source, 0,
+                [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                ] as CFDictionary)
+        else { return image }
+        let output = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                output, UTType.jpeg.identifier as CFString, 1, nil)
+        else { return image }
+        CGImageDestinationAddImage(
+            destination, scaled, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return image }
+        return output as Data
     }
 
     /// The recognised lines, top to bottom; empty when there is no text or Vision fails.

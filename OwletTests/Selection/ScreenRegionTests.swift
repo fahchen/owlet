@@ -17,9 +17,22 @@ struct ScreenRegionTests {
         #expect(text == "Could you send me\nthe report?")
     }
 
+    /// The kept copy is a JPEG no wider than 1280px and smaller than the capture; bytes that are not
+    /// an image are kept as they are.
+    @Test func keptCopyIsSmaller() throws {
+        let png = try #require(
+            Self.picture(of: Array(repeating: "Could you send me the report?", count: 30), width: 2400))
+        let kept = ScreenRegion.keptCopy(of: png)
+        let image = try #require(NSBitmapImageRep(data: kept))
+        #expect(max(image.pixelsWide, image.pixelsHigh) <= 1280)
+        #expect(kept.count < png.count)
+        #expect(kept.starts(with: [0xFF, 0xD8]))
+        #expect(ScreenRegion.keptCopy(of: Data([1, 2, 3])) == Data([1, 2, 3]))
+    }
+
     /// Black text on white, in two lines, as a PNG.
-    static func picture(of lines: [String]) -> Data? {
-        let size = NSSize(width: 640, height: 80 * CGFloat(lines.count) + 40)
+    static func picture(of lines: [String], width: CGFloat = 640) -> Data? {
+        let size = NSSize(width: width, height: 80 * CGFloat(lines.count) + 40)
         let image = NSImage(size: size, flipped: true) { rect in
             NSColor.white.setFill()
             rect.fill()

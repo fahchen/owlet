@@ -379,6 +379,11 @@
     "zh-Hans": "English",
     "zh-Hant": "English"
   },
+  "Enlarged": {
+    "ja": "拡大",
+    "zh-Hans": "放大",
+    "zh-Hant": "放大"
+  },
   "Enter the model name the provider gives you": {
     "ja": "プロバイダが指定するモデル名を入力してください",
     "zh-Hans": "填写服务商提供的模型名称",
@@ -1019,6 +1024,11 @@
     "zh-Hans": "屏幕录制设置",
     "zh-Hant": "螢幕錄製設定"
   },
+  "Screen Region Screenshot": {
+    "ja": "画面の範囲のスクリーンショット",
+    "zh-Hans": "屏幕区域截图",
+    "zh-Hant": "螢幕區域截圖"
+  },
   "Screenshot": {
     "ja": "スクリーンショット",
     "zh-Hans": "截图",
@@ -1318,6 +1328,11 @@
     "ja": "このモデルの対応：%@",
     "zh-Hans": "该模型支持：%@",
     "zh-Hant": "該模型支援：%@"
+  },
+  "Thumbnail": {
+    "ja": "サムネール",
+    "zh-Hans": "缩略图",
+    "zh-Hant": "縮圖"
   },
   "Time: %@": {
     "ja": "時刻：%@",

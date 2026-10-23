@@ -195,6 +195,8 @@ final class PanelController {
             } else {
                 model.input = text
                 model.sourceImage = kept
+                // The result opens on the screenshot the way the settings ask; a click still toggles it.
+                screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
                 processCurrentText()
             }
             show()

@@ -545,6 +545,26 @@ extension SettingsStore {
     }
 }
 
+/// How a screen region's screenshot first shows once the panel opens on its result (BDR-0019).
+enum ScreenshotDisplay: String, CaseIterable, Sendable {
+    case thumbnail, enlarged
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .thumbnail: "Thumbnail"
+        case .enlarged: "Enlarged"
+        }
+    }
+}
+
+extension SettingsStore {
+    static let screenshotDisplayKey = "panel.screenshotDisplay"
+
+    static func screenshotDisplay(in defaults: UserDefaults = .standard) -> ScreenshotDisplay {
+        defaults.string(forKey: screenshotDisplayKey).flatMap(ScreenshotDisplay.init) ?? .thumbnail
+    }
+}
+
 /// Reading the whole text of the focused field when nothing is selected; opt-in, off by default.
 extension SettingsStore {
     static let wholeFieldTextKey = "selection.wholeFieldText"

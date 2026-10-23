@@ -8,6 +8,7 @@ struct GeneralSettingsPane: View {
         TranslationDisplayMode.sectioned
     @AppStorage(SettingsStore.panelPositionKey) private var panelPosition = PanelPosition.fixed
     @AppStorage(SettingsStore.wholeFieldTextKey) private var wholeFieldText = false
+    @AppStorage(SettingsStore.screenshotDisplayKey) private var screenshotDisplay = ScreenshotDisplay.thumbnail
     @AppStorage(SettingsStore.debugEnabledKey) private var debugEnabled = false
 
     @AppStorage(SettingsStore.panelGlassEffectKey) private var panelGlassEffect = PanelGlassEffect.contrast
@@ -66,6 +67,12 @@ struct GeneralSettingsPane: View {
                     L10n.shared.string(
                         "Use the whole text of the focused field when nothing is selected"),
                     isOn: $wholeFieldText)
+
+                Picker(L10n.shared.string("Screen Region Screenshot"), selection: $screenshotDisplay) {
+                    ForEach(ScreenshotDisplay.allCases, id: \.self) {
+                        Text(verbatim: L10n.shared.string($0.title.key)).tag($0)
+                    }
+                }
             }
             Section {
                 Toggle(L10n.shared.string("Show the Debug Page"), isOn: debugSwitch)

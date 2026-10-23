@@ -371,6 +371,24 @@ struct PanelControllerTests {
         gate.release()
     }
 
+    /// Thumbnail is the default; with Enlarged in the settings the result opens on the full-width
+    /// screenshot.
+    @Test func screenshotDisplayDecidesHowTheResultOpens() async {
+        let defaults = UserDefaults(suiteName: "PanelControllerTests.\(UUID().uuidString)")!
+        let (panel, _) = makePanel(defaults: defaults)
+        panel.screenAccess = { true }
+        panel.captureRegion = { Data([1, 2, 3]) }
+        panel.recognize = { _ in "Hello" }
+        panel.processRegion()
+        await settle()
+        #expect(!panel.screenshotZoomed)
+        defaults.set(ScreenshotDisplay.enlarged.rawValue, forKey: SettingsStore.screenshotDisplayKey)
+        panel.processRegion()
+        await settle()
+        #expect(panel.screenshotZoomed)
+        panel.close()
+    }
+
     /// The next selection does not carry an earlier screenshot.
     @Test func aSelectionDropsTheScreenshot() async {
         let (panel, _) = makePanel()

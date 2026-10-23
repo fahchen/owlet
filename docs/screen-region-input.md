@@ -4,6 +4,12 @@
 
 Status: implemented (2026-10-23). [BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) settles the open items and overrides two decisions below: the region is drawn in the system's `screencapture -i` instead of an overlay of our own, and the screenshot is kept — shown in the panel and stored with the history record. The rest of this document is the design record.
 
+## Review outcome (2026-10-23)
+
+- **Thumbnail, not a large picture.** About 38pt high with the system's concentric corners. In the compact bar, and when there is no text yet, it leads the source on the **left**; when the first piece of the translation arrives and the panel opens, the same thumbnail moves to the **right** with the opening spring (`matchedGeometryEffect`; Reduce Motion switches without the move). In Source / Result Sections it sits beside the source only, above the rule; in Sentence by Sentence at the top right of the pairs. A click shows it full size in a system popover.
+- **No text in the screenshot:** the source bar becomes the empty field (BDR-0018) with the thumbnail on the left, the placeholder "No text was found in the screenshot. Type what it says, then press ⌘↩", and a Select Another Region button.
+- **History:** the list row's time line spans the row and the thumbnail leads the result and source lines; the detail shows the screenshot directly on an untitled system `GroupBox` with a glass expand button and no text, opening in Quick Look.
+
 ## Why read the SDK first
 
 The system's capabilities set the boundaries of this source, so every API fact below was read from the local Xcode 27.0 / macOS 27.0.1 SDK, not from memory. The SDK root is written as `$SDK`:

@@ -10,6 +10,8 @@ struct ExpandedPanelContent: View {
     let learning: LearningModel
     let lookupOrigin: LookupOrigin?
     var showsSource = true
+    /// Where the compact bar's screenshot thumbnail moves to as the panel opens.
+    var screenshotSpace: Namespace.ID?
     /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
         TranslationDisplayMode.sectioned
@@ -17,23 +19,19 @@ struct ExpandedPanelContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if showsSource, let screenshot = model.sourceThumbnail {
-                Image(nsImage: screenshot)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 160, alignment: .leading)
-                    .accessibilityLabel(L10n.shared.string("Screenshot"))
-                    .padding(.bottom, 12)
-            }
             if showsSource && !showsAlignedPairs {
-                sourceEditor.padding(.bottom, 12)
+                // The screenshot sits beside the source it was read from, above the rule.
+                besideScreenshot(sourceEditor).padding(.bottom, 12)
             }
             if hasResultSection {
                 // The rule separates the editable source from the result, so it belongs with the source
                 // field: once Sentence by Sentence folds that field away it has nothing above it to separate, and
                 // it was left stranded above the pairs.
                 if showsSource && !showsAlignedPairs { Divider() }
-                resultSection.padding(.top, showsSource ? 12 : 0)
+                Group {
+                    if showsAlignedPairs { besideScreenshot(resultSection) } else { resultSection }
+                }
+                .padding(.top, showsSource ? 12 : 0)
             }
             status
         }
@@ -44,6 +42,18 @@ struct ExpandedPanelContent: View {
         // and a finished result collapses the source field back into the pairs.
         .onChange(of: model.operation) { _, _ in learning.reset() }
         .onChange(of: model.input) { _, _ in learning.reset() }
+    }
+
+    /// `content` with the screen region's thumbnail at its trailing top; `content` alone otherwise.
+    @ViewBuilder private func besideScreenshot(_ content: some View) -> some View {
+        if showsSource, let screenshot = model.sourceThumbnail {
+            HStack(alignment: .top, spacing: 16) {
+                content.frame(maxWidth: .infinity, alignment: .leading)
+                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace)
+            }
+        } else {
+            content
+        }
     }
 
     private var sourceEditor: some View {

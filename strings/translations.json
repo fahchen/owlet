@@ -699,6 +699,11 @@
     "zh-Hans": "暂无系统语音",
     "zh-Hant": "暫無系統語音"
   },
+  "No text was found in the screenshot. Type what it says, then press ⌘↩": {
+    "ja": "スクリーンショットから文字が見つかりませんでした。内容を入力して ⌘↩ を押してください",
+    "zh-Hans": "截图里没有识别出文字，照着输入后按 ⌘↩",
+    "zh-Hant": "截圖裡沒有辨識出文字，照著輸入後按 ⌘↩"
+  },
   "Not Specified": {
     "ja": "未指定",
     "zh-Hans": "未指定",
@@ -1033,6 +1038,11 @@
     "ja": "すべてを選択",
     "zh-Hans": "全选",
     "zh-Hant": "全選"
+  },
+  "Select Another Region": {
+    "ja": "別の範囲を選択",
+    "zh-Hans": "重新框选",
+    "zh-Hant": "重新框選"
   },
   "Select a record": {
     "ja": "記録を選択してください",

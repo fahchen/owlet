@@ -7,6 +7,8 @@ extension View {
         let shape = RoundedRectangle(cornerRadius: PanelMetrics.cornerRadius)
         return frame(width: PanelMetrics.width, height: height, alignment: .top)
             .clipShape(shape)
+            // What a `ConcentricRectangle` inside, such as the screenshot thumbnail, follows.
+            .containerShape(shape)
             .glassEffect(glass, in: shape)
     }
 }
@@ -75,6 +77,11 @@ struct PanelSourceBar: View {
     var focusRequest = 0
     /// What ⌘↩ runs, shown beside the field while it is being edited.
     var submitTitle = ""
+    /// A screen region's screenshot, leading the bar until the panel opens (BDR-0019).
+    var screenshot: NSImage? = nil
+    var screenshotSpace: Namespace.ID? = nil
+    /// Draws a new region; offered when the screenshot held no text.
+    var recapture: (() -> Void)? = nil
     var retry: (() -> Void)? = nil
     let close: () -> Void
     /// False on the panel root's surface, which supplies the glass so it can grow into the panel.
@@ -86,6 +93,9 @@ struct PanelSourceBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            if let screenshot {
+                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace).padding(.trailing, 8)
+            }
             if let text {
                 TextField(placeholder, text: text, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -112,6 +122,20 @@ struct PanelSourceBar: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .hoverTip(verbatim: summary)
+            }
+            if let recapture {
+                Button(action: recapture) {
+                    Label(L10n.shared.string("Select Another Region"), systemImage: "arrow.clockwise")
+                        .foregroundStyle(.primary)
+                }
+                .labelStyle(.iconOnly)
+                .font(.system(size: 13, weight: .medium))
+                .buttonStyle(.glass(glassEffect.glass))
+                .buttonBorderShape(.circle)
+                .controlSize(.extraLarge)
+                .buttonSizing(.flexible)
+                .frame(width: 36, height: 36)
+                .hoverTip("Select Another Region")
             }
             if let retry {
                 PanelSegmentedControl(items: [

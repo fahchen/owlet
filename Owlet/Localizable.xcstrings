@@ -4090,6 +4090,35 @@
         }
       }
     },
+    "No text was found in the screenshot. Type what it says, then press ⌘↩": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No text was found in the screenshot. Type what it says, then press ⌘↩"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットから文字が見つかりませんでした。内容を入力して ⌘↩ を押してください"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图里没有识别出文字，照着输入后按 ⌘↩"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截圖裡沒有辨識出文字，照著輸入後按 ⌘↩"
+          }
+        }
+      }
+    },
     "Not Specified": {
       "extractionState": "manual",
       "localizations": {
@@ -6087,6 +6116,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "全選"
+          }
+        }
+      }
+    },
+    "Select Another Region": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Another Region"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の範囲を選択"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新框选"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新框選"
           }
         }
       }

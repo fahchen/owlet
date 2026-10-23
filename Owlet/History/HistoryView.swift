@@ -1,3 +1,4 @@
+import QuickLook
 import SwiftData
 import SwiftUI
 
@@ -93,11 +94,26 @@ struct HistoryView: View {
                                 .foregroundStyle(.secondary)
                             }
                             .font(.caption)
-                            // The result reads first, as in the panel; its source stays lighter below it.
-                            Text(record.result)
-                                .font(.system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight))
-                                .lineLimit(2)
-                            Text(record.source).foregroundStyle(.secondary).lineLimit(1)
+                            HStack(spacing: 10) {
+                                // A screen region record leads its two lines with the picture it came from.
+                                if let screenshot = record.sourceImage.flatMap(NSImage.init(data:)) {
+                                    Image(nsImage: screenshot)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 54, height: 34)
+                                        .clipShape(ConcentricRectangle())
+                                        .accessibilityLabel(L10n.shared.string("Screenshot"))
+                                }
+                                VStack(alignment: .leading, spacing: 4) {
+                                    // The result reads first, as in the panel; its source stays lighter below it.
+                                    Text(record.result)
+                                        .font(
+                                            .system(size: PanelMetrics.sourceTextSize, weight: PanelMetrics.textWeight)
+                                        )
+                                        .lineLimit(2)
+                                    Text(record.source).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                            }
                         }
                         .padding(.vertical, 6)
                         .tag(record.persistentModelID)
@@ -224,12 +240,8 @@ private struct HistoryDetail: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.bottom, 12)
                     VStack(alignment: .leading, spacing: 12) {
-                        if let screenshot = record.sourceImage.flatMap(NSImage.init(data:)) {
-                            Image(nsImage: screenshot)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 240, alignment: .leading)
-                                .accessibilityLabel(L10n.shared.string("Screenshot"))
+                        if let image = record.sourceImage {
+                            HistoryScreenshot(data: image)
                         }
                         LookupText(
                             text: record.source, size: PanelMetrics.textSize, label: "Source",
@@ -314,5 +326,54 @@ enum HistoryTime {
         if calendar.isDateInToday(date) { return "Today \(time)" }
         if calendar.isDateInYesterday(date) { return "Yesterday \(time)" }
         return date.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+/// A screen region record's screenshot, on a plain group box so a white capture still reads as a
+/// picture; a click or the expand button opens it in Quick Look (BDR-0019).
+private struct HistoryScreenshot: View {
+    let data: Data
+    @State private var preview: URL?
+
+    var body: some View {
+        if let image = NSImage(data: data) {
+            GroupBox {
+                Button(action: open) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 160)
+                        .clipShape(ConcentricRectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .padding(8)
+                .accessibilityLabel(L10n.shared.string("Screenshot"))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Button(
+                    L10n.shared.string("Screenshot"), systemImage: "arrow.up.left.and.arrow.down.right", action: open
+                )
+                .labelStyle(.iconOnly)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .padding(10)
+                .hoverTip("Screenshot")
+            }
+            .quickLookPreview($preview)
+        }
+    }
+
+    /// Quick Look previews files, so the stored bytes go to one temporary file per record.
+    private func open() {
+        let jpeg = data.starts(with: [0xFF, 0xD8])
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "owlet-screenshot-\(data.hashValue).\(jpeg ? "jpg" : "png")")
+        do {
+            try data.write(to: url)
+            preview = url
+        } catch {
+            preview = nil
+        }
     }
 }

@@ -11,6 +11,7 @@ struct PanelRootView: View {
     @State private var expandedHeight: CGFloat = 0
     /// The compact bar's height: one line at rest, taller while a pasted text is being edited.
     @State private var barHeight = PanelMetrics.sourceBarHeight
+    @Namespace private var screenshotSpace
 
     /// One glass surface carries the source bar and then the expanded panel, so expanding grows
     /// it in place; nil while only a notice capsule shows.
@@ -67,12 +68,25 @@ struct PanelRootView: View {
     private var sourceBar: some View {
         let notice = controller.notice
         let processing = notice == nil || notice == .translating || notice == .unreadable
+        let screenshot = controller.model.sourceThumbnail
+        let controller = controller
+        var recapture: (() -> Void)?
+        if notice == .unreadable, screenshot != nil { recapture = { controller.processRegion() } }
         return PanelSourceBar(
             summary: controller.model.input, text: Bindable(controller.model).input,
-            placeholder: notice == .unreadable
-                ? L10n.shared.string("No selected text was read. Type or paste it, then press ⌘↩") : "",
-            focusRequest: controller.focusRequest, submitTitle: controller.model.operation.name,
+            placeholder: placeholder, focusRequest: controller.focusRequest,
+            submitTitle: controller.model.operation.name,
+            screenshot: screenshot, screenshotSpace: screenshotSpace,
+            recapture: recapture,
             retry: processing ? nil : compactRetry, close: controller.close, drawsGlass: false)
+    }
+
+    /// Why the bar is empty, when nothing could be read.
+    private var placeholder: String {
+        guard controller.notice == .unreadable else { return "" }
+        return controller.model.sourceImage == nil
+            ? L10n.shared.string("No selected text was read. Type or paste it, then press ⌘↩")
+            : L10n.shared.string("No text was found in the screenshot. Type what it says, then press ⌘↩")
     }
 
     private var expandedView: some View {
@@ -88,7 +102,8 @@ struct PanelRootView: View {
             cancel: controller.stop,
             openSettings: settings,
             close: controller.close,
-            lookupOrigin: controller.lookupOrigin
+            lookupOrigin: controller.lookupOrigin,
+            screenshotSpace: screenshotSpace
         )
         .environment(\.lookups, controller.lookups)
     }

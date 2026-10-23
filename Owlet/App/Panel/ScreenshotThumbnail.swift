@@ -8,15 +8,12 @@ struct ScreenshotThumbnail: View {
     /// leading edge to the source's trailing edge as the panel opens.
     var namespace: Namespace.ID?
     var zoomed = false
-    /// Concentric with what holds it: the surface's radius less the inset to its edge.
-    var cornerRadius = Self.expandedRadius
     let toggle: () -> Void
 
     static let height: CGFloat = 38
-    /// Inside the expanded panel, which keeps it `contentInset` from its edge.
-    static let expandedRadius = PanelMetrics.cornerRadius - PanelMetrics.contentInset
-    /// Inside the compact bar, a capsule that keeps it 12pt from its edge.
-    static let barRadius = PanelMetrics.sourceBarHeight / 2 - 12
+    /// The design's corners: the thumbnail's, and the larger picture's once zoomed.
+    private static let thumbnailRadius: CGFloat = 8
+    private static let zoomedRadius: CGFloat = 14
     /// Wide enough for a line of text, so a very wide region does not crowd the source out.
     static let maxWidth: CGFloat = 180
 
@@ -27,7 +24,7 @@ struct ScreenshotThumbnail: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                    .clipShape(RoundedRectangle(cornerRadius: Self.zoomedRadius))
             } else {
                 // Its own width at this height, so no blank band separates it from the text beside it.
                 Image(nsImage: image)
@@ -35,7 +32,7 @@ struct ScreenshotThumbnail: View {
                     .scaledToFill()
                     .frame(width: Self.width(of: image), height: Self.height)
                     .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                    .clipShape(RoundedRectangle(cornerRadius: Self.thumbnailRadius))
             }
         }
         .buttonStyle(.plain)

@@ -104,7 +104,12 @@ struct PanelSourceBar: View {
                     .lineLimit(focused ? 1...5 : 1...1)
                     .focused($focused)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .task(id: focusRequest) { if focusRequest > 0 { focused = true } }
+                    .task(id: focusRequest) {
+                        guard focusRequest > 0 else { return }
+                        // The panel clears its first responder as it shows; focus once it is up.
+                        try? await Task.sleep(for: .milliseconds(100))
+                        focused = true
+                    }
                     .onHover { inside in
                         showsEditHint = inside && !focused && !text.wrappedValue.isEmpty && editHints < 3
                         if showsEditHint { editHints += 1 }

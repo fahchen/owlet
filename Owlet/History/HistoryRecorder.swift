@@ -59,7 +59,7 @@ final class HistoryRecorder {
             do {
                 try self.store.record(
                     operation: model.operation, source: model.input, result: result,
-                    language: languages.target)
+                    language: languages.target, sourceImage: model.sourceImage)
             } catch {
                 self.store.report(error)
             }

@@ -350,6 +350,7 @@ extension SettingsStore {
     static let translateReplaceShortcutKey = "shortcut.translateReplace"
     static let polishShortcutKey = "shortcut.polish"
     static let polishReplaceShortcutKey = "shortcut.polishReplace"
+    static let translateRegionShortcutKey = "shortcut.translateRegion"
 
     static func shortcut(forKey key: String, in defaults: UserDefaults = .standard) -> Shortcut? {
         defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }

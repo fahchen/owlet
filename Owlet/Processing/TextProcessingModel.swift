@@ -27,6 +27,13 @@ final class TextProcessingModel {
         }
     }
     var operation: Operation = .translate
+    /// The screenshot the input was read from, if it came from a screen region (BDR-0019). It stays
+    /// through edits of the text, since it is what the user checks the recognised text against.
+    var sourceImage: Data? {
+        didSet { sourceThumbnail = sourceImage.flatMap(NSImage.init(data:)) }
+    }
+    /// Decoded once, so a view redrawing every frame of an arrival does not decode the PNG each time.
+    private(set) var sourceThumbnail: NSImage?
     private(set) var state: State = .idle
     /// Segments a still-running stream has already completed, for display only (BDR-0017). They have
     /// never been through `TranslationResult.parse`, so they are not a result: no copy, no replace,

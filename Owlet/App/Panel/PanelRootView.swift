@@ -137,6 +137,8 @@ struct PanelRootView: View {
         switch notice {
         case .permission:
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
+        case .screenPermission:
+            if let url = ScreenRegion.permissionSettingsURL { NSWorkspace.shared.open(url) }
         case .missingConfig, .failure: settings()
         case .unwritten, .unwritable:
             controller.copyResult()

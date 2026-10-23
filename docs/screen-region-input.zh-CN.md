@@ -2,7 +2,7 @@
 
 # 屏幕区域 OCR 输入方案
 
-状态：设计提案，未实现。本文件只讨论「屏幕上的文字怎么变成输入」，不改变 `SelectionBridge` 的读取路径、浮窗、翻译契约与学习契约；没有用户可见字符串进入 `strings/translations.json`。连续语音已拆到 [连续语音输入方案](speech-input.zh-CN.md)，本轮不做。
+状态：已实现（2026-10-23）。[BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) 裁定了待定项，并推翻下文两条：框选改用系统的 `screencapture -i`，不自己画覆盖窗口；截图保留，显示在浮窗并随历史保存。本文其余部分是设计记录。
 
 ## 为什么先看 SDK
 

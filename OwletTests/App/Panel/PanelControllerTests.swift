@@ -290,6 +290,75 @@ struct PanelControllerTests {
         panel.close()
     }
 
+    /// No Screen Recording permission: the compact notice, and the capture never starts.
+    @Test func regionWithoutPermissionShowsTheNotice() async {
+        let (panel, _) = makePanel()
+        var captures = 0
+        panel.screenAccess = { false }
+        panel.captureRegion = {
+            captures += 1
+            return nil
+        }
+        panel.processRegion()
+        await settle()
+        #expect(panel.notice == .screenPermission)
+        #expect(!panel.expanded)
+        #expect(captures == 0)
+        panel.close()
+    }
+
+    /// Esc in the capture leaves nothing on screen.
+    @Test func cancelledRegionShowsNothing() async {
+        let (panel, _, stub) = recordingPanel()
+        panel.screenAccess = { true }
+        panel.captureRegion = { nil }
+        panel.processRegion()
+        await settle()
+        #expect(stub.shows == 0)
+        #expect(panel.model.state == .idle)
+    }
+
+    /// Recognised text is translated with the screenshot beside it, and never written back.
+    @Test func regionTextIsTranslatedWithItsScreenshot() async {
+        let (panel, writes) = makePanel()
+        panel.screenAccess = { true }
+        panel.captureRegion = { Data([1, 2, 3]) }
+        panel.recognize = { _ in "Hello" }
+        panel.processRegion()
+        await settle()
+        #expect(panel.model.input == "Hello")
+        #expect(panel.model.sourceImage == Data([1, 2, 3]))
+        #expect(panel.model.state == .success("T:Hello"))
+        #expect(panel.selection == nil)
+        #expect(writes.texts.isEmpty)
+        panel.close()
+    }
+
+    /// A screenshot with no text opens the empty editor and keeps the picture to type from.
+    @Test func regionWithoutTextOpensTheEditorWithTheScreenshot() async {
+        let (panel, _) = makePanel()
+        panel.screenAccess = { true }
+        panel.captureRegion = { Data([1, 2, 3]) }
+        panel.recognize = { _ in "" }
+        panel.processRegion()
+        await settle()
+        #expect(panel.expanded)
+        #expect(panel.model.input.isEmpty)
+        #expect(panel.model.sourceImage == Data([1, 2, 3]))
+        #expect(panel.inlineNotice == .unreadable)
+        panel.close()
+    }
+
+    /// The next selection does not carry an earlier screenshot.
+    @Test func aSelectionDropsTheScreenshot() async {
+        let (panel, _) = makePanel()
+        panel.model.sourceImage = Data([1])
+        panel.processSelection()
+        await settle()
+        #expect(panel.model.sourceImage == nil)
+        panel.close()
+    }
+
     /// The panel translates the trimmed text, and the write-back restores the selection's indent and
     /// trailing newline around the result.
     @Test func writeBackKeepsTheSelectionsEdgeWhitespace() async {

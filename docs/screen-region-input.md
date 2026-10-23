@@ -2,7 +2,7 @@
 
 # Screen Region OCR Input Proposal
 
-Status: design proposal, not implemented. This document only covers "how text on screen becomes input". It does not change the `SelectionBridge` read path, the floating panel, the translation contract or the learning contract; no user-visible strings enter `strings/translations.json`. Continuous speech has been split out into the [continuous speech input proposal](speech-input.md) and is out of scope for this round.
+Status: implemented (2026-10-23). [BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) settles the open items and overrides two decisions below: the region is drawn in the system's `screencapture -i` instead of an overlay of our own, and the screenshot is kept — shown in the panel and stored with the history record. The rest of this document is the design record.
 
 ## Why read the SDK first
 

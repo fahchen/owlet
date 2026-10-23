@@ -654,6 +654,11 @@
     "zh-Hans": "需要选区读取权限",
     "zh-Hant": "需要選取範圍讀取權限"
   },
+  "Needs permission to record the screen": {
+    "ja": "画面収録の許可が必要です",
+    "zh-Hans": "需要屏幕录制权限",
+    "zh-Hant": "需要螢幕錄製權限"
+  },
   "Network error: %@": {
     "ja": "ネットワークエラー：%@",
     "zh-Hans": "网络错误：%@",
@@ -999,6 +1004,16 @@
     "zh-Hans": "已收藏",
     "zh-Hant": "已收藏"
   },
+  "Screen Recording Settings": {
+    "ja": "画面収録の設定",
+    "zh-Hans": "屏幕录制设置",
+    "zh-Hant": "螢幕錄製設定"
+  },
+  "Screenshot": {
+    "ja": "スクリーンショット",
+    "zh-Hans": "截图",
+    "zh-Hant": "截圖"
+  },
   "Search expressions or meanings": {
     "ja": "表現または意味を検索",
     "zh-Hans": "搜索表达或释义",
@@ -1313,6 +1328,11 @@
     "ja": "翻訳と推敲",
     "zh-Hans": "翻译与润色",
     "zh-Hant": "翻譯與潤色"
+  },
+  "Translate Screen Region": {
+    "ja": "画面の範囲を翻訳",
+    "zh-Hans": "翻译屏幕区域",
+    "zh-Hant": "翻譯螢幕區域"
   },
   "Translate and Replace": {
     "ja": "翻訳して置換",

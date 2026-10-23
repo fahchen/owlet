@@ -224,6 +224,13 @@ private struct HistoryDetail: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.bottom, 12)
                     VStack(alignment: .leading, spacing: 12) {
+                        if let screenshot = record.sourceImage.flatMap(NSImage.init(data:)) {
+                            Image(nsImage: screenshot)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxHeight: 240, alignment: .leading)
+                                .accessibilityLabel(L10n.shared.string("Screenshot"))
+                        }
                         LookupText(
                             text: record.source, size: PanelMetrics.textSize, label: "Source",
                             origin: record.lookupOrigins(mapping: SettingsStore.targetMapping()).source

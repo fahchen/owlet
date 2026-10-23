@@ -22,6 +22,14 @@ struct ExpandedPanelContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if showsSource, let screenshot = model.sourceThumbnail {
+                Image(nsImage: screenshot)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 160, alignment: .leading)
+                    .accessibilityLabel(L10n.shared.string("Screenshot"))
+                    .padding(.bottom, 12)
+            }
             if showsSource && !showsAlignedPairs {
                 sourceEditor.padding(.bottom, 12)
             }

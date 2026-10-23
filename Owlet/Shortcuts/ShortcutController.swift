@@ -56,6 +56,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
     case translateReplace = 2
     case polish = 3
     case polishReplace = 4
+    case translateRegion = 5
 
     var title: LocalizedStringResource {
         switch self {
@@ -63,6 +64,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
         case .translateReplace: "Translate and Replace"
         case .polish: "Polish"
         case .polishReplace: "Polish and Replace"
+        case .translateRegion: "Translate Screen Region"
         }
     }
 
@@ -75,6 +77,7 @@ enum ShortcutAction: UInt32, CaseIterable, Sendable {
         case .translateReplace: SettingsStore.translateReplaceShortcutKey
         case .polish: SettingsStore.polishShortcutKey
         case .polishReplace: SettingsStore.polishReplaceShortcutKey
+        case .translateRegion: SettingsStore.translateRegionShortcutKey
         }
     }
 }

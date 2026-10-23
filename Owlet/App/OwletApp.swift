@@ -268,6 +268,7 @@ private struct ProcessingAction {
         case .translateReplace: panel.processSelection(replace: true)
         case .polish: panel.processSelection(.polish)
         case .polishReplace: panel.processSelection(.polish, replace: true)
+        case .translateRegion: panel.processRegion()
         }
     }
 }

@@ -13,11 +13,12 @@
 - `settings/features/`：自填模型服务配置、[本机 agent CLI 作为模型服务](settings/features/local-agent.feature)、自定义 Prompt、按源语言决定翻译目标、按语言配置读音体系、浮窗玻璃效果，以及原生窗口的输入焦点。
 - [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
 - [浮窗内的手动输入方案](../docs/manual-input.zh-CN.md)：已实现，见 BDR-0018。
-- [屏幕区域 OCR 输入方案](../docs/screen-region-input.zh-CN.md)：未实现的输入来源设计提案，不改现有读取路径。
+- [屏幕区域 OCR 输入方案](../docs/screen-region-input.zh-CN.md)：已实现，见 BDR-0019（推翻了自己画框与截图不保留两条）。
 - [连续语音输入方案](../docs/speech-input.zh-CN.md)：未实现的输入来源设计提案，本轮不做。
 - [模型返回的流式显示方案](../docs/streaming-output.md)：未实现的呈现设计提案，只改「何时看见」，不改请求契约、本地校验与写回；是否实现取决于人对替换入口 UI 的决定。
 - [替换行为决策](processing/decisions/BDR-0001-explicit-replacement-intent.md)。
 - [错误呈现决策](processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)：已展开的工具栏遇错保持展开。
+- [屏幕区域输入决策](processing/decisions/BDR-0019-screen-region-input.md)：独立快捷键，用系统 `screencapture -i` 框选，本机 Vision 识别；截图显示在浮窗并随历史保存。
 - [浮窗手动输入决策](processing/decisions/BDR-0018-manual-input-in-panel.md)：读不到文字时浮窗展开为空的原文编辑器；原文条提供「编辑文本」；权限失败保留紧凑提示。
 - [翻译目标映射决策](settings/decisions/BDR-0003-translation-target-mapping.md)：按检测到的源语言查表决定目标，未命中用兜底；润色与快捷键不变。
 - [生词本可编辑决策](vocabulary/decisions/BDR-0004-editable-notebook.md)：释义、表达、语言、笔记、标签、重点可编辑；释义可被重新生成覆盖，笔记是用户的安全区。

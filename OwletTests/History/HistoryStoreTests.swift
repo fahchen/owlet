@@ -68,6 +68,21 @@ struct HistoryStoreTests {
         #expect(record.language == "zh-Hans")
     }
 
+    /// A screen region translation keeps its screenshot with the record (BDR-0019).
+    @Test func aScreenRegionTranslationKeepsItsScreenshot() async throws {
+        let (store, _) = try makeStores()
+        let model = TextProcessingModel(
+            client: ModelClient(transport: stub(body: chatBody(TestReplies.reply(for: "Hello")))),
+            config: { testConfig })
+        let recorder = HistoryRecorder(store: store)
+        recorder.observe(model)
+        model.input = "Hello"
+        model.sourceImage = Data([1, 2, 3])
+        await model.process(to: "zh-Hans")?.value
+        await recorder.flush()
+        #expect(try store.records().first?.sourceImage == Data([1, 2, 3]))
+    }
+
     @Test func aSuccessfulPolishIsRecordedWithTheSourceLanguage() async throws {
         let (store, _) = try makeStores()
         let content =

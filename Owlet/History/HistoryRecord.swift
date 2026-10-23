@@ -11,16 +11,20 @@ final class HistoryRecord {
     var result: String = ""
     var language: String = ""
     var createdAt: Date = Date()
+    /// The screenshot a screen region translation read its source from (BDR-0019); outside the store
+    /// file, and deleted with the record.
+    @Attribute(.externalStorage) var sourceImage: Data?
 
     init(
         operation: Operation, source: String, result: String, language: String,
-        createdAt: Date = Date()
+        createdAt: Date = Date(), sourceImage: Data? = nil
     ) {
         self.operation = operation.rawValue
         self.source = source
         self.result = result
         self.language = language
         self.createdAt = createdAt
+        self.sourceImage = sourceImage
     }
 
     /// The operation to show; only the two known raw values are ever written.

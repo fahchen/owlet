@@ -24,11 +24,11 @@ final class HistoryStore {
     @discardableResult
     func record(
         operation: Operation, source: String, result: String, language: String,
-        at createdAt: Date = Date()
+        sourceImage: Data? = nil, at createdAt: Date = Date()
     ) throws -> HistoryRecord {
         let record = HistoryRecord(
             operation: operation, source: source, result: result, language: language,
-            createdAt: createdAt)
+            createdAt: createdAt, sourceImage: sourceImage)
         context.insert(record)
         try context.save()
         lastError = nil

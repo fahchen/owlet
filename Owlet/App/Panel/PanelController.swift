@@ -8,6 +8,7 @@ final class PanelController {
     enum Notice: Equatable {
         case translating
         case permission
+        case screenPermission
         case unreadable
         case missingConfig
         /// The message the user reads, and which recovery it offers: a translated message must never
@@ -25,6 +26,7 @@ final class PanelController {
             switch self {
             case .translating: ""
             case .permission: L10n.shared.string("Needs permission to read the selection")
+            case .screenPermission: L10n.shared.string("Needs permission to record the screen")
             case .unreadable: L10n.shared.string("Could not read any text")
             case .missingConfig: L10n.shared.string("The model service is not configured")
             case .failure(let message, let kind):
@@ -45,6 +47,7 @@ final class PanelController {
             switch self {
             case .translating, .receiving, .unreadable: ""
             case .permission: L10n.shared.string("Permission Settings")
+            case .screenPermission: L10n.shared.string("Screen Recording Settings")
             // The expanded source editor is the way out, so the explanation needs no button.
             case .missingConfig: L10n.shared.string("Configure Service")
             case .failure(_, let kind):
@@ -84,6 +87,10 @@ final class PanelController {
     let model: TextProcessingModel
     var read: @MainActor (@escaping @MainActor (Result<Selection, SelectionError>) -> Void) -> Void
     var write: @MainActor (Selection, String) async -> ReplaceOutcome = SelectionBridge.replace
+    /// The screen region seams; injectable so a test never touches the screen or Vision.
+    var screenAccess: @MainActor () -> Bool = ScreenRegion.hasAccess
+    var captureRegion: @MainActor () async throws -> Data? = { try await ScreenRegion.capture() }
+    var recognize: @MainActor (Data) async -> String = { await ScreenRegion.recognize($0) }
     /// Copies a result; injectable so a test does not touch the user's real pasteboard.
     var copy: @MainActor (String) -> Void = { Clipboard.copy($0) }
     var openSettings: () -> Void = {}
@@ -145,11 +152,53 @@ final class PanelController {
     private func readTimedOut(id: Int, operation: Operation, replace: Bool) {
         guard id == requestID, readingID == id else { return }
         timedOutID = id
+        model.sourceImage = nil
         model.operation = operation
         autoReplace = replace
         // The previous text is not what the user selected now, so it must not sit beside this notice.
         showManualInput()
         show()
+    }
+
+    /// Translates the text in a rectangle the user draws on screen (BDR-0019). The panel closes first,
+    /// so it is not in the picture; Esc in the capture leaves nothing on screen.
+    func processRegion() {
+        close()
+        selection = nil
+        writebackRefusal = nil
+        autoReplace = false
+        model.operation = .translate
+        guard screenAccess() else {
+            model.reset()
+            model.input = ""
+            model.sourceImage = nil
+            notice = .screenPermission
+            show()
+            return
+        }
+        requestID += 1
+        let id = requestID
+        Task { [weak self] in
+            guard let self else { return }
+            let image: Data?
+            do {
+                guard let captured = try await captureRegion() else { return }
+                image = captured
+            } catch {
+                image = nil
+            }
+            let text = if let image { await recognize(image) } else { "" }
+            guard id == requestID else { return }
+            if text.isEmpty {
+                showManualInput()
+                model.sourceImage = image
+            } else {
+                model.input = text
+                model.sourceImage = image
+                processCurrentText()
+            }
+            show()
+        }
     }
 
     /// Nothing could be read, so the panel opens as an empty source editor: the editor is the way
@@ -178,6 +227,7 @@ final class PanelController {
         // The timeout emptied the editor, so any text in it now is the user's and a late read must
         // not overwrite it.
         if timedOutID == id, !model.input.isEmpty { return }
+        model.sourceImage = nil
         model.operation = operation
         autoReplace = replace
         selection = nil

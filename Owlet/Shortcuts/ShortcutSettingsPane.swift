@@ -9,7 +9,9 @@ struct ShortcutSettingsPane: View {
     @State private var recording: ShortcutAction?
 
     /// Each operation, then the same operation written straight back.
-    private static let order: [ShortcutAction] = [.translate, .polish, .translateReplace, .polishReplace]
+    private static let order: [ShortcutAction] = [
+        .translate, .polish, .translateReplace, .polishReplace, .translateRegion,
+    ]
 
     var body: some View {
         Form {

@@ -2,7 +2,7 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
-## Unreleased
+## 0.8.0 — 2026-10-23
 
 ### Added
 - Translate Screen Region: a new global shortcut (set it on the Shortcuts page) lets you drag a rectangle on screen in the system's own screenshot interface. The text in it is read on this Mac and translated; a thumbnail of the screenshot leads the source bar and moves to the source's top corner when the result opens, with the source wrapping around it; click it to zoom it to the panel's width, and click again to shrink it back. General › Panel › Screen Region Screenshot can open results already enlarged; Thumbnail is the default. The recognised source can be edited and run again. The result can be copied; there is nothing to write back. The screenshot is kept with the history record, at a reduced size that is enough to look at, as a thumbnail in the list and a picture in the detail that opens in Quick Look. Owlet asks for Screen Recording permission the first time; when a screenshot holds no readable text, the bar becomes an empty field beside the thumbnail, with a button to select another region.

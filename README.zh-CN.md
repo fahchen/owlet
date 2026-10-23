@@ -28,7 +28,7 @@ mise run prod -- --arch arm64       # 只要本机架构
 mise run prod -- --team Z98NKJSF69  # 显式指定 Team 签名
 ```
 
-脚本依次构建、校验（bundle id、最低系统版本、图标、签名可验证、不带 `get-task-allow`），再用 `ditto` 打包并打印 SHA-256。产物名为 `Owlet-<版本>-<架构>.zip`。版本取自 `project.yml` 的 `MARKETING_VERSION`（当前 `0.7.0`）；全部选项见 `scripts/prod-build.sh --help`。
+脚本依次构建、校验（bundle id、最低系统版本、图标、签名可验证、不带 `get-task-allow`），再用 `ditto` 打包并打印 SHA-256。产物名为 `Owlet-<版本>-<架构>.zip`。版本取自 `project.yml` 的 `MARKETING_VERSION`（当前 `0.8.0`）；全部选项见 `scripts/prod-build.sh --help`。
 
 产物都未公证，另一台 Mac 首次打开需右键「打开」。ad-hoc 签名的包**每次重编都要重新授权辅助功能**，有证书则授权长期有效。用 `scp` 或 `rsync` 传，别用 AirDrop，以免带上 quarantine 标记。
 

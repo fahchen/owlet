@@ -18,11 +18,13 @@ struct ScreenshotThumbnail: View {
         Button {
             showsFull.toggle()
         } label: {
+            // Its own width at this height, so no blank band separates it from the text beside it.
             Image(nsImage: image)
                 .resizable()
-                .scaledToFit()
-                .frame(maxWidth: Self.maxWidth, maxHeight: Self.height)
-                .clipShape(ConcentricRectangle())
+                .scaledToFill()
+                .frame(width: width, height: Self.height)
+                .clipped()
+                .clipShape(ConcentricRectangle(corners: .concentric(minimum: 6), isUniform: true))
         }
         .buttonStyle(.plain)
         .matchedScreenshot(in: namespace)
@@ -37,6 +39,13 @@ struct ScreenshotThumbnail: View {
                 .frame(width: fullSize.width, height: fullSize.height)
                 .padding(10)
         }
+    }
+
+    /// The width the picture has at the thumbnail's height, capped so a very wide region is cropped.
+    private var width: CGFloat {
+        let size = image.size
+        guard size.height > 0 else { return Self.height }
+        return min(Self.height * size.width / size.height, Self.maxWidth)
     }
 
     private var fullSize: CGSize {

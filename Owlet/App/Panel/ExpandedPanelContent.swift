@@ -21,7 +21,7 @@ struct ExpandedPanelContent: View {
         VStack(alignment: .leading, spacing: 0) {
             if showsSource && !showsAlignedPairs {
                 // The screenshot sits beside the source it was read from, above the rule.
-                besideScreenshot(sourceEditor).padding(.bottom, 12)
+                besideScreenshot(sourceEditor, alignment: .center).padding(.bottom, 12)
             }
             if hasResultSection {
                 // The rule separates the editable source from the result, so it belongs with the source
@@ -45,9 +45,12 @@ struct ExpandedPanelContent: View {
     }
 
     /// `content` with the screen region's thumbnail at its trailing top; `content` alone otherwise.
-    @ViewBuilder private func besideScreenshot(_ content: some View) -> some View {
+    /// Centred beside the source block; at the top of the pairs, which can run long.
+    @ViewBuilder private func besideScreenshot(
+        _ content: some View, alignment: VerticalAlignment = .top
+    ) -> some View {
         if showsSource, let screenshot = model.sourceThumbnail {
-            HStack(alignment: .top, spacing: 16) {
+            HStack(alignment: alignment, spacing: 16) {
                 content.frame(maxWidth: .infinity, alignment: .leading)
                 ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace)
             }

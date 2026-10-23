@@ -94,7 +94,7 @@ struct PanelSourceBar: View {
     var body: some View {
         HStack(spacing: 8) {
             if let screenshot {
-                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace).padding(.trailing, 8)
+                ScreenshotThumbnail(image: screenshot, namespace: screenshotSpace).padding(.trailing, 4)
             }
             if let text {
                 TextField(placeholder, text: text, axis: .vertical)
@@ -172,9 +172,10 @@ struct PanelSourceBar: View {
                 .hoverTip(KeyHint.panelCancel, title: "Close Panel")
             }
         }
-        .padding(.leading, 24)
+        // Inset like the buttons on the right, so the thumbnail's corners follow the bar's.
+        .padding(.leading, screenshot == nil ? 24 : 12)
         .padding(.trailing, 12)
-        .padding(.vertical, 13)
+        .padding(.vertical, 12)
         .frame(width: PanelMetrics.width)
         .frame(minHeight: PanelMetrics.sourceBarHeight)
         .glassEffect(drawsGlass ? glassEffect.compactGlass : .identity)

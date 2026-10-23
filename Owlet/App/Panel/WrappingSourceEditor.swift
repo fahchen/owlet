@@ -68,6 +68,37 @@ struct WrappingSourceEditor: NSViewRepresentable {
             fit(width: size.width)
         }
 
+        /// The cleared corner, where the thumbnail sits above this view.
+        private var clearedRect: CGRect {
+            CGRect(x: bounds.width - clearArea.width, y: 0, width: clearArea.width, height: clearArea.height)
+        }
+
+        /// The thumbnail's zoom pointer wins over the I-beam in the corner it covers. The cursor rects
+        /// cover an active window; a panel that never activates the app only gets `mouseMoved`, where
+        /// the text view sets the I-beam itself, so both are overridden.
+        override func resetCursorRects() {
+            let cleared = clearedRect
+            addCursorRect(CGRect(x: 0, y: 0, width: cleared.minX, height: bounds.height), cursor: .iBeam)
+            addCursorRect(
+                CGRect(x: cleared.minX, y: cleared.maxY, width: cleared.width, height: bounds.height - cleared.maxY),
+                cursor: .iBeam)
+            addCursorRect(cleared, cursor: .zoomIn)
+        }
+
+        override func cursorUpdate(with event: NSEvent) {
+            guard clearedRect.contains(convert(event.locationInWindow, from: nil)) else {
+                return super.cursorUpdate(with: event)
+            }
+            NSCursor.zoomIn.set()
+        }
+
+        override func mouseMoved(with event: NSEvent) {
+            guard clearedRect.contains(convert(event.locationInWindow, from: nil)) else {
+                return super.mouseMoved(with: event)
+            }
+            NSCursor.zoomIn.set()
+        }
+
         func fit(width: CGFloat) {
             guard let container = textContainer, width > 0 else { return }
             container.size = CGSize(width: width, height: .greatestFiniteMagnitude)

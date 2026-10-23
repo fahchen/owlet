@@ -158,17 +158,6 @@ struct ExpandedPanel: View {
         .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: showsLearning)
         .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: contentHeight)
         .animation(reduceMotion ? nil : .spring(duration: 0.36, bounce: 0.12), value: learningHeight)
-        .background {
-            if !showsLearning, let collection, let request = LearningRequest.from(model) {
-                PanelLearningView(
-                    learning: learning, request: request, collection: collection, showsDisclosure: false,
-                    preferredHeight: learningEntryHeight
-                )
-                .modelContainer(collection.store.container)
-                .hidden()
-                .frame(width: 0, height: 0)
-            }
-        }
         // The text keeps its own clicks; any other press on the glass moves the panel.
         .gesture(WindowDragGesture())
         // Read before the left column relays out for learning, so it is still the translation's height.
@@ -177,13 +166,22 @@ struct ExpandedPanel: View {
             learningEntryHeight = translationHeight
             learningHeight = translationHeight
         }
+        // The auto-request switch is checked by the panel itself, both when a result arrives and when the
+        // panel opens on one: a hidden learning view meant to do it was never laid out, so it never ran.
+        .onAppear { requestLearningIfAutomatic() }
         .onChange(of: model.state) { _, state in
-            if state == .loading { learning.reset() }
+            if state == .loading { learning.reset() } else { requestLearningIfAutomatic() }
         }
         .onChange(of: pinnedTarget) { _, _ in
             learning.reset()
             if canRetry { retry() }
         }
+    }
+
+    /// Opens Study on a finished result when its switch is on; the model hands out that decision once.
+    private func requestLearningIfAutomatic() {
+        guard collection != nil, let request = LearningRequest.from(model) else { return }
+        learning.generateIfAutoRequested(for: request)
     }
 
     private var canRetry: Bool {

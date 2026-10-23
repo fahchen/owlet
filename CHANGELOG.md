@@ -2,6 +2,11 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
+## Unreleased
+
+### Fixed
+- In the panel, "Request study expressions after translating" (and after polishing) now works: with the switch on, the study column opens with the result and its expressions are requested on their own, as in the main window. Before, the panel ignored the switch.
+
 ## 0.8.0 — 2026-10-23
 
 ### Added

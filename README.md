@@ -28,7 +28,7 @@ mise run prod -- --arch arm64       # this Mac's architecture only
 mise run prod -- --team Z98NKJSF69  # sign with that team explicitly
 ```
 
-The script builds, verifies the bundle id, minimum macOS, icon, signature and the absence of `get-task-allow`, then packages with `ditto` and prints the SHA-256. Artifacts are named `Owlet-<version>-<arch>.zip`. The version is `MARKETING_VERSION` in `project.yml` (currently `0.8.0`); see `scripts/prod-build.sh --help` for all options.
+The script builds, verifies the bundle id, minimum macOS, icon, signature and the absence of `get-task-allow`, then packages with `ditto` and prints the SHA-256. Artifacts are named `Owlet-<version>-<arch>.zip`. The version is `MARKETING_VERSION` in `project.yml` (currently `0.9.0`); see `scripts/prod-build.sh --help` for all options.
 
 Builds are not notarised, so another Mac needs a right-click Open on first launch. An ad-hoc build also loses its Accessibility grant on every rebuild; a certificate keeps it. Copy with `scp` or `rsync`, not AirDrop, to avoid the quarantine flag.
 

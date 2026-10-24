@@ -2,7 +2,7 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
-## Unreleased
+## 0.9.0 — 2026-10-24
 
 ### Changed
 - Translate Screen Region: a screenshot with no readable text now opens the panel on the screenshot, enlarged, over an empty field to type what it says, instead of a small bar with a thumbnail; a capture that fails leaves the empty field to type or paste into. The empty field takes a pasted image: with only an image on the clipboard, ⌘V reads it like a screenshot and translates it. A screen region's panel has Select Another Region to capture again.

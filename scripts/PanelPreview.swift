@@ -1149,6 +1149,8 @@ struct MainPreview: View {
         var text = RegionShots.source
         var aligned = false
         var zoomed = false
+        /// Starts from the selection's empty bar and pastes the picture with ⌘V instead of capturing.
+        var pasted = false
         /// How long after the shortcut the window is captured.
         var wait: Duration = .seconds(1.6)
     }
@@ -1164,9 +1166,17 @@ struct MainPreview: View {
         Shot(name: "08-connection-failure", reply: nil),
         Shot(name: "09-missing-config", configured: false),
         Shot(name: "10-format-failure", reply: "not json"),
+        Shot(name: "11-pasted-image", pasted: true),
     ]
 
     static func run(_ app: NSApplication, output: String) {
+        // A locked screen refuses every window capture; say so once instead of failing each shot.
+        if let session = CGSessionCopyCurrentDictionary() as? [String: Any],
+            session["CGSSessionScreenIsLocked"] as? Bool == true
+        {
+            print("The screen is locked; unlock it and run --region again.")
+            exit(1)
+        }
         app.setActivationPolicy(.accessory)
         let directory = URL(fileURLWithPath: output)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -1189,7 +1199,15 @@ struct MainPreview: View {
                 panel.screenAccess = { shot.permitted }
                 panel.captureRegion = { if shot.captureFails { throw Failed() } else { return picture } }
                 panel.recognize = { _ in shot.text }
-                panel.processRegion()
+                panel.readPastedImage = { picture }
+                if shot.pasted {
+                    panel.read = { $0(.failure(.unreadable)) }
+                    panel.processSelection()
+                    try? await Task.sleep(for: .milliseconds(600))
+                    _ = panel.pasteImage()
+                } else {
+                    panel.processRegion()
+                }
                 try? await Task.sleep(for: shot.wait)
                 if shot.zoomed {
                     panel.toggleScreenshotZoom()

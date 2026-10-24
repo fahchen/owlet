@@ -57,14 +57,14 @@ python3 scripts/panel-preview.py --settings /tmp/owlet-settings-pane
 # 主窗口生词本、历史两页（窗口后垫纯色窗口，只截主窗口）与语言设置页（离屏），供官网用
 python3 scripts/panel-preview.py --app-shots /tmp/owlet-app-shots
 
-# 屏幕区域翻译的 10 个状态，在真实 PanelController／FloatingPanel 上逐个跑出并按窗口截图
+# 屏幕区域翻译的 11 个状态，在真实 PanelController／FloatingPanel 上逐个跑出并按窗口截图
 python3 scripts/panel-preview.py --region /tmp/owlet-region-states
 
 # 录制真实 PanelController／FloatingPanel 从翻译中到结果的过渡（.mov，约 4 秒）
 python3 scripts/panel-preview.py --transition /tmp/owlet-panel-transition.mov
 ```
 
-屏幕区域（`--region`，BDR-0019）：截图、OCR、屏幕录制权限和模型全部是夹具，不碰屏幕、Vision 或服务。截图是进程里画的两行英文，OCR 直接给出这两行，模型按请求的目标语言回复，也可以模拟连接失败、未配置与格式错误。依次导出 `01-permission`、`02-capture-failed`、`03-no-text`、`04-translating`、`05-result`、`06-result-aligned`、`07-result-zoomed`、`08-connection-failure`、`09-missing-config`、`10-format-failure`。逐句对照那一张通过预览进程自己的 UserDefaults 设置显示方式，结束时清除。截图用 `screencapture -l` 按窗口截，需要屏幕亮着、终端有屏幕录制权限；预览进程不带本地化资源，界面是英文。
+屏幕区域（`--region`，BDR-0019）：截图、OCR、屏幕录制权限和模型全部是夹具，不碰屏幕、Vision 或服务。截图是进程里画的两行英文，OCR 直接给出这两行，模型按请求的目标语言回复，也可以模拟连接失败、未配置与格式错误。依次导出 `01-permission`、`02-capture-failed`、`03-no-text`、`04-translating`、`05-result`、`06-result-aligned`、`07-result-zoomed`、`08-connection-failure`、`09-missing-config`、`10-format-failure`、`11-pasted-image`（在读不到选区的空原文条里粘贴图片）。逐句对照那一张通过预览进程自己的 UserDefaults 设置显示方式，结束时清除。截图用 `screencapture -l` 按窗口截，需要屏幕亮着、终端有屏幕录制权限；预览进程不带本地化资源，界面是英文。
 
 过渡录制走生产展开路径，模拟模型延迟 1.5 秒返回；用 `ffmpeg -i <mov> -vf fps=30 f%03d.png` 拆帧逐帧检查。录制进程独立结束，主线程不等待它，否则动画会被阻塞。
 

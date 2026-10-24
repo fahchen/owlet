@@ -57,14 +57,14 @@ python3 scripts/panel-preview.py --settings /tmp/owlet-settings-pane
 # Main window Notebook and History pages (a solid-color window placed behind, capturing only the main window) and the Languages settings page (off-screen), for the website
 python3 scripts/panel-preview.py --app-shots /tmp/owlet-app-shots
 
-# Translate Screen Region's 10 states, run one after another on the real PanelController / FloatingPanel and captured per window
+# Translate Screen Region's 11 states, run one after another on the real PanelController / FloatingPanel and captured per window
 python3 scripts/panel-preview.py --region /tmp/owlet-region-states
 
 # Record the real PanelController / FloatingPanel transition from translating to result (.mov, about 4 seconds)
 python3 scripts/panel-preview.py --transition /tmp/owlet-panel-transition.mov
 ```
 
-Screen region (`--region`, BDR-0019): the capture, OCR, Screen Recording permission and model are all fixtures, so nothing touches the screen, Vision or a service. The screenshot is two lines of English drawn in the process, OCR returns those two lines, and the model answers in the requested target language, or stands in for a connection failure, a missing configuration or a malformed reply. It exports `01-permission`, `02-capture-failed`, `03-no-text`, `04-translating`, `05-result`, `06-result-aligned`, `07-result-zoomed`, `08-connection-failure`, `09-missing-config` and `10-format-failure` in turn. The Sentence by Sentence shot sets the display mode through the preview process's own UserDefaults, which are cleared at the end. Shots are taken per window with `screencapture -l`, so the screen has to be awake and the terminal needs Screen Recording permission; the preview process has no localisation resources, so the interface is English.
+Screen region (`--region`, BDR-0019): the capture, OCR, Screen Recording permission and model are all fixtures, so nothing touches the screen, Vision or a service. The screenshot is two lines of English drawn in the process, OCR returns those two lines, and the model answers in the requested target language, or stands in for a connection failure, a missing configuration or a malformed reply. It exports `01-permission`, `02-capture-failed`, `03-no-text`, `04-translating`, `05-result`, `06-result-aligned`, `07-result-zoomed`, `08-connection-failure`, `09-missing-config`, `10-format-failure` and `11-pasted-image` (an image pasted into the selection's empty bar) in turn. The Sentence by Sentence shot sets the display mode through the preview process's own UserDefaults, which are cleared at the end. Shots are taken per window with `screencapture -l`, so the screen has to be awake and the terminal needs Screen Recording permission; the preview process has no localisation resources, so the interface is English.
 
 The transition recording uses the production expand path, with the mock model replying after a 1.5 second delay; split it into frames with `ffmpeg -i <mov> -vf fps=30 f%03d.png` and check frame by frame. The recording process ends on its own and the main thread does not wait for it, otherwise the animation would be blocked.
 

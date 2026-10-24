@@ -58,7 +58,9 @@ struct ExpandedPanelContent: View {
     @ViewBuilder private var sourceWithScreenshot: some View {
         if awaitsText, let screenshot = model.sourceThumbnail {
             VStack(alignment: .leading, spacing: 14) {
-                thumbnail(screenshot)
+                // What there is to type from: always large, so a click cannot shrink it away.
+                ScreenshotThumbnail(
+                    image: screenshot, namespace: screenshotSpace, zoomed: true, interactive: false, toggle: {})
                 TextField(PanelController.Notice.noTextInScreenshot.message, text: $model.input, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.system(size: PanelMetrics.sourceTextSize))

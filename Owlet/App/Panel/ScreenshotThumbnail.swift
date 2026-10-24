@@ -8,6 +8,8 @@ struct ScreenshotThumbnail: View {
     /// leading edge to the source's trailing edge as the panel opens.
     var namespace: Namespace.ID?
     var zoomed = false
+    /// False where the picture is the content itself, and a click must not shrink it away.
+    var interactive = true
     let toggle: () -> Void
 
     static let height: CGFloat = 38
@@ -18,27 +20,35 @@ struct ScreenshotThumbnail: View {
     static let maxWidth: CGFloat = 180
 
     var body: some View {
-        Button(action: toggle) {
-            if zoomed {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .clipShape(RoundedRectangle(cornerRadius: Self.zoomedRadius))
-            } else {
-                // Its own width at this height, so no blank band separates it from the text beside it.
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: Self.width(of: image), height: Self.height)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: Self.thumbnailRadius))
-            }
+        if interactive {
+            Button(action: toggle) { picture }
+                .buttonStyle(.plain)
+                .pointerStyle(zoomed ? .zoomOut : .zoomIn)
+                .matchedScreenshot(in: namespace)
+                .accessibilityLabel(L10n.shared.string("Screenshot"))
+        } else {
+            picture
+                .matchedScreenshot(in: namespace)
+                .accessibilityLabel(L10n.shared.string("Screenshot"))
         }
-        .buttonStyle(.plain)
-        .pointerStyle(zoomed ? .zoomOut : .zoomIn)
-        .matchedScreenshot(in: namespace)
-        .accessibilityLabel(L10n.shared.string("Screenshot"))
+    }
+
+    @ViewBuilder private var picture: some View {
+        if zoomed {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .clipShape(RoundedRectangle(cornerRadius: Self.zoomedRadius))
+        } else {
+            // Its own width at this height, so no blank band separates it from the text beside it.
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: Self.width(of: image), height: Self.height)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: Self.thumbnailRadius))
+        }
     }
 
     /// The width the picture has at the thumbnail's height, capped so a very wide region is cropped.

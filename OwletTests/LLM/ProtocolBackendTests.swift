@@ -218,6 +218,44 @@ import Testing
         #expect(seen.request?.value(forHTTPHeaderField: "x-goog-api-key") == "g")
     }
 
+    /// The API key is optional: with none set, no protocol sends a credential header, and nothing
+    /// else about the request changes (a local server such as Ollama asks for none).
+    @Test func anEmptyKeySendsNoCredential() async throws {
+        let base = URL(string: "https://example.test/v1")!
+        let chat = try await posted(
+            { OpenAICompatibleBackend(transport: $0) },
+            reply: #"{"choices":[{"message":{"content":"{}"},"finish_reason":"stop"}]}"#,
+            config: ServiceConfig(baseURL: base, model: "m", apiKey: "", provider: .openAICompatible))
+        #expect(chat.value(forHTTPHeaderField: "Authorization") == nil)
+        #expect(chat.value(forHTTPHeaderField: "Content-Type") == "application/json")
+
+        let responses = try await posted(
+            { OpenAIResponsesBackend(transport: $0) },
+            reply: #"{"output":[{"type":"message","content":[{"type":"output_text","text":"{}"}]}]}"#,
+            config: ServiceConfig(baseURL: base, model: "m", apiKey: "", provider: .openAIResponses))
+        #expect(responses.value(forHTTPHeaderField: "Authorization") == nil)
+
+        let anthropic = try await posted(
+            { AnthropicBackend(transport: $0) },
+            reply: #"{"content":[{"type":"text","text":"{}"}],"stop_reason":"end_turn"}"#,
+            config: ServiceConfig(baseURL: base, model: "m", apiKey: "", provider: .anthropic))
+        #expect(anthropic.value(forHTTPHeaderField: "x-api-key") == nil)
+        #expect(anthropic.value(forHTTPHeaderField: "anthropic-version") == "2023-06-01")
+
+        let gemini = try await posted(
+            { GeminiBackend(transport: $0) },
+            reply: #"{"candidates":[{"content":{"parts":[{"text":"{}"}]},"finishReason":"STOP"}]}"#,
+            config: ServiceConfig(baseURL: base, model: "m", apiKey: "", provider: .gemini))
+        #expect(gemini.value(forHTTPHeaderField: "x-goog-api-key") == nil)
+
+        let seen = Captured()
+        _ = try await ModelClient(transport: { request in
+            seen.request = request
+            return try await stub(body: #"{"data":[{"id":"llama3"}]}"#)(request)
+        }).listModels(baseURL: base, apiKey: "", provider: .openAICompatible)
+        #expect(seen.request?.value(forHTTPHeaderField: "Authorization") == nil)
+    }
+
     /// Every provider resolves to the backend that speaks its protocol.
     @Test func eachProviderGetsItsOwnBackend() {
         let backend = { (provider: Provider) in

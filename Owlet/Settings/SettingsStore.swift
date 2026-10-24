@@ -120,10 +120,11 @@ enum SettingsStore {
         guard
             let base = defaults.string(forKey: baseURLKey)?.trimmingCharacters(in: .whitespaces),
             let url = URL(string: base), url.scheme != nil,
-            !model.isEmpty,
-            let account = choice.keychainAccount,
-            let key = apiKey(account: account), !key.isEmpty
+            !model.isEmpty
         else { return nil }
+        // The key is optional: a local server such as Ollama, or a proxy that holds its own key, asks
+        // for none, and an empty key is simply not sent.
+        let key = choice.keychainAccount.flatMap { apiKey(account: $0) } ?? ""
         return ServiceConfig(
             baseURL: url, model: model, apiKey: key, provider: provider, effort: effort(),
             customEffort: customEffort(in: defaults), supportsJSONSchema: choice.preset?.supportsJSONSchema)

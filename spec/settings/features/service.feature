@@ -238,3 +238,17 @@ Feature: 自行配置模型服务
       Given 原文包含两个句子
       When 模型返回的 JSON 仅覆盖第一个句子
       Then 拒绝该结果并保留原文
+
+  Rule: API Key 可以不填
+    Scenario: 不填 API Key 也能使用
+      Given 用户填好基础 URL 与模型名，API Key 留空
+      When 用户翻译一段文字
+      Then 不提示「模型服务未配置」，照常发起请求
+      And 请求不带任何凭据头
+      And API Key 输入框的占位文字为「可不填」
+
+    Scenario: 服务确实要求 API Key
+      Given API Key 留空
+      And 服务要求认证
+      When 用户翻译一段文字
+      Then 显示「认证失败，请检查 API Key」

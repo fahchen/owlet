@@ -809,6 +809,11 @@
     "zh-Hans": "操作失败",
     "zh-Hant": "操作失敗"
   },
+  "Optional": {
+    "ja": "省略可",
+    "zh-Hans": "可不填",
+    "zh-Hant": "可不填"
+  },
   "Owlet": {
     "ja": "Owlet",
     "zh-Hans": "Owlet",

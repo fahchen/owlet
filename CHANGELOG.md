@@ -2,6 +2,11 @@
 
 User-visible changes to Owlet. Versions match `MARKETING_VERSION` in `project.yml`.
 
+## Unreleased
+
+### Changed
+- The API key is optional. With it empty, Owlet no longer says the model service is not configured: it sends the request without a credential, which is what a local server such as Ollama, or a proxy that holds its own key, expects. A service that does need a key still answers with an authentication error. The key field says "Optional".
+
 ## 0.9.0 — 2026-10-24
 
 ### Changed

@@ -118,7 +118,7 @@
 
 - 服务列表分三组：协议（OpenAI Compatible、OpenAI Responses、Anthropic、Gemini）、厂商预设（DeepSeek、OpenRouter、Ollama）、本地 agent。选中协议入口填好协议方地址，选中厂商预设填好它的地址与默认模型；Base URL 始终可改，并按服务记住。返回格式能力（JSON Schema 或 json_object）跟着所选服务走。见 [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md) 与 [多协议决策](settings/decisions/BDR-0016-wire-protocols.md)。
 - 模型名与思考强度都是一个可自由输入的文本框，右侧配一个「预设」下拉按钮：从按钮里选候选值（模型清单按所选协议读取，强度是各档位的原始值 automatic／none／low／medium／high／max，不翻译），或直接输入；思考强度框里显示的就是发送的值，手填的其他值原样发送，留空为沿用服务商默认。模型分组底部的「测试」按钮用当前配置翻译一次《蒹葭》首句「蒹葭蒼蒼，白露為霜。」，按钮上显示状态与耗时，成功时译文显示在按钮下方。模型相关的报错（读清单失败或测试失败）只在模型分组内的一行里显示，写明原因并带重试。
-- API Key 存入 macOS 钥匙串。
+- API Key 可不填（本机 Ollama 之类的服务，或自带 Key 的代理不需要）：不填时照常请求，只是不带凭据，服务若确实要求 Key 会报认证失败；填了就存入 macOS 钥匙串。
 - 除 HTTP 服务外，用户可以把本机已登录的 agent CLI（Claude Code、Codex CLI）选为服务商：改为指定该 agent 的可执行文件，不需要 API Key，模型名可留空用 agent 自己的默认；两个 agent 的模型名「预设」列表都列出它的模型、留空即用它自己的默认模型——Codex 跑它自己的列举命令，Claude Code 读它为模型菜单缓存的本地目录，读不到时列表为空、照常可手填；两者的强度档位都按模型给。应用只借它取一次回答：工具、技能、MCP、项目上下文与会话落盘全部关闭，工作目录是一次性的空目录，用户原文只走标准输入，返回仍受同一份 JSON 契约与本地校验约束（见 [本机 agent 决策](settings/decisions/BDR-0013-local-agent-provider.md)）。
 - 翻译、润色分别支持自定义 System Prompt，显示完整默认内容，支持编辑、保存与恢复默认；翻译并替换复用翻译配置。
 - LLM 必须返回符合应用契约的 JSON。主结果包含逐句原文／译文配对，学习内容另行请求；JSON 校验失败不得替换原文。详见 `spec/llm/contract.md`。

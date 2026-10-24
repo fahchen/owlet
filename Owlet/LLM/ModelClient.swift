@@ -484,17 +484,17 @@ struct ModelClient: Sendable {
                 url: baseURL.appending(path: "models").appending(queryItems: [
                     URLQueryItem(name: "limit", value: "1000")
                 ]))
-            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.setValue(apiKey.isEmpty ? nil : apiKey, forHTTPHeaderField: "x-api-key")
             request.setValue(AnthropicBackend.apiVersion, forHTTPHeaderField: "anthropic-version")
         case .gemini:
             request = URLRequest(
                 url: baseURL.appending(path: "models").appending(queryItems: [
                     URLQueryItem(name: "pageSize", value: "1000")
                 ]))
-            request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+            request.setValue(apiKey.isEmpty ? nil : apiKey, forHTTPHeaderField: "x-goog-api-key")
         case .openAICompatible, .openAIResponses, .claudeCode, .codexCLI:
             request = URLRequest(url: baseURL.appending(path: "models"))
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.setValue(apiKey.isEmpty ? nil : "Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         let data = try await HTTPBackend.send(request, transport: transport)
         if provider == .gemini {

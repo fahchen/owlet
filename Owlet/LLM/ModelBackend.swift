@@ -117,7 +117,7 @@ struct OpenAICompatibleBackend: ModelBackend {
         let body = try Self.body(for: request, config: config)
         let urlRequest = HTTPBackend.post(
             config.baseURL.appending(path: "chat/completions"), body: body,
-            headers: ["Authorization": "Bearer \(config.apiKey)"])
+            headers: HTTPBackend.credential("Authorization", config.apiKey, prefix: "Bearer "))
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
@@ -132,7 +132,7 @@ struct OpenAICompatibleBackend: ModelBackend {
                 HTTPBackend.post(
                     config.baseURL.appending(path: "chat/completions"),
                     body: try Self.body(for: request, config: config, stream: true),
-                    headers: ["Authorization": "Bearer \(config.apiKey)"])
+                    headers: HTTPBackend.credential("Authorization", config.apiKey, prefix: "Bearer "))
             }, transport: streamTransport
         ) { OpenAIChatStream() }
     }
@@ -251,6 +251,12 @@ extension Provider {
 /// What every HTTP protocol shares: posting a JSON body, the status codes, and showing the body on the
 /// debug page. The wire shapes differ; this part does not.
 enum HTTPBackend {
+    /// The credential header, or none when no key is set: a local server such as Ollama asks for
+    /// none, and an empty credential is a malformed one some services refuse.
+    static func credential(_ field: String, _ key: String, prefix: String = "") -> [String: String] {
+        key.isEmpty ? [:] : [field: prefix + key]
+    }
+
     static func post(_ url: URL, body: Data, headers: [String: String]) -> URLRequest {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -339,7 +345,8 @@ struct AnthropicBackend: ModelBackend {
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
         let urlRequest = HTTPBackend.post(
             config.baseURL.appending(path: "messages"), body: try Self.body(for: request),
-            headers: ["x-api-key": config.apiKey, "anthropic-version": Self.apiVersion])
+            headers: HTTPBackend.credential("x-api-key", config.apiKey).merging(["anthropic-version": Self.apiVersion])
+            { $1 })
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
@@ -354,7 +361,9 @@ struct AnthropicBackend: ModelBackend {
                 HTTPBackend.post(
                     config.baseURL.appending(path: "messages"),
                     body: try Self.body(for: request, stream: true),
-                    headers: ["x-api-key": config.apiKey, "anthropic-version": Self.apiVersion])
+                    headers: HTTPBackend.credential("x-api-key", config.apiKey).merging([
+                        "anthropic-version": Self.apiVersion
+                    ]) { $1 })
             }, transport: streamTransport
         ) { AnthropicStream() }
     }
@@ -419,7 +428,7 @@ struct OpenAIResponsesBackend: ModelBackend {
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
         let urlRequest = HTTPBackend.post(
             config.baseURL.appending(path: "responses"), body: try Self.body(for: request),
-            headers: ["Authorization": "Bearer \(config.apiKey)"])
+            headers: HTTPBackend.credential("Authorization", config.apiKey, prefix: "Bearer "))
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
@@ -434,7 +443,7 @@ struct OpenAIResponsesBackend: ModelBackend {
                 HTTPBackend.post(
                     config.baseURL.appending(path: "responses"),
                     body: try Self.body(for: request, stream: true),
-                    headers: ["Authorization": "Bearer \(config.apiKey)"])
+                    headers: HTTPBackend.credential("Authorization", config.apiKey, prefix: "Bearer "))
             }, transport: streamTransport
         ) { OpenAIResponsesStream() }
     }
@@ -519,7 +528,7 @@ struct GeminiBackend: ModelBackend {
     func complete(_ request: ModelRequest, config: ServiceConfig) async throws -> String {
         let urlRequest = HTTPBackend.post(
             config.baseURL.appending(path: "models/\(request.model):generateContent"),
-            body: try Self.body(for: request), headers: ["x-goog-api-key": config.apiKey])
+            body: try Self.body(for: request), headers: HTTPBackend.credential("x-goog-api-key", config.apiKey))
         return try Self.content(from: try await HTTPBackend.send(urlRequest, transport: transport))
     }
 
@@ -537,7 +546,7 @@ struct GeminiBackend: ModelBackend {
                     )
                     .appending(queryItems: [URLQueryItem(name: "alt", value: "sse")]),
                     body: try Self.body(for: request),
-                    headers: ["x-goog-api-key": config.apiKey])
+                    headers: HTTPBackend.credential("x-goog-api-key", config.apiKey))
             }, transport: streamTransport
         ) { GeminiStream() }
     }

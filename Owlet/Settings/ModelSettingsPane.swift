@@ -109,12 +109,14 @@ struct ModelSettingsPane: View {
                     .onChange(of: editingBaseURL) { _, editing in
                         if !editing { loadModels() }
                     }
-                    SecureField(L10n.shared.string("API Key"), text: $apiKey, prompt: Text(L10n.shared.string("sk-…")))
-                        .focused($editingKey)
-                        .onSubmit(commitKey)
-                        .onChange(of: editingKey) { _, editing in
-                            if !editing { commitKey() }
-                        }
+                    SecureField(
+                        L10n.shared.string("API Key"), text: $apiKey, prompt: Text(L10n.shared.string("Optional"))
+                    )
+                    .focused($editingKey)
+                    .onSubmit(commitKey)
+                    .onChange(of: editingKey) { _, editing in
+                        if !editing { commitKey() }
+                    }
                 }
             } header: {
                 Text(L10n.shared.string("Service"))
@@ -504,12 +506,12 @@ struct ModelSettingsPane: View {
     /// field still takes a typed name.
     private func loadModels() {
         if !provider.isLocalAgent {
-            guard let url = URL(string: baseURL), url.scheme != nil, let account = choice.keychainAccount,
-                let key = readKey(account), !key.isEmpty
-            else {
+            guard let url = URL(string: baseURL), url.scheme != nil else {
                 listFailure = nil
                 return
             }
+            // No key is a valid setup (a local server); the list is read without a credential.
+            let key = choice.keychainAccount.flatMap(readKey) ?? ""
             Task {
                 do {
                     offered = try await client.listModels(

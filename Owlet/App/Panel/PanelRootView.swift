@@ -24,7 +24,7 @@ struct PanelRootView: View {
     /// source to show.
     private var showsBar: Bool {
         switch controller.notice {
-        case .permission, .screenPermission, .captureFailed, .noTextInScreenshot: !controller.model.input.isEmpty
+        case .permission, .screenPermission: !controller.model.input.isEmpty
         default: true
         }
     }
@@ -81,7 +81,7 @@ struct PanelRootView: View {
     /// Why the bar is empty, when nothing could be read.
     private var placeholder: String {
         controller.notice == .unreadable
-            ? L10n.shared.string("No selected text was read. Type or paste it, then press ⌘↩") : ""
+            ? L10n.shared.string("No selected text was read. Type or paste text or an image, then press ⌘↩") : ""
     }
 
     private var expandedView: some View {
@@ -100,9 +100,19 @@ struct PanelRootView: View {
             lookupOrigin: controller.lookupOrigin,
             screenshotSpace: screenshotSpace,
             screenshotZoomed: controller.screenshotZoomed,
-            toggleScreenshotZoom: controller.toggleScreenshotZoom
+            toggleScreenshotZoom: controller.toggleScreenshotZoom,
+            awaitsText: controller.notice == .noTextInScreenshot,
+            focusRequest: controller.focusRequest,
+            recapture: recapture
         )
         .environment(\.lookups, controller.lookups)
+    }
+
+    /// A screen region's panel offers a new region, so a wrong or empty capture is one click from redone.
+    private var recapture: (() -> Void)? {
+        guard controller.model.sourceImage != nil else { return nil }
+        let controller = controller
+        return { controller.processRegion() }
     }
 
     private var replaceAction: ((String) -> Void)? {
@@ -141,15 +151,11 @@ struct PanelRootView: View {
                     ? "lock.trianglebadge.exclamationmark"
                     : statusRetries(notice) ? "network.slash" : "exclamationmark.triangle",
                 actionTitle: statusRetries(notice) ? "Retry" : notice.actionTitle,
-                actionSymbol: statusRetries(notice) || selectsAnotherRegion(notice) ? "arrow.clockwise" : "gearshape",
+                actionSymbol: statusRetries(notice) ? "arrow.clockwise" : "gearshape",
                 recover: { recover(notice) },
                 action: statusRetries(notice) ? compactRetry : nil,
                 isError: notice != .cancelled, copiesOnPress: notice.copiesOnPress, showsBar: false)
         }
-    }
-
-    private func selectsAnotherRegion(_ notice: PanelController.Notice) -> Bool {
-        notice == .captureFailed || notice == .noTextInScreenshot
     }
 
     private func statusRetries(_ notice: PanelController.Notice) -> Bool {
@@ -173,12 +179,11 @@ struct PanelRootView: View {
             if let url = SelectionBridge.permissionSettingsURL { NSWorkspace.shared.open(url) }
         case .screenPermission:
             if let url = ScreenRegion.permissionSettingsURL { NSWorkspace.shared.open(url) }
-        case .captureFailed, .noTextInScreenshot: controller.processRegion()
         case .missingConfig, .failure: settings()
         case .unwritten, .unwritable:
             controller.copyResult()
         case .cancelled: controller.processCurrentText()
-        case .translating, .receiving, .unreadable: break
+        case .translating, .receiving, .unreadable, .noTextInScreenshot: break
         }
     }
 

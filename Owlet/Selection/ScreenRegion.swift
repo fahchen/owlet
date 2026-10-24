@@ -54,6 +54,15 @@ enum ScreenRegion {
         return output as Data
     }
 
+    /// The image on the pasteboard as a PNG, when it holds one and no text.
+    // ponytail: an image copied with text (a browser copy) pastes as text; only a bare image is read.
+    @MainActor static func pastedImage(from pasteboard: NSPasteboard = .general) -> Data? {
+        guard pasteboard.string(forType: .string) == nil, let image = NSImage(pasteboard: pasteboard),
+            let tiff = image.tiffRepresentation
+        else { return nil }
+        return NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+    }
+
     /// The recognised lines, top to bottom; empty when there is no text or Vision fails.
     static func recognize(_ image: Data) async -> String {
         var request = RecognizeTextRequest()

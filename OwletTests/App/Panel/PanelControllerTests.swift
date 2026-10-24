@@ -334,25 +334,35 @@ struct PanelControllerTests {
         panel.close()
     }
 
-    /// A screenshot with no text is a failure, not an editor: there is nothing to translate, and a
-    /// new region is the way out (BDR-0019).
-    @Test func regionWithoutTextIsAFailure() async {
-        let (panel, _) = makePanel()
+    /// A screenshot with no text opens large over an empty source to type what it says; what is typed
+    /// is then translated, with the screenshot kept (BDR-0019).
+    @Test func regionWithoutTextShowsTheScreenshotOverAnEmptySource() async {
+        let (panel, writes) = makePanel()
         panel.screenAccess = { true }
         panel.captureRegion = { Data([1, 2, 3]) }
         panel.recognize = { _ in "" }
         panel.processRegion()
         await settle()
         #expect(panel.notice == .noTextInScreenshot)
-        #expect(!panel.expanded)
+        #expect(panel.expanded)
+        #expect(panel.screenshotZoomed)
+        #expect(panel.focusRequest > 0)
         #expect(panel.model.input.isEmpty)
-        #expect(panel.model.sourceImage == nil)
+        #expect(panel.model.sourceImage == Data([1, 2, 3]))
         #expect(panel.model.state == .idle)
+        panel.model.input = "Hello"
+        panel.run(.replace)
+        await settle()
+        #expect(panel.model.state == .success("T:Hello"))
+        #expect(panel.notice == nil)
+        #expect(!panel.screenshotZoomed)
+        #expect(panel.model.sourceImage == Data([1, 2, 3]))
+        #expect(writes.texts.isEmpty)
         panel.close()
     }
 
-    /// A capture that fails says so, rather than opening the selection's empty editor.
-    @Test func failedCaptureIsAFailure() async {
+    /// A capture that fails leaves the bar to type or paste into, as an unread selection does.
+    @Test func failedCaptureOpensTheSourceBar() async {
         struct Failed: Error {}
         let (panel, _) = makePanel()
         var recognised = 0
@@ -364,9 +374,28 @@ struct PanelControllerTests {
         }
         panel.processRegion()
         await settle()
-        #expect(panel.notice == .captureFailed)
+        #expect(panel.notice == .unreadable)
         #expect(!panel.expanded)
+        #expect(panel.model.sourceImage == nil)
         #expect(recognised == 0)
+        panel.close()
+    }
+
+    /// ⌘V with an image translates it like a screen region; without one, the key pastes as usual.
+    @Test func pastingAnImageTranslatesIt() async {
+        let (panel, _) = makePanel()
+        panel.read = { $0(.failure(.unreadable)) }
+        panel.processSelection()
+        panel.readPastedImage = { nil }
+        #expect(!panel.pasteImage())
+        panel.readPastedImage = { Data([4, 5, 6]) }
+        panel.recognize = { _ in "Hello" }
+        #expect(panel.pasteImage())
+        await settle()
+        #expect(panel.model.input == "Hello")
+        #expect(panel.model.sourceImage == Data([4, 5, 6]))
+        #expect(panel.model.state == .success("T:Hello"))
+        #expect(panel.selection == nil)
         panel.close()
     }
 

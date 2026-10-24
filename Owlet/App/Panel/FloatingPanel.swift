@@ -22,6 +22,8 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     var onCommand: (Command) -> Void = { _ in }
     /// Whether Esc in a text field ends the edit instead of reaching `onCommand`.
     var cancelEndsEditing: () -> Bool = { false }
+    /// ⌘V with an image on the pasteboard; true when it took the image, so the key stops here.
+    var pastesImage: () -> Bool = { false }
     /// While a write-back is in flight the panel lets go of the keyboard without dismissing itself:
     /// the keystroke has to reach the app underneath, and the panel has to survive to report a miss.
     var suspendsDismissal = false
@@ -105,9 +107,13 @@ class FloatingPanel: NSPanel, NSWindowDelegate {
     /// Consumes the keys this panel claims, so they never reach a text field behind them.
     private func watchKeys() -> Any? {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.window === self, let command = Self.command(for: event) else {
-                return event
+            guard let self, event.window === self else { return event }
+            if event.keyCode == 9, event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                pastesImage()
+            {
+                return nil
             }
+            guard let command = Self.command(for: event) else { return event }
             // ⌘C copies the selected text when there is some; only with nothing selected is it the result.
             if command == .copy, hasTextSelection { return event }
             if command == .cancel, firstResponder is NSTextView, cancelEndsEditing() {

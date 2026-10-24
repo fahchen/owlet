@@ -15,6 +15,10 @@ struct ExpandedPanelContent: View {
     /// The screenshot fills the width and the source steps aside while the user checks it.
     var screenshotZoomed = false
     var toggleScreenshotZoom: () -> Void = {}
+    /// The screenshot had no text: it shows large, over an empty source to type what it says into.
+    var awaitsText = false
+    var focusRequest = 0
+    @FocusState private var sourceFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The pinned target language; an empty value means Automatic.
     @AppStorage(SettingsStore.displayModeKey) private var displayMode =
@@ -52,7 +56,23 @@ struct ExpandedPanelContent: View {
     /// The source flows around the screenshot thumbnail at its top trailing corner; zoomed, the
     /// screenshot takes the full width and the source steps aside until the next click.
     @ViewBuilder private var sourceWithScreenshot: some View {
-        if let screenshot = model.sourceThumbnail {
+        if awaitsText, let screenshot = model.sourceThumbnail {
+            VStack(alignment: .leading, spacing: 14) {
+                thumbnail(screenshot)
+                TextField(PanelController.Notice.noTextInScreenshot.message, text: $model.input, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: PanelMetrics.sourceTextSize))
+                    .fontWeight(PanelMetrics.sourceWeight)
+                    .lineSpacing(2)
+                    .focused($sourceFocused)
+                    .task(id: focusRequest) {
+                        guard focusRequest > 0 else { return }
+                        // The panel clears its first responder as it shows; focus once it is up.
+                        try? await Task.sleep(for: .milliseconds(100))
+                        sourceFocused = true
+                    }
+            }
+        } else if let screenshot = model.sourceThumbnail {
             ZStack(alignment: .topTrailing) {
                 if !screenshotZoomed {
                     WrappingSourceEditor(

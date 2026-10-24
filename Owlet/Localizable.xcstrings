@@ -1828,35 +1828,6 @@
         }
       }
     },
-    "Could not take the screenshot": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Could not take the screenshot"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "スクリーンショットを撮れませんでした"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没能截图"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "沒能截圖"
-          }
-        }
-      }
-    },
     "Could not write back to the other app": {
       "extractionState": "manual",
       "localizations": {
@@ -4061,31 +4032,31 @@
         }
       }
     },
-    "No selected text was read. Type or paste it, then press ⌘↩": {
+    "No selected text was read. Type or paste text or an image, then press ⌘↩": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No selected text was read. Type or paste it, then press ⌘↩"
+            "value": "No selected text was read. Type or paste text or an image, then press ⌘↩"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選択したテキストを読み取れませんでした。入力または貼り付けて ⌘↩ を押してください"
+            "value": "選択したテキストを読み取れませんでした。テキストか画像を入力・貼り付けて ⌘↩ を押してください"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未读到选中的文字，输入或粘贴后按 ⌘↩"
+            "value": "未读到选中的文字，输入或粘贴文字、图片后按 ⌘↩"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未讀到選取的文字，輸入或貼上後按 ⌘↩"
+            "value": "未讀到選取的文字，輸入或貼上文字、圖片後按 ⌘↩"
           }
         }
       }
@@ -4148,31 +4119,31 @@
         }
       }
     },
-    "No text was found in the screenshot": {
+    "No text was found in the screenshot. Type what it says, then press ⌘↩": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No text was found in the screenshot"
+            "value": "No text was found in the screenshot. Type what it says, then press ⌘↩"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクリーンショットに文字が見つかりません"
+            "value": "スクリーンショットから文字が見つかりませんでした。内容を入力して ⌘↩ を押してください"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "截图里没有识别出文字"
+            "value": "截图里没有识别出文字，照着输入后按 ⌘↩"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "截圖裡沒有辨識出文字"
+            "value": "截圖裡沒有辨識出文字，照著輸入後按 ⌘↩"
           }
         }
       }

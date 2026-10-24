@@ -9,9 +9,8 @@ final class PanelController {
         case translating
         case permission
         case screenPermission
-        /// The screen region's capture ended in an error; a new region is the way out.
-        case captureFailed
-        /// The screenshot held no text to read, so there is nothing to translate (BDR-0019).
+        /// The screenshot held no text to read: the panel shows it large over an empty source to type
+        /// into, the reason in that source's placeholder (BDR-0019).
         case noTextInScreenshot
         case unreadable
         case missingConfig
@@ -31,8 +30,8 @@ final class PanelController {
             case .translating: ""
             case .permission: L10n.shared.string("Needs permission to read the selection")
             case .screenPermission: L10n.shared.string("Needs permission to record the screen")
-            case .captureFailed: L10n.shared.string("Could not take the screenshot")
-            case .noTextInScreenshot: L10n.shared.string("No text was found in the screenshot")
+            case .noTextInScreenshot:
+                L10n.shared.string("No text was found in the screenshot. Type what it says, then press ⌘↩")
             case .unreadable: L10n.shared.string("Could not read any text")
             case .missingConfig: L10n.shared.string("The model service is not configured")
             case .failure(let message, let kind):
@@ -54,7 +53,7 @@ final class PanelController {
             case .translating, .receiving, .unreadable: ""
             case .permission: L10n.shared.string("Permission Settings")
             case .screenPermission: L10n.shared.string("Screen Recording Settings")
-            case .captureFailed, .noTextInScreenshot: L10n.shared.string("Select Another Region")
+            case .noTextInScreenshot: ""
             // The expanded source editor is the way out, so the explanation needs no button.
             case .missingConfig: L10n.shared.string("Configure Service")
             case .failure(_, let kind):
@@ -97,6 +96,8 @@ final class PanelController {
     var screenAccess: @MainActor () -> Bool = ScreenRegion.hasAccess
     var captureRegion: @MainActor () async throws -> Data? = { try await ScreenRegion.capture() }
     var recognize: @MainActor (Data) async -> String = { await ScreenRegion.recognize($0) }
+    /// The image ⌘V would paste, when the pasteboard holds one and no text.
+    var readPastedImage: @MainActor () -> Data? = { ScreenRegion.pastedImage() }
     /// Copies a result; injectable so a test does not touch the user's real pasteboard.
     var copy: @MainActor (String) -> Void = { Clipboard.copy($0) }
     var openSettings: () -> Void = {}
@@ -191,34 +192,53 @@ final class PanelController {
                 guard let captured = try await captureRegion() else { return }
                 image = captured
             } catch {
+                // A capture that failed leaves the bar to type or paste into, as an unread selection does.
                 guard id == requestID else { return }
-                showRegionFailure(.captureFailed)
+                model.sourceImage = nil
+                showManualInput()
+                show()
                 return
             }
-            let text = await recognize(image)
-            guard id == requestID else { return }
-            // Nothing to read is a failure, not an invitation to type: a screen region always has to
-            // come with its text (BDR-0019).
-            guard !text.isEmpty else {
-                showRegionFailure(.noTextInScreenshot)
-                return
-            }
-            model.input = text
-            model.sourceImage = ScreenRegion.keptCopy(of: image)
-            // The result opens on the screenshot the way the settings ask; a click still toggles it.
-            screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
-            processCurrentText()
-            show()
+            await translateScreenshot(image, id: id)
         }
     }
 
-    /// A screen region that produced nothing to translate: the compact notice, with a new region as
-    /// the way out.
-    private func showRegionFailure(_ failure: Notice) {
-        model.reset()
-        model.input = ""
-        model.sourceImage = nil
-        notice = failure
+    /// ⌘V with an image, and no text, on the pasteboard: the image is read and translated like a
+    /// screen region. Returns false when there is no image, so the keystroke pastes as usual.
+    func pasteImage() -> Bool {
+        guard let image = readPastedImage() else { return false }
+        requestID += 1
+        let id = requestID
+        model.cancel()
+        selection = nil
+        writebackRefusal = nil
+        autoReplace = false
+        model.operation = .translate
+        Task { [weak self] in await self?.translateScreenshot(image, id: id) }
+        return true
+    }
+
+    /// Reads the text in a screenshot and translates it. With nothing to read, the panel opens on the
+    /// picture, large, over an empty source to type what it says into (BDR-0019).
+    private func translateScreenshot(_ image: Data, id: Int) async {
+        let text = await recognize(image)
+        guard id == requestID else { return }
+        let kept = ScreenRegion.keptCopy(of: image)
+        if text.isEmpty {
+            model.reset()
+            model.input = ""
+            model.sourceImage = kept
+            notice = .noTextInScreenshot
+            expanded = true
+            screenshotZoomed = true
+            focusRequest += 1
+        } else {
+            model.input = text
+            model.sourceImage = kept
+            // The result opens on the screenshot the way the settings ask; a click still toggles it.
+            screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
+            processCurrentText()
+        }
         show()
     }
 
@@ -283,6 +303,10 @@ final class PanelController {
         let language = SettingsStore.resolvedTarget(for: model.input, in: defaults)
         requestID += 1
         let id = requestID
+        // Typed under a screenshot that had no text: the result shows it the way the settings ask.
+        if notice == .noTextInScreenshot {
+            screenshotZoomed = SettingsStore.screenshotDisplay(in: defaults) == .enlarged
+        }
         if expanded { notice = nil }
         let task = model.process(to: language) { [weak self] in
             self?.expandOnFirstPartial(id: id)
@@ -514,6 +538,7 @@ final class PanelController {
         }
         panel.onCommand = { [weak self] command in self?.run(command) }
         panel.cancelEndsEditing = { [weak self] in self?.cancelEndsEditing ?? false }
+        panel.pastesImage = { [weak self] in self?.pasteImage() ?? false }
         return panel
     }
 }

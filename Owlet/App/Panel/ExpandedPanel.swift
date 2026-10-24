@@ -19,6 +19,10 @@ struct ExpandedPanel: View {
     var screenshotSpace: Namespace.ID?
     var screenshotZoomed = false
     var toggleScreenshotZoom: () -> Void = {}
+    var awaitsText = false
+    var focusRequest = 0
+    /// Draws a new screen region; nil when the text did not come from one.
+    var recapture: (() -> Void)?
     @State var learning = LearningModel()
     /// Natural height of the text column; the panel hugs it up to `maxHeight`, then scrolls.
     @State private var contentHeight: CGFloat = 0
@@ -52,7 +56,8 @@ struct ExpandedPanel: View {
                         collection: collection, openNotebook: openNotebook, learning: learning,
                         lookupOrigin: lookupOrigin, showsSource: !showsLearning,
                         screenshotSpace: screenshotSpace, screenshotZoomed: screenshotZoomed,
-                        toggleScreenshotZoom: toggleScreenshotZoom
+                        toggleScreenshotZoom: toggleScreenshotZoom, awaitsText: awaitsText,
+                        focusRequest: focusRequest
                     )
                     .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
                     // Beside the learning column the buttons sit on the right, so this side needs no room.
@@ -78,6 +83,16 @@ struct ExpandedPanel: View {
             // Hugs the buttons: a full-width row would take every click beside them, over the
             // text and the learning items it floats on. The ZStack puts it bottom-trailing.
             HStack(spacing: 8) {
+                if let recapture, model.state != .loading {
+                    Button(action: recapture) {
+                        Label(L10n.shared.string("Select Another Region"), systemImage: "arrow.clockwise")
+                            .foregroundStyle(.primary)
+                    }
+                    .labelStyle(.iconOnly).font(.system(size: 13, weight: .medium))
+                    .buttonStyle(.glass(glassEffect.glass)).buttonBorderShape(.circle).controlSize(.extraLarge)
+                    .buttonSizing(.flexible).frame(width: 36, height: 36)
+                    .hoverTip("Select Another Region")
+                }
                 if model.state == .loading {
                     Button(action: cancel) {
                         Label(L10n.shared.string("Cancel"), systemImage: "xmark").foregroundStyle(.primary)

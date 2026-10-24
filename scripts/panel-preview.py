@@ -22,6 +22,8 @@ parser.add_argument('--transition', type=Path,
                     help='Record the real panel going from 翻译中 to the result as a .mov, then exit')
 parser.add_argument('--app-shots', type=Path,
                     help='Capture the notebook and history pages and render the Language pane to PNGs, then exit')
+parser.add_argument('--region', type=Path,
+                    help='Run Translate Screen Region through each of its states with fixtures and capture the panel to PNGs, then exit')
 parser.add_argument('--panel', action='store_true', help='Open the real floating panel through PanelController')
 parser.add_argument('--main', action='store_true', help='Open the main window pages with fixture data')
 parser.add_argument('--no-voice', action='store_true', help='Stand in for a Mac without a system voice')
@@ -66,6 +68,8 @@ if args.transition:
     environment['OWLET_PREVIEW_TRANSITION'] = str(args.transition.resolve())
 if args.app_shots:
     environment['OWLET_PREVIEW_APP_SHOTS'] = str(args.app_shots.resolve())
+if args.region:
+    environment['OWLET_PREVIEW_REGION'] = str(args.region.resolve())
 if args.no_voice:
     environment['OWLET_PREVIEW_NO_VOICE'] = '1'
 if args.target:

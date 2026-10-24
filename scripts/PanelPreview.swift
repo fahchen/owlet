@@ -552,6 +552,10 @@ final class PreviewPanel: NSPanel {
             AppShots.run(app, output: output)
             return
         }
+        if let output = ProcessInfo.processInfo.environment["OWLET_PREVIEW_REGION"] {
+            RegionShots.run(app, output: output)
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--main") {
             showMainWindow(app)
             return
@@ -1077,5 +1081,138 @@ struct MainPreview: View {
         model.input = PreviewFixtures.source
         await model.process(to: "en")?.value
         return model
+    }
+}
+
+/// `--region`: Translate Screen Region in the real PanelController and FloatingPanel, one state after
+/// another, each captured as a window screenshot. The capture, the recognition, the permission and the
+/// model are all fixtures, so nothing touches the screen, Vision or a service, and no state needs a
+/// person to set it up (BDR-0019).
+@MainActor enum RegionShots {
+    struct Failed: Error {}
+
+    nonisolated static let source = "Could you send me the report?\nI need it by Friday."
+    nonisolated static let segments = [
+        ["source": "Could you send me the report?\n", "target": "你能把报告发给我吗？"],
+        ["source": "I need it by Friday.", "target": "我周五前需要。"],
+    ]
+
+    /// The "screenshot": two lines of text drawn here, as a PNG.
+    static let picture: Data = {
+        let size = NSSize(width: 900, height: 210)
+        let image = NSImage(size: size, flipped: true) { rect in
+            NSColor.white.setFill()
+            rect.fill()
+            let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 44), .foregroundColor: NSColor.black]
+            ("Could you send me the report?" as NSString).draw(at: NSPoint(x: 36, y: 36), withAttributes: attributes)
+            ("I need it by Friday." as NSString).draw(at: NSPoint(x: 36, y: 116), withAttributes: attributes)
+            return true
+        }
+        let tiff = image.tiffRepresentation!
+        return NSBitmapImageRep(data: tiff)!.representation(using: .png, properties: [:])!
+    }()
+
+    /// A model reply: the translation, a structure the contract refuses, or no connection; `delay`
+    /// keeps the panel on Translating long enough to capture it.
+    static func transport(_ reply: String?, delay: Duration = .zero) -> Transport {
+        { request in
+            try await Task.sleep(for: delay)
+            guard var reply else { throw URLError(.notConnectedToInternet) }
+            // Answer in the language asked for, so a target pinned in the preview's settings still
+            // gets a reply the contract accepts.
+            let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+            let system = (body["messages"] as! [[String: String]])[0]["content"]!
+            if let target = system.components(separatedBy: "Target language: ").dropFirst().first?
+                .components(separatedBy: ".").first
+            {
+                reply = reply.replacingOccurrences(of: #""target_language":"zh-Hans""#, with: #""target_language":"\#(target)""#)
+            }
+            let data = try JSONSerialization.data(withJSONObject: [
+                "choices": [["message": ["content": reply], "finish_reason": "stop"]]
+            ])
+            return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+    }
+
+    nonisolated static var translation: String {
+        let content: [String: Any] = ["source_language": "en", "target_language": "zh-Hans", "segments": segments]
+        return String(decoding: try! JSONSerialization.data(withJSONObject: content), as: UTF8.self)
+    }
+
+    struct Shot {
+        let name: String
+        var reply: String? = RegionShots.translation
+        var delay: Duration = .zero
+        var configured = true
+        var permitted = true
+        var captureFails = false
+        var text = RegionShots.source
+        var aligned = false
+        var zoomed = false
+        /// How long after the shortcut the window is captured.
+        var wait: Duration = .seconds(1.6)
+    }
+
+    static let shots = [
+        Shot(name: "01-permission", permitted: false, wait: .seconds(1)),
+        Shot(name: "02-capture-failed", captureFails: true),
+        Shot(name: "03-no-text", text: ""),
+        Shot(name: "04-translating", delay: .seconds(4), wait: .seconds(1.2)),
+        Shot(name: "05-result"),
+        Shot(name: "06-result-aligned", aligned: true),
+        Shot(name: "07-result-zoomed", zoomed: true),
+        Shot(name: "08-connection-failure", reply: nil),
+        Shot(name: "09-missing-config", configured: false),
+        Shot(name: "10-format-failure", reply: "not json"),
+    ]
+
+    static func run(_ app: NSApplication, output: String) {
+        app.setActivationPolicy(.accessory)
+        let directory = URL(fileURLWithPath: output)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        L10n.shared.use(.simplifiedChinese)
+        SettingsStore.setPanelFixedAnchor(NSPoint(x: 700, y: 760), in: PreviewFixtures.defaults)
+        Task { @MainActor in
+            var ok = true
+            for shot in shots {
+                // The views read the display mode through AppStorage, which in this process is the
+                // preview's own domain, wiped below.
+                UserDefaults.standard.set(
+                    (shot.aligned ? TranslationDisplayMode.aligned : .sectioned).rawValue,
+                    forKey: SettingsStore.displayModeKey)
+                let model = TextProcessingModel(
+                    client: ModelClient(
+                        transport: transport(shot.reply, delay: shot.delay), promptForOperation: { _ in "Preview" },
+                        capture: .off),
+                    config: { shot.configured ? PreviewFixtures.config : nil })
+                let panel = PanelController(model: model, defaults: PreviewFixtures.defaults)
+                panel.screenAccess = { shot.permitted }
+                panel.captureRegion = { if shot.captureFails { throw Failed() } else { return picture } }
+                panel.recognize = { _ in shot.text }
+                panel.processRegion()
+                try? await Task.sleep(for: shot.wait)
+                if shot.zoomed {
+                    panel.toggleScreenshotZoom()
+                    try? await Task.sleep(for: .seconds(1))
+                }
+                if let window = panel.panel {
+                    do {
+                        try AppShots.capture(window, to: directory.appendingPathComponent(shot.name + ".png"))
+                        print("wrote \(shot.name).png")
+                    } catch {
+                        print("FAILED \(shot.name): \(error)")
+                        ok = false
+                    }
+                } else {
+                    print("FAILED \(shot.name): no panel")
+                    ok = false
+                }
+                panel.close()
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+            exit(ok ? 0 : 1)
+        }
+        app.run()
     }
 }

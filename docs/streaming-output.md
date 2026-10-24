@@ -1,6 +1,6 @@
 # 模型返回的流式显示方案
 
-状态：**已实现，第一轮已落地**（翻译／润色面板与阅读查词；主窗口的翻译／润色显示已到达的文字，接收中的排版跟随即将定稿的显示方式；学习收集保持整段，见下面的取舍记录与 `spec/processing/decisions/BDR-0017-streaming-display.md`）。本文件不改变请求契约、本地校验与写回规则，与用户可见字符串一律进 `strings/translations.json` 的约束一致。第一轮之后，「必须实测」一节列出的项目仍待人验收（也登记于 [roadmap.md](roadmap.md)）。
+状态：**已实现，第一轮已落地**（翻译／润色面板与阅读查词；主窗口的翻译／润色显示已到达的文字，接收中的排版跟随即将定稿的显示方式；学习收集保持整段，见下面的取舍记录与 `spec/processing/decisions/BDR-0017-streaming-display.md`）。本文件不改变请求契约、本地校验与写回规则，与用户可见字符串一律进 `strings/translations.json` 的约束一致。已随 v0.7.0（2026-10-20）发布；「必须实测」一节是本文不回答的部分，保留作参考。
 
 `spec/llm/contract.md` 是硬约束：结构、目标语言、原文拼接三项都在本地校验，校验失败不得当成成功结果、不得写回（[contract.md:17](../spec/llm/contract.md)、[:102](../spec/llm/contract.md)、[:110](../spec/llm/contract.md)）。本方案的所有取舍都从这条出发。
 
@@ -141,5 +141,5 @@
 ## 相关
 
 - [LLM 返回契约](../spec/llm/contract.md)：本地校验与写回门槛，本方案的硬约束。
-- [未实现功能清单](unimplemented-features.md)：本提案的登记处。
+- [流式显示决策](../spec/processing/decisions/BDR-0017-streaming-display.md)：裁定本文的四个待定决策。
 - [产品规格索引](../spec/README.md)：本文件的索引位置。

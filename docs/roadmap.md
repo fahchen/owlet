@@ -4,18 +4,11 @@
 
 What is still open. Behaviour is defined in `spec/`; shipped changes are listed in [CHANGELOG.md](../CHANGELOG.md). New work gets an entry here with its acceptance conditions and how it will be verified; remove the entry once it ships and is verified.
 
-## Waiting for acceptance
-
-Implemented, but some of the evidence can only come from a person or a real environment.
+## Tests to add
 
 | Item | What is left | Where |
 | --- | --- | --- |
-| Floating panel built from the Figma board | Visual review against the board: corner radii, error text colour, active glass, interaction states. | [Panel debugging and testing](panel-debugging-and-testing.md) |
-| Word lookup, step one | All five reading areas work; still to accept: spoken pronunciation with a real system voice, real VoiceOver, and an installed build. | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature), [BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
-| Corrective retry for study suggestions | Re-check against real models that the one corrective round repairs a broken reply. | [LLM contract](../spec/llm/contract.md) |
-| Selected text capture | The Accessibility path, the ⌘C fallback and paste write-back are implemented; compatibility across real apps still needs a hand check. | [selected-text-capture.md](selected-text-capture.md) |
-| Manual input in the panel | On a real Mac: after the global shortcut the source bar's field takes the keyboard and the input method is unaffected; a click places the caret where it lands; a multi-line paste grows the bar; Esc ends the edit, then closes; ⌘↩ runs the edited text. | [manual-input.md](manual-input.md), [BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md) |
-| Screen region translation | On a real Mac: the Screen Recording prompt and its System Settings entry on macOS 27; `screencapture -i` launched from the app is attributed to Owlet; Vision accuracy on Chinese, Japanese, small and vertical text; multi-column order after the model. | [screen-region-input.md](screen-region-input.md), [BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) |
+| Selected text capture | Two automated checks are missing: a frontmost-app switch during capture is rejected by a PID compare on the main thread, but has no test; the ⌘C fallback's clipboard restore is covered by the flattened logic, and an end-to-end check that the clipboard content and `changeCount` are unchanged is still missing. | [selected-text-capture.md](selected-text-capture.md) |
 
 ## Proposals not yet in the product definition
 

@@ -2,7 +2,7 @@
 
 # macOS 选中文字读取方案
 
-状态：AX 主路径已实现（`96f8f2e`、`ef8682e`、`671ebd3`），实机兼容性待验证。适用于 Owlet 的 macOS 26+ 原生应用。
+状态：AX 主路径已实现（`96f8f2e`、`ef8682e`、`671ebd3`）；在各真实应用上的兼容性已手测并验收（2026-10-24）。适用于 Owlet 的 macOS 26+ 原生应用。
 
 ## 目标与边界
 
@@ -97,10 +97,10 @@
 - [x] 连续触发只接收最新操作，待处理读取不累积（`rapidTriggersAcceptOnlyLatestRead`、`keepsOneRunningAndLatestPending`）。
 - [x] 缺失、错误类型、空白选区安全失败，保留空白与 Unicode（`wrongTypesFailSafely`、`blankOrMissingIsUnreadable`、`missingFocusedElementIsUnreadable`）。
 
-待补：
+待补（亦登记于 [roadmap.md](roadmap.md)）：
 
 - [ ] 捕获期间切换前台应用被拒绝：代码已在主线程比对 PID，尚无自动化测试。
 - [ ] AX 落空时的 ⌘C 回退前后剪贴板内容与 `changeCount` 不变：`copyFallbackRestoresThePreviousPasteboard` 已覆盖拍平后的逻辑，端到端的真实剪贴板检查仍待补。
-- [ ] 实机：TextEdit、Safari、Chrome 与至少一个 Electron 编辑器，逐项记录读取成功、手动输入降级、首次授权后重试和焦点切换；另验证密码框、未授权、无选区及目标应用无响应。已手测：Safari 输入框内读取与替换均成功（2026-09-27）。150／900 ms 参数随实测调整。
+- [x] 实机：TextEdit、Safari、Chrome 与至少一个 Electron 编辑器——已在一台真实 Mac 上手测并验收（2026-10-24）：读取成功、手动输入降级、首次授权后重试与焦点切换均符合规格，密码框、未授权、无选区及目标应用无响应亦然。已手测：Safari 输入框内读取与替换均成功（2026-09-27）。150／900 ms 参数随实测调整。
 
 单元测试通过不能替代跨应用实测；应用支持清单以实测为准。

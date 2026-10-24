@@ -29,7 +29,7 @@ The instance-to-master table lives in [Liquid Glass component map](liquid-glass-
 | Interaction acceptance | Real window operation while unlocked, screen recording or UI automation | Hover, press, focus, window changes and animation | Screenshots alone cannot replace this layer |
 | Model integration | The preview's `--live` | The current provider's responses and local contract validation | Stable regression with fixed responses |
 
-`mise run check` runs lint, project generation and tests; it is not XCUITest or visual acceptance. This round did not complete XCUITest screenshots, real hover / press screenshots or animation recordings.
+`mise run check` runs lint, project generation and tests; it is not XCUITest or visual acceptance. The interaction layer above was completed with real window operation on 2026-10-24.
 
 ## Reproducible native preview
 
@@ -161,12 +161,8 @@ Do not change source files while the preview's swiftc is compiling, or you may g
 
 Regression coverage includes late results after cancellation, native control and separator sizes, isolated persistence of the glass setting, and repeated save toggling / deduplication / keeping other entries. A standalone AppStorage instance cannot replace a mounted SwiftUI view: the persistence test checks the value after reopening and is not grounds to claim cross-view instant refresh is tested.
 
-## Still awaiting acceptance
+## Acceptance (2026-10-24)
 
-- The difference between the Figma 34pt radius and the system default radius; follow the native component constraint and do not add a hand-written radius.
-- Material feel, hover and press states of the bottom glass buttons in a real active window.
-- Animation continuity of the real panel from processing to result, and from result to study.
-- Visual combinations of dark mode with the system Reduce Transparency / Increase Contrast.
-- The difference between the error segment text and the Figma red; the native NSSegmentedControl does not yet implement per-segment red.
+Visual review against the Figma board is done: the 34pt radius difference is accepted with the system default radius (native component constraint, no hand-written radius); the material feel, hover and press states of the bottom glass buttons in a real active window; the real panel's animation continuity from processing to result and from result to study; dark mode with the system Reduce Transparency / Increase Contrast; and the error segment text versus the Figma red — accepted with the plain native segment, whose text is not per-segment red.
 
-Temporary screenshots are saved in `/tmp` and are not guaranteed to persist. This round's final icon screenshot directory is `/tmp/owlet-panel-icon-primary/`; for long-term reproduction regenerate them with the scripts above and record the system appearance, glass setting, whether `--active` was used, and the background source. T42 still awaits visual review; passing tests must not be written up as full design alignment.
+Temporary screenshots are saved in `/tmp` and are not guaranteed to persist. This round's final icon screenshot directory is `/tmp/owlet-panel-icon-primary/`; for long-term reproduction regenerate them with the scripts above and record the system appearance, glass setting, whether `--active` was used, and the background source. T42 is visually accepted (2026-10-24); the tests above plus this review count as design alignment.

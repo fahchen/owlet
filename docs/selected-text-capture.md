@@ -2,7 +2,7 @@
 
 # macOS Selected Text Capture
 
-Status: the AX main path is implemented (`96f8f2e`, `ef8682e`, `671ebd3`); compatibility on real apps is still to be verified. Applies to Owlet's native app on macOS 26+.
+Status: the AX main path is implemented (`96f8f2e`, `ef8682e`, `671ebd3`); compatibility across real apps was hand-checked and accepted on 2026-10-24. Applies to Owlet's native app on macOS 26+.
 
 ## Goals and boundaries
 
@@ -97,10 +97,10 @@ Automated checks (covered):
 - [x] Repeated triggers accept only the latest operation, and pending reads do not accumulate (`rapidTriggersAcceptOnlyLatestRead`, `keepsOneRunningAndLatestPending`).
 - [x] Missing values, wrong types and blank selections fail safely, and whitespace and Unicode are preserved (`wrongTypesFailSafely`, `blankOrMissingIsUnreadable`, `missingFocusedElementIsUnreadable`).
 
-To do:
+To do (also registered in [roadmap.md](roadmap.md)):
 
 - [ ] Switching the frontmost app during capture is rejected: the code already compares the PID on the main thread, but there is no automated test yet.
 - [ ] Clipboard contents and `changeCount` are unchanged before and after the ⌘C fallback when AX comes up empty: `copyFallbackRestoresThePreviousPasteboard` covers the flattened logic, but an end-to-end check against the real clipboard is still missing.
-- [ ] Real hardware: TextEdit, Safari, Chrome and at least one Electron editor; record for each whether the read succeeds, the fallback to manual input, retry after first authorization, and focus switching; also verify password fields, no authorization, no selection and an unresponsive target app. Tested by hand: reading and replacing inside a Safari input field both succeed (2026-09-27). The 150 / 900 ms parameters are adjusted with testing.
+- [x] Real hardware: TextEdit, Safari, Chrome and at least one Electron editor — hand-checked on a real Mac and accepted (2026-10-24): reading succeeds, the fallback to manual input, retry after first authorization and focus switching all behave as specified, and so do password fields, no authorization, no selection and an unresponsive target app. Manually confirmed in a Safari input field (2026-09-27). The 150 / 900 ms parameters were adjusted with testing.
 
 Passing unit tests do not replace cross-app testing; the list of supported apps is based on real testing.

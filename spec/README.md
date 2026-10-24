@@ -8,14 +8,14 @@
 - [术语](glossary.md)：统一概念。
 - `processing/features/`：翻译、润色、快捷入口、替换与工具栏错误呈现。
 - `learning/features/`：独立开关、临时展开、推荐收藏与释义语言。
-- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.feature) 五类区域均已实现（T48–T51），待最终验收。
+- `vocabulary/features/`：手动收藏、语境、生词本管理与编辑；[阅读查词第一步](vocabulary/features/word-lookup.feature) 五类区域均已实现（T48–T51），已验收（2026-10-24）。
 - `history/features/`：保存、查看、搜索与删除历史；按天分组、关联从该记录收藏的词条。
 - `settings/features/`：自填模型服务配置、[本机 agent CLI 作为模型服务](settings/features/local-agent.feature)、自定义 Prompt、按源语言决定翻译目标、按语言配置读音体系、浮窗玻璃效果，以及原生窗口的输入焦点。
 - [LLM 返回契约](llm/contract.md)：默认 Prompt、JSON Schema 与失败行为。
 - [浮窗内的手动输入方案](../docs/manual-input.zh-CN.md)：已实现，见 BDR-0018。
 - [屏幕区域 OCR 输入方案](../docs/screen-region-input.zh-CN.md)：已实现，见 BDR-0019（推翻了自己画框与截图不保留两条）。
 - [连续语音输入方案](../docs/speech-input.zh-CN.md)：未实现的输入来源设计提案，本轮不做。
-- [模型返回的流式显示方案](../docs/streaming-output.md)：未实现的呈现设计提案，只改「何时看见」，不改请求契约、本地校验与写回；是否实现取决于人对替换入口 UI 的决定。
+- [模型返回的流式显示方案](../docs/streaming-output.md)：已实现（v0.7.0），只改「何时看见」，不改请求契约、本地校验与写回；四个待定决策见 [流式显示决策](processing/decisions/BDR-0017-streaming-display.md)。
 - [替换行为决策](processing/decisions/BDR-0001-explicit-replacement-intent.md)。
 - [错误呈现决策](processing/decisions/BDR-0002-preserve-open-toolbar-on-error.md)：已展开的工具栏遇错保持展开。
 - [屏幕区域输入决策](processing/decisions/BDR-0019-screen-region-input.md)：独立快捷键，用系统 `screencapture -i` 框选，本机 Vision 识别；截图以缩略图显示（紧凑在左、展开在右），并随历史保存。
@@ -25,7 +25,7 @@
 - [释义语言决策](learning/decisions/BDR-0005-definition-language.md)：释义跟随本次翻译目标语言，润色按目标映射查原文语言；生成与重新生成都按当下的映射。
 - [按需补充决策](vocabulary/decisions/BDR-0006-on-demand-enrichment.md)：读音与词性在详情按需补充；「补充缺失」只填空、单项「重新生成」只覆盖该项；整句不标；读音体系按语言设置。
 - [历史作为学习本决策](history/decisions/BDR-0007-history-as-learning-log.md)：收藏记录来源入口与原文所在 App；历史按天分组、可按有收藏与来源 App 筛选、详情关联收藏词条。
-- [阅读查词决策](vocabulary/decisions/BDR-0008-reading-word-lookup.md)：只读正文 ⌘ 单击、选区工具栏／右键查询；学习行保留点击收藏，跨句旧释义标来源，手动系统发音，查询不入库。五类区域均已实现（T48–T51），待最终验收。
+- [阅读查词决策](vocabulary/decisions/BDR-0008-reading-word-lookup.md)：只读正文 ⌘ 单击、选区工具栏／右键查询；学习行保留点击收藏，跨句旧释义标来源，手动系统发音，查询不入库。五类区域均已实现（T48–T51），已验收（2026-10-24）。
 - [学习词形决策](learning/decisions/BDR-0009-learning-lemma.md)：学习契约的 `text` 用语境中的实际词形，字典形另放 `lemma`；生词本按词形收藏、原形作次级信息。
 - [查词入库决策](vocabulary/decisions/BDR-0010-collect-from-lookup.md)：查词卡可显式「加入生词本」，保存本次查询词形、语境与释义，不另发请求；查词本身仍不自动入库。
 - [界面语言决策](settings/decisions/BDR-0011-interface-language.md)：界面支持简体中文、繁體中文、English、日本語，默认跟随系统、设置里可覆盖；语言名跟随界面语言，选择器例外；发给模型的提示词不本地化。
@@ -34,6 +34,7 @@
 - [玻璃强度决策](settings/decisions/BDR-0014-system-liquid-glass-intensity.md)：液态玻璃及其强度由系统设置 › 外观统一调整；应用的「玻璃效果」只区分两种玻璃变体，并给出一句说明与打开该面板的入口，不提供自己的强度控件。
 - [服务商预设决策](settings/decisions/BDR-0015-provider-presets.md)：`Provider` 只表示协议与两个本地 agent；HTTP 厂商是数据表 `ServicePreset`，选中即填好公开的 Base URL 与默认模型，返回格式能力跟着预设走，模型记忆按服务分槽。
 - [多协议决策](settings/decisions/BDR-0016-wire-protocols.md)：`Provider` 就是协议（OpenAI Chat Completions、OpenAI Responses、Anthropic、Gemini）加两个本地 agent，每个协议一个后端；预设写明自己的协议；服务列表分协议、厂商预设（只留 DeepSeek、OpenRouter、Ollama）、本地 agent 三组；Base URL 按服务记住；模型名与思考强度是文本框加「预设」菜单，两者都能手填，手填强度原样发送；模型相关的报错只显示一处；测试按钮走正式请求路径。
+- [流式显示决策](processing/decisions/BDR-0017-streaming-display.md)：浮窗与主窗口的翻译／润色、阅读查词在文字到达时逐段显示，接收中的排版跟随显示方式；替换入口采用原子替换，partial 只显示、不写回；partial 不进历史；不能流式的后端自动整段降级，新增 provider 不需要懂流式。
 
 `spec/` 只用中文写。Gherkin 使用英文关键字、中文行为描述。示例是本次从已确认规则整理的具体说明，不要求模型输出固定措辞，且尚未绑定 step definitions。未完成的工作见 [路线图](../docs/roadmap.zh-CN.md)；技术选型不作为领域场景。
 
@@ -62,7 +63,7 @@ T 编号是历史任务标签，原任务清单已删除。
 | 手动收藏、生词本 | T07、T08 |
 | 学习推荐 | T09 |
 | 重复表达追加语境 | T10 |
-| 阅读查词第一步（已实现，待最终验收） | T47–T51 |
+| 阅读查词第一步 | T47–T51 |
 
 ## T59：界面语言 i18n，支持四种语言（已实现）
 

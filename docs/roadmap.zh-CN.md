@@ -4,18 +4,11 @@
 
 还没收尾的事。行为以 `spec/` 为准；已发布的改动见 [CHANGELOG.md](../CHANGELOG.md)。新工作在这里登记一条，写明验收条件与验证方式；发布并验证后删掉该条。
 
-## 待验收
-
-已实现，但部分证据只能由人或真实环境给出。
+## 待补测试
 
 | 事项 | 还剩什么 | 位置 |
 | --- | --- | --- |
-| 按 Figma 画板重做的浮窗 | 对照画板的视觉复核：圆角、错误文字颜色、活跃玻璃、交互状态。 | [Panel 调试与测试](panel-debugging-and-testing.zh-CN.md) |
-| 阅读查词第一步 | 五类区域均已可用；待验收：真实系统语音发音、真实 VoiceOver、安装版。 | [word-lookup.feature](../spec/vocabulary/features/word-lookup.feature)、[BDR-0008](../spec/vocabulary/decisions/BDR-0008-reading-word-lookup.md) |
-| 学习推荐的纠正重试 | 用真实模型复验：一次纠正能修好违约的返回。 | [LLM 契约](../spec/llm/contract.md) |
-| 选中文字读取 | 辅助功能路径、⌘C 兜底与粘贴写回已实现；在各真实应用上的兼容性仍需手测。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
-| 浮窗内的手动输入 | 真机核对：全局快捷键后原文条的输入框拿到键盘，输入法状态不受影响；点击处放置光标；粘贴多行时原文条长高；Esc 先结束编辑再关闭；⌘↩ 处理修改后的文字。 | [manual-input.zh-CN.md](manual-input.zh-CN.md)、[BDR-0018](../spec/processing/decisions/BDR-0018-manual-input-in-panel.md) |
-| 屏幕区域翻译 | 真机核对：macOS 27 上屏幕录制授权的提示与系统设置入口；从应用启动的 `screencapture -i` 归属到 Owlet；Vision 在中文、日文、小字与竖排上的准确率；多栏排版经模型兜底后的顺序。 | [screen-region-input.zh-CN.md](screen-region-input.zh-CN.md)、[BDR-0019](../spec/processing/decisions/BDR-0019-screen-region-input.md) |
+| 选中文字读取 | 两个自动化检查缺失：捕获期间切换前台应用已在主线程比对 PID 拒绝，但尚无测试；⌘C 回退的剪贴板放回只在拍平后的逻辑里覆盖，真实剪贴板内容与 `changeCount` 不变的端到端检查仍待补。 | [selected-text-capture.zh-CN.md](selected-text-capture.zh-CN.md) |
 
 ## 尚未进入产品定义的提案
 
